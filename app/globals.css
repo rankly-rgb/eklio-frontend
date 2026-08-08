@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — identité visuelle Eklio.
+ * Palette et typos définies dans le brief produit, ne pas modifier sans validation design.
+ */
+:root {
+  --color-cream: #f1ebdf;
+  --color-cream-light: #faf6ee;
+  --color-noir: #131313;
+  --color-gris-fonce: #2a2a2a;
+  --color-beige: #d8d2c4;
+
+  --background: var(--color-cream);
+  --foreground: var(--color-noir);
+}
+
+@theme inline {
+  --color-cream: var(--color-cream);
+  --color-cream-light: var(--color-cream-light);
+  --color-noir: var(--color-noir);
+  --color-gris-fonce: var(--color-gris-fonce);
+  --color-beige: var(--color-beige);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-display: var(--font-recoleta);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
