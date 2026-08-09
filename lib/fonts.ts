@@ -1,31 +1,17 @@
-import { Inter, IBM_Plex_Mono, Fraunces } from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
 
-/**
- * TODO(design): Recoleta Bold est une police commerciale (non disponible sur
- * Google Fonts). En attendant l'achat de la licence, on utilise Fraunces
- * (serif éditorial, licence libre) comme placeholder visuel sur le même rôle
- * (`--font-display`, titres). Pour brancher la vraie police une fois les
- * fichiers .woff2 obtenus :
- *   1. Placer les fichiers dans `app/fonts/recoleta/`.
- *   2. Remplacer l'import Fraunces ci-dessous par `next/font/local`, ex:
- *        import localFont from "next/font/local";
- *        export const display = localFont({
- *          src: "../app/fonts/recoleta/Recoleta-Bold.woff2",
- *          variable: "--font-recoleta",
- *          weight: "700",
- *        });
- *   3. Ne rien changer côté Tailwind : le token --font-display pointe déjà
- *      sur --font-recoleta dans app/globals.css.
+/*
+ * Trois rôles typographiques, pas plus :
+ * - display : Recoleta Bold, déclarée en @font-face dans app/globals.css
+ *   (fichier attendu en public/fonts/Recoleta-Bold.woff2 ; repli Georgia si
+ *   absent — voir NOTES.md). Titres de page et de question uniquement.
+ * - sans : Inter 400/500, corps de texte et interface.
+ * - mono : IBM Plex Mono 400/500, numéros d'étape, libellés, méta, fiche
+ *   de marque.
  */
-export const display = Fraunces({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-  variable: "--font-recoleta",
-  display: "swap",
-});
-
 export const sans = Inter({
   subsets: ["latin"],
+  weight: ["400", "500"],
   variable: "--font-inter",
   display: "swap",
 });

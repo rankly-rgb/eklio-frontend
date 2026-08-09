@@ -14,7 +14,7 @@ export default function LoginPage() {
 
       <AuthForm action={signIn} submitLabel="Se connecter" />
 
-      <p className="font-mono text-sm text-gris-fonce">
+      <p className="font-mono text-sm text-ink-muted">
         Pas encore de compte ?{" "}
         <Link href="/signup" className="underline">
           Créer un compte

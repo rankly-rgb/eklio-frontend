@@ -1,37 +1,109 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — identité visuelle Eklio.
- * Palette et typos définies dans le brief produit, ne pas modifier sans validation design.
+ * Design tokens — identité visuelle Eklio (lot 1, fond blanc).
+ * Le crème n'est plus une couleur de page : c'est un accent réservé à la
+ * fiche de marque, aux options sélectionnées et aux badges d'état.
+ * Aucune couleur en dur dans les composants : tout passe par ces tokens.
  */
 :root {
-  --color-cream: #f1ebdf;
-  --color-cream-light: #faf6ee;
-  --color-noir: #131313;
-  --color-gris-fonce: #2a2a2a;
-  --color-beige: #d8d2c4;
+  /* surfaces */
+  --paper: #ffffff;
+  --paper-raised: #fafaf9;
 
-  --background: var(--color-cream);
-  --foreground: var(--color-noir);
+  /* texte */
+  --ink: #131313;
+  --ink-soft: #2a2a2a;
+  --ink-muted: #6b6b68;
+
+  /* traits */
+  --rule: #e6e4df;
+  --rule-strong: #d8d2c4;
+
+  /* accent — le crème de la marque, uniquement en aplat d'accent */
+  --accent-surface: #f1ebdf;
+  --accent-tint: #faf6ee;
+
+  /* fonctionnel */
+  --danger: #a4342b;
+  --success: #2f6b4f;
+}
+
+/*
+ * Recoleta Bold (display). La licence n'est pas encore achetée : le fichier
+ * public/fonts/Recoleta-Bold.woff2 peut être absent. Le @font-face ne casse
+ * jamais le build — en son absence le navigateur retombe sur Georgia.
+ * Voir NOTES.md pour brancher le fichier une fois obtenu.
+ */
+@font-face {
+  font-family: "Recoleta";
+  src: url("/fonts/Recoleta-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }
 
 @theme inline {
-  --color-cream: var(--color-cream);
-  --color-cream-light: var(--color-cream-light);
-  --color-noir: var(--color-noir);
-  --color-gris-fonce: var(--color-gris-fonce);
-  --color-beige: var(--color-beige);
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-accent-surface: var(--accent-surface);
+  --color-accent-tint: var(--accent-tint);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-
-  --font-display: var(--font-recoleta);
+  --font-display: "Recoleta", Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter);
   --font-mono: var(--font-ibm-plex-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Focus visible partout — ne jamais supprimer l'outline. */
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Libellés utilitaires en capitales (mono, 12px, espacé). */
+.label-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/*
+ * Mouvement : transition unique au changement d'étape —
+ * 150 ms, opacité + translation de 4px. Rien d'autre.
+ */
+@keyframes step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-enter {
+  animation: step-enter 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-enter {
+    animation: none;
+  }
 }

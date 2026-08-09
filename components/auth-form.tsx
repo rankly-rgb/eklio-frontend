@@ -24,7 +24,7 @@ export function AuthForm({
           name="email"
           required
           autoComplete="email"
-          className="rounded-md border border-noir/20 bg-cream-light px-3 py-2 text-base text-noir outline-none focus:border-noir"
+          className="rounded border border-rule bg-paper px-3 py-2 font-sans text-base text-ink hover:bg-paper-raised focus:border-ink-soft"
         />
       </label>
       <label className="flex flex-col gap-1 font-mono text-sm">
@@ -35,20 +35,22 @@ export function AuthForm({
           required
           minLength={8}
           autoComplete="current-password"
-          className="rounded-md border border-noir/20 bg-cream-light px-3 py-2 text-base text-noir outline-none focus:border-noir"
+          className="rounded border border-rule bg-paper px-3 py-2 font-sans text-base text-ink hover:bg-paper-raised focus:border-ink-soft"
         />
       </label>
 
       {state?.error && (
-        <p className="font-mono text-sm text-red-700">{state.error}</p>
+        <p role="alert" className="font-mono text-sm text-danger">
+          {state.error}
+        </p>
       )}
 
       <button
         type="submit"
         disabled={isPending}
-        className="mt-2 rounded-full bg-noir px-6 py-3 font-mono text-sm text-cream-light hover:bg-gris-fonce transition-colors disabled:opacity-50"
+        className="mt-2 rounded bg-ink px-6 py-3 font-mono text-sm text-paper transition-colors hover:bg-ink-soft disabled:opacity-50"
       >
-        {isPending ? "..." : submitLabel}
+        {isPending ? "Patientez…" : submitLabel}
       </button>
     </form>
   );

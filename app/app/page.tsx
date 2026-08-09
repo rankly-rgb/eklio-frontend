@@ -23,11 +23,11 @@ export default async function AppHome() {
         </form>
       </div>
 
-      <p className="font-mono text-sm text-gris-fonce">
+      <p className="font-mono text-sm text-ink-muted">
         Connecté en tant que {user?.email}.
       </p>
 
-      <div className="rounded-lg border border-dashed border-noir/30 bg-cream-light p-8 font-mono text-sm text-gris-fonce">
+      <div className="rounded border border-dashed border-rule-strong bg-paper-raised p-8 font-mono text-sm text-ink-muted">
         TODO — guided flow (Brief → Positionnement → Audience → Ton → Palette
         → Typographies → Site), génération des 3 directions créatives via
         Claude, kit de marque, export PDF, prompt multi-constructeurs, Stripe.
