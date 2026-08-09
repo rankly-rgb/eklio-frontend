@@ -9,12 +9,20 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // suppressHydrationWarning : les extensions de navigateur (assistants IA,
+  // correcteurs…) injectent des attributs sur <html>/<body> avant React, ce
+  // qui déclenche de faux avertissements d'hydratation en dev. La suppression
+  // ne porte que sur les attributs de ces deux balises.
   return (
     <html
       lang="fr"
+      suppressHydrationWarning
       className={`${sans.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-paper text-ink">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col bg-paper text-ink"
+      >
         {children}
       </body>
     </html>
