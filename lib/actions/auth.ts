@@ -19,6 +19,12 @@ export async function signIn(
   });
 
   if (error) {
+    if (error.code === "email_not_confirmed") {
+      return {
+        error:
+          "Votre adresse email n'a pas encore été confirmée. Cliquez sur le lien reçu par email, ou réinscrivez-vous pour en recevoir un nouveau.",
+      };
+    }
     return { error: "Email ou mot de passe incorrect." };
   }
 
