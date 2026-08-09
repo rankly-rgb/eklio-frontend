@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   saveBriefStep,
   type SaveBriefStepResult,
 } from "@/app/app/projets/[id]/brief/actions";
-import { stepSchemas, type BriefDraft, type StepNumber } from "@/lib/brief/schemas";
-import type { FieldDef, StepDef } from "@/lib/brief/steps";
+import {
+  isStepNumber,
+  stepSchemas,
+  type BriefDraft,
+} from "@/lib/brief/schemas";
+import { getStep, type FieldDef } from "@/lib/brief/steps";
 import { Button } from "@/components/ui/button";
 import { BrandSheet } from "@/components/ui/brand-sheet";
 import { ChoiceGroup } from "@/components/ui/choice-group";
@@ -38,27 +42,30 @@ function asSliderValue(value: BriefDraft[keyof BriefDraft]): number {
 export function StepForm({
   projectId,
   projectName,
-  stepDef,
+  step,
   initialDraft,
 }: {
   projectId: string;
   projectName: string;
-  stepDef: StepDef;
+  /* Le numéro d'étape seulement : la configuration (qui contient des
+     fonctions) est relue ici, côté client, et ne franchit jamais la
+     frontière Server → Client. */
+  step: number;
   initialDraft: BriefDraft;
 }) {
   const router = useRouter();
-  const step = stepDef.step as StepNumber;
   const [values, setValues] = useState<BriefDraft>(initialDraft);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
-  const headingRef = useRef<HTMLHeadingElement>(null);
 
-  // Annonce le nouveau titre de question aux lecteurs d'écran.
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, [step]);
+  const stepDef = isStepNumber(step) ? getStep(step) : undefined;
+  // La page serveur ne rend ce composant qu'avec une étape valide.
+  if (!isStepNumber(step) || !stepDef) {
+    return null;
+  }
+  const stepSchema = stepSchemas[step];
 
   function setValue(name: string, value: string | string[] | number) {
     const next = { ...values, [name]: value } as BriefDraft;
@@ -90,7 +97,7 @@ export function StepForm({
   function handleContinue() {
     setGlobalError(null);
     // Validation client immédiate, avec les mêmes schémas que le serveur.
-    const parsed = stepSchemas[step].safeParse(values);
+    const parsed = stepSchema.safeParse(values);
     if (!parsed.success) {
       const errors: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
@@ -236,11 +243,8 @@ export function StepForm({
           <p className="font-mono text-xs tracking-[0.08em] text-ink-muted">
             {String(step).padStart(2, "0")} / 07
           </p>
-          <h1
-            ref={headingRef}
-            tabIndex={-1}
-            className="font-display text-3xl leading-tight"
-          >
+          {/* Le route announcer intégré de Next annonce ce h1 à chaque changement d'étape. */}
+          <h1 className="font-display text-3xl leading-tight">
             {stepDef.question}
           </h1>
           <p className="text-sm text-ink-muted">{stepDef.help}</p>

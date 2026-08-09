@@ -57,7 +57,7 @@ export default async function BriefStepPage({
           key={stepDef.step}
           projectId={project.id}
           projectName={project.name}
-          stepDef={stepDef}
+          step={stepDef.step}
           initialDraft={draft}
         />
       </div>
