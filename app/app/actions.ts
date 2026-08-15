@@ -38,6 +38,7 @@ export async function createProject(
     .single();
 
   if (error || !project) {
+    console.error("[createProject] création projet", error);
     return {
       error:
         "Le projet n'a pas pu être créé. Vérifiez votre connexion puis réessayez.",
@@ -49,8 +50,19 @@ export async function createProject(
     .insert({ project_id: project.id });
 
   if (briefError) {
+    console.error("[createProject] création brief", briefError);
     // On supprime le projet orphelin pour ne pas laisser un état incohérent.
-    await supabase.from("projects").delete().eq("id", project.id);
+    const { error: cleanupError } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", project.id);
+    if (cleanupError) {
+      console.error(
+        "[createProject] échec du nettoyage du projet orphelin",
+        project.id,
+        cleanupError
+      );
+    }
     return {
       error:
         "Le projet n'a pas pu être initialisé. Vérifiez votre connexion puis réessayez.",
@@ -88,6 +100,7 @@ export async function deleteProject(
     .eq("id", projectId.data);
 
   if (error) {
+    console.error("[deleteProject] suppression", error);
     return {
       error:
         "La suppression a échoué. Vérifiez votre connexion puis réessayez.",

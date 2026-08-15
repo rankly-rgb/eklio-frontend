@@ -52,11 +52,15 @@ export async function saveBriefStep(
   }
 
   // La RLS filtre par propriétaire : projet absent = introuvable.
-  const { data: project } = await supabase
+  const { data: project, error: projectSelectError } = await supabase
     .from("projects")
     .select("id, current_step, status")
     .eq("id", projectId)
     .maybeSingle();
+
+  if (projectSelectError) {
+    console.error("[saveBriefStep] lecture projet", projectSelectError);
+  }
 
   if (!project) {
     return { ok: false, error: "Ce projet est introuvable." };
@@ -84,11 +88,15 @@ export async function saveBriefStep(
     sanitized = { ...sanitized, ...strict.data };
   }
 
-  const { data: briefRow } = await supabase
+  const { data: briefRow, error: briefSelectError } = await supabase
     .from("project_briefs")
     .select("data, completed_steps")
     .eq("project_id", projectId)
     .maybeSingle();
+
+  if (briefSelectError) {
+    console.error("[saveBriefStep] lecture brief", briefSelectError);
+  }
 
   if (!briefRow) {
     return { ok: false, error: "Ce projet est introuvable." };
@@ -111,6 +119,7 @@ export async function saveBriefStep(
     .eq("project_id", projectId);
 
   if (briefError) {
+    console.error("[saveBriefStep] écriture brief", briefError);
     return { ok: false, error: GENERIC_ERROR };
   }
 
@@ -136,6 +145,7 @@ export async function saveBriefStep(
     .eq("id", projectId);
 
   if (projectError) {
+    console.error("[saveBriefStep] écriture projet", projectError);
     return { ok: false, error: GENERIC_ERROR };
   }
 
