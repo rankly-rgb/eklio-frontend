@@ -81,6 +81,56 @@ export type Database = {
           },
         ];
       };
+      directions: {
+        Row: {
+          id: string;
+          project_id: string;
+          position: number;
+          name: string;
+          description: string;
+          palette: Json;
+          typographie_titre: string;
+          typographie_corps: string;
+          is_selected: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          position: number;
+          name: string;
+          description: string;
+          palette: Json;
+          typographie_titre: string;
+          typographie_corps: string;
+          is_selected?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          position?: number;
+          name?: string;
+          description?: string;
+          palette?: Json;
+          typographie_titre?: string;
+          typographie_corps?: string;
+          is_selected?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "directions_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

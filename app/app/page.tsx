@@ -14,9 +14,13 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
 };
 
 function resumeHref(project: Tables<"projects">): string {
-  return project.status === "brief"
-    ? `/app/projets/${project.id}/brief/${project.current_step}`
-    : `/app/projets/${project.id}/brief/recapitulatif`;
+  if (project.status === "brief") {
+    return `/app/projets/${project.id}/brief/${project.current_step}`;
+  }
+  if (project.status === "directions" || project.status === "kit") {
+    return `/app/projets/${project.id}/directions`;
+  }
+  return `/app/projets/${project.id}/brief/recapitulatif`;
 }
 
 function formatDate(iso: string): string {

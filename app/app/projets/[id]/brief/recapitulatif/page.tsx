@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { loadProjectWithBrief } from "@/lib/brief/load";
 import { STEPS, optionLabel, type FieldDef } from "@/lib/brief/steps";
-import type { BriefDraft } from "@/lib/brief/schemas";
+import { STEP_NUMBERS, type BriefDraft } from "@/lib/brief/schemas";
 import { BrandSheet } from "@/components/ui/brand-sheet";
+import { GenerateDirectionsButton } from "@/components/brief/generate-directions-button";
 
 function sliderText(value: number, left: string, right: string): string {
   if (value === 3) return `équilibré (3/5)`;
@@ -149,19 +150,33 @@ export default async function RecapPage({
             })}
           </div>
 
-          <div className="flex flex-col items-start gap-2 pb-6">
-            <button
-              type="button"
-              disabled
-              aria-describedby="generation-bientot"
-              className="cursor-not-allowed rounded bg-ink px-6 py-3 font-mono text-sm text-paper opacity-40"
-            >
-              Générer mes 3 directions
-            </button>
-            <p id="generation-bientot" className="font-mono text-xs text-ink-muted">
-              Bientôt disponible
-            </p>
-          </div>
+          {STEP_NUMBERS.every((s) => brief.completed_steps.includes(s)) ? (
+            <GenerateDirectionsButton
+              projectId={project.id}
+              label={
+                project.status === "brief_complete"
+                  ? "Générer mes 3 directions"
+                  : "Régénérer mes 3 directions"
+              }
+            />
+          ) : (
+            <div className="flex flex-col items-start gap-2 pb-6">
+              <button
+                type="button"
+                disabled
+                aria-describedby="generation-incomplete"
+                className="cursor-not-allowed rounded bg-ink px-6 py-3 font-mono text-sm text-paper opacity-40"
+              >
+                Générer mes 3 directions
+              </button>
+              <p
+                id="generation-incomplete"
+                className="font-mono text-xs text-ink-muted"
+              >
+                Complétez les 7 étapes pour continuer.
+              </p>
+            </div>
+          )}
         </div>
 
         <aside className="self-start lg:sticky lg:top-10">

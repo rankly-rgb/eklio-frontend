@@ -52,12 +52,39 @@
   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (serveur
   uniquement) — voir `.env.example`.
 
-## Reste pour le lot 2
+## Lot 2 : génération des 3 directions créatives
 
-- Génération des 3 directions créatives (appels Anthropic côté serveur,
-  `lib/ai/client.ts` est un stub volontaire) et activation du bouton
-  « Générer mes 3 directions » du récapitulatif.
-- Kit de marque, prompt multi-constructeurs, export PDF, Stripe, page
-  marketing, statuts `directions` / `kit` au-delà du badge.
-- Régénérer `types/supabase.ts` depuis la base réelle ; envisager un test
-  end-to-end du flow.
+- **Migration** `supabase/migrations/20260815090000_init_directions.sql` :
+  table `directions` (1 ligne par direction, 1 à 3 par projet), RLS via
+  appartenance du projet, trigger `set_updated_at`. À appliquer sur la base
+  distante (dashboard ou `supabase db push`) avant de tester — voir la
+  section « Ce qui manque » du lot 1 pour la marche à suivre.
+- **Génération** : `lib/ai/directions.ts` construit un prompt en français à
+  partir du brief puis appelle `claude-opus-5` avec un unique outil forcé
+  (`tool_choice`, schéma strict) pour obtenir une réponse JSON garantie —
+  pas de parsing de texte libre. La réponse repasse par zod avant d'entrer
+  en base (défense en profondeur, comme pour le brief).
+- **Sauvegarde** : `generateDirections` (server action) supprime les
+  directions existantes puis insère les 3 nouvelles en une fois ; le projet
+  passe en `status = 'directions'`. Pas de limite de régénération pour
+  l'instant — prévu pour être gaté par Stripe plus tard.
+- **Polices choisies par le modèle** : affichées en texte simple (nom de la
+  police), sans tentative de chargement dynamique — `next/font/google`
+  exige un nom statique connu à la compilation, incompatible avec un choix
+  fait à l'exécution par l'IA.
+- **Non testé de bout en bout ici** : aucune clé `ANTHROPIC_API_KEY` n'était
+  disponible dans cet environnement pour un appel réel. Le code compile
+  (lint + tsc + build verts) mais le premier appel réel doit être vérifié
+  par vous une fois la clé renseignée dans `.env.local` (et sur Vercel).
+
+## Reste pour le lot 3
+
+- Kit de marque complet, prompt multi-constructeurs, export PDF, Stripe,
+  page marketing, statut `kit`.
+- Régénérer `types/supabase.ts` depuis la base réelle une fois les deux
+  migrations appliquées (`supabase gen types typescript`).
+- Sur Vercel, le temps de génération (jusqu'à ~1 minute annoncé à
+  l'utilisateur) peut dépasser le timeout par défaut des fonctions
+  serverless sur le plan gratuit (10 s) — vérifier le plan et, si besoin,
+  augmenter `maxDuration` sur la route ou passer par une génération
+  asynchrone dans un lot ultérieur.

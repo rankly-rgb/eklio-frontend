@@ -1,7 +1,15 @@
-/**
- * TODO: appels Claude (génération des directions créatives, kit de marque).
- * Toujours côté serveur (route handlers / server actions) — ANTHROPIC_API_KEY
- * ne doit jamais être exposée au client ni préfixée NEXT_PUBLIC_.
- * Pas encore implémenté dans cette session de bootstrap.
+import Anthropic from "@anthropic-ai/sdk";
+
+/*
+ * Client Anthropic partagé, strictement serveur. ANTHROPIC_API_KEY n'est
+ * jamais exposée au client ni préfixée NEXT_PUBLIC_ ; le SDK la lit
+ * automatiquement depuis l'environnement.
  */
-export {};
+let client: Anthropic | null = null;
+
+export function getAnthropicClient(): Anthropic {
+  if (!client) {
+    client = new Anthropic();
+  }
+  return client;
+}
