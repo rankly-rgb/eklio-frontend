@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BRIEF_STEPS } from "@/lib/brief/steps";
+import { MONTHLY_PRESENCE, TIERS } from "@/lib/billing/plans";
 
 export default function HomePage() {
   return (
@@ -49,7 +50,7 @@ export default function HomePage() {
               Build my brand
             </Link>
             <span className="font-mono text-sm text-gris-fonce">
-              From $79 — one time
+              From {TIERS[0].priceLabel} — one time
             </span>
           </div>
         </section>
@@ -69,6 +70,55 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
+        <section className="border-t border-noir/10 px-6 py-16 md:px-12">
+          <div className="mx-auto flex max-w-4xl flex-col gap-8">
+            <p className="font-mono text-sm uppercase tracking-[0.2em] text-gris-fonce">
+              Pricing
+            </p>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              {TIERS.map((tier) => (
+                <div
+                  key={tier.id}
+                  className="flex flex-col gap-3 rounded-lg border border-noir/15 p-6"
+                >
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className="font-display text-xl">{tier.name}</span>
+                    <span className="font-mono text-lg">{tier.priceLabel}</span>
+                  </span>
+                  <p className="text-sm text-gris-fonce">{tier.summary}</p>
+                  <ul className="flex flex-col gap-1 text-sm">
+                    {tier.includes.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span aria-hidden="true" className="text-gris-fonce">
+                          —
+                        </span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="mt-auto font-mono text-xs text-gris-fonce">
+                    One-time payment
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-2 rounded-lg border border-noir/15 bg-cream-light p-6">
+              <span className="flex flex-wrap items-baseline gap-2">
+                <span className="font-display text-xl">
+                  {MONTHLY_PRESENCE.name}
+                </span>
+                <span className="font-mono text-sm">
+                  {MONTHLY_PRESENCE.priceLabelWithInterval}
+                </span>
+              </span>
+              <p className="text-sm text-gris-fonce">
+                {MONTHLY_PRESENCE.summary} Cancel anytime.
+              </p>
+            </div>
           </div>
         </section>
       </main>

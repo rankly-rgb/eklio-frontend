@@ -21,6 +21,8 @@ export type ProjectStatus =
 /** Matches the `brief_step` enum; kept aligned with lib/brief/steps.ts. */
 export type BriefStep = BriefStepId;
 
+export type OrderStatus = "pending" | "paid" | "refunded" | "failed";
+
 export type DirectionPalette = {
   primary: string;
   secondary: string;
@@ -221,12 +223,123 @@ export type Database = {
           },
         ];
       };
+      orders: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string;
+          tier: string;
+          amount_cents: number;
+          currency: string;
+          status: OrderStatus;
+          stripe_checkout_session_id: string;
+          stripe_customer_id: string | null;
+          stripe_payment_intent_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id: string;
+          tier: string;
+          amount_cents: number;
+          currency?: string;
+          status?: OrderStatus;
+          stripe_checkout_session_id: string;
+          stripe_customer_id?: string | null;
+          stripe_payment_intent_id?: string | null;
+        };
+        Update: {
+          status?: OrderStatus;
+          stripe_customer_id?: string | null;
+          stripe_payment_intent_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "orders_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string | null;
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+          /** Stripe's own status string, stored verbatim. */
+          status: string;
+          current_period_end: string | null;
+          cancel_at_period_end: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id?: string | null;
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+          status: string;
+          current_period_end?: string | null;
+          cancel_at_period_end?: boolean;
+        };
+        Update: {
+          project_id?: string | null;
+          status?: string;
+          current_period_end?: string | null;
+          cancel_at_period_end?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      monthly_presence_deliveries: {
+        Row: {
+          id: string;
+          project_id: string;
+          period_start: string;
+          content: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          period_start: string;
+          content?: Record<string, unknown>;
+        };
+        Update: {
+          content?: Record<string, unknown>;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "monthly_presence_deliveries_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {
       project_status: ProjectStatus;
       brief_step: BriefStep;
+      order_status: OrderStatus;
     };
   };
 };

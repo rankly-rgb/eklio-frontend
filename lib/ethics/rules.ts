@@ -137,6 +137,18 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     severity: "block",
   },
   {
+    // ACA C.3.a — a resolution promise written without a resolution verb:
+    // "six weeks of this and your anxiety is gone". Caught by the state the
+    // copy promises the condition will end up in, not by the verb.
+    pattern: new RegExp(
+      `\\b(?:${CONDITION})\\b[^.!?]{0,25}?\\b(?:is|are|will\\s+be|'?ll\\s+be|would\\s+be)\\s+(?:gone|behind\\s+you|history|a\\s+thing\\s+of\\s+the\\s+past|no\\s+longer\\s+(?:a\\s+problem|an\\s+issue))\\b`,
+      "i"
+    ),
+    reason:
+      "Promises the difficulty will end. Describe the work, not the state it supposedly leaves the client in.",
+    severity: "block",
+  },
+  {
     // ACA C.3.a — "free you from / rid you of" is a promise in disguise.
     pattern:
       new RegExp(

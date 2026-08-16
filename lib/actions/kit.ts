@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { loadBriefAnswers } from "@/lib/actions/brief";
 import { generateBrandKit, type KitScope } from "@/lib/ai/kit";
 import { EthicsComplianceError } from "@/lib/ethics/enforce";
+import { getEntitlement } from "@/lib/billing/entitlements";
+import { kitScopeForTier } from "@/lib/billing/plans";
 
 import type { GenerationActionState } from "@/components/generation-form";
 
@@ -55,12 +57,17 @@ export async function generateProjectKit(
     return { error: "Pick at least one page in step 7 of your brief." };
   }
 
-  const scope: KitScope = {
-    // TODO(Lot 4): narrow `pages` and flip `includeSocialTemplates` from the
-    // purchased tier. Starter gets fewer pages and no social templates.
-    pages: requestedPages,
-    includeSocialTemplates: true,
-  };
+  // Deliverable scope is gated by the purchased tier: Starter caps the page
+  // count and excludes social templates, Practice and above include both.
+  const { tier } = await getEntitlement(projectId);
+  if (!tier) {
+    return {
+      error:
+        "Choose a plan before building your brand kit.",
+    };
+  }
+
+  const scope: KitScope = kitScopeForTier(tier, requestedPages);
 
   let content;
   try {

@@ -94,6 +94,17 @@ const VIOLATING: ViolatingCase[] = [
     severity: "block",
   },
   {
+    // Regression: a resolution promise with no resolution verb in it.
+    name: "promises the condition will be gone",
+    text: "Six weeks of this work and your anxiety is gone.",
+    severity: "block",
+  },
+  {
+    name: "promises the condition is behind you",
+    text: "A structured path until the panic is behind you.",
+    severity: "block",
+  },
+  {
     name: "free you from",
     text: "Let me free you from the weight you have been carrying.",
     severity: "block",

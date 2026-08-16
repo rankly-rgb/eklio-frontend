@@ -108,10 +108,10 @@ export default async function DirectionsPage(
                   site builder.
                 </p>
                 <Link
-                  href={`/app/projects/${id}/kit`}
+                  href={`/app/projects/${id}/checkout`}
                   className="self-start rounded-full bg-noir px-6 py-3 font-mono text-sm text-cream-light transition-colors hover:bg-gris-fonce"
                 >
-                  Build my brand kit
+                  Choose your plan
                 </Link>
               </div>
             ) : (

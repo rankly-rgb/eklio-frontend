@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { BrandKitView } from "@/components/kit/brand-kit-view";
 import { GenerationForm } from "@/components/generation-form";
 import { generateProjectKit } from "@/lib/actions/kit";
+import { getEntitlement } from "@/lib/billing/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import type { KitContent } from "@/lib/ai/kit";
 
@@ -39,6 +40,7 @@ export default async function KitPage(
     .eq("is_selected", true)
     .maybeSingle();
 
+  const { tier, hasMonthlyPresence } = await getEntitlement(id);
   const buildAction = generateProjectKit.bind(null, id);
 
   if (!kit) {
@@ -56,22 +58,7 @@ export default async function KitPage(
           </h1>
         </header>
 
-        {direction ? (
-          <>
-            <p className="max-w-xl text-gris-fonce">
-              Working from <strong>{direction.name}</strong>. We will write your
-              positioning and brand story, a voice guide, finished copy for every
-              page you asked for, social template specs, and a prompt you can
-              paste into your site builder. Every line is checked against the
-              advertising-ethics rules before it reaches you.
-            </p>
-            <GenerationForm
-              action={buildAction}
-              label="Build my brand kit"
-              pendingLabel="Building…"
-            />
-          </>
-        ) : (
+        {!direction ? (
           <>
             <p className="max-w-xl text-gris-fonce">
               Choose one of your three directions first — the kit is built from
@@ -83,6 +70,33 @@ export default async function KitPage(
             >
               Back to your directions
             </Link>
+          </>
+        ) : !tier ? (
+          <>
+            <p className="max-w-xl text-gris-fonce">
+              Working from <strong>{direction.name}</strong>. Choose a plan and
+              we will write the kit: positioning and brand story, a voice guide,
+              website copy, and a prompt you can paste into your site builder.
+            </p>
+            <Link
+              href={`/app/projects/${id}/checkout`}
+              className="self-start rounded-full bg-noir px-6 py-3 font-mono text-sm text-cream-light transition-colors hover:bg-gris-fonce"
+            >
+              Choose your plan
+            </Link>
+          </>
+        ) : (
+          <>
+            <p className="max-w-xl text-gris-fonce">
+              Working from <strong>{direction.name}</strong> on the{" "}
+              <strong>{tier.name}</strong> plan. Every line is checked against
+              the advertising-ethics rules before it reaches you.
+            </p>
+            <GenerationForm
+              action={buildAction}
+              label="Build my brand kit"
+              pendingLabel="Building…"
+            />
           </>
         )}
       </div>
@@ -122,6 +136,15 @@ export default async function KitPage(
           Rebuilding replaces this kit. Your chosen direction stays as it is.
         </p>
       </div>
+
+      {hasMonthlyPresence && (
+        <Link
+          href={`/app/projects/${id}/presence`}
+          className="font-mono text-sm underline hover:opacity-60"
+        >
+          Go to Monthly Presence
+        </Link>
+      )}
     </div>
   );
 }

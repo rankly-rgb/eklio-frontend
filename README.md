@@ -1,108 +1,153 @@
 # Eklio — frontend
 
-Plateforme SaaS qui transforme un brief guidé en identité de marque complète
-(stratégie, palette, typographies, direction artistique) + un prompt prêt à
-coller dans Lovable/Framer/Webflow.
+A guided brief turns into a complete brand identity for a US therapist in
+private practice: positioning, palette, typography, three creative directions,
+a full brand kit with finished website copy, and a prompt ready to paste into
+Squarespace, Lovable, Framer or Webflow.
 
-Ce repo porte le frontend Next.js **et** les route handlers / server actions
-qui parlent à Supabase et à l'API Anthropic (Claude) — ces appels restent
-strictement côté serveur.
+The audience is licensed clinicians — LPCs, LMFTs, psychologists, LCSWs — whose
+advertising is governed by ACA and APA principles and by their state board.
+**Ethics compliance in generated copy is a correctness requirement here, not a
+nicety.** See `lib/ethics/` before changing anything that produces copy.
 
-Le schéma de base de données (migrations SQL, RLS) vit dans le repo
-[`eklio-backend`](../eklio-backend), qui est la source de vérité du schéma.
-Ce repo ne fait que consommer les types TypeScript générés depuis Supabase
-(`types/database.ts`).
+This repo holds the Next.js frontend **and** the route handlers and server
+actions that talk to Supabase, Anthropic and Stripe — those calls are strictly
+server-side.
 
 ## Stack
 
-- Next.js (App Router) + TypeScript + Tailwind CSS v4
+- Next.js 16 (App Router) + TypeScript + Tailwind CSS v4
 - Supabase (Postgres, Auth, RLS)
-- Anthropic (Claude) — appels serveur uniquement, pas encore branchés (stub)
-- Stripe — pas encore intégré (emplacement prévu dans le schéma et l'UI)
-- Déploiement : Vercel
+- Anthropic (Claude) — server-only generation, forced tool calls with strict schemas
+- Stripe — hosted Checkout plus a webhook for subscription status
+- Vitest for the ethics, generation and billing tests
+- Deployment: Vercel
 
-## Setup local
+## Local setup
 
 ```bash
 npm install
-cp .env.example .env.local   # puis renseigner les valeurs (voir ci-dessous)
+cp .env.example .env.local   # then fill in the values
 npm run dev
 ```
 
-Ouvrir [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-Sans variables Supabase valides, les pages compilent mais toute page qui
-passe par le proxy (`proxy.ts`, ex-middleware) plantera avec une erreur
-Supabase explicite — c'est attendu tant que `.env.local` n'est pas renseigné.
+Without valid Supabase variables the pages compile, but anything routed through
+`proxy.ts` (the file Next.js 16 renamed from `middleware.ts`) fails with an
+explicit Supabase error — expected until `.env.local` is filled in.
 
-## Variables d'environnement
+## Environment variables
 
-Voir `.env.example`. Ne jamais committer `.env.local`.
+See `.env.example`. Never commit `.env.local`.
 
-| Variable | Où la trouver | Où la mettre sur Vercel |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Dashboard Supabase → Project Settings → API → Project URL | Project Settings → Environment Variables (Production + Preview) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Dashboard Supabase → Project Settings → API → `anon` `public` key | idem |
-| `SUPABASE_SERVICE_ROLE_KEY` | Dashboard Supabase → Project Settings → API → `service_role` key (secrète) | idem — **jamais** en variable `NEXT_PUBLIC_*` |
-| `ANTHROPIC_API_KEY` | Console Anthropic | idem, réservée aux route handlers serveur |
+`NEXT_PUBLIC_*` variables are exposed to the client bundle: only the Supabase
+URL, the anon key and the site URL belong there. The service-role key, the
+Anthropic key and every Stripe value are server-only.
 
-Les variables `NEXT_PUBLIC_*` sont exposées au bundle client : n'y mettre que
-l'URL et la clé anon, jamais la service_role key ni la clé Anthropic.
+## Database
 
-## Structure
+Migrations live in `supabase/migrations/` and are the source of truth for the
+schema. `types/database.ts` is hand-written to mirror them; regenerate it with
+`supabase gen types typescript` once the CLI is available.
+
+Every table is owner-only under RLS. Ownership on child tables is transitive
+through `projects` and re-checked in each policy. `orders` and `subscriptions`
+have **no** client-writable policies on purpose — only the Stripe webhook writes
+them, using the service-role client.
+
+Apply them with the Supabase CLI (`supabase db push`) or by running the files in
+filename order against the project.
+
+## Architecture
 
 ```
-app/                 routes (App Router) : pages, layouts, route handlers
-  login/, signup/    auth email/mot de passe
-  app/               espace connecté (guided flow à venir), protégé par proxy.ts
-  auth/callback/     échange du code de confirmation email contre une session
-components/          composants UI partagés
+app/
+  page.tsx                          landing page and pricing
+  terms/                            terms, carrying the ethics disclaimer
+  login/, signup/                   email + password auth
+  app/                              signed-in area, protected by proxy.ts
+    projects/[id]/brief/[step]/     the 7-step brief
+    projects/[id]/brief/review/     recap + live brand-sheet preview
+    projects/[id]/directions/       three creative directions
+    projects/[id]/checkout/         tiers + the Monthly Presence add-on
+    projects/[id]/kit/              the brand kit deliverable
+    projects/[id]/presence/         Monthly Presence content
+  api/stripe/webhook/               Stripe webhook (signature-verified)
+components/                         shared UI
 lib/
-  supabase/          clients Supabase (browser, server, admin, proxy)
-  actions/           server actions (auth, etc.)
-  fonts.ts           chargement des 3 typographies (voir note Recoleta ci-dessous)
-  ai/                stub pour les futurs appels Claude (non implémenté)
-types/database.ts    types générés depuis le schéma Supabase (à régénérer, voir eklio-backend)
-proxy.ts             ex-"middleware" (renommé en Next.js 16) : refresh de session + garde /app
+  ethics/                           the compliance layer — read this first
+  brief/steps.ts                    the brief, defined as data
+  ai/                               generation: directions, kit, monthly presence
+  billing/                          tiers, entitlements
+  stripe/, supabase/                clients
+  actions/                          server actions
+supabase/migrations/                schema + RLS
+types/database.ts                   types mirroring the migrations
+proxy.ts                            session refresh + /app guard
 ```
 
-## Typographies
+### The ethics layer
 
-- **Inter** (corps) et **IBM Plex Mono** (interface/labels) : chargées via
-  `next/font/google`, rien à faire.
-- **Recoleta Bold** (titres) est une police commerciale non disponible sur
-  Google Fonts. En attendant l'achat de la licence, `lib/fonts.ts` utilise
-  **Fraunces** comme placeholder visuel sur le rôle `--font-display`. Les
-  instructions pour brancher les vrais fichiers `.woff2` via
-  `next/font/local` sont commentées directement dans `lib/fonts.ts`.
+Every string a practitioner could publish passes through `lib/ethics/`:
 
-## Commandes
+- `rules.ts` — `ETHICS_SYSTEM_RULES` is injected into every generation prompt,
+  and `FORBIDDEN_PATTERNS` re-checks the output in code. Each pattern carries
+  the ethics basis it enforces as a comment.
+- `enforce.ts` — `generateWithEthicsGuard` validates structure, then ethics,
+  regenerates with corrective feedback on a blocking violation, and throws
+  `EthicsComplianceError` rather than returning copy that could be published.
+
+Nothing that fails structural **or** ethics validation is ever persisted.
+
+**If a legitimate string is blocked, add it to the compliant set in
+`lib/ethics/__tests__/rules.test.ts` and narrow the pattern.** Never weaken a
+pattern without a test row pinning the new behavior.
+
+### Generation
+
+All three generators (`lib/ai/directions.ts`, `kit.ts`, `monthly-presence.ts`)
+share one shape: prompt built from `brief-context.ts`, a single forced tool call
+with a strict schema, structural validation, then the ethics guard. Array
+lengths are enforced in code, not in the schema — the API's JSON Schema subset
+has no array-length constraints.
+
+### Fonts
+
+Typefaces must be known at build time, so nothing is loaded at runtime.
+Generated font names are displayed as text. `lib/fonts.ts` loads Inter, IBM Plex
+Mono and Fraunces; Fraunces stands in for Recoleta Bold until that license is
+bought (instructions are in the file).
+
+## Commands
 
 ```bash
-npm run dev      # serveur de dev
-npm run build    # build de production
-npm run start    # sert le build de production
+npm run dev      # dev server
+npm run build    # production build
+npm run start    # serve the production build
 npm run lint     # ESLint
+npm run test     # Vitest (ethics, generation, billing)
 ```
 
-## Déploiement Vercel
+## Deploying to Vercel
 
-1. Connecter le repo `eklio-frontend` depuis le dashboard Vercel (New Project → Import Git Repository).
-2. Framework Preset : Next.js (détecté automatiquement).
-3. Renseigner les variables d'environnement ci-dessus dans Project Settings →
-   Environment Variables, pour les environnements **Production** et
-   **Preview** (utiliser un projet Supabase séparé pour Preview si vous
-   voulez isoler les données de test — sinon un seul projet suffit pour
-   démarrer).
-4. Déployer. Le build (`next build`) est vérifié en local avant chaque push
-   sur `claude/eklio-bootstrap-ukuxfu`.
+1. Import the repo from the Vercel dashboard.
+2. Framework preset: Next.js (detected automatically).
+3. Add the environment variables above for **Production** and **Preview**.
+4. Point a Stripe webhook endpoint at `/api/stripe/webhook` and put its signing
+   secret in `STRIPE_WEBHOOK_SECRET`. Subscribe to
+   `checkout.session.completed` and `customer.subscription.*`.
 
-## Ce qui n'est PAS encore implémenté (stubs volontaires)
+## Not built yet (deliberate seams)
 
-- Génération IA réelle (guided flow, 3 directions, kit de marque) — `lib/ai/`
-  et `app/app/page.tsx` contiennent des TODO explicites.
-- Stripe (paiement, webhooks).
-- Export PDF du kit de marque.
-- Génération du prompt multi-constructeurs (Lovable/Framer/Webflow).
-- Page publique partageable d'un kit de marque (`share_slug` déjà en base,
-  policy RLS publique à ajouter le moment venu).
+- **Monthly Presence scheduler and reminders.** Generation works and is
+  ethics-guarded; the cadence that delivers it and the nudges that get people to
+  actually publish are not built. Read the churn note at the top of
+  `lib/ai/monthly-presence.ts` first — retention is the central risk on the
+  subscription, and this loop is what addresses it.
+- **Regeneration paywall.** Seam marked `TODO(Lot 5)` in
+  `lib/actions/directions.ts`.
+- **PDF export of the kit.** Seam documented in
+  `components/kit/brand-kit-view.tsx`.
+- **Public shareable kit page.** `brand_kits.share_slug` exists with no public
+  RLS policy — add the policy deliberately when the time comes.
