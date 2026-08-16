@@ -2,27 +2,30 @@
 
 import { useActionState } from "react";
 
-import type { DirectionsActionState } from "@/lib/actions/directions";
-
 /**
- * Generation is slow enough that the pending state matters. The action returns
- * a message on failure and null on success — nothing is ever saved partially,
- * so a failure leaves the previous directions untouched.
+ * The submit form for any long-running generation (directions, brand kit,
+ * Monthly Presence). Generation takes long enough that the pending state
+ * matters, and the action returns a message on failure or null on success —
+ * nothing is ever saved partially, so a failure leaves the previous
+ * deliverable untouched.
  */
-export function GenerateDirectionsForm({
+
+export type GenerationActionState = { error: string } | null;
+
+export function GenerationForm({
   action,
   label,
   pendingLabel,
 }: {
   action: (
-    state: DirectionsActionState,
+    state: GenerationActionState,
     formData: FormData
-  ) => Promise<DirectionsActionState>;
+  ) => Promise<GenerationActionState>;
   label: string;
   pendingLabel: string;
 }) {
   const [state, formAction, isPending] = useActionState<
-    DirectionsActionState,
+    GenerationActionState,
     FormData
   >(action, null);
 

@@ -9,7 +9,9 @@ import { generateDirections } from "@/lib/ai/directions";
 import { EthicsComplianceError } from "@/lib/ethics/enforce";
 import { isBriefComplete } from "@/lib/brief/steps";
 
-export type DirectionsActionState = { error: string } | null;
+import type { GenerationActionState } from "@/components/generation-form";
+
+export type DirectionsActionState = GenerationActionState;
 
 async function requireProject(projectId: string) {
   const supabase = await createClient();

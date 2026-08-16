@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DirectionCard } from "@/components/directions/direction-card";
-import { GenerateDirectionsForm } from "@/components/directions/generate-directions-form";
+import { GenerationForm } from "@/components/generation-form";
 import {
   generateProjectDirections,
   selectDirection,
@@ -61,7 +61,7 @@ export default async function DirectionsPage(
       </header>
 
       {!hasDirections && (
-        <GenerateDirectionsForm
+        <GenerationForm
           action={generateAction}
           label="Generate three directions"
           pendingLabel="Generating…"
@@ -124,7 +124,7 @@ export default async function DirectionsPage(
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-gris-fonce">
                 None of these land?
               </p>
-              <GenerateDirectionsForm
+              <GenerationForm
                 action={generateAction}
                 label="Generate three new directions"
                 pendingLabel="Generating…"

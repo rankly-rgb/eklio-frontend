@@ -170,6 +170,57 @@ export type Database = {
           },
         ];
       };
+      brand_kits: {
+        Row: {
+          id: string;
+          project_id: string;
+          direction_id: string;
+          direction_snapshot: Record<string, unknown>;
+          palette: DirectionPalette;
+          typography: DirectionTypography;
+          content: Record<string, unknown>;
+          export_prompt: string | null;
+          share_slug: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          direction_id: string;
+          direction_snapshot?: Record<string, unknown>;
+          palette?: DirectionPalette;
+          typography?: DirectionTypography;
+          content?: Record<string, unknown>;
+          export_prompt?: string | null;
+          share_slug?: string | null;
+        };
+        Update: {
+          direction_id?: string;
+          direction_snapshot?: Record<string, unknown>;
+          palette?: DirectionPalette;
+          typography?: DirectionTypography;
+          content?: Record<string, unknown>;
+          export_prompt?: string | null;
+          share_slug?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "brand_kits_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "brand_kits_direction_id_fkey";
+            columns: ["direction_id"];
+            isOneToOne: false;
+            referencedRelation: "directions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
