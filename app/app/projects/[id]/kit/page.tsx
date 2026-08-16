@@ -12,6 +12,11 @@ export default async function KitPage(
   props: PageProps<"/app/projects/[id]/kit">
 ) {
   const { id } = await props.params;
+  const search = await props.searchParams;
+  // Stripe sends the practitioner back here immediately, but entitlement only
+  // exists once the webhook lands. Without this, a paying user is told to pick
+  // a plan again — the worst possible moment to look broken.
+  const justPurchased = search.purchase === "complete";
 
   const supabase = await createClient();
   const {
@@ -69,6 +74,20 @@ export default async function KitPage(
               className="self-start rounded-full bg-noir px-6 py-3 font-mono text-sm text-cream-light transition-colors hover:bg-gris-fonce"
             >
               Back to your directions
+            </Link>
+          </>
+        ) : !tier && justPurchased ? (
+          <>
+            <p className="max-w-xl text-gris-fonce">
+              Thank you — we are confirming your payment with Stripe. This
+              usually takes a few seconds. Refresh this page and your plan will
+              be here.
+            </p>
+            <Link
+              href={`/app/projects/${id}/kit`}
+              className="self-start rounded-full bg-noir px-6 py-3 font-mono text-sm text-cream-light transition-colors hover:bg-gris-fonce"
+            >
+              Refresh
             </Link>
           </>
         ) : !tier ? (
