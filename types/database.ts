@@ -1,21 +1,47 @@
 /**
- * Types du schéma Supabase Eklio. Écrits à la main pour refléter
- * supabase/migrations/20260808000000_init_schema.sql (eklio-backend) —
- * à régénérer avec la CLI Supabase (`supabase gen types typescript`) dès
- * qu'elle est accessible dans cet environnement, pour rester la source de
- * vérité automatique après chaque nouvelle migration.
+ * Types for the Eklio Supabase schema.
+ *
+ * Hand-written to mirror `supabase/migrations/`. Regenerate with
+ * `supabase gen types typescript` once the CLI is available in this
+ * environment — the migrations, not this file, are the source of truth.
+ *
+ * The `Relationships` array on every table is not decoration: postgrest-js
+ * requires it to satisfy `GenericTable`, and without it the whole `Database`
+ * generic silently degrades and every query result types as `never`.
  */
 
-export type ProjectStatus = "brief" | "directions" | "kit" | "completed";
-export type BriefStep =
+import type { BriefStepId } from "@/lib/brief/steps";
+
+export type ProjectStatus =
   | "brief"
-  | "positionnement"
-  | "audience"
-  | "ton"
-  | "palette"
-  | "typographies"
-  | "site";
-export type DirectionStatus = "generating" | "ready" | "failed";
+  | "brief_complete"
+  | "directions"
+  | "kit";
+
+/** Matches the `brief_step` enum; kept aligned with lib/brief/steps.ts. */
+export type BriefStep = BriefStepId;
+
+export type DirectionPalette = {
+  primary: string;
+  secondary: string;
+  accent: string;
+  light_neutral: string;
+  dark_neutral: string;
+};
+
+/** Real font names chosen by the model — proper nouns, never translated. */
+export type DirectionTypography = {
+  headings: string;
+  body: string;
+};
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | Json[]
+  | { [key: string]: Json };
 
 export type Database = {
   public: {
@@ -37,6 +63,15 @@ export type Database = {
           email?: string;
           full_name?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey";
+            columns: ["id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       projects: {
         Row: {
@@ -57,6 +92,15 @@ export type Database = {
           name?: string;
           status?: ProjectStatus;
         };
+        Relationships: [
+          {
+            foreignKeyName: "projects_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       brief_answers: {
         Row: {
@@ -76,18 +120,25 @@ export type Database = {
         Update: {
           answer?: Record<string, unknown>;
         };
+        Relationships: [
+          {
+            foreignKeyName: "brief_answers_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       directions: {
         Row: {
           id: string;
           project_id: string;
           position: number;
-          name: string | null;
-          summary: string | null;
-          palette: Record<string, unknown>;
-          typography: Record<string, unknown>;
-          tone_descriptors: unknown[];
-          status: DirectionStatus;
+          name: string;
+          description: string;
+          palette: DirectionPalette;
+          typography: DirectionTypography;
           is_selected: boolean;
           created_at: string;
           updated_at: string;
@@ -96,84 +147,35 @@ export type Database = {
           id?: string;
           project_id: string;
           position: number;
-          name?: string | null;
-          summary?: string | null;
-          palette?: Record<string, unknown>;
-          typography?: Record<string, unknown>;
-          tone_descriptors?: unknown[];
-          status?: DirectionStatus;
+          name: string;
+          description: string;
+          palette: DirectionPalette;
+          typography: DirectionTypography;
           is_selected?: boolean;
         };
         Update: {
-          name?: string | null;
-          summary?: string | null;
-          palette?: Record<string, unknown>;
-          typography?: Record<string, unknown>;
-          tone_descriptors?: unknown[];
-          status?: DirectionStatus;
+          name?: string;
+          description?: string;
+          palette?: DirectionPalette;
+          typography?: DirectionTypography;
           is_selected?: boolean;
         };
-      };
-      brand_kits: {
-        Row: {
-          id: string;
-          project_id: string;
-          direction_id: string;
-          content: Record<string, unknown>;
-          multi_builder_prompt: string | null;
-          pdf_url: string | null;
-          share_slug: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          project_id: string;
-          direction_id: string;
-          content?: Record<string, unknown>;
-          multi_builder_prompt?: string | null;
-          pdf_url?: string | null;
-          share_slug?: string | null;
-        };
-        Update: {
-          content?: Record<string, unknown>;
-          multi_builder_prompt?: string | null;
-          pdf_url?: string | null;
-          share_slug?: string | null;
-        };
-      };
-      generation_credits: {
-        Row: {
-          id: string;
-          project_id: string;
-          directions_generated: number;
-          directions_limit: number;
-          regenerations_used: number;
-          regenerations_limit: number;
-          has_paid: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          project_id: string;
-          directions_generated?: number;
-          directions_limit?: number;
-          regenerations_used?: number;
-          regenerations_limit?: number;
-          has_paid?: boolean;
-        };
-        Update: {
-          directions_generated?: number;
-          directions_limit?: number;
-          regenerations_used?: number;
-          regenerations_limit?: number;
-          has_paid?: boolean;
-        };
+        Relationships: [
+          {
+            foreignKeyName: "directions_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Enums: {
+      project_status: ProjectStatus;
+      brief_step: BriefStep;
+    };
   };
 };

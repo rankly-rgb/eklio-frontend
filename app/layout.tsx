@@ -3,15 +3,15 @@ import { display, sans, mono } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Eklio — L'identité de marque qui vous ressemble",
+  title: "Eklio — a brand that sounds like your practice",
   description:
-    "Transformez un brief guidé en identité de marque complète : stratégie, palette, typographies, direction artistique, et un prompt prêt à coller dans votre constructeur de site préféré.",
+    "A guided brief turns into a complete brand identity for your private practice: positioning, palette, typography, and finished website copy built to respect ACA and APA advertising principles.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="fr"
+      lang="en"
       className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-cream text-noir">

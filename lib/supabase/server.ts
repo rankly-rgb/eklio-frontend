@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
 
 /**
- * Client Supabase pour Server Components, route handlers et server actions.
- * Utilise la clé anon + les cookies de session — s'exécute toujours côté serveur.
+ * Supabase client for Server Components, route handlers and server actions.
+ * Uses the anon key plus session cookies — always runs on the server.
  */
 export async function createClient() {
   const cookieStore = await cookies();
@@ -23,8 +23,8 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // setAll appelé depuis un Server Component : ignorable si le
-            // middleware rafraîchit déjà les sessions.
+            // setAll called from a Server Component: safe to ignore when the
+            // proxy is already refreshing sessions.
           }
         },
       },
@@ -33,9 +33,9 @@ export async function createClient() {
 }
 
 /**
- * Client "admin" avec la service_role key — bypass RLS.
- * STRICTEMENT réservé aux route handlers serveur qui en ont explicitement
- * besoin (ex. opérations de fond, webhooks). Ne jamais importer côté client.
+ * "Admin" client using the service_role key — bypasses RLS.
+ * STRICTLY for server route handlers that explicitly need it (background work,
+ * webhooks). Never import this from client code.
  */
 export function createAdminClient() {
   return createServerClient<Database>(
@@ -47,7 +47,7 @@ export function createAdminClient() {
           return [];
         },
         setAll() {
-          // Le client admin n'a pas de session utilisateur à persister.
+          // The admin client has no user session to persist.
         },
       },
     }

@@ -2,8 +2,8 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
 
 /**
- * Client Supabase pour les Client Components. Utilise la clé anon (publique) :
- * la sécurité repose sur les policies RLS, jamais sur ce client.
+ * Supabase client for Client Components. Uses the anon (public) key: security
+ * rests on RLS policies, never on this client.
  */
 export function createClient() {
   return createBrowserClient<Database>(

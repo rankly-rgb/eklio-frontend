@@ -19,7 +19,7 @@ export async function signIn(
   });
 
   if (error) {
-    return { error: "Email ou mot de passe incorrect." };
+    return { error: "That email and password did not match." };
   }
 
   redirect("/app");
@@ -33,7 +33,7 @@ export async function signUp(
   const password = String(formData.get("password") ?? "");
 
   if (password.length < 8) {
-    return { error: "Le mot de passe doit contenir au moins 8 caractères." };
+    return { error: "Your password needs at least 8 characters." };
   }
 
   const supabase = await createClient();
@@ -46,10 +46,10 @@ export async function signUp(
   });
 
   if (error) {
-    return { error: "Impossible de créer le compte : " + error.message };
+    return { error: `We could not create that account: ${error.message}` };
   }
 
-  redirect("/signup/verifiez-vos-emails");
+  redirect("/signup/verify-your-email");
 }
 
 export async function signOut() {

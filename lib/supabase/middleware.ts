@@ -4,8 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 const PROTECTED_PREFIXES = ["/app"];
 
 /**
- * Rafraîchit la session Supabase à chaque requête et protège les routes
- * listées dans PROTECTED_PREFIXES en redirigeant vers /login si non connecté.
+ * Refreshes the Supabase session on every request and protects the routes
+ * listed in PROTECTED_PREFIXES, redirecting to /login when signed out.
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

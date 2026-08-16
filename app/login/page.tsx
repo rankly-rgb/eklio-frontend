@@ -9,15 +9,15 @@ export default function LoginPage() {
         <Link href="/" className="font-mono text-sm uppercase tracking-[0.2em]">
           Eklio
         </Link>
-        <h1 className="font-display text-3xl">Connexion</h1>
+        <h1 className="font-display text-3xl">Sign in</h1>
       </div>
 
-      <AuthForm action={signIn} submitLabel="Se connecter" />
+      <AuthForm action={signIn} submitLabel="Sign in" />
 
       <p className="font-mono text-sm text-gris-fonce">
-        Pas encore de compte ?{" "}
+        New here?{" "}
         <Link href="/signup" className="underline">
-          Créer un compte
+          Create an account
         </Link>
       </p>
     </div>

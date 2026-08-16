@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — identité visuelle Eklio.
- * Palette et typos définies dans le brief produit, ne pas modifier sans validation design.
+ * Design tokens — Eklio's own visual identity.
+ * Palette and type roles come from the product brief; do not change without
+ * design sign-off.
+ *
+ * The token names (cream, noir, gris-fonce, beige) are the design system's
+ * established identifiers and are intentionally left as-is. They are internal
+ * names, never user-facing copy, and renaming them would touch every component
+ * for no user benefit.
  */
 :root {
   --color-cream: #f1ebdf;

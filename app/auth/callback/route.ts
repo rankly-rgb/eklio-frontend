@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Cible du lien de confirmation envoyé par email (signup, magic link futur).
- * Échange le code contre une session puis redirige vers l'app.
+ * Target of the confirmation link sent by email (signup, and magic links
+ * later). Exchanges the code for a session, then redirects into the app.
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);

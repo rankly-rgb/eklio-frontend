@@ -28,7 +28,7 @@ export function AuthForm({
         />
       </label>
       <label className="flex flex-col gap-1 font-mono text-sm">
-        Mot de passe
+        Password
         <input
           type="password"
           name="password"
