@@ -76,6 +76,16 @@
   disponible dans cet environnement pour un appel réel. Le code compile
   (lint + tsc + build verts) mais le premier appel réel doit être vérifié
   par vous une fois la clé renseignée dans `.env.local` (et sur Vercel).
+- **Dérive de schéma (3ᵉ occurrence)** : une table `directions` héritée d'une
+  session de bootstrap antérieure sans lien avec Eklio existait déjà dans le
+  projet Supabase réel, avec un schéma différent (`summary`, `typography`,
+  `tone_descriptors`, `status` au lieu de `description`,
+  `typographie_titre`, `typographie_corps`). Elle a fait échouer silencieusement
+  le `create table` de `20260815090000_init_directions.sql` (« already
+  exists »), causant l'erreur `PGRST204: Could not find the 'description'
+  column`. Corrigé par `20260816090000_fix_directions_schema.sql`, qui
+  supprime la table héritée (vide, 0 ligne — aucune perte de donnée) et la
+  recrée à l'identique de la migration initiale.
 
 ## Reste pour le lot 3
 
