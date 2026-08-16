@@ -50,8 +50,10 @@ const DIRECTIONS_TOOL: Anthropic.Tool = {
     properties: {
       directions: {
         type: "array",
-        minItems: 3,
-        maxItems: 3,
+        // L'API Anthropic n'autorise pas minItems/maxItems au-delà de 0 ou 1
+        // en mode strict : le "exactement 3" est demandé dans la
+        // description et vérifié après coup par directionsResultSchema.
+        description: "Exactement 3 directions, ni plus ni moins.",
         items: {
           type: "object",
           properties: {
