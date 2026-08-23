@@ -102,7 +102,10 @@ export default async function AppHome() {
                   </span>
                 </div>
                 <span className="label-mono rounded bg-accent-surface px-2 py-1 text-ink-soft">
-                  {STATUS_LABELS[project.status]}
+                  {/* `status` est un text contraint par CHECK en base : les
+                      types générés le rendent en `string`, la contrainte
+                      garantit l'une des quatre valeurs de ProjectStatus. */}
+                  {STATUS_LABELS[project.status as ProjectStatus]}
                 </span>
                 <div className="flex items-center gap-3">
                   <Link
