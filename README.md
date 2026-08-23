@@ -9,9 +9,10 @@ qui parlent à Supabase et à l'API Anthropic (Claude) — ces appels restent
 strictement côté serveur.
 
 Le schéma de base de données (migrations SQL, RLS) vit dans le repo
-[`eklio-backend`](../eklio-backend), qui est la source de vérité du schéma.
+[`eklio-backend`](../eklio-backend), qui est la source de vérité du schéma,
+appliqué sur la base US `eklio-backend-us` (ref `fobgdsupyfslxbswfuay`).
 Ce repo ne fait que consommer les types TypeScript générés depuis Supabase
-(`types/database.ts`).
+(`types/supabase.ts`) — il n'applique aucune migration.
 
 ## Stack
 
@@ -45,6 +46,7 @@ Voir `.env.example`. Ne jamais committer `.env.local`.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Dashboard Supabase → Project Settings → API → `anon` `public` key | idem |
 | `SUPABASE_SERVICE_ROLE_KEY` | Dashboard Supabase → Project Settings → API → `service_role` key (secrète) | idem — **jamais** en variable `NEXT_PUBLIC_*` |
 | `ANTHROPIC_API_KEY` | Console Anthropic | idem, réservée aux route handlers serveur |
+| `NEXT_PUBLIC_SITE_URL` | URL publique du déploiement (ex. `https://eklio.vercel.app`) | idem — sert de base au lien de confirmation d'email (`emailRedirectTo`) ; sans elle, repli sur `http://localhost:3000` |
 
 Les variables `NEXT_PUBLIC_*` sont exposées au bundle client : n'y mettre que
 l'URL et la clé anon, jamais la service_role key ni la clé Anthropic.
@@ -62,7 +64,7 @@ lib/
   actions/           server actions (auth, etc.)
   fonts.ts           chargement des 3 typographies (voir note Recoleta ci-dessous)
   ai/                stub pour les futurs appels Claude (non implémenté)
-types/database.ts    types générés depuis le schéma Supabase (à régénérer, voir eklio-backend)
+types/supabase.ts    types générés depuis le schéma Supabase US (voir eklio-backend)
 proxy.ts             ex-"middleware" (renommé en Next.js 16) : refresh de session + garde /app
 ```
 

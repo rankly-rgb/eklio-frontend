@@ -1,5 +1,21 @@
 # Notes — lot 1 : design system fond blanc + guided flow persistant
 
+## Schéma de base de données — à lire avant toute chose
+
+Le schéma **ne vit plus dans ce repo**. Il est porté par
+[`eklio-backend`](../eklio-backend), source de vérité unique, et appliqué sur
+la base de production **US** `eklio-backend-us` (ref `fobgdsupyfslxbswfuay`,
+`us-east-1`), déjà à jour.
+
+**Ne jamais appliquer de migration depuis le front** — pas de `supabase db
+push` ici, pas de dossier `supabase/migrations/`. C'est exactement ce qui a
+produit les dérives de schéma décrites plus bas. Toute évolution du schéma
+passe par une migration dans `eklio-backend`, puis par une régénération de
+`types/supabase.ts` de ce côté-ci.
+
+L'ancienne base EU est conservée intacte comme filet de sécurité, mais n'est
+plus la cible : ne rien y écrire.
+
 ## Décisions prises
 
 - **Recoleta Bold** : la police est commerciale et le fichier
@@ -14,13 +30,14 @@
   (`@theme inline` dans `globals.css`). Il n'y a volontairement pas de
   `tailwind.config.ts` : c'est la convention de cette version, les tokens y
   sont exposés depuis les variables CSS.
-- **Types Supabase** : aucun projet Supabase Eklio n'était accessible depuis
-  cet environnement (le MCP Supabase ne liste qu'un projet d'un autre
-  produit, auquel je n'ai pas touché). La migration n'a donc **pas été
-  appliquée sur une base distante** ; `types/supabase.ts` est écrit à la main
-  au format `supabase gen types typescript` et devra être régénéré une fois
-  la base branchée (`supabase gen types typescript --project-id … >
-  types/supabase.ts`).
+- **Types Supabase** : `types/supabase.ts` est désormais **généré** depuis le
+  projet US `eklio-backend-us` (ref `fobgdsupyfslxbswfuay`, `us-east-1`) et
+  couvre les 6 tables réelles (`projects`, `project_briefs`, `directions`,
+  `profiles`, `brand_kits`, `generation_credits`). Pour le régénérer :
+  `supabase gen types typescript --project-id fobgdsupyfslxbswfuay >
+  types/supabase.ts`, puis **réappliquer l'addendum manuel** en fin de
+  fichier (l'union `ProjectStatus` : `projects.status` est un `text` contraint
+  par CHECK, pas un enum Postgres, donc rendu en `string` par le générateur).
 - **Pastilles de couleurs (étape 5) et polices d'aperçu (étape 6)** : les
   valeurs hex des familles chromatiques et les piles de polices des styles
   typographiques vivent dans `lib/brief/steps.ts`. Ce sont des **données de
@@ -41,24 +58,21 @@
 
 - `public/fonts/Recoleta-Bold.woff2` (licence à acheter). Les titres
   s'affichent en Georgia en attendant.
-- La migration `supabase/migrations/20260809000000_init_projects.sql` doit
-  être appliquée sur le projet Supabase Eklio (CLI : `supabase db push`, ou
-  dashboard). Sans base distante accessible, le parcours complet
-  (création → 7 étapes → fermeture → reprise) et le test des politiques RLS
-  depuis le navigateur n'ont pas pu être exécutés en conditions réelles dans
-  cet environnement ; le rendu et la navigation ont été vérifiés visuellement
-  (375, 768, 1024-1280, 1440 px) sur des écrans alimentés en mémoire.
+- Le parcours complet (création → 7 étapes → fermeture → reprise) et le test
+  des politiques RLS depuis le navigateur n'ont pas été exécutés en conditions
+  réelles dans cet environnement ; le rendu et la navigation ont été vérifiés
+  visuellement (375, 768, 1024-1280, 1440 px) sur des écrans alimentés en
+  mémoire. À rejouer contre la base US une fois `.env.local` renseigné.
 - Vercel : renseigner `NEXT_PUBLIC_SUPABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (serveur
   uniquement) — voir `.env.example`.
 
 ## Lot 2 : génération des 3 directions créatives
 
-- **Migration** `supabase/migrations/20260815090000_init_directions.sql` :
-  table `directions` (1 ligne par direction, 1 à 3 par projet), RLS via
-  appartenance du projet, trigger `set_updated_at`. À appliquer sur la base
-  distante (dashboard ou `supabase db push`) avant de tester — voir la
-  section « Ce qui manque » du lot 1 pour la marche à suivre.
+- **Schéma** : table `directions` (1 ligne par direction, 1 à 3 par projet),
+  RLS via appartenance du projet, trigger `set_updated_at`. Elle est déjà en
+  place sur la base US — le DDL vit dans `eklio-backend`, plus dans ce repo
+  (voir « Schéma de base de données » en haut de ce fichier).
 - **Génération** : `lib/ai/directions.ts` construit un prompt en français à
   partir du brief puis appelle `claude-opus-5` avec un unique outil forcé
   (`tool_choice`, schéma strict) pour obtenir une réponse JSON garantie —
@@ -81,18 +95,20 @@
   projet Supabase réel, avec un schéma différent (`summary`, `typography`,
   `tone_descriptors`, `status` au lieu de `description`,
   `typographie_titre`, `typographie_corps`). Elle a fait échouer silencieusement
-  le `create table` de `20260815090000_init_directions.sql` (« already
-  exists »), causant l'erreur `PGRST204: Could not find the 'description'
-  column`. Corrigé par `20260816090000_fix_directions_schema.sql`, qui
-  supprime la table héritée (vide, 0 ligne — aucune perte de donnée) et la
-  recrée à l'identique de la migration initiale.
+  le `create table` de la migration initiale (« already exists »), causant
+  l'erreur `PGRST204: Could not find the 'description' column`. Corrigé à
+  l'époque par une migration correctrice côté front (table héritée vide,
+  0 ligne — aucune perte de donnée), puis définitivement par le passage du
+  schéma dans `eklio-backend` : la base US est repartie propre, et le front
+  n'applique plus rien. C'est la raison d'être de la règle en tête de fichier.
 
 ## Reste pour le lot 3
 
 - Kit de marque complet, prompt multi-constructeurs, export PDF, Stripe,
   page marketing, statut `kit`.
-- Régénérer `types/supabase.ts` depuis la base réelle une fois les deux
-  migrations appliquées (`supabase gen types typescript`).
+- Régénérer `types/supabase.ts` depuis le projet US après toute évolution du
+  schéma dans `eklio-backend` (`supabase gen types typescript --project-id
+  fobgdsupyfslxbswfuay`), sans oublier de réappliquer l'addendum manuel.
 - Sur Vercel, le temps de génération (jusqu'à ~1 minute annoncé à
   l'utilisateur) peut dépasser le timeout par défaut des fonctions
   serverless sur le plan gratuit (10 s) — vérifier le plan et, si besoin,
