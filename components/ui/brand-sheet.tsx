@@ -4,6 +4,7 @@ import {
   FAMILLE_CHROMATIQUE_OPTIONS,
   METIER_OPTIONS,
   OBJECTIF_SITE_OPTIONS,
+  SPECIALTY_OPTIONS,
   STYLE_TYPOGRAPHIQUE_OPTIONS,
   TONE_SLIDERS,
   optionLabel,
@@ -42,30 +43,32 @@ export function buildBrandSheetEntries(
   projectName: string,
   draft: BriefDraft
 ): Entry[] {
-  const metier =
+  // `metier` porte le type de licence ; « autre » est la branche libre.
+  const license =
     draft.metier === "autre"
       ? truncate(draft.metier_autre)
       : optionLabel(METIER_OPTIONS, draft.metier);
 
   return [
-    { key: "nom", value: truncate(draft.nom_activite) ?? projectName },
-    { key: "métier", value: metier },
-    { key: "offre", value: truncate(draft.offre_principale) },
-    { key: "problème", value: truncate(draft.probleme_resolu) },
-    { key: "résultat", value: truncate(draft.resultat_client) },
-    { key: "cible", value: truncate(draft.cible_description) },
-    { key: "ton", value: toneWords(draft) },
-    { key: "émotions", value: labels(EMOTION_OPTIONS, draft.emotions) },
+    { key: "practice", value: truncate(draft.nom_activite) ?? projectName },
+    { key: "license", value: license },
+    { key: "specialties", value: labels(SPECIALTY_OPTIONS, draft.specialties) },
+    { key: "offer", value: truncate(draft.offre_principale) },
+    { key: "problem", value: truncate(draft.probleme_resolu) },
+    { key: "gains", value: truncate(draft.resultat_client) },
+    { key: "ideal client", value: truncate(draft.cible_description) },
+    { key: "tone", value: toneWords(draft) },
+    { key: "feelings", value: labels(EMOTION_OPTIONS, draft.emotions) },
     {
       key: "palette",
       value: labels(FAMILLE_CHROMATIQUE_OPTIONS, draft.familles_chromatiques),
     },
     {
-      key: "typographies",
+      key: "typography",
       value: optionLabel(STYLE_TYPOGRAPHIQUE_OPTIONS, draft.style_typographique),
     },
     {
-      key: "objectif",
+      key: "site goal",
       value: optionLabel(OBJECTIF_SITE_OPTIONS, draft.objectif_site),
     },
     { key: "action", value: truncate(draft.action_attendue) },
@@ -88,23 +91,23 @@ export function BrandSheet({
 
   return (
     <section
-      aria-label="Fiche de marque en construction"
+      aria-label="Brand sheet in progress"
       className="rounded bg-accent-surface p-5"
     >
-      <h2 className="label-mono mb-4 text-ink-soft">Fiche de marque</h2>
+      <h2 className="label-mono mb-4 text-ink-soft">Brand sheet</h2>
       <dl className="flex flex-col gap-2.5 font-mono text-xs leading-relaxed">
         {entries.map(({ key, value }) => (
           <div key={key} className="flex items-baseline gap-2">
             {value !== undefined ? (
               <>
-                <dt className="shrink-0 text-ink-soft">{key} :</dt>
+                <dt className="shrink-0 text-ink-soft">{key}:</dt>
                 <dd className="min-w-0 break-words text-ink">{value}</dd>
               </>
             ) : (
               <>
-                <dt className="shrink-0 text-ink-muted">{key} :</dt>
+                <dt className="shrink-0 text-ink-muted">{key}:</dt>
                 <dd
-                  aria-label="pas encore renseigné"
+                  aria-label="not filled in yet"
                   className="flex-1 self-center border-b border-dotted border-ink-muted"
                 />
               </>

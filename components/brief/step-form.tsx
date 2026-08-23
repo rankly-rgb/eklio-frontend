@@ -130,7 +130,7 @@ export function StepForm({
         );
       } catch {
         setGlobalError(
-          "L'enregistrement a échoué. Vérifiez votre connexion puis réessayez."
+          "Saving failed. Check your connection, then try again."
         );
       }
     });
@@ -226,14 +226,14 @@ export function StepForm({
 
   const saveIndicator =
     saveState.kind === "saving"
-      ? "Enregistrement…"
+      ? "Saving…"
       : saveState.kind === "saved"
-        ? `Enregistré · ${new Intl.DateTimeFormat("fr-FR", {
-            hour: "2-digit",
+        ? `Saved · ${new Intl.DateTimeFormat("en-US", {
+            hour: "numeric",
             minute: "2-digit",
           }).format(saveState.at)}`
         : saveState.kind === "error"
-          ? "Enregistrement impossible"
+          ? "Could not save"
           : null;
 
   return (
@@ -259,7 +259,7 @@ export function StepForm({
         <div className="flex items-center justify-between gap-4 border-t border-rule pt-6">
           {step > 1 ? (
             <Button variant="secondary" onClick={handleBack} disabled={isPending}>
-              Précédent
+              Back
             </Button>
           ) : (
             <span />
@@ -277,10 +277,10 @@ export function StepForm({
             )}
             <Button variant="primary" onClick={handleContinue} disabled={isPending}>
               {isPending
-                ? "Enregistrement…"
+                ? "Saving…"
                 : step < 7
-                  ? "Continuer"
-                  : "Voir le récapitulatif"}
+                  ? "Continue"
+                  : "Review your brief"}
             </Button>
           </div>
         </div>
@@ -288,7 +288,7 @@ export function StepForm({
         {/* <1280px : la fiche de marque devient un panneau dépliable sous la colonne. */}
         <details className="rounded border border-rule xl:hidden">
           <summary className="label-mono cursor-pointer px-4 py-3 text-ink-soft">
-            Fiche de marque
+            Brand sheet
           </summary>
           <div className="p-2">
             <BrandSheet projectName={projectName} draft={values} />

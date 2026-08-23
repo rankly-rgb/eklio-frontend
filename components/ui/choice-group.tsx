@@ -35,13 +35,13 @@ export function ChoiceGroup({
 }) {
   return (
     <fieldset
-      aria-describedby={error ? `${name}-erreur` : undefined}
+      aria-describedby={error ? `${name}-error` : undefined}
       className="flex flex-col gap-2"
     >
       <legend className="label-mono mb-2 text-ink-muted">
         {legend}
         {required ? null : (
-          <span className="ml-2 normal-case tracking-normal">(facultatif)</span>
+          <span className="ml-2 normal-case tracking-normal">(optional)</span>
         )}
       </legend>
       {help && <p className="mb-1 text-sm text-ink-muted">{help}</p>}
@@ -84,7 +84,7 @@ export function ChoiceGroup({
         })}
       </div>
       {error && (
-        <p id={`${name}-erreur`} className="text-sm text-danger">
+        <p id={`${name}-error`} className="text-sm text-danger">
           {error}
         </p>
       )}

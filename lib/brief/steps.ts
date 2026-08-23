@@ -2,9 +2,24 @@ import type { ChoiceOption } from "@/components/ui/choice-group";
 import type { BriefDraft } from "@/lib/brief/schemas";
 
 /*
- * Configuration déclarative des 7 étapes du brief : titres de question,
- * aides, champs et options. Les écrans et la fiche de marque se construisent
- * entièrement à partir de ce fichier.
+ * Configuration déclarative des 7 étapes du brief : question de cadrage,
+ * aides, champs et options. Les écrans, le récapitulatif et la fiche de
+ * marque se construisent entièrement à partir de ce fichier.
+ *
+ * Le brief est spécialisé pour les praticiens de santé mentale licenciés en
+ * cabinet privé aux États-Unis : l'étape 1 demande un TYPE DE LICENCE et des
+ * SPÉCIALITÉS, et non plus un métier générique. Tout le contenu affiché est
+ * en anglais américain ; les commentaires restent en français, comme partout
+ * ailleurs dans le dépôt.
+ *
+ * NOMMAGE — délibéré, ne pas « corriger » isolément.
+ * Les clés persistées (`nom_activite`, `metier`, `offre_principale`, …) et les
+ * tableaux d'options exportés gardent leurs noms d'origine : `lib/ai/directions.ts`
+ * les lit et reste gelé jusqu'au Lot 2. `metier` porte désormais le type de
+ * licence, et sa branche « other » conserve la valeur littérale `"autre"` pour
+ * la même raison (directions.ts la compare). Seuls les libellés affichés, les
+ * valeurs d'options et la validation changent ici. C'est le Lot 2 qui renommera
+ * les clés en réécrivant la couche de génération.
  */
 
 export type SliderDef = {
@@ -63,48 +78,63 @@ export type StepDef = {
   fields: FieldDef[];
 };
 
+/* Types de licence. `autre` = « other » — valeur gelée jusqu'au Lot 2 (cf. en-tête). */
 export const METIER_OPTIONS: ChoiceOption[] = [
-  { value: "coach", label: "coach" },
-  { value: "therapeute", label: "thérapeute ou praticien bien-être" },
-  { value: "consultant", label: "consultant" },
-  { value: "formateur", label: "formateur indépendant" },
-  { value: "freelance", label: "freelance créa/tech" },
-  { value: "artisan", label: "artisan" },
-  { value: "autre", label: "autre" },
+  { value: "therapist", label: "therapist (generalist)" },
+  { value: "lpc", label: "LPC — licensed professional counselor" },
+  { value: "lmft", label: "LMFT — marriage & family therapist" },
+  { value: "psychologist", label: "psychologist" },
+  { value: "lcsw", label: "LCSW — clinical social worker" },
+  { value: "autre", label: "other" },
+];
+
+export const SPECIALTY_OPTIONS: ChoiceOption[] = [
+  { value: "anxiety", label: "anxiety" },
+  { value: "trauma_emdr", label: "trauma & EMDR" },
+  { value: "couples", label: "couples" },
+  { value: "child_teen", label: "child & teen" },
+  { value: "depression", label: "depression" },
+  { value: "grief", label: "grief" },
+  { value: "addiction", label: "addiction" },
+  { value: "identity_lgbtq", label: "identity / LGBTQ+" },
+  { value: "other", label: "other" },
 ];
 
 const STADE_OPTIONS: ChoiceOption[] = [
-  { value: "lancement", label: "je lance mon activité" },
-  { value: "restructuration", label: "je la restructure" },
-  { value: "evolution", label: "je la fais évoluer" },
+  { value: "launching", label: "launching the practice" },
+  { value: "restructuring", label: "restructuring it" },
+  {
+    value: "premiumizing",
+    label: "premiumizing it — moving toward private pay",
+  },
 ];
 
 const CONTEXTE_ACHAT_OPTIONS: ChoiceOption[] = [
-  { value: "urgence", label: "urgence" },
-  { value: "projet_reflechi", label: "projet réfléchi" },
-  { value: "impulsion", label: "achat d'impulsion" },
-  { value: "recommandation", label: "recommandation" },
+  { value: "in_crisis", label: "in crisis right now" },
+  { value: "long_considered", label: "has been considering it for a while" },
+  { value: "referred", label: "referred by another provider" },
+  { value: "directory", label: "found you through a directory" },
 ];
 
 const OBJECTION_OPTIONS: ChoiceOption[] = [
-  { value: "prix", label: "prix" },
-  { value: "credibilite", label: "crédibilité" },
-  { value: "manque_de_temps", label: "manque de temps" },
-  { value: "peur_du_resultat", label: "peur du résultat" },
-  { value: "deja_essaye", label: "déjà essayé ailleurs" },
-  { value: "autre", label: "autre" },
+  { value: "cost", label: "cost" },
+  { value: "will_they_get_me", label: "“will they get me?”" },
+  { value: "time", label: "time" },
+  { value: "fear_of_judgment", label: "fear of judgment" },
+  { value: "tried_before", label: "tried therapy before and it didn’t help" },
+  { value: "other", label: "other" },
 ];
 
 export const EMOTION_OPTIONS: ChoiceOption[] = [
-  { value: "confiance", label: "confiance" },
-  { value: "calme", label: "calme" },
-  { value: "energie", label: "énergie" },
-  { value: "rigueur", label: "rigueur" },
-  { value: "proximite", label: "proximité" },
-  { value: "elegance", label: "élégance" },
-  { value: "audace", label: "audace" },
-  { value: "douceur", label: "douceur" },
-  { value: "autorite", label: "autorité" },
+  { value: "trust", label: "trust" },
+  { value: "calm", label: "calm" },
+  { value: "safety", label: "safety" },
+  { value: "steadiness", label: "steadiness" },
+  { value: "warmth", label: "warmth" },
+  { value: "clarity", label: "clarity" },
+  { value: "hope", label: "hope" },
+  { value: "groundedness", label: "groundedness" },
+  { value: "quiet_authority", label: "quiet authority" },
 ];
 
 /*
@@ -113,229 +143,238 @@ export const EMOTION_OPTIONS: ChoiceOption[] = [
  */
 export const FAMILLE_CHROMATIQUE_OPTIONS: ChoiceOption[] = [
   {
-    value: "neutres_chauds",
-    label: "neutres chauds",
+    value: "warm_neutrals",
+    label: "warm neutrals",
     swatches: ["#D9CBB8", "#B8A88F", "#8A7B63"],
   },
   {
-    value: "neutres_froids",
-    label: "neutres froids",
+    value: "cool_neutrals",
+    label: "cool neutrals",
     swatches: ["#D3D6D8", "#A9B0B5", "#7A838A"],
   },
   {
-    value: "terres_et_ocres",
-    label: "terres et ocres",
+    value: "earth_ochre",
+    label: "earth & ochre",
     swatches: ["#C57B45", "#A0522D", "#7C3F21"],
   },
   {
-    value: "verts_naturels",
-    label: "verts naturels",
+    value: "natural_greens",
+    label: "natural greens",
     swatches: ["#8FA98A", "#4C6B4F", "#2F4A38"],
   },
   {
-    value: "bleus_profonds",
-    label: "bleus profonds",
+    value: "deep_blues",
+    label: "deep blues",
     swatches: ["#41648C", "#2C4A6E", "#16233A"],
   },
   {
-    value: "pastels",
-    label: "pastels",
+    value: "soft_pastels",
+    label: "soft pastels",
     swatches: ["#F2C9C9", "#C9DDF2", "#D9F2C9"],
   },
   {
-    value: "contrastes_vifs",
-    label: "contrastes vifs",
-    swatches: ["#E63312", "#131313", "#F5D90A"],
+    value: "muted_plum_slate",
+    label: "muted plum & slate",
+    swatches: ["#9B8AA6", "#6E6076", "#454A57"],
   },
   {
-    value: "monochrome_noir_blanc",
-    label: "monochrome noir et blanc",
+    value: "monochrome",
+    label: "monochrome",
     swatches: ["#131313", "#6B6B68", "#FFFFFF"],
   },
 ];
 
 const NIVEAU_CONTRASTE_OPTIONS: ChoiceOption[] = [
-  { value: "doux", label: "doux" },
-  { value: "equilibre", label: "équilibré" },
-  { value: "marque", label: "marqué" },
+  { value: "soft", label: "soft" },
+  { value: "balanced", label: "balanced" },
+  { value: "defined", label: "defined" },
 ];
 
-/* Chaque style est rendu dans sa propre police pour être lisible visuellement. */
+/* Chaque style est rendu dans sa propre police pour être choisi à l'œil. */
 export const STYLE_TYPOGRAPHIQUE_OPTIONS: ChoiceOption[] = [
   {
-    value: "serif_editorial",
-    label: "serif éditorial",
+    value: "editorial_serif",
+    label: "editorial serif",
     labelClassName: "text-lg [font-family:Georgia,'Times_New_Roman',serif]",
   },
   {
-    value: "sans_serif_neutre",
-    label: "sans-serif neutre",
+    value: "neutral_sans",
+    label: "neutral sans",
     labelClassName: "text-lg font-sans",
   },
   {
-    value: "sans_serif_geometrique",
-    label: "sans-serif géométrique",
+    value: "geometric_sans",
+    label: "geometric sans",
     labelClassName:
       "text-lg [font-family:Futura,'Century_Gothic',Verdana,sans-serif]",
   },
   {
-    value: "melange_serif_sans",
-    label: "mélange serif + sans",
-    labelClassName:
-      "text-lg [font-family:Georgia,serif] [font-style:italic]",
+    value: "serif_sans_pairing",
+    label: "serif + sans pairing",
+    labelClassName: "text-lg [font-family:Georgia,serif] [font-style:italic]",
   },
   {
-    value: "caractere_marque",
-    label: "caractère marqué",
+    value: "distinctive_display",
+    label: "distinctive display",
     labelClassName: "text-lg font-display",
   },
 ];
 
 const NIVEAU_CARACTERE_OPTIONS: ChoiceOption[] = [
-  { value: "discret", label: "discret" },
-  { value: "affirme", label: "affirmé" },
-  { value: "singulier", label: "singulier" },
+  { value: "understated", label: "understated" },
+  { value: "confident", label: "confident" },
+  { value: "singular", label: "singular" },
 ];
 
 export const OBJECTIF_SITE_OPTIONS: ChoiceOption[] = [
-  { value: "rendez_vous", label: "obtenir des rendez-vous" },
-  { value: "vente_en_ligne", label: "vendre en ligne" },
-  { value: "emails", label: "collecter des emails" },
-  { value: "credibilite", label: "gagner en crédibilité" },
+  { value: "book_consultations", label: "book consultations" },
+  { value: "explain_approach", label: "explain your approach" },
+  { value: "collect_inquiries", label: "collect inquiries" },
+  { value: "establish_credibility", label: "establish credibility" },
 ];
 
 const PAGE_OPTIONS: ChoiceOption[] = [
-  { value: "accueil", label: "accueil" },
-  { value: "a_propos", label: "à propos" },
-  { value: "offres", label: "offres" },
-  { value: "tarifs", label: "tarifs" },
-  { value: "temoignages", label: "témoignages" },
+  { value: "home", label: "home" },
+  { value: "about", label: "about" },
+  { value: "approach", label: "approach" },
+  { value: "specialties", label: "specialties" },
+  { value: "fees", label: "fees" },
+  { value: "faq", label: "FAQ" },
   { value: "contact", label: "contact" },
   { value: "blog", label: "blog" },
 ];
 
+/*
+ * Les témoignages clients sont volontairement absents de cette liste : leur
+ * sollicitation est interdite pour ce public (ACA C.3.a, APA 5.05). L'aide du
+ * champ le dit explicitement plutôt que de laisser l'omission inexpliquée.
+ */
 const PREUVE_OPTIONS: ChoiceOption[] = [
-  { value: "temoignages", label: "témoignages" },
-  { value: "resultats_chiffres", label: "résultats chiffrés" },
-  { value: "certifications", label: "certifications" },
-  { value: "portfolio", label: "portfolio" },
-  { value: "aucune", label: "aucune pour l'instant" },
+  { value: "credentials", label: "credentials & licensure" },
+  { value: "training_certifications", label: "training & certifications" },
+  { value: "publications", label: "publications" },
+  { value: "affiliations", label: "professional affiliations" },
+  { value: "none", label: "none for now" },
 ];
 
 export const TONE_SLIDERS: SliderDef[] = [
-  { name: "ton_sobre_audacieux", left: "sobre", right: "audacieux" },
-  {
-    name: "ton_chaleureux_professionnel",
-    left: "chaleureux",
-    right: "professionnel",
-  },
-  {
-    name: "ton_classique_contemporain",
-    left: "classique",
-    right: "contemporain",
-  },
-  { name: "ton_minimal_expressif", left: "minimal", right: "expressif" },
+  { name: "ton_sobre_audacieux", left: "reserved", right: "expressive" },
+  { name: "ton_chaleureux_professionnel", left: "warm", right: "clinical" },
+  { name: "ton_classique_contemporain", left: "classic", right: "contemporary" },
+  { name: "ton_minimal_expressif", left: "minimal", right: "rich" },
 ];
 
 export const STEPS: StepDef[] = [
   {
     step: 1,
-    slug: "activite",
-    title: "Activité",
-    question: "Parlez-nous de votre activité.",
-    help: "Quelques repères simples pour situer ce que vous faites.",
+    slug: "practice",
+    title: "Your practice",
+    question: "Tell us about your practice.",
+    help: "A few basics, so we know who we are writing for.",
     fields: [
       {
         kind: "text",
         name: "nom_activite",
-        label: "Nom de l'activité",
+        label: "Practice name",
         required: true,
       },
       {
         kind: "choice",
         name: "metier",
-        label: "Métier",
+        label: "License type",
         required: true,
         options: METIER_OPTIONS,
       },
       {
         kind: "text",
         name: "metier_autre",
-        label: "Votre métier, en quelques mots",
+        label: "Your license type, in your own words",
         required: true,
         visibleIf: (values) => values.metier === "autre",
       },
       {
+        kind: "multi",
+        name: "specialties",
+        label: "Specialty focus",
+        help: "Pick the areas you actually work in most.",
+        options: SPECIALTY_OPTIONS,
+      },
+      {
         kind: "textarea",
         name: "offre_principale",
-        label: "Offre principale",
-        help: "En une ou deux phrases, ce que vous vendez concrètement.",
+        label: "What you offer",
+        help: "In a sentence or two — individual therapy, couples intensives, groups.",
         required: true,
       },
       {
         kind: "choice",
         name: "stade",
-        label: "Où en êtes-vous ?",
+        label: "Stage",
         options: STADE_OPTIONS,
       },
     ],
   },
   {
     step: 2,
-    slug: "positionnement",
-    title: "Positionnement",
-    question: "Qu'est-ce qui rend votre offre nécessaire ?",
-    help: "Le problème, le résultat, et ce qui vous distingue.",
+    slug: "positioning",
+    title: "Positioning",
+    question: "What makes your practice the right fit for the people you help?",
+    help: "What they are carrying, where the work goes, and what sets you apart.",
     fields: [
       {
         kind: "textarea",
         name: "probleme_resolu",
-        label: "Problème résolu",
+        label: "Problem you help with",
+        help: "Describe it as a situation someone is living, not a diagnostic label.",
         required: true,
       },
       {
         kind: "textarea",
         name: "resultat_client",
-        label: "Résultat client",
-        help: "Ce que votre client obtient à la fin.",
+        label: "What the client gains",
+        // Garde-fou rédactionnel (Lot 0) : oriente vers une formulation sans
+        // promesse de résultat, ce que la génération vérifiera au Lot 2.
+        help: "Describe the direction of the work, not a guaranteed result.",
         required: true,
       },
       {
         kind: "text",
         name: "alternatives",
-        label: "Alternatives",
-        help: "Ce que font vos clients aujourd'hui, à défaut de vous.",
+        label: "What clients do instead today",
+        help: "Other therapists, directories, or putting it off entirely.",
       },
       {
         kind: "textarea",
         name: "differenciation",
-        label: "Différenciation",
+        label: "What sets you apart",
       },
     ],
   },
   {
     step: 3,
-    slug: "audience",
-    title: "Audience",
-    question: "À qui vous adressez-vous ?",
-    help: "Décrivez votre client idéal et son contexte de décision.",
+    slug: "ideal-client",
+    title: "Ideal client",
+    question: "Who do you most want to work with?",
+    help: "The person you do your best work with, and how they arrive.",
     fields: [
       {
         kind: "textarea",
         name: "cible_description",
-        label: "Votre cible",
+        label: "Your ideal client",
+        help: "A situation tells us more than a label — “first-gen professionals carrying success guilt” rather than “anxiety”.",
         required: true,
       },
       {
         kind: "choice",
         name: "contexte_achat",
-        label: "Contexte d'achat",
+        label: "Decision context",
         options: CONTEXTE_ACHAT_OPTIONS,
       },
       {
         kind: "multi",
         name: "objections",
-        label: "Objections fréquentes",
+        label: "Common hesitations",
+        help: "Keep the 3 you hear most.",
         options: OBJECTION_OPTIONS,
         max: 3,
       },
@@ -343,22 +382,22 @@ export const STEPS: StepDef[] = [
   },
   {
     step: 4,
-    slug: "ton",
-    title: "Ton",
-    question: "Quel ton doit prendre votre marque ?",
-    help: "Placez les curseurs à l'instinct, puis choisissez 3 émotions.",
+    slug: "voice-and-tone",
+    title: "Voice & tone",
+    question: "How should your practice sound?",
+    help: "Move the sliders on instinct, then choose 3 feelings.",
     fields: [
       {
         kind: "sliders",
         name: "curseurs_de_ton",
-        label: "Curseurs de ton",
+        label: "Tone sliders",
         sliders: TONE_SLIDERS,
       },
       {
         kind: "multi",
         name: "emotions",
-        label: "Émotions à transmettre",
-        help: "Choisissez exactement 3 émotions.",
+        label: "Feelings to convey",
+        help: "Choose exactly 3.",
         required: true,
         options: EMOTION_OPTIONS,
         max: 3,
@@ -366,8 +405,8 @@ export const STEPS: StepDef[] = [
       {
         kind: "text",
         name: "a_eviter_ton",
-        label: "À éviter",
-        help: "Les mots ou postures que vous ne voulez pas dans votre communication.",
+        label: "Avoid",
+        help: "Words or postures you do not want anywhere near your practice.",
       },
     ],
   },
@@ -375,13 +414,14 @@ export const STEPS: StepDef[] = [
     step: 5,
     slug: "palette",
     title: "Palette",
-    question: "Vers quelles couleurs votre marque penche-t-elle ?",
-    help: "Choisissez 1 à 3 familles, on affine ensuite pour vous.",
+    question: "Which colors feel like your practice?",
+    help: "Choose 1 to 3 families; we refine the exact tones for you.",
     fields: [
       {
         kind: "multi",
         name: "familles_chromatiques",
-        label: "Familles de couleurs",
+        label: "Color families",
+        help: "Sage and dusty blue are the directory default — standing apart is allowed.",
         required: true,
         options: FAMILLE_CHROMATIQUE_OPTIONS,
         max: 3,
@@ -389,40 +429,40 @@ export const STEPS: StepDef[] = [
       {
         kind: "choice",
         name: "niveau_contraste",
-        label: "Niveau de contraste",
+        label: "Contrast level",
         options: NIVEAU_CONTRASTE_OPTIONS,
       },
       {
         kind: "text",
         name: "couleurs_a_eviter",
-        label: "Couleurs à éviter",
+        label: "Colors to avoid",
       },
       {
         kind: "textarea",
         name: "univers_admires",
-        label: "Univers admirés",
-        help: "Des marques, des lieux, des objets dont l'ambiance vous parle.",
+        label: "Admired worlds",
+        help: "Brands, places or objects whose atmosphere speaks to you.",
       },
     ],
   },
   {
     step: 6,
-    slug: "typographies",
-    title: "Typographies",
-    question: "Quel caractère pour vos lettres ?",
-    help: "Chaque style est affiché dans sa propre police, fiez-vous à l'œil.",
+    slug: "typography",
+    title: "Typography",
+    question: "What character for your words?",
+    help: "Each style is shown in its own typeface — trust your eye.",
     fields: [
       {
         kind: "choice",
         name: "style_typographique",
-        label: "Style typographique",
+        label: "Type style",
         required: true,
         options: STYLE_TYPOGRAPHIQUE_OPTIONS,
       },
       {
         kind: "choice",
         name: "niveau_caractere",
-        label: "Niveau de caractère",
+        label: "Character level",
         required: true,
         options: NIVEAU_CARACTERE_OPTIONS,
       },
@@ -430,41 +470,44 @@ export const STEPS: StepDef[] = [
   },
   {
     step: 7,
-    slug: "site",
-    title: "Site",
-    question: "Que doit accomplir votre site ?",
-    help: "L'objectif principal, l'action attendue, et les pages utiles.",
+    slug: "website",
+    title: "Your website",
+    question: "What should your website do?",
+    help: "The main goal, the action you want, and the pages worth building.",
     fields: [
       {
         kind: "choice",
         name: "objectif_site",
-        label: "Objectif du site",
+        label: "Site goal",
         required: true,
         options: OBJECTIF_SITE_OPTIONS,
       },
       {
         kind: "text",
         name: "action_attendue",
-        label: "Action attendue",
-        help: "Le texte exact du bouton principal, par exemple : réserver un appel.",
+        label: "Primary action",
+        help: "The exact words on your main button — for example: book a consultation.",
         required: true,
       },
       {
         kind: "multi",
         name: "pages_souhaitees",
-        label: "Pages souhaitées",
+        label: "Pages wanted",
         options: PAGE_OPTIONS,
       },
       {
         kind: "multi",
         name: "preuves_disponibles",
-        label: "Preuves disponibles",
+        label: "Available proof",
+        // Garde-fou rédactionnel (Lot 0) : l'absence de « témoignages » est
+        // une contrainte déontologique, pas un oubli — on l'explique.
+        help: "Client testimonials are intentionally left out: ACA and APA advertising rules prohibit soliciting them. Credentials and training carry that weight instead.",
         options: PREUVE_OPTIONS,
       },
       {
         kind: "text",
         name: "contraintes",
-        label: "Contraintes",
+        label: "Constraints",
       },
     ],
   },

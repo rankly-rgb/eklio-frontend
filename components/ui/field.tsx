@@ -3,13 +3,13 @@ import type { ReactNode } from "react";
 /*
  * Enveloppe commune d'un champ : libellé mono en capitales, aide d'une
  * phrase, message d'erreur relié au champ par aria-describedby (les ids
- * `${id}-aide` / `${id}-erreur` sont construits par describedBy()).
+ * `${id}-help` / `${id}-error` sont construits par describedBy()).
  */
 export function describedBy(
   id: string,
   { help, error }: { help?: string; error?: string }
 ): string | undefined {
-  const ids = [help ? `${id}-aide` : null, error ? `${id}-erreur` : null]
+  const ids = [help ? `${id}-help` : null, error ? `${id}-error` : null]
     .filter((v): v is string => v !== null)
     .join(" ");
   return ids === "" ? undefined : ids;
@@ -35,17 +35,17 @@ export function Field({
       <label htmlFor={id} className="label-mono text-ink-muted">
         {label}
         {required ? null : (
-          <span className="ml-2 normal-case tracking-normal">(facultatif)</span>
+          <span className="ml-2 normal-case tracking-normal">(optional)</span>
         )}
       </label>
       {help && (
-        <p id={`${id}-aide`} className="text-sm text-ink-muted">
+        <p id={`${id}-help`} className="text-sm text-ink-muted">
           {help}
         </p>
       )}
       {children}
       {error && (
-        <p id={`${id}-erreur`} className="text-sm text-danger">
+        <p id={`${id}-error`} className="text-sm text-danger">
           {error}
         </p>
       )}

@@ -22,7 +22,7 @@ export function Slider({
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="sr-only">
-        {left} ou {right}
+        {left} or {right}
       </label>
       <div className="flex items-center justify-between font-mono text-xs tracking-[0.08em] text-ink-muted uppercase">
         <span>{left}</span>
@@ -39,7 +39,7 @@ export function Slider({
         onPointerUp={onCommit}
         onKeyUp={onCommit}
         onBlur={onCommit}
-        aria-valuetext={`${value} sur 5, entre ${left} et ${right}`}
+        aria-valuetext={`${value} of 5, between ${left} and ${right}`}
         className="w-full accent-ink"
       />
     </div>

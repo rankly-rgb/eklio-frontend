@@ -6,8 +6,10 @@ import { BrandSheet } from "@/components/ui/brand-sheet";
 import { GenerateDirectionsButton } from "@/components/brief/generate-directions-button";
 
 function sliderText(value: number, left: string, right: string): string {
-  if (value === 3) return `équilibré (3/5)`;
-  return value < 3 ? `plutôt ${left} (${value}/5)` : `plutôt ${right} (${value}/5)`;
+  if (value === 3) return "balanced (3/5)";
+  return value < 3
+    ? `leaning ${left} (${value}/5)`
+    : `leaning ${right} (${value}/5)`;
 }
 
 function fieldValue(field: FieldDef, draft: BriefDraft): string | null {
@@ -58,7 +60,7 @@ export default async function RecapPage({
           href="/app"
           className="font-mono text-sm underline hover:opacity-60"
         >
-          ← Vos projets
+          ← Your projects
         </Link>
         <span className="truncate font-mono text-xs text-ink-muted">
           {project.name}
@@ -69,14 +71,14 @@ export default async function RecapPage({
         <div className="flex min-w-0 flex-col gap-10">
           <div className="flex flex-col gap-3">
             <p className="font-mono text-xs tracking-[0.08em] text-ink-muted">
-              Récapitulatif
+              Review
             </p>
             <h1 className="font-display text-[40px] leading-tight">
-              Votre brief, en un coup d&rsquo;œil.
+              Your brief, at a glance.
             </h1>
             <p className="text-sm text-ink-muted">
-              Relisez vos réponses, modifiez ce qui doit l&rsquo;être, puis
-              lancez la suite.
+              Read back through your answers, change anything that needs it,
+              then move on.
             </p>
           </div>
 
@@ -86,12 +88,12 @@ export default async function RecapPage({
               return (
                 <section
                   key={stepDef.step}
-                  aria-labelledby={`recap-etape-${stepDef.step}`}
+                  aria-labelledby={`recap-step-${stepDef.step}`}
                   className="border-t border-rule py-6 last:border-b"
                 >
                   <div className="mb-4 flex items-baseline justify-between gap-4">
                     <h2
-                      id={`recap-etape-${stepDef.step}`}
+                      id={`recap-step-${stepDef.step}`}
                       className="flex items-baseline gap-3"
                     >
                       <span className="font-mono text-xs text-ink-muted">
@@ -102,7 +104,7 @@ export default async function RecapPage({
                       </span>
                       {!isDone && (
                         <span className="label-mono rounded bg-accent-surface px-2 py-0.5 text-ink-soft">
-                          à compléter
+                          to complete
                         </span>
                       )}
                     </h2>
@@ -110,11 +112,8 @@ export default async function RecapPage({
                       href={`/app/projets/${project.id}/brief/${stepDef.step}`}
                       className="font-mono text-sm underline hover:opacity-60"
                     >
-                      Modifier
-                      <span className="sr-only">
-                        {" "}
-                        l&rsquo;étape {stepDef.title}
-                      </span>
+                      Edit
+                      <span className="sr-only"> {stepDef.title}</span>
                     </Link>
                   </div>
                   <dl className="flex flex-col gap-3">
@@ -138,7 +137,7 @@ export default async function RecapPage({
                             </dd>
                           ) : (
                             <dd className="text-sm text-ink-muted italic">
-                              non renseigné
+                              not filled in
                             </dd>
                           )}
                         </div>
@@ -155,8 +154,8 @@ export default async function RecapPage({
               projectId={project.id}
               label={
                 project.status === "brief_complete"
-                  ? "Générer mes 3 directions"
-                  : "Régénérer mes 3 directions"
+                  ? "Generate my 3 directions"
+                  : "Regenerate my 3 directions"
               }
             />
           ) : (
@@ -167,13 +166,13 @@ export default async function RecapPage({
                 aria-describedby="generation-incomplete"
                 className="cursor-not-allowed rounded bg-ink px-6 py-3 font-mono text-sm text-paper opacity-40"
               >
-                Générer mes 3 directions
+                Generate my 3 directions
               </button>
               <p
                 id="generation-incomplete"
                 className="font-mono text-xs text-ink-muted"
               >
-                Complétez les 7 étapes pour continuer.
+                Complete all 7 steps to continue.
               </p>
             </div>
           )}
