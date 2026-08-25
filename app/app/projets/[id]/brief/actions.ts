@@ -8,9 +8,9 @@ import {
   isStepNumber,
   parseStoredBriefDraft,
   stepSchemas,
-  STEP_NUMBERS,
   type BriefDraft,
 } from "@/lib/brief/schemas";
+import { isBriefComplete } from "@/lib/brief/completeness";
 import { LICENSE_TYPE_OPTIONS, optionLabel } from "@/lib/brief/steps";
 
 export type SaveBriefStepResult =
@@ -135,7 +135,13 @@ export async function saveBriefStep(
       ? (merged.license_type_other ?? "other")
       : optionLabel(LICENSE_TYPE_OPTIONS, merged.license_type);
 
-  const allDone = STEP_NUMBERS.every((s) => completedSteps.includes(s));
+  /*
+   * Complétude lue dans les réponses fusionnées, plus dans `completedSteps` :
+   * ce compteur n'enregistre que les clics sur « Continue », et l'autosave
+   * écrit sans y toucher. Un brief rempli hors de l'ordre nominal restait
+   * bloqué en `brief`, donc renvoyé sur une étape au lieu du récapitulatif.
+   */
+  const allDone = isBriefComplete(merged);
   const currentStep =
     mode === "complete"
       ? Math.max(project.current_step, Math.min(step + 1, 8))
@@ -157,6 +163,9 @@ export async function saveBriefStep(
 
   revalidatePath("/app");
   revalidatePath(`/app/projets/${projectId}/brief/recapitulatif`);
+  // Le rail d'étapes rend les ✓ et le lien de récapitulatif : sans cette
+  // revalidation, il reste sur l'état d'avant la sauvegarde.
+  revalidatePath(`/app/projets/${projectId}/brief/${step}`);
 
   return { ok: true, savedAt: new Date().toISOString() };
 }
