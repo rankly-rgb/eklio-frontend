@@ -4,6 +4,7 @@ import { loadProjectWithBrief } from "@/lib/brief/load";
 import { getStep } from "@/lib/brief/steps";
 import { StepForm } from "@/components/brief/step-form";
 import { StepRail } from "@/components/ui/step-rail";
+import { ReviewBriefLink } from "@/components/brief/review-brief-link";
 import { ProgressBar } from "@/components/ui/progress-bar";
 
 export default async function BriefStepPage({
@@ -38,9 +39,15 @@ export default async function BriefStepPage({
         </span>
       </header>
 
-      {/* <1024px : le rail se réduit à une barre de progression horizontale. */}
-      <div className="lg:hidden">
-        <ProgressBar step={stepDef.step} total={7} />
+      {/* <1024px : le rail se réduit à une barre de progression horizontale.
+          Le lien de récapitulatif l'accompagne — le rail qui le porte au-delà
+          de 1024px est masqué ici, et sans lui l'écran étroit n'a aucune
+          sortie vers la revue du brief ni vers la génération. */}
+      <div className="flex flex-wrap items-end justify-between gap-4 lg:hidden">
+        <div className="min-w-[200px] flex-1">
+          <ProgressBar step={stepDef.step} total={7} />
+        </div>
+        <ReviewBriefLink projectId={project.id} className="shrink-0" />
       </div>
 
       <div className="grid flex-1 grid-cols-1 gap-10 lg:grid-cols-[240px_minmax(0,640px)] lg:justify-center xl:grid-cols-[240px_minmax(0,640px)_320px]">
