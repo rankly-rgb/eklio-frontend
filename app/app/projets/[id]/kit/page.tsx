@@ -9,6 +9,7 @@ import { FALLBACK_KIT_TIER, parseKitTier } from "@/lib/kit/tiers";
 import { BrandKitView } from "@/components/kit/brand-kit-view";
 import { GenerateKitButton } from "@/components/kit/generate-kit-button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MONTHLY_PRESENCE } from "@/lib/billing/plans";
 
 /*
  * Page de kit. Elle rend le livrable enregistré — elle ne génère rien.
@@ -109,6 +110,27 @@ export default async function KitPage({
         tier={deliveredTier}
         websitePrompt={kitRow.multi_builder_prompt ?? ""}
       />
+
+      {/*
+        La suite du parcours après le kit : le contenu du mois, écrit depuis ce
+        kit. Le lien est montré à tout le monde — la page dit elle-même ce
+        qu'est l'abonnement quand il n'est pas actif, plutôt que de laisser
+        deviner qu'une porte existe.
+      */}
+      <div className="flex flex-col gap-3 border-t border-rule pt-8">
+        <h2 className="font-display text-2xl leading-tight">
+          Next: {MONTHLY_PRESENCE.label}.
+        </h2>
+        <p className="max-w-[55ch] text-sm text-ink-muted">
+          {MONTHLY_PRESENCE.tagline}
+        </p>
+        <Link
+          href={`/app/projets/${project.id}/presence`}
+          className="w-fit rounded border border-rule px-5 py-2.5 font-mono text-sm transition-colors hover:bg-paper-raised"
+        >
+          Open {MONTHLY_PRESENCE.label}
+        </Link>
+      </div>
 
       <div className="flex flex-col gap-3 border-t border-rule pt-8">
         <p className="text-sm text-ink-muted">
