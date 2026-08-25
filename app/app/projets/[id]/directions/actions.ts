@@ -5,14 +5,22 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { generateDirectionsFromBrief } from "@/lib/ai/directions";
-import { briefDraftSchema } from "@/lib/brief/schemas";
+import { EthicsComplianceError } from "@/lib/ethics/enforce";
+import { parseStoredBriefDraft } from "@/lib/brief/schemas";
 
 export type GenerateDirectionsResult =
   | { ok: true }
   | { ok: false; error: string };
 
-const GENERIC_ERROR =
-  "La génération a échoué. Vérifiez votre connexion puis réessayez.";
+const GENERIC_ERROR = "Something went wrong. Please try again.";
+
+/*
+ * Échec déontologique : le modèle n'a pas produit de copy conforme, même après
+ * régénération. On le dit sans citer les extraits fautifs — ils restent dans
+ * les logs serveur (cf. lib/ethics/enforce.ts).
+ */
+const ETHICS_ERROR =
+  "We couldn't generate compliant directions this time. Please try again.";
 
 /*
  * Génère (ou régénère) les 3 directions créatives d'un projet à partir de
@@ -28,11 +36,11 @@ export async function generateDirections(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
+    return { ok: false, error: "Your session has expired. Sign in again." };
   }
 
   if (!z.uuid().safeParse(projectId).success) {
-    return { ok: false, error: "Ce projet est introuvable." };
+    return { ok: false, error: "This project could not be found." };
   }
 
   const { data: project, error: projectSelectError } = await supabase
@@ -45,7 +53,7 @@ export async function generateDirections(
     console.error("[generateDirections] lecture projet", projectSelectError);
   }
   if (!project) {
-    return { ok: false, error: "Ce projet est introuvable." };
+    return { ok: false, error: "This project could not be found." };
   }
 
   const { data: briefRow, error: briefSelectError } = await supabase
@@ -58,18 +66,26 @@ export async function generateDirections(
     console.error("[generateDirections] lecture brief", briefSelectError);
   }
   if (!briefRow) {
-    return { ok: false, error: "Ce projet est introuvable." };
+    return { ok: false, error: "This project could not be found." };
   }
 
-  const parsedBrief = briefDraftSchema.safeParse(briefRow.data);
-  const draft = parsedBrief.success ? parsedBrief.data : {};
+  // Même lecture tolérante que le formulaire : les briefs enregistrés avant le
+  // Lot 2 portent les anciennes clés françaises, traduites par
+  // normalizeBriefDraft() — sans quoi la génération partirait sur un brief vide.
+  const draft = parseStoredBriefDraft(briefRow.data);
 
   let result;
   try {
     result = await generateDirectionsFromBrief(project.name, draft);
   } catch (error) {
     console.error("[generateDirections] appel Anthropic", error);
-    return { ok: false, error: GENERIC_ERROR };
+    // Échec structurel comme échec déontologique : rien n'est persisté, la
+    // génération s'arrête avant la moindre écriture.
+    return {
+      ok: false,
+      error:
+        error instanceof EthicsComplianceError ? ETHICS_ERROR : GENERIC_ERROR,
+    };
   }
 
   // Remplace intégralement les directions précédentes (régénération).
@@ -88,11 +104,13 @@ export async function generateDirections(
   const rows = result.directions.map((direction, index) => ({
     project_id: projectId,
     position: index + 1,
-    name: direction.nom,
+    name: direction.name,
     description: direction.description,
     palette: direction.palette,
-    typographie_titre: direction.typographie_titre,
-    typographie_corps: direction.typographie_corps,
+    // `typographie_titre` / `typographie_corps` sont les noms des COLONNES en
+    // base : le Lot 2 renomme la forme générée, pas le schéma backend.
+    typographie_titre: direction.heading_font,
+    typographie_corps: direction.body_font,
   }));
 
   const { error: insertError } = await supabase.from("directions").insert(rows);
@@ -131,13 +149,13 @@ export async function selectDirection(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
+    return { ok: false, error: "Your session has expired. Sign in again." };
   }
 
   const parsedProjectId = z.uuid().safeParse(projectId);
   const parsedDirectionId = z.uuid().safeParse(directionId);
   if (!parsedProjectId.success || !parsedDirectionId.success) {
-    return { ok: false, error: "Cette direction est introuvable." };
+    return { ok: false, error: "This direction could not be found." };
   }
 
   const { error: clearError } = await supabase

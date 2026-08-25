@@ -11,7 +11,7 @@ import {
   STEP_NUMBERS,
   type BriefDraft,
 } from "@/lib/brief/schemas";
-import { METIER_OPTIONS, optionLabel } from "@/lib/brief/steps";
+import { LICENSE_TYPE_OPTIONS, optionLabel } from "@/lib/brief/steps";
 
 export type SaveBriefStepResult =
   | { ok: true; savedAt: string }
@@ -127,12 +127,13 @@ export async function saveBriefStep(
   }
 
   // Métadonnées du projet : type de licence lisible sur le tableau de bord,
-  // avancement. `projects.metier` est une colonne `text` libre (pas de CHECK) :
-  // elle sert de cache d'affichage et accepte le libellé anglais sans migration.
-  const metier =
-    merged.metier === "autre"
-      ? (merged.metier_autre ?? "other")
-      : optionLabel(METIER_OPTIONS, merged.metier);
+  // avancement. `projects.metier` reste le nom de la COLONNE en base (`text`
+  // libre, pas de CHECK) : elle sert de cache d'affichage et accepte le libellé
+  // anglais sans migration. Seule la clé du brief a été renommée.
+  const licenseLabel =
+    merged.license_type === "other"
+      ? (merged.license_type_other ?? "other")
+      : optionLabel(LICENSE_TYPE_OPTIONS, merged.license_type);
 
   const allDone = STEP_NUMBERS.every((s) => completedSteps.includes(s));
   const currentStep =
@@ -144,7 +145,7 @@ export async function saveBriefStep(
     .from("projects")
     .update({
       current_step: currentStep,
-      metier: metier ?? null,
+      metier: licenseLabel ?? null,
       status: project.status === "brief" && allDone ? "brief_complete" : project.status,
     })
     .eq("id", projectId);

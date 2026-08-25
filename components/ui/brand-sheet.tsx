@@ -1,11 +1,11 @@
 import type { BriefDraft } from "@/lib/brief/schemas";
 import {
   EMOTION_OPTIONS,
-  FAMILLE_CHROMATIQUE_OPTIONS,
-  METIER_OPTIONS,
-  OBJECTIF_SITE_OPTIONS,
+  COLOR_FAMILY_OPTIONS,
+  LICENSE_TYPE_OPTIONS,
+  SITE_GOAL_OPTIONS,
   SPECIALTY_OPTIONS,
-  STYLE_TYPOGRAPHIQUE_OPTIONS,
+  TYPE_STYLE_OPTIONS,
   TONE_SLIDERS,
   optionLabel,
 } from "@/lib/brief/steps";
@@ -43,35 +43,35 @@ export function buildBrandSheetEntries(
   projectName: string,
   draft: BriefDraft
 ): Entry[] {
-  // `metier` porte le type de licence ; « autre » est la branche libre.
+  // `license_type` porte le type de licence ; « other » est la branche libre.
   const license =
-    draft.metier === "autre"
-      ? truncate(draft.metier_autre)
-      : optionLabel(METIER_OPTIONS, draft.metier);
+    draft.license_type === "other"
+      ? truncate(draft.license_type_other)
+      : optionLabel(LICENSE_TYPE_OPTIONS, draft.license_type);
 
   return [
-    { key: "practice", value: truncate(draft.nom_activite) ?? projectName },
+    { key: "practice", value: truncate(draft.practice_name) ?? projectName },
     { key: "license", value: license },
     { key: "specialties", value: labels(SPECIALTY_OPTIONS, draft.specialties) },
-    { key: "offer", value: truncate(draft.offre_principale) },
-    { key: "problem", value: truncate(draft.probleme_resolu) },
-    { key: "gains", value: truncate(draft.resultat_client) },
-    { key: "ideal client", value: truncate(draft.cible_description) },
+    { key: "offer", value: truncate(draft.offer) },
+    { key: "problem", value: truncate(draft.problem_addressed) },
+    { key: "gains", value: truncate(draft.client_gains) },
+    { key: "ideal client", value: truncate(draft.ideal_client) },
     { key: "tone", value: toneWords(draft) },
     { key: "feelings", value: labels(EMOTION_OPTIONS, draft.emotions) },
     {
       key: "palette",
-      value: labels(FAMILLE_CHROMATIQUE_OPTIONS, draft.familles_chromatiques),
+      value: labels(COLOR_FAMILY_OPTIONS, draft.color_families),
     },
     {
       key: "typography",
-      value: optionLabel(STYLE_TYPOGRAPHIQUE_OPTIONS, draft.style_typographique),
+      value: optionLabel(TYPE_STYLE_OPTIONS, draft.type_style),
     },
     {
       key: "site goal",
-      value: optionLabel(OBJECTIF_SITE_OPTIONS, draft.objectif_site),
+      value: optionLabel(SITE_GOAL_OPTIONS, draft.site_goal),
     },
-    { key: "action", value: truncate(draft.action_attendue) },
+    { key: "action", value: truncate(draft.primary_action) },
   ];
 }
 

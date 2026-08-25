@@ -57,10 +57,10 @@ export function DirectionsSelector({
               disabled={busy}
             >
               {direction.is_selected
-                ? "Direction sélectionnée"
+                ? "Direction selected"
                 : pendingId === direction.id
-                  ? "Sélection…"
-                  : "Choisir cette direction"}
+                  ? "Selecting…"
+                  : "Choose this direction"}
             </Button>
           </DirectionCard>
         ))}
@@ -70,11 +70,11 @@ export function DirectionsSelector({
 
       <div className="flex flex-col items-start gap-2 border-t border-rule pt-6">
         <Button variant="secondary" onClick={handleRegenerate} disabled={busy}>
-          {isRegenerating ? "Génération en cours…" : "Régénérer les 3 directions"}
+          {isRegenerating ? "Generating…" : "Regenerate my 3 directions"}
         </Button>
         {isRegenerating && (
           <p className="font-mono text-xs text-ink-muted">
-            Cela peut prendre jusqu&rsquo;à une minute.
+            This can take up to a minute.
           </p>
         )}
       </div>

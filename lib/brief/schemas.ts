@@ -8,9 +8,12 @@ import { z } from "zod";
  * automatique au blur utilise la version assouplie (briefDataSchema) pour
  * accepter un brouillon incomplet.
  *
- * Les clés sont la forme jsonb persistée de `project_briefs.data`. Elles
- * gardent leurs noms d'origine : `lib/ai/directions.ts` les lit et reste gelé
- * jusqu'au Lot 2. Voir l'en-tête de lib/brief/steps.ts.
+ * NOMMAGE (Lot 2) — les clés sont la forme jsonb persistée de
+ * `project_briefs.data`. Elles sont désormais toutes en anglais, alignées sur
+ * les libellés affichés. Les briefs déjà enregistrés portent les anciennes
+ * clés françaises : `normalizeBriefDraft()` plus bas les traduit à la lecture,
+ * ce qui évite toute migration backend (`project_briefs.data` est un jsonb
+ * libre, sans contrainte de schéma côté base).
  */
 
 const requiredText = (message: string) =>
@@ -27,16 +30,18 @@ const freeText = z
 const slider = z.number().int().min(1).max(5).default(3);
 
 /*
- * Types de licence. `autre` est la branche « other » : la valeur est gelée
- * parce que lib/ai/directions.ts la compare (le Lot 2 la renommera).
+ * Types de licence. Le champ porte le TYPE DE LICENCE du praticien, pas un
+ * métier générique : d'où `license_type` plutôt que `profession`, qui laissait
+ * croire à une profession libre. `other` est la branche libre, précisée par
+ * `license_type_other`.
  */
-export const METIERS = [
+export const LICENSE_TYPES = [
   "therapist",
   "lpc",
   "lmft",
   "psychologist",
   "lcsw",
-  "autre",
+  "other",
 ] as const;
 
 export const SPECIALTIES = [
@@ -51,9 +56,9 @@ export const SPECIALTIES = [
   "other",
 ] as const;
 
-export const STADES = ["launching", "restructuring", "premiumizing"] as const;
+export const STAGES = ["launching", "restructuring", "premiumizing"] as const;
 
-export const CONTEXTES_ACHAT = [
+export const DECISION_CONTEXTS = [
   "in_crisis",
   "long_considered",
   "referred",
@@ -81,7 +86,7 @@ export const EMOTIONS = [
   "quiet_authority",
 ] as const;
 
-export const FAMILLES_CHROMATIQUES = [
+export const COLOR_FAMILIES = [
   "warm_neutrals",
   "cool_neutrals",
   "earth_ochre",
@@ -92,9 +97,9 @@ export const FAMILLES_CHROMATIQUES = [
   "monochrome",
 ] as const;
 
-export const NIVEAUX_CONTRASTE = ["soft", "balanced", "defined"] as const;
+export const CONTRAST_LEVELS = ["soft", "balanced", "defined"] as const;
 
-export const STYLES_TYPOGRAPHIQUES = [
+export const TYPE_STYLES = [
   "editorial_serif",
   "neutral_sans",
   "geometric_sans",
@@ -102,20 +107,20 @@ export const STYLES_TYPOGRAPHIQUES = [
   "distinctive_display",
 ] as const;
 
-export const NIVEAUX_CARACTERE = [
+export const CHARACTER_LEVELS = [
   "understated",
   "confident",
   "singular",
 ] as const;
 
-export const OBJECTIFS_SITE = [
+export const SITE_GOALS = [
   "book_consultations",
   "explain_approach",
   "collect_inquiries",
   "establish_credibility",
 ] as const;
 
-export const PAGES_SOUHAITEES = [
+export const PAGES_WANTED = [
   "home",
   "about",
   "approach",
@@ -131,7 +136,7 @@ export const PAGES_SOUHAITEES = [
  * clients est interdite aux praticiens licenciés (ACA C.3.a, APA 5.05). Ce sont
  * les diplômes, formations, publications et affiliations qui en tiennent lieu.
  */
-export const PREUVES_DISPONIBLES = [
+export const AVAILABLE_PROOF = [
   "credentials",
   "training_certifications",
   "publications",
@@ -141,49 +146,48 @@ export const PREUVES_DISPONIBLES = [
 
 export const step1Schema = z
   .object({
-    nom_activite: requiredText(
+    practice_name: requiredText(
       "Enter your practice name, even a provisional one."
     ),
-    metier: z.enum(METIERS, {
+    license_type: z.enum(LICENSE_TYPES, {
       error: "Choose the license type closest to yours.",
     }),
-    metier_autre: freeText,
+    license_type_other: freeText,
     specialties: z.array(z.enum(SPECIALTIES)).default([]),
-    offre_principale: requiredText(
-      "Describe in a sentence or two what you offer."
-    ),
-    stade: z.enum(STADES).optional(),
+    offer: requiredText("Describe in a sentence or two what you offer."),
+    stage: z.enum(STAGES).optional(),
   })
   .check((ctx) => {
     if (
-      ctx.value.metier === "autre" &&
-      (!ctx.value.metier_autre || ctx.value.metier_autre.trim() === "")
+      ctx.value.license_type === "other" &&
+      (!ctx.value.license_type_other ||
+        ctx.value.license_type_other.trim() === "")
     ) {
       ctx.issues.push({
         code: "custom",
         message: "Tell us your license type in your own words.",
-        path: ["metier_autre"],
-        input: ctx.value.metier_autre,
+        path: ["license_type_other"],
+        input: ctx.value.license_type_other,
       });
     }
   });
 
 export const step2Schema = z.object({
-  probleme_resolu: requiredText(
+  problem_addressed: requiredText(
     "Describe the situation you help people with."
   ),
-  resultat_client: requiredText(
+  client_gains: requiredText(
     "Describe the direction of the work, not a guaranteed result."
   ),
   alternatives: freeText,
-  differenciation: freeText,
+  differentiation: freeText,
 });
 
 export const step3Schema = z.object({
-  cible_description: requiredText(
+  ideal_client: requiredText(
     "Describe the person you most want to work with."
   ),
-  contexte_achat: z.enum(CONTEXTES_ACHAT).optional(),
+  decision_context: z.enum(DECISION_CONTEXTS).optional(),
   objections: z
     .array(z.enum(OBJECTIONS))
     .max(3, "Keep the 3 hesitations you hear most.")
@@ -191,45 +195,43 @@ export const step3Schema = z.object({
 });
 
 export const step4Schema = z.object({
-  ton_sobre_audacieux: slider,
-  ton_chaleureux_professionnel: slider,
-  ton_classique_contemporain: slider,
-  ton_minimal_expressif: slider,
+  tone_reserved_expressive: slider,
+  tone_warm_clinical: slider,
+  tone_classic_contemporary: slider,
+  tone_minimal_rich: slider,
   emotions: z
     .array(z.enum(EMOTIONS))
     .length(3, "Choose exactly 3 feelings — no more, no less."),
-  a_eviter_ton: freeText,
+  tone_to_avoid: freeText,
 });
 
 export const step5Schema = z.object({
-  familles_chromatiques: z
-    .array(z.enum(FAMILLES_CHROMATIQUES))
+  color_families: z
+    .array(z.enum(COLOR_FAMILIES))
     .min(1, "Choose at least one color family.")
     .max(3, "Keep 3 color families at most."),
-  niveau_contraste: z.enum(NIVEAUX_CONTRASTE).optional(),
-  couleurs_a_eviter: freeText,
-  univers_admires: freeText,
+  contrast_level: z.enum(CONTRAST_LEVELS).optional(),
+  colors_to_avoid: freeText,
+  admired_worlds: freeText,
 });
 
 export const step6Schema = z.object({
-  style_typographique: z.enum(STYLES_TYPOGRAPHIQUES, {
+  type_style: z.enum(TYPE_STYLES, {
     error: "Choose the type style that fits your practice.",
   }),
-  niveau_caractere: z.enum(NIVEAUX_CARACTERE, {
+  character_level: z.enum(CHARACTER_LEVELS, {
     error: "Choose how much character you want.",
   }),
 });
 
 export const step7Schema = z.object({
-  objectif_site: z.enum(OBJECTIFS_SITE, {
+  site_goal: z.enum(SITE_GOALS, {
     error: "Choose the main goal of your website.",
   }),
-  action_attendue: requiredText(
-    "Enter the exact words on your main button."
-  ),
-  pages_souhaitees: z.array(z.enum(PAGES_SOUHAITEES)).default([]),
-  preuves_disponibles: z.array(z.enum(PREUVES_DISPONIBLES)).default([]),
-  contraintes: freeText,
+  primary_action: requiredText("Enter the exact words on your main button."),
+  pages_wanted: z.array(z.enum(PAGES_WANTED)).default([]),
+  available_proof: z.array(z.enum(AVAILABLE_PROOF)).default([]),
+  constraints: freeText,
 });
 
 export const stepSchemas = {
@@ -273,6 +275,89 @@ export const briefDraftSchema = briefSchema.partial();
 export type BriefDraft = z.infer<typeof briefDraftSchema>;
 
 /*
+ * Correspondance ancienne clé française → nouvelle clé anglaise.
+ *
+ * Point unique de la rétrocompatibilité : aucun `?? draft.ancienne_cle` ne doit
+ * être dispersé ailleurs dans le code. Tout ce qui lit `project_briefs.data`
+ * passe par `normalizeBriefDraft()` ; l'écriture, elle, ne produit que les
+ * clés anglaises.
+ *
+ * TODO(post-test-data): retirer le fallback FR une fois les données de test
+ * purgées — supprimer LEGACY_KEY_ALIASES, LEGACY_VALUE_ALIASES et le corps de
+ * normalizeBriefDraft().
+ */
+const LEGACY_KEY_ALIASES: Record<string, keyof BriefDraft> = {
+  // 1 — Your practice
+  nom_activite: "practice_name",
+  metier: "license_type",
+  metier_autre: "license_type_other",
+  offre_principale: "offer",
+  stade: "stage",
+  // 2 — Positioning
+  probleme_resolu: "problem_addressed",
+  resultat_client: "client_gains",
+  differenciation: "differentiation",
+  // 3 — Ideal client
+  cible_description: "ideal_client",
+  contexte_achat: "decision_context",
+  // 4 — Voice & tone
+  ton_sobre_audacieux: "tone_reserved_expressive",
+  ton_chaleureux_professionnel: "tone_warm_clinical",
+  ton_classique_contemporain: "tone_classic_contemporary",
+  ton_minimal_expressif: "tone_minimal_rich",
+  a_eviter_ton: "tone_to_avoid",
+  // 5 — Palette
+  familles_chromatiques: "color_families",
+  niveau_contraste: "contrast_level",
+  couleurs_a_eviter: "colors_to_avoid",
+  univers_admires: "admired_worlds",
+  // 6 — Typography
+  style_typographique: "type_style",
+  niveau_caractere: "character_level",
+  // 7 — Your website
+  objectif_site: "site_goal",
+  action_attendue: "primary_action",
+  pages_souhaitees: "pages_wanted",
+  preuves_disponibles: "available_proof",
+  contraintes: "constraints",
+};
+
+/*
+ * Valeurs littérales renommées, par clé. Seule `license_type` en a une : la
+ * branche « other » était persistée `"autre"` avant le Lot 2.
+ */
+const LEGACY_VALUE_ALIASES: Partial<Record<keyof BriefDraft, Record<string, string>>> =
+  {
+    license_type: { autre: "other" },
+  };
+
+/**
+ * Traduit les anciennes clés (et valeurs) françaises vers leur équivalent
+ * anglais. Une clé anglaise déjà présente l'emporte toujours sur son alias :
+ * un brief mixte ne doit pas voir sa réponse à jour écrasée par l'ancienne.
+ *
+ * Ne valide rien — c'est `parseStoredBriefDraft()` qui repasse zod derrière.
+ */
+export function normalizeBriefDraft(
+  stored: Record<string, unknown>
+): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(stored)) {
+    const target = LEGACY_KEY_ALIASES[key] ?? key;
+    if (target !== key && target in stored) continue;
+
+    const valueAliases = LEGACY_VALUE_ALIASES[target as keyof BriefDraft];
+    normalized[target] =
+      valueAliases && typeof value === "string" && value in valueAliases
+        ? valueAliases[value]
+        : value;
+  }
+
+  return normalized;
+}
+
+/*
  * Lecture tolérante de ce qui est déjà stocké dans `project_briefs.data`.
  *
  * Un parse de l'objet entier est tout-ou-rien : une seule valeur périmée (une
@@ -288,7 +373,7 @@ export function parseStoredBriefDraft(stored: unknown): BriefDraft {
     return {};
   }
 
-  const source = stored as Record<string, unknown>;
+  const source = normalizeBriefDraft(stored as Record<string, unknown>);
   const draft: Record<string, unknown> = {};
 
   for (const [key, schema] of Object.entries(briefDraftSchema.shape)) {
