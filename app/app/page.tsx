@@ -4,14 +4,8 @@ import { signOut } from "@/lib/actions/auth";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorNotice } from "@/components/ui/error-notice";
 import { DeleteProjectButton } from "@/components/delete-project-button";
-import type { ProjectStatus, Tables } from "@/types/supabase";
-
-const STATUS_LABELS: Record<ProjectStatus, string> = {
-  brief: "brief en cours",
-  brief_complete: "brief terminé",
-  directions: "directions créatives",
-  kit: "kit de marque",
-};
+import { projectStatusLabel } from "@/lib/projects/status";
+import type { Tables } from "@/types/supabase";
 
 function resumeHref(project: Tables<"projects">): string {
   if (project.status === "brief") {
@@ -102,10 +96,9 @@ export default async function AppHome() {
                   </span>
                 </div>
                 <span className="label-mono rounded bg-accent-surface px-2 py-1 text-ink-soft">
-                  {/* `status` est un text contraint par CHECK en base : les
-                      types générés le rendent en `string`, la contrainte
-                      garantit l'une des quatre valeurs de ProjectStatus. */}
-                  {STATUS_LABELS[project.status as ProjectStatus]}
+                  {/* Libellé d'affichage seulement : la valeur stockée reste
+                      celle du CHECK en base (cf. lib/projects/status.ts). */}
+                  {projectStatusLabel(project.status)}
                 </span>
                 <div className="flex items-center gap-3">
                   <Link

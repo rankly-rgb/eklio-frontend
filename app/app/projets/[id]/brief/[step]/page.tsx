@@ -31,7 +31,7 @@ export default async function BriefStepPage({
           href="/app"
           className="font-mono text-sm underline hover:opacity-60"
         >
-          ← Vos projets
+          ← Your projects
         </Link>
         <span className="truncate font-mono text-xs text-ink-muted">
           {project.name}

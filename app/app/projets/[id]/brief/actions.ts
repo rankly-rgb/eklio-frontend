@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   briefDraftSchema,
   isStepNumber,
+  parseStoredBriefDraft,
   stepSchemas,
   STEP_NUMBERS,
   type BriefDraft,
@@ -21,7 +22,7 @@ export type SaveBriefStepResult =
     };
 
 const GENERIC_ERROR =
-  "L'enregistrement a échoué. Vérifiez votre connexion puis réessayez.";
+  "Saving failed. Check your connection, then try again.";
 
 /*
  * Sauvegarde d'une étape du brief.
@@ -44,7 +45,7 @@ export async function saveBriefStep(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
+    return { ok: false, error: "Your session has expired. Sign in again." };
   }
 
   if (!z.uuid().safeParse(projectId).success || !isStepNumber(step)) {
@@ -63,7 +64,7 @@ export async function saveBriefStep(
   }
 
   if (!project) {
-    return { ok: false, error: "Ce projet est introuvable." };
+    return { ok: false, error: "This project could not be found." };
   }
 
   // Les valeurs reçues repassent toujours par zod avant d'entrer en base.
@@ -99,11 +100,13 @@ export async function saveBriefStep(
   }
 
   if (!briefRow) {
-    return { ok: false, error: "Ce projet est introuvable." };
+    return { ok: false, error: "This project could not be found." };
   }
 
-  const existing = briefDraftSchema.safeParse(briefRow.data);
-  const merged: BriefDraft = { ...(existing.success ? existing.data : {}), ...sanitized };
+  // Lecture tolérante du stocké : une valeur d'option périmée ne doit pas
+  // faire disparaître les autres réponses au moment de la fusion.
+  const existing = parseStoredBriefDraft(briefRow.data);
+  const merged: BriefDraft = { ...existing, ...sanitized };
 
   const completedSteps =
     mode === "complete"
@@ -123,10 +126,12 @@ export async function saveBriefStep(
     return { ok: false, error: GENERIC_ERROR };
   }
 
-  // Métadonnées du projet : métier lisible sur le tableau de bord, avancement.
+  // Métadonnées du projet : type de licence lisible sur le tableau de bord,
+  // avancement. `projects.metier` est une colonne `text` libre (pas de CHECK) :
+  // elle sert de cache d'affichage et accepte le libellé anglais sans migration.
   const metier =
     merged.metier === "autre"
-      ? (merged.metier_autre ?? "autre")
+      ? (merged.metier_autre ?? "other")
       : optionLabel(METIER_OPTIONS, merged.metier);
 
   const allDone = STEP_NUMBERS.every((s) => completedSteps.includes(s));

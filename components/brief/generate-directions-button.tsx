@@ -7,7 +7,7 @@ import { ErrorNotice } from "@/components/ui/error-notice";
 
 export function GenerateDirectionsButton({
   projectId,
-  label = "Générer mes 3 directions",
+  label = "Generate my 3 directions",
 }: {
   projectId: string;
   label?: string;
@@ -29,11 +29,11 @@ export function GenerateDirectionsButton({
   return (
     <div className="flex flex-col items-start gap-2 pb-6">
       <Button variant="primary" onClick={handleClick} disabled={isPending}>
-        {isPending ? "Génération en cours…" : label}
+        {isPending ? "Generating…" : label}
       </Button>
       {isPending && (
         <p className="font-mono text-xs text-ink-muted">
-          Cela peut prendre jusqu&rsquo;à une minute.
+          This can take up to a minute.
         </p>
       )}
       {error && <ErrorNotice message={error} />}

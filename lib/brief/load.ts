@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { briefDraftSchema, type BriefDraft } from "@/lib/brief/schemas";
+import { parseStoredBriefDraft, type BriefDraft } from "@/lib/brief/schemas";
 import type { Tables } from "@/types/supabase";
 
 export type ProjectWithBrief = {
@@ -45,12 +45,12 @@ export async function loadProjectWithBrief(
   }
 
   // Les données jsonb repassent par zod : on ne fait jamais confiance au
-  // contenu stocké pour typer l'interface.
-  const parsed = briefDraftSchema.safeParse(brief.data);
-
+  // contenu stocké pour typer l'interface. La lecture est tolérante champ par
+  // champ — une valeur d'option devenue obsolète ne doit pas vider tout le
+  // brief affiché.
   return {
     project,
     brief,
-    draft: parsed.success ? parsed.data : {},
+    draft: parseStoredBriefDraft(brief.data),
   };
 }

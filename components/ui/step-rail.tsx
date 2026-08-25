@@ -17,7 +17,7 @@ export function StepRail({
   completedSteps: number[];
 }) {
   return (
-    <nav aria-label="Étapes du brief" className="flex flex-col gap-1">
+    <nav aria-label="Brief steps" className="flex flex-col gap-1">
       <ol className="flex flex-col">
         {STEPS.map(({ step, title }) => {
           const isActive = step === activeStep;
@@ -49,7 +49,7 @@ export function StepRail({
                 >
                   {inner}
                   <span className="sr-only">
-                    {isDone ? " (étape terminée)" : ""}
+                    {isDone ? " (step complete)" : ""}
                   </span>
                 </Link>
               ) : (
@@ -69,7 +69,7 @@ export function StepRail({
           href={`/app/projets/${projectId}/brief/recapitulatif`}
           className="mt-3 px-3 font-mono text-sm underline hover:opacity-60"
         >
-          Récapitulatif
+          Review your brief
         </Link>
       )}
     </nav>
