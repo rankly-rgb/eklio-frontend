@@ -11,7 +11,11 @@ import {
   stepSchemas,
   type BriefDraft,
 } from "@/lib/brief/schemas";
-import { getStep, type FieldDef } from "@/lib/brief/steps";
+import { getStep, type FieldDef, type StepDef } from "@/lib/brief/steps";
+import {
+  firstInvalidField,
+  missingAnswersMessage,
+} from "@/lib/brief/step-errors";
 import { Button } from "@/components/ui/button";
 import { BrandSheet } from "@/components/ui/brand-sheet";
 import { ChoiceGroup } from "@/components/ui/choice-group";
@@ -66,6 +70,9 @@ export function StepForm({
     return null;
   }
   const stepSchema = stepSchemas[step];
+  // Copie déjà rétrécie : le narrowing du garde ci-dessus ne traverse pas les
+  // fonctions déclarées plus bas.
+  const def: StepDef = stepDef;
 
   function setValue(name: string, value: string | string[] | number) {
     const next = { ...values, [name]: value } as BriefDraft;
@@ -94,6 +101,41 @@ export function StepForm({
       .catch(() => setSaveState({ kind: "error" }));
   }
 
+  /*
+   * Ramène le praticien sur le premier champ fautif.
+   *
+   * Sans cela, un champ requis situé en haut de l'étape signale son erreur
+   * hors de l'écran pendant que le clic a lieu tout en bas : le bouton paraît
+   * inerte. Les groupes de choix n'ont pas d'`id` sur leurs entrées — on
+   * retombe sur l'attribut `name`, qui les porte toutes.
+   */
+  function focusField(name: string) {
+    if (typeof document === "undefined") return;
+    // Après la peinture : le champ n'est marqué en erreur qu'au rendu suivant.
+    requestAnimationFrame(() => {
+      const target =
+        document.getElementById(name) ??
+        document.querySelector<HTMLElement>(`[name="${name}"]`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({
+        block: "center",
+        // Même réserve que le reste du design system sur le mouvement.
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      });
+    });
+  }
+
+  function reportInvalidStep(errors: Record<string, string>, def: StepDef) {
+    setFieldErrors(errors);
+    // Le message vit à côté du bouton, là où le praticien vient de cliquer.
+    setGlobalError(missingAnswersMessage(errors, def));
+    const first = firstInvalidField(errors, def);
+    if (first) focusField(first);
+  }
+
   function handleContinue() {
     setGlobalError(null);
     // Validation client immédiate, avec les mêmes schémas que le serveur.
@@ -106,7 +148,7 @@ export function StepForm({
           errors[key] = issue.message;
         }
       }
-      setFieldErrors(errors);
+      reportInvalidStep(errors, def);
       return;
     }
 
@@ -119,7 +161,9 @@ export function StepForm({
           "complete"
         );
         if (!result.ok) {
-          if (result.fieldErrors) setFieldErrors(result.fieldErrors);
+          if (result.fieldErrors) {
+            reportInvalidStep(result.fieldErrors, def);
+          }
           if (result.error) setGlobalError(result.error);
           return;
         }

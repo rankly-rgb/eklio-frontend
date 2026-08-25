@@ -189,6 +189,43 @@ le récapitulatif est désormais **toujours** affiché, et l'écran de blocage
 `completed_steps` reste écrit et sert toujours de trace de navigation ; il
 n'est simplement plus l'oracle de la complétude.
 
+## Correctif (2ᵉ passe) — le clic « Review your brief » paraissait inerte
+
+Le correctif précédent (complétude sur les données) était juste mais
+incomplet : il n'a pas débloqué le cas réel. Audit empirique repris de zéro.
+
+**Ce qui a été écarté par la preuve** : le champ requis `primary_action` **se
+rend bien** à l'étape 7 (vérifié par rendu SSR réel, cf.
+`components/brief/__tests__/step-form-fields.test.ts`). Aucune divergence
+clé écrite / clé lue : les données en base portent bien les clés anglaises du
+Lot 2, et `missingBriefSteps()` rend exactement `[7]` sur ce brief. Aucune
+source de complétude concurrente ne subsiste.
+
+**Cause 1 — pas de retour au point d'action.** Quand la validation d'une étape
+échouait, le seul signal était un message SOUS le champ fautif. Sur l'étape 7,
+`primary_action` est le 2ᵉ de cinq champs et le bouton est tout en bas, après
+deux groupes de cases (8 + 5 options) : le message s'affichait plusieurs
+centaines de pixels au-dessus de l'écran. Le praticien cliquait, ne voyait
+rien bouger, et en concluait que le champ n'existait pas. `globalError` — le
+seul encart placé près du bouton — n'était alimenté que par les erreurs de
+sauvegarde, jamais par un échec de validation.
+
+**Cause 2 — la sortie de secours n'existait pas sous 1024px.** Le lien
+« Review your brief » ajouté à la passe précédente vit dans `StepRail`, dont
+le conteneur est `hidden lg:block`. Sur écran étroit, le récapitulatif restait
+donc joignable uniquement par le bouton de l'étape 7, lui-même conditionné à
+la validation qui échouait.
+
+**Correctifs** : `lib/brief/step-errors.ts` (module pur) nomme les champs
+manquants et désigne celui à focaliser ; `StepForm` affiche ce message à côté
+du bouton et ramène le focus (+ `scrollIntoView`, `prefers-reduced-motion`
+respecté) sur le premier champ fautif, à la validation client comme au refus
+serveur. Le lien de récapitulatif est extrait dans
+`components/brief/review-brief-link.tsx` et rendu aussi sous 1024px, à côté de
+la barre de progression.
+
+Cause 100 % frontend : aucune migration, aucune intervention backend.
+
 ## Correctif — la génération du kit échouait en « Something went wrong »
 
 Trois causes empilées, chacune reproduite contre l'API réelle, chacune masquée
@@ -233,7 +270,6 @@ actionnable de la longueur du générique.
 
 **Vérifié en réel** : génération complète en 140 s, les 6 pages demandées.
 Cause 100 % frontend, aucune intervention backend.
-
 ## Reste pour le lot 4
 
 - Pricing en dollars, Stripe, Monthly Presence.
