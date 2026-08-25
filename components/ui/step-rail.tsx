@@ -64,14 +64,21 @@ export function StepRail({
           );
         })}
       </ol>
-      {maxStep >= 8 && (
-        <Link
-          href={`/app/projets/${projectId}/brief/recapitulatif`}
-          className="mt-3 px-3 font-mono text-sm underline hover:opacity-60"
-        >
-          Review your brief
-        </Link>
-      )}
+      {/*
+        Toujours accessible. Ce lien n'apparaissait qu'à `maxStep >= 8`,
+        c'est-à-dire seulement APRÈS une étape 7 validée — la même condition
+        que celle qui débloquait la génération. Le récapitulatif était donc
+        scellé derrière l'événement qu'il sert justement à débloquer : un
+        praticien coincé sur un champ requis n'avait aucun moyen de voir ce
+        qui manquait. La page se lit très bien incomplète : elle marque les
+        étapes à finir et y renvoie.
+      */}
+      <Link
+        href={`/app/projets/${projectId}/brief/recapitulatif`}
+        className="mt-3 px-3 font-mono text-sm underline hover:opacity-60"
+      >
+        Review your brief
+      </Link>
     </nav>
   );
 }

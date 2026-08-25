@@ -158,6 +158,37 @@ plus la cible : ne rien y écrire.
   (jusqu'à 8 pages de copy, les specs sociales et le prompt en une réponse). Le
   point de vigilance `maxDuration` noté au Lot 2 vaut a fortiori ici.
 
+## Correctif — bouton de génération inatteignable (post-Lot 3)
+
+Symptôme : brief rempli, aucun bouton pour générer les 3 directions.
+
+**Cause racine** : la complétude du brief était déduite de la NAVIGATION
+(`project_briefs.completed_steps`, `projects.current_step`) et non des
+RÉPONSES. `completed_steps` n'enregistre que les clics sur « Continue » ;
+l'autosave écrit sans y toucher. Les deux dérivent — et ce même signal gâtait
+les trois chemins vers la génération :
+
+1. le lien « Review your brief » du rail (`maxStep >= 8`) ;
+2. le statut `brief_complete`, donc la reprise depuis le tableau de bord ;
+3. le bouton de génération sur le récapitulatif lui-même.
+
+Les trois étant en aval du même événement (une étape 7 validée), un praticien
+bloqué sur un champ requis n'avait **aucun** moyen d'atteindre l'écran qui lui
+aurait dit ce qui manquait. Le récapitulatif était scellé derrière l'événement
+qu'il sert à débloquer.
+
+**Correctif** : `lib/brief/completeness.ts` (module pur) calcule la complétude
+depuis les données, avec les mêmes `stepSchemas` que le bouton « Continue »,
+sur le brouillon normalisé (clés anglaises du Lot 2, anciennes clés françaises
+traduites). Utilisé par le récapitulatif, par le badge « to complete » de
+chaque section et par la bascule de statut dans `saveBriefStep`. Le lien vers
+le récapitulatif est désormais **toujours** affiché, et l'écran de blocage
+**nomme** les étapes à finir avec un lien vers chacune, au lieu d'un
+« Complete all 7 steps » muet.
+
+`completed_steps` reste écrit et sert toujours de trace de navigation ; il
+n'est simplement plus l'oracle de la complétude.
+
 ## Reste pour le lot 4
 
 - Pricing en dollars, Stripe, Monthly Presence.

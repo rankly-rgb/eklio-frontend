@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { loadProjectWithBrief } from "@/lib/brief/load";
 import { STEPS, optionLabel, type FieldDef } from "@/lib/brief/steps";
-import { STEP_NUMBERS, type BriefDraft } from "@/lib/brief/schemas";
+import { type BriefDraft } from "@/lib/brief/schemas";
+import { missingBriefSteps } from "@/lib/brief/completeness";
 import { BrandSheet } from "@/components/ui/brand-sheet";
 import { GenerateDirectionsButton } from "@/components/brief/generate-directions-button";
 
@@ -51,7 +52,16 @@ export default async function RecapPage({
   params,
 }: PageProps<"/app/projets/[id]/brief/recapitulatif">) {
   const { id } = await params;
-  const { project, brief, draft } = await loadProjectWithBrief(id);
+  const { project, draft } = await loadProjectWithBrief(id);
+
+  /*
+   * La complétude se lit dans les RÉPONSES, pas dans `completed_steps` : ce
+   * compteur n'enregistre que les clics sur « Continue », et l'autosave écrit
+   * sans y toucher. S'y fier bloquait la génération sur un brief pourtant
+   * rempli, et ne disait jamais ce qui manquait.
+   */
+  const missingSteps: number[] = missingBriefSteps(draft);
+  const missingStepDefs = STEPS.filter((s) => missingSteps.includes(s.step));
 
   return (
     <div className="mx-auto flex w-full max-w-[1024px] flex-1 flex-col gap-10 px-6 py-10">
@@ -84,7 +94,9 @@ export default async function RecapPage({
 
           <div className="flex flex-col">
             {STEPS.map((stepDef) => {
-              const isDone = brief.completed_steps.includes(stepDef.step);
+              // Même vérité terrain que le bouton de génération, plus
+              // `completed_steps` qui n'était qu'une trace de navigation.
+              const isDone = !missingSteps.includes(stepDef.step);
               return (
                 <section
                   key={stepDef.step}
@@ -149,17 +161,22 @@ export default async function RecapPage({
             })}
           </div>
 
-          {STEP_NUMBERS.every((s) => brief.completed_steps.includes(s)) ? (
+          {missingSteps.length === 0 ? (
             <GenerateDirectionsButton
               projectId={project.id}
               label={
-                project.status === "brief_complete"
-                  ? "Generate my 3 directions"
-                  : "Regenerate my 3 directions"
+                project.status === "directions" || project.status === "kit"
+                  ? "Regenerate my 3 directions"
+                  : "Generate my 3 directions"
               }
             />
           ) : (
-            <div className="flex flex-col items-start gap-2 pb-6">
+            /*
+             * Écran de blocage utile : on NOMME les étapes qui manquent et on
+             * y renvoie directement. L'ancien « Complete all 7 steps » ne
+             * disait pas laquelle, sur une page où rien d'autre ne le montrait.
+             */
+            <div className="flex flex-col items-start gap-3 pb-6">
               <button
                 type="button"
                 disabled
@@ -168,12 +185,28 @@ export default async function RecapPage({
               >
                 Generate my 3 directions
               </button>
-              <p
+              <div
                 id="generation-incomplete"
-                className="font-mono text-xs text-ink-muted"
+                className="flex flex-col gap-1 text-sm text-ink-muted"
               >
-                Complete all 7 steps to continue.
-              </p>
+                <p>
+                  {missingStepDefs.length === 1
+                    ? "One step still needs an answer:"
+                    : `${missingStepDefs.length} steps still need an answer:`}
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {missingStepDefs.map((stepDef) => (
+                    <li key={stepDef.step}>
+                      <Link
+                        href={`/app/projets/${project.id}/brief/${stepDef.step}`}
+                        className="underline hover:opacity-60"
+                      >
+                        {String(stepDef.step).padStart(2, "0")} — {stepDef.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
         </div>
