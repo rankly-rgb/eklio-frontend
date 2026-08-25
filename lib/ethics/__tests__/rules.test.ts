@@ -407,3 +407,62 @@ describe("generateWithEthicsGuard", () => {
     expect(result.copy).toContain("award-winning");
   });
 });
+
+/*
+ * Mentions prohibitives — le motif est CITÉ pour être interdit.
+ *
+ * Faux positif avéré, reproduit deux fois contre l'API réelle : le prompt
+ * multi-plateformes du kit disait au constructeur de site « No hype, no
+ * urgency, no testimonials, no outcome claims (no "proven", no "results", no
+ * "lasting relief") » — le modèle appliquant le socle à la lettre. Le bloquer
+ * punissait la conformité et faisait échouer toute la génération.
+ *
+ * Le garde est étroit à dessein : le marqueur doit être ACCOLÉ au motif. Les
+ * cas adverses ci-dessous sont la contrepartie non négociable — ils doivent
+ * rester bloqués, sinon le garde est trop large.
+ */
+describe("mentions prohibitives", () => {
+  const ALLOWED = [
+    // Le cas réel, mot pour mot.
+    'No hype, no urgency, no testimonials, no outcome claims anywhere in the interface (no "proven," no "results," no "lasting relief," no star ratings, no review carousels).',
+    "No testimonials anywhere on the site.",
+    "Never guarantee a result.",
+    "I make no guarantees about how long the work takes.",
+    "Write the page without testimonials.",
+    "Avoid success stories entirely.",
+    "This section excludes client reviews.",
+  ];
+
+  for (const text of ALLOWED) {
+    it(`laisse passer une interdiction : ${text.slice(0, 52)}…`, () => {
+      expect(checkEthics(text).ok).toBe(true);
+    });
+  }
+
+  const STILL_BLOCKED = [
+    // Un mot s'intercale : ce n'est plus une interdiction accolée.
+    "No matter what, we guarantee results.",
+    "No one can promise to cure your anxiety, but this method resolves trauma.",
+    // Interdiction PUIS violation réelle plus loin dans la même chaîne : le
+    // balayage doit continuer au-delà de la mention prohibitive.
+    "No testimonials on the site. My clients say they feel better within weeks.",
+    "Never write hype. This is a clinically proven method.",
+    // Aucune interdiction en vue.
+    "We guarantee lasting relief.",
+  ];
+
+  for (const text of STILL_BLOCKED) {
+    it(`bloque quand même : ${text.slice(0, 52)}…`, () => {
+      expect(checkEthics(text).ok).toBe(false);
+    });
+  }
+
+  it("cite l'occurrence réellement fautive, pas la mention prohibitive", () => {
+    const { violations } = checkEthics(
+      "No testimonials please. My clients say the work helps."
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].excerpt.toLowerCase()).toContain("clients say");
+  });
+});

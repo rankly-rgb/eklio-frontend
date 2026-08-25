@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { generateBrandKit, KitScopeError } from "@/lib/ai/kit";
+import { generateBrandKit, KitScopeError, KitTruncatedError } from "@/lib/ai/kit";
 import { paletteFromStored } from "@/lib/ai/directions";
 import { practiceName } from "@/lib/ai/brief-context";
 import { EthicsComplianceError } from "@/lib/ethics/enforce";
@@ -28,6 +28,59 @@ const ETHICS_ERROR =
 /* Échec de périmètre : le kit rendu était incomplet. Rien n'a été enregistré. */
 const INCOMPLETE_ERROR =
   "The brand kit came back incomplete, so we didn't save it. Please try again.";
+
+/*
+ * Coupure par longueur : c'est le seul échec où « réessayer » a une chance
+ * réelle d'aboutir, et où l'utilisateur peut agir (moins de pages au brief).
+ * On le distingue donc du générique.
+ */
+const TOO_LONG_ERROR =
+  "Your kit ran longer than we could generate in one pass. Try again — if it keeps happening, trim the pages you asked for in step 7 of the brief.";
+
+/*
+ * Journalisation de l'échec de génération, avec sa NATURE.
+ *
+ * Le message générique renvoyé au client ne dit rien d'exploitable ; c'est ici
+ * que la vraie cause doit rester lisible côté serveur. Ce point avait manqué :
+ * le SDK Anthropic refuse un appel non streamé au-delà de ~21 000 jetons de
+ * sortie, et lève AVANT toute requête réseau — donc rien dans l'onglet Réseau,
+ * aucun statut HTTP, et un `console.error(error)` brut noyé dans le bruit du
+ * serveur de dev. On nomme désormais explicitement ce qu'on a attrapé.
+ */
+function logGenerationFailure(error: unknown): void {
+  if (error instanceof EthicsComplianceError) {
+    console.error(
+      `[generateKit] ÉCHEC déontologique après ${error.attempts} tentative(s) :`,
+      error.violations
+    );
+    return;
+  }
+  if (error instanceof KitTruncatedError) {
+    console.error("[generateKit] ÉCHEC longueur : réponse coupée par max_tokens.");
+    return;
+  }
+  if (error instanceof KitScopeError) {
+    console.error(
+      `[generateKit] ÉCHEC périmètre : pages manquantes — ${error.missing.join(", ")}`
+    );
+    return;
+  }
+  if (error instanceof z.ZodError) {
+    console.error(
+      "[generateKit] ÉCHEC structure : le kit ne valide pas le schéma —",
+      error.issues.map((i) => `${i.path.join(".")} : ${i.message}`)
+    );
+    return;
+  }
+
+  const detail = error as { name?: string; message?: string; status?: number };
+  console.error(
+    `[generateKit] ÉCHEC ${detail?.name ?? "inconnu"}${
+      detail?.status ? ` (HTTP ${detail.status})` : ""
+    } : ${detail?.message ?? String(error)}`,
+    error
+  );
+}
 
 const NO_DIRECTION_ERROR =
   "Choose one of your three directions before building your brand kit.";
@@ -125,11 +178,15 @@ export async function generateKit(
       scope,
     });
   } catch (error) {
-    console.error("[generateKit] appel Anthropic", error);
-    // Échec structurel, de périmètre ou déontologique : rien n'est persisté,
-    // la génération s'arrête avant la moindre écriture.
+    // Échec structurel, de longueur, de périmètre ou déontologique : rien n'est
+    // persisté, la génération s'arrête avant la moindre écriture.
+    logGenerationFailure(error);
+
     if (error instanceof EthicsComplianceError) {
       return { ok: false, error: ETHICS_ERROR };
+    }
+    if (error instanceof KitTruncatedError) {
+      return { ok: false, error: TOO_LONG_ERROR };
     }
     if (error instanceof KitScopeError) {
       return { ok: false, error: INCOMPLETE_ERROR };

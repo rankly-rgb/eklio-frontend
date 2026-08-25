@@ -1,10 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import Anthropic from "@anthropic-ai/sdk";
 import {
   applyScope,
   buildKitPrompt,
   generateKitWithModel,
+  KIT_MAX_TOKENS,
   KIT_SYSTEM_PROMPT,
+  KIT_TOOL,
   KitScopeError,
+  KitTruncatedError,
+  NON_STREAMING_MAX_TOKENS,
+  parseKitResponse,
   type KitGeneration,
   type KitInput,
   type KitModelCall,
@@ -407,5 +413,111 @@ describe("périmètre du livrable", () => {
     expect(applyScope(shuffled, scope).website_copy.map((e) => e.page)).toEqual(
       scope.pages
     );
+  });
+});
+
+/*
+ * Les deux pannes mécaniques qui empêchaient toute génération de kit, chacune
+ * reproduite contre l'API réelle avant correction.
+ */
+
+function messageWith(
+  stopReason: Anthropic.Message["stop_reason"],
+  input: unknown = COMPLIANT
+): Anthropic.Message {
+  return {
+    id: "msg_test",
+    type: "message",
+    role: "assistant",
+    model: "claude-opus-5",
+    stop_reason: stopReason,
+    stop_sequence: null,
+    usage: { input_tokens: 1, output_tokens: 1 },
+    content:
+      input === null
+        ? [{ type: "text", text: "…", citations: null }]
+        : [{ type: "tool_use", id: "tu_1", name: KIT_TOOL.name, input }],
+  } as unknown as Anthropic.Message;
+}
+
+describe("panne 1 — le SDK refuse un appel non streamé trop large", () => {
+  /*
+   * `calculateNonstreamingTimeout` estime la durée à
+   * `60 min × max_tokens / 128000` et lève dès que ça dépasse 10 minutes.
+   * Le garde est CLIENT : il partait en zéro seconde, avant toute requête
+   * réseau — d'où l'absence de trace HTTP et l'échec en apparence muet.
+   */
+  it("confirme, contre le SDK réel, que le budget du kit EXIGE le streaming", () => {
+    const client = new Anthropic({ apiKey: "test-key-not-used" });
+
+    // Le budget du kit franchit le seuil : sans streaming, ceci lève.
+    expect(() => client.calculateNonstreamingTimeout(KIT_MAX_TOKENS)).toThrow(
+      /Streaming is required/
+    );
+    // Celui des directions passe dessous — c'est toute la différence entre
+    // les deux générations, à clé et modèle identiques.
+    expect(() => client.calculateNonstreamingTimeout(8000)).not.toThrow();
+  });
+
+  it("garde le seuil documenté aligné sur celui du SDK", () => {
+    const client = new Anthropic({ apiKey: "test-key-not-used" });
+
+    expect(KIT_MAX_TOKENS).toBeGreaterThan(NON_STREAMING_MAX_TOKENS);
+    expect(() =>
+      client.calculateNonstreamingTimeout(NON_STREAMING_MAX_TOKENS)
+    ).not.toThrow();
+    expect(() =>
+      client.calculateNonstreamingTimeout(NON_STREAMING_MAX_TOKENS + 1)
+    ).toThrow(/Streaming is required/);
+  });
+});
+
+describe("panne 2 — un surplus d'exemples ne doit plus jeter tout le kit", () => {
+  /*
+   * Cas réel : le modèle a rendu 6 contre-exemples pour un maximum annoncé de
+   * 5, et 127 secondes de génération ont été perdues sur un `too_big` zod.
+   * L'API n'autorisant pas `maxItems` en schéma strict, le compte ne peut être
+   * qu'une consigne — donc on normalise.
+   */
+  it("accepte 6 contre-exemples et n'en garde que 5", () => {
+    const kit = parseKitResponse(
+      messageWith("tool_use", {
+        ...COMPLIANT,
+        voice_and_tone: {
+          ...COMPLIANT.voice_and_tone,
+          dont_examples: ["A.", "B.", "C.", "D.", "E.", "F."],
+        },
+      })
+    );
+
+    expect(kit.voice_and_tone.dont_examples).toHaveLength(5);
+  });
+});
+
+describe("diagnostic des réponses du modèle", () => {
+  it("nomme la troncature au lieu de la laisser passer pour une erreur de structure", () => {
+    // Coupé par max_tokens : le JSON de l'outil est incomplet.
+    expect(() => parseKitResponse(messageWith("max_tokens", { partial: true })))
+      .toThrow(KitTruncatedError);
+  });
+
+  it("distingue le refus du modèle", () => {
+    expect(() => parseKitResponse(messageWith("refusal"))).toThrow(/refused/);
+  });
+
+  it("signale l'absence de bloc d'outil", () => {
+    expect(() => parseKitResponse(messageWith("end_turn", null))).toThrow(
+      /No brand kit/
+    );
+  });
+
+  it("rend le kit quand la réponse est complète", () => {
+    expect(parseKitResponse(messageWith("tool_use")).website_copy).toHaveLength(
+      COMPLIANT.website_copy.length
+    );
+  });
+
+  it("garde l'outil en mode strict", () => {
+    expect(KIT_TOOL.strict).toBe(true);
   });
 });

@@ -189,6 +189,51 @@ le récapitulatif est désormais **toujours** affiché, et l'écran de blocage
 `completed_steps` reste écrit et sert toujours de trace de navigation ; il
 n'est simplement plus l'oracle de la complétude.
 
+## Correctif — la génération du kit échouait en « Something went wrong »
+
+Trois causes empilées, chacune reproduite contre l'API réelle, chacune masquée
+par la suivante. La génération des directions marchait : même clé, même SDK,
+même modèle — seul le kit tombait.
+
+**1. Le SDK refusait l'appel avant même de partir.**
+`messages.create()` non streamé lève côté CLIENT dès que `max_tokens` dépasse
+environ 21 300 (`calculateNonstreamingTimeout` : `60 min × max_tokens / 128000
+> 10 min`). Les directions (8 000) passent, le kit (32 000) non. Le garde
+partait en **zéro seconde**, sans requête réseau, sans statut HTTP, sans rien
+dans l'onglet Réseau — d'où une panne en apparence muette. Correctif :
+`messages.stream(...).finalMessage()`, la réponse prévue par le SDK.
+`NON_STREAMING_MAX_TOKENS` documente le seuil, et un test l'assert contre le
+SDK réel.
+
+**2. Une borne cosmétique jetait un kit entier.**
+Le modèle a rendu 6 contre-exemples de voix pour un maximum annoncé de 5 :
+`too_big` zod, **127 secondes de génération perdues**. L'API n'autorise pas
+`minItems`/`maxItems` dans un schéma d'outil strict — « 3 à 5 exemples » n'est
+qu'une consigne, jamais une garantie. Une borne serrée côté zod ne discipline
+donc pas le modèle, elle détruit le livrable. Correctif : les listes
+d'exemples sont **normalisées** (on garde les premières), la prose voit ses
+bornes élargies (la tronquer au milieu d'une phrase serait pire).
+
+**3. La déontologie punissait la conformité.**
+Le prompt multi-plateformes disait au constructeur de site « No hype, no
+urgency, **no testimonials**, no outcome claims (no "proven", no "results", no
+"**lasting relief**") » — le modèle appliquant le socle à la lettre. Les motifs
+attrapaient la mention, pas l'affirmation, et la garde échouait après 3
+tentatives. Correctif dans `checkEthics` : une occurrence dont le marqueur
+prohibitif est **immédiatement accolé** (`no`, `never`, `without`, `avoid`,
+`exclude`, `omit`) n'est pas une violation. Volontairement étroit — ni virgule
+ni mot intercalé — donc « No matter what, we guarantee results » reste bloqué,
+et le balayage continue au-delà de la mention prohibitive pour attraper une
+vraie violation plus loin dans la même chaîne. Cas adverses testés.
+
+**Diagnostic** : `logGenerationFailure()` nomme désormais la nature de l'échec
+côté serveur (déontologie + violations, longueur, périmètre + pages manquantes,
+structure + chemins zod, ou erreur API avec son statut). L'UI distingue le cas
+actionnable de la longueur du générique.
+
+**Vérifié en réel** : génération complète en 140 s, les 6 pages demandées.
+Cause 100 % frontend, aucune intervention backend.
+
 ## Reste pour le lot 4
 
 - Pricing en dollars, Stripe, Monthly Presence.

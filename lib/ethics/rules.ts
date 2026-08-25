@@ -273,6 +273,55 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
   },
 ];
 
+/*
+ * Mention PROHIBITIVE : le motif est cité pour être interdit, pas affirmé.
+ *
+ * Cas réel qui a motivé ce garde (reproduit deux fois contre l'API) : le
+ * prompt multi-plateformes du kit dit au constructeur de site
+ *   « No hype, no urgency, no testimonials, no outcome claims (no "proven",
+ *     no "results", no "lasting relief", no star ratings) »
+ * — c'est-à-dire le modèle appliquant le socle déontologique à la lettre. Le
+ * bloquer revenait à punir la conformité, et faisait échouer toute la
+ * génération après plusieurs minutes.
+ *
+ * Le garde est VOLONTAIREMENT ÉTROIT : le marqueur doit être immédiatement
+ * accolé au motif, seuls des espaces, guillemets ou parenthèses pouvant
+ * s'intercaler. Ni virgule ni mot intermédiaire — « no matter what, we
+ * guarantee results » et « no one can promise to cure your anxiety, but »
+ * restent donc bloqués (cas testés).
+ */
+const PROHIBITIVE_LEAD =
+  /\b(?:no|not|never|without|avoid|avoids|avoiding|exclude|excludes|excluding|omit|omits|omitting)\b[\s"'\u201c\u201d\u2018\u2019(\[]*$/i;
+
+/** Vrai si l'occurrence trouvée en `index` est introduite comme une interdiction. */
+function isProhibitiveMention(text: string, index: number): boolean {
+  return PROHIBITIVE_LEAD.test(text.slice(Math.max(0, index - 40), index));
+}
+
+/**
+ * Première occurrence RÉELLEMENT fautive d'un motif, les mentions prohibitives
+ * passées.
+ *
+ * On continue de balayer après une mention prohibitive : « no testimonials …
+ * and our clients say » doit rester bloqué sur la seconde occurrence. Le
+ * scanner est reconstruit à chaque appel — les motifs de `FORBIDDEN_PATTERNS`
+ * restent sans drapeau `g`, donc sans état partagé.
+ */
+function findViolation(pattern: RegExp, text: string): RegExpExecArray | null {
+  const flags = pattern.flags.includes("g")
+    ? pattern.flags
+    : `${pattern.flags}g`;
+  const scanner = new RegExp(pattern.source, flags);
+
+  let match: RegExpExecArray | null;
+  while ((match = scanner.exec(text)) !== null) {
+    if (!isProhibitiveMention(text, match.index)) return match;
+    // Garde anti-boucle sur un motif capable de matcher le vide.
+    if (match.index === scanner.lastIndex) scanner.lastIndex += 1;
+  }
+  return null;
+}
+
 export type EthicsViolation = {
   reason: string;
   severity: EthicsSeverity;
@@ -298,7 +347,9 @@ export function checkEthics(text: string): EthicsCheckResult {
   if (!text) return { ok: true, violations };
 
   for (const { pattern, reason, severity } of FORBIDDEN_PATTERNS) {
-    const match = pattern.exec(text);
+    // Les mentions prohibitives (« no testimonials ») ne sont pas des
+    // violations : c'est le socle appliqué, pas transgressé.
+    const match = findViolation(pattern, text);
     if (match) {
       violations.push({ reason, severity, excerpt: match[0].trim() });
     }
