@@ -31,16 +31,26 @@ describe("parseStoredKit", () => {
     const kit = parseStoredKit(VALID);
 
     expect(kit).not.toBeNull();
-    expect(kit?.tier).toBe("signature");
     expect(kitPages(kit!)).toEqual(["home", "about"]);
+  });
+
+  it("relit encore les kits du Lot 3, qui portaient le tier dans le jsonb", () => {
+    // Le tier a sa colonne depuis le Lot 4 (`brand_kits.tier`) et n'est plus
+    // écrit ici. Refuser les kits déjà en base rendrait leur page illisible
+    // pour un champ dont la valeur vit désormais ailleurs.
+    expect(parseStoredKit(VALID)?.tier).toBe("signature");
+    const withoutTier = { ...VALID, tier: undefined };
+    expect(parseStoredKit(withoutTier)).not.toBeNull();
+    expect(parseStoredKit(withoutTier)?.tier).toBeUndefined();
   });
 
   it("renvoie null sur une forme inattendue plutôt que de rendre un livrable partiel", () => {
     expect(parseStoredKit(null)).toBeNull();
     expect(parseStoredKit({})).toBeNull();
     expect(parseStoredKit("un kit")).toBeNull();
-    // Tier absent : le kit ne dit plus quel périmètre l'a produit.
-    expect(parseStoredKit({ ...VALID, tier: undefined })).toBeNull();
+    // Tier présent mais hors du CHECK en base : le jsonb n'est pas contraint,
+    // donc c'est ici que la valeur aberrante doit être refusée.
+    expect(parseStoredKit({ ...VALID, tier: "enterprise" })).toBeNull();
     // Page inconnue du produit.
     expect(
       parseStoredKit({

@@ -9,7 +9,8 @@ import { paletteFromStored } from "@/lib/ai/directions";
 import { practiceName } from "@/lib/ai/brief-context";
 import { EthicsComplianceError } from "@/lib/ethics/enforce";
 import { parseStoredBriefDraft } from "@/lib/brief/schemas";
-import { DEFAULT_KIT_TIER, resolveKitScope } from "@/lib/kit/tiers";
+import { resolveKitScope } from "@/lib/kit/tiers";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { buildShareSlug } from "@/lib/kit/share";
 import type { StoredKit } from "@/lib/kit/content";
 
@@ -86,6 +87,16 @@ const NO_DIRECTION_ERROR =
   "Choose one of your three directions before building your brand kit.";
 
 /*
+ * Aucun achat payé : la génération ne part pas.
+ *
+ * Le message NOMME la sortie (`/pricing`) au lieu d'annoncer un refus. C'est la
+ * même règle qu'au correctif du récapitulatif : un écran qui bloque sans dire
+ * où aller se lit comme une panne.
+ */
+const NOT_PURCHASED_ERROR =
+  "Your brand kit isn't unlocked yet. Choose a kit on the pricing page to build it.";
+
+/*
  * Génère (ou régénère) le kit de marque d'un projet à partir de son brief et
  * de la direction choisie.
  *
@@ -157,11 +168,23 @@ export async function generateKit(
   const draft = parseStoredBriefDraft(briefRow.data);
 
   /*
-   * Couture du gating par tier (Lot 4) : le tier est aujourd'hui constant et
-   * le plus généreux. Quand le paiement sera branché, seule cette ligne change
-   * — le périmètre traverse ensuite toute la génération via `scope`.
+   * Gating par tier, branché pour de bon (Lot 4).
+   *
+   * Le tier vient de `purchases`, pas d'une constante : c'est le droit COURANT
+   * (le plus généreux des achats payés), pas ce qui a été livré la dernière
+   * fois. Un praticien passé de Starter à Signature regénère donc bien un kit
+   * Signature — voir `lib/billing/entitlements.ts`.
+   *
+   * Le webhook Stripe est la seule chose qui écrit `purchases.status = 'paid'`.
+   * Un retour de navigateur depuis Checkout n'accorde rien : tant que le
+   * webhook n'a pas confirmé, la génération refuse, et c'est voulu.
    */
-  const scope = resolveKitScope(DEFAULT_KIT_TIER, draft.pages_wanted);
+  const entitledTier = await resolveEntitledTier(supabase, projectId);
+  if (!entitledTier) {
+    return { ok: false, error: NOT_PURCHASED_ERROR };
+  }
+
+  const scope = resolveKitScope(entitledTier, draft.pages_wanted);
 
   let generated;
   try {
@@ -206,15 +229,17 @@ export async function generateKit(
     .eq("project_id", projectId)
     .maybeSingle();
 
-  const stored: StoredKit = { ...content, tier: scope.tier };
+  const stored: StoredKit = content;
 
   const { error: upsertError } = await supabase.from("brand_kits").upsert(
     {
       project_id: projectId,
       direction_id: direction.id,
-      // `content` porte le livrable et le tier qui l'a produit ; le prompt
-      // multi-plateformes a sa propre colonne au schéma.
+      // `content` porte le livrable, et rien d'autre : le prompt
+      // multi-plateformes et le tier ont chacun leur colonne au schéma. Le
+      // tier n'est plus écrit dans le jsonb — deux copies auraient dérivé.
       content: stored,
+      tier: scope.tier,
       multi_builder_prompt: websitePrompt,
       share_slug:
         existingKit?.share_slug ??

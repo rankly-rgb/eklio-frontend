@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DirectionsSelector } from "@/components/directions/directions-selector";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 
 export default async function DirectionsPage({
   params,
@@ -68,6 +69,13 @@ export default async function DirectionsPage({
         projectId={project.id}
         directions={directions}
         hasKit={existingKit !== null}
+        /*
+         * Le droit d'achat est lu ICI, côté serveur, et descendu en prop : le
+         * bouton de génération ne doit pas être la première chose qui apprend
+         * au praticien qu'il n'a rien payé. Ce n'est pas la garde — celle-ci
+         * est dans `generateKit` — c'est ce qui évite un refus après clic.
+         */
+        entitledTier={await resolveEntitledTier(supabase, project.id)}
       />
     </div>
   );

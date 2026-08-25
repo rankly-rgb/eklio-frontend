@@ -4,15 +4,17 @@ import { PAGES_WANTED } from "@/lib/brief/schemas";
 /*
  * Périmètre du livrable par tier — la couture (« seam ») du gating.
  *
- * Le Lot 3 GÉNÈRE le kit ; le Lot 4 décidera QUI a droit à quoi (pricing,
- * Stripe, Monthly Presence). Ce module existe pour que ce branchement soit un
- * changement d'une ligne côté appelant et non une réécriture de la génération :
- * tout ce qui fait varier le scope du kit est ici, nulle part ailleurs.
+ * Le Lot 3 GÉNÈRE le kit ; le Lot 4 BRANCHE qui a droit à quoi. La couture a
+ * tenu sa promesse : le branchement s'est fait chez l'appelant
+ * (`app/app/projets/[id]/kit/actions.ts` lit maintenant le tier acheté via
+ * `resolveEntitledTier`), et pas une ligne de la génération n'a bougé. Tout ce
+ * qui fait varier le scope du kit est toujours ici, nulle part ailleurs.
  *
- * Concrètement, au Lot 4 :
- * - lire le tier acheté (table de facturation, `generation_credits.has_paid`
- *   ou ce que le lot décidera) au lieu de `DEFAULT_KIT_TIER` ;
- * - passer ce tier à `resolveKitScope()` — rien d'autre ne bouge.
+ * Trois valeurs de tier circulent, et elles ne veulent pas dire la même chose :
+ * - le tier ACHETÉ, dans `purchases` — le droit courant (`lib/billing`) ;
+ * - le tier LIVRÉ, dans `brand_kits.tier` — l'instantané de ce qui a été
+ *   généré, qui reste vrai même si le praticien monte en gamme ensuite ;
+ * - le tier de ce module, qui n'est qu'un paramètre de `resolveKitScope()`.
  *
  * Module pur : ni I/O, ni SDK, ni React. Testable seul.
  */
@@ -26,14 +28,30 @@ export type KitTier = (typeof KIT_TIERS)[number];
 export type PageKey = (typeof PAGES_WANTED)[number];
 
 /*
- * Tier servi tant que le paiement n'est pas branché (Lot 4).
+ * Repli quand `brand_kits.tier` porte une valeur que le front ne connaît pas.
  *
- * Volontairement le plus généreux : pendant que Stripe n'existe pas, dégrader
- * le livrable ne protégerait aucun revenu et donnerait une fausse idée du
- * produit. Le jour où le Lot 4 câble le tier réel, cette constante n'est plus
- * lue que comme repli.
+ * Le plus PETIT des tiers, à l'inverse de ce que servait le Lot 3 : depuis que
+ * le paiement existe, une valeur inattendue ne doit jamais ouvrir le livrable
+ * le plus complet. Ce n'est PAS une porte d'entrée — aucune génération ne part
+ * de cette constante, elles partent toutes d'un achat payé (cf.
+ * `lib/billing/entitlements.ts`). Elle ne sert qu'à RELIRE un kit déjà livré.
  */
-export const DEFAULT_KIT_TIER: KitTier = "signature";
+export const FALLBACK_KIT_TIER: KitTier = "starter";
+
+/**
+ * Relit une valeur de tier venue de la base (`brand_kits.tier`,
+ * `purchases.tier`) ou des métadonnées Stripe.
+ *
+ * Ces colonnes sont des `text` contraints par un CHECK, pas des enums
+ * Postgres : le type généré les rend en `string`, et c'est ici que la chaîne
+ * redevient un `KitTier`. Rend `null` sur l'inconnu — à l'appelant de décider
+ * si ça vaut un repli (lecture) ou un refus (facturation).
+ */
+export function parseKitTier(value: string | null | undefined): KitTier | null {
+  return (KIT_TIERS as readonly string[]).includes(value ?? "")
+    ? (value as KitTier)
+    : null;
+}
 
 /*
  * Pages retenues quand le praticien n'en a coché aucune à l'étape 7. Un site

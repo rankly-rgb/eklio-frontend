@@ -35,6 +35,7 @@ export type Database = {
           pdf_url: string | null
           project_id: string
           share_slug: string | null
+          tier: string
           updated_at: string
         }
         Insert: {
@@ -46,6 +47,7 @@ export type Database = {
           pdf_url?: string | null
           project_id: string
           share_slug?: string | null
+          tier?: string
           updated_at?: string
         }
         Update: {
@@ -57,6 +59,7 @@ export type Database = {
           pdf_url?: string | null
           project_id?: string
           share_slug?: string | null
+          tier?: string
           updated_at?: string
         }
         Relationships: [
@@ -170,12 +173,51 @@ export type Database = {
           },
         ]
       }
+      monthly_presence_content: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          month: string
+          project_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          id?: string
+          month: string
+          project_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          month?: string
+          project_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_presence_content_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
           email: string
           full_name: string | null
           id: string
+          stripe_customer_id: string | null
           updated_at: string
         }
         Insert: {
@@ -183,6 +225,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          stripe_customer_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -190,6 +233,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          stripe_customer_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -259,6 +303,131 @@ export type Database = {
             foreignKeyName: "projects_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchases: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          id: string
+          paid_at: string | null
+          project_id: string | null
+          status: string
+          stripe_checkout_session_id: string
+          stripe_payment_intent_id: string | null
+          tier: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          project_id?: string | null
+          status?: string
+          stripe_checkout_session_id: string
+          stripe_payment_intent_id?: string | null
+          tier: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          project_id?: string | null
+          status?: string
+          stripe_checkout_session_id?: string
+          stripe_payment_intent_id?: string | null
+          tier?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_events: {
+        Row: {
+          payload: Json | null
+          processed_at: string
+          stripe_event_id: string
+          type: string
+        }
+        Insert: {
+          payload?: Json | null
+          processed_at?: string
+          stripe_event_id: string
+          type: string
+        }
+        Update: {
+          payload?: Json | null
+          processed_at?: string
+          stripe_event_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          id: string
+          status: string
+          stripe_price_id: string | null
+          stripe_subscription_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          status: string
+          stripe_price_id?: string | null
+          stripe_subscription_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          status?: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -406,11 +575,39 @@ export const Constants = {
 /* ------------------------------------------------------------------------
  * ADDENDUM MANUEL — à réappliquer après chaque régénération.
  *
- * `projects.status` est un `text` contraint par un CHECK, pas un enum
- * Postgres : `supabase gen types` le rend donc en `string`. On conserve
- * l'union côté TypeScript pour garder l'exhaustivité des libellés de statut
- * dans l'UI. Elle doit rester synchronisée avec la contrainte en base :
- *   status = ANY (ARRAY['brief','brief_complete','directions','kit'])
+ * Ces colonnes sont des `text` contraints par un CHECK, pas des enums
+ * Postgres : `supabase gen types` les rend donc en `string`. On conserve les
+ * unions côté TypeScript pour garder l'exhaustivité dans l'UI et dans les
+ * mappings. Elles doivent rester synchronisées avec les contraintes en base.
+ *
+ *   projects.status                  = ANY (ARRAY['brief','brief_complete','directions','kit'])
+ *   subscriptions.status             = ANY (ARRAY['incomplete','incomplete_expired','trialing',
+ *                                                 'active','past_due','canceled','unpaid','paused'])
+ *   purchases.status                 = ANY (ARRAY['pending','paid','refunded','failed'])
+ *   monthly_presence_content.status  = ANY (ARRAY['pending','generating','complete','failed'])
+ *
+ * `brand_kits.tier` et `purchases.tier` sont eux aussi contraints
+ * (starter/practice/signature) mais leur union n'est PAS dupliquée ici : elle
+ * vit dans `lib/kit/tiers.ts` (`KIT_TIERS`), qui la tient depuis le Lot 3 et
+ * la vérifie contre le type généré.
  * ---------------------------------------------------------------------- */
 
 export type ProjectStatus = "brief" | "brief_complete" | "directions" | "kit"
+
+export type SubscriptionStatus =
+  | "incomplete"
+  | "incomplete_expired"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "paused"
+
+export type PurchaseStatus = "pending" | "paid" | "refunded" | "failed"
+
+export type MonthlyPresenceStatus =
+  | "pending"
+  | "generating"
+  | "complete"
+  | "failed"
