@@ -2,8 +2,8 @@
 
 Socle commun **ACA / APA / boards d'État**, lu de la façon la plus restrictive,
 pour ne pas maintenir 50 jeux de règles. Tout contenu généré par Eklio qu'un
-praticien pourrait publier passe par ici : descriptions de directions (Lot 2),
-kit de marque (Lot 3), Monthly Presence.
+praticien pourrait publier passe par ici : descriptions de directions (câblé au
+Lot 2, cf. `lib/ai/directions.ts`), kit de marque (Lot 3), Monthly Presence.
 
 Couche autonome : elle n'importe rien de `lib/ai`. C'est `lib/ai` qui l'importe.
 
@@ -18,7 +18,13 @@ Couche autonome : elle n'importe rien de `lib/ai`. C'est `lib/ai` qui l'importe.
 Le niveau 1 seul ne suffit pas : un modèle peut ignorer une consigne. Le niveau
 2 est ce qui empêche du non-conforme d'être persisté.
 
-## Comment les lots suivants l'utilisent
+## Comment l'utiliser
+
+`lib/ai/directions.ts` est le câblage de référence : `ETHICS_SYSTEM_RULES` y est
+injecté dans le prompt **système** (`DIRECTIONS_SYSTEM_PROMPT`) et le `feedback`
+de reprise est concaténé au message utilisateur — les règles de niveau 1 restent
+ainsi hors de portée des consignes de style. Le squelette ci-dessous concatène
+tout dans un seul prompt ; les deux formes conviennent.
 
 ```ts
 import { ETHICS_SYSTEM_RULES } from "@/lib/ethics/rules";

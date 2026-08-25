@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { generateDirectionsFromBrief } from "@/lib/ai/directions";
+import { EthicsComplianceError } from "@/lib/ethics/enforce";
 import { parseStoredBriefDraft } from "@/lib/brief/schemas";
 
 export type GenerateDirectionsResult =
@@ -12,6 +13,14 @@ export type GenerateDirectionsResult =
   | { ok: false; error: string };
 
 const GENERIC_ERROR = "Something went wrong. Please try again.";
+
+/*
+ * Échec déontologique : le modèle n'a pas produit de copy conforme, même après
+ * régénération. On le dit sans citer les extraits fautifs — ils restent dans
+ * les logs serveur (cf. lib/ethics/enforce.ts).
+ */
+const ETHICS_ERROR =
+  "We couldn't generate compliant directions this time. Please try again.";
 
 /*
  * Génère (ou régénère) les 3 directions créatives d'un projet à partir de
@@ -70,7 +79,13 @@ export async function generateDirections(
     result = await generateDirectionsFromBrief(project.name, draft);
   } catch (error) {
     console.error("[generateDirections] appel Anthropic", error);
-    return { ok: false, error: GENERIC_ERROR };
+    // Échec structurel comme échec déontologique : rien n'est persisté, la
+    // génération s'arrête avant la moindre écriture.
+    return {
+      ok: false,
+      error:
+        error instanceof EthicsComplianceError ? ETHICS_ERROR : GENERIC_ERROR,
+    };
   }
 
   // Remplace intégralement les directions précédentes (régénération).

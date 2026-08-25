@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { getAnthropicClient } from "@/lib/ai/client";
+import { generateWithEthicsGuard } from "@/lib/ethics/enforce";
+import { ETHICS_SYSTEM_RULES } from "@/lib/ethics/rules";
 import type { BriefDraft } from "@/lib/brief/schemas";
 import {
   COLOR_FAMILY_OPTIONS,
@@ -21,6 +23,16 @@ import {
  * s'adresse à des praticiens de santé mentale licenciés en cabinet privé aux
  * États-Unis. Tout ce qui part au modèle ou finit à l'écran est en anglais ;
  * les commentaires restent en français, comme partout dans le dépôt.
+ *
+ * Deux gardes se cumulent, et une génération doit passer les DEUX avant d'être
+ * persistée :
+ * - structurelle : outil forcé + schéma strict + `directionsResultSchema`
+ *   (exactement 3 directions, hex valides, champs présents) ;
+ * - déontologique : `ETHICS_SYSTEM_RULES` injecté dans le prompt système
+ *   (niveau 1) et `generateWithEthicsGuard` autour de l'appel (niveau 2), qui
+ *   régénère avec feedback puis lève `EthicsComplianceError`.
+ *
+ * Sens de dépendance : lib/ai importe lib/ethics, jamais l'inverse.
  */
 
 const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color");
@@ -223,23 +235,48 @@ Write in warm, grounded, plain American English. No hype, no startup vocabulary,
 }
 
 /*
+ * Garde-fou de niveau 1 : le socle déontologique pilote le modèle dès la
+ * première tentative, plutôt que d'attendre le rattrapage de niveau 2. Le
+ * cadrage produit vient après les règles — aucune consigne de style ne peut se
+ * lire comme une permission de les assouplir.
+ */
+export const DIRECTIONS_SYSTEM_PROMPT = `${ETHICS_SYSTEM_RULES}
+
+You are a senior art director for Eklio, which builds brand identities for licensed mental-health clinicians in private practice in the United States. A direction's description is copy this clinician may publish: it has to read as psychoeducation — what the practice is like, who it serves, how the work feels — never as a claim about what the work will produce.`;
+
+/** Nombre de reprises accordées au modèle après une violation bloquante. */
+const ETHICS_MAX_RETRIES = 2;
+
+/**
+ * Appel modèle, isolé pour que la garde déontologique et les tests puissent
+ * l'envelopper. `feedback` est nul à la première tentative, puis porte
+ * l'instruction corrective construite à partir des violations trouvées.
+ */
+export type DirectionsModelCall = (
+  prompt: string,
+  feedback: string | null
+) => Promise<DirectionsResult>;
+
+/*
  * Appelle Claude avec un unique outil forcé (tool_choice) pour obtenir une
  * réponse strictement structurée — pas de parsing de texte libre. La
- * validation zod repasse sur la réponse avant qu'elle n'entre en base.
+ * validation zod repasse sur la réponse avant qu'elle ne remonte : une réponse
+ * structurellement invalide lève ici, avant même la vérification déontologique.
  */
-export async function generateDirectionsFromBrief(
-  projectName: string,
-  draft: BriefDraft
-): Promise<DirectionsResult> {
-  const prompt = buildPrompt(projectName, draft);
-
+const callAnthropic: DirectionsModelCall = async (prompt, feedback) => {
   const response = await getAnthropicClient().messages.create({
     model: "claude-opus-5",
     max_tokens: 8000,
     output_config: { effort: "medium" },
+    system: DIRECTIONS_SYSTEM_PROMPT,
     tools: [DIRECTIONS_TOOL],
     tool_choice: { type: "tool", name: DIRECTIONS_TOOL.name },
-    messages: [{ role: "user", content: prompt }],
+    messages: [
+      {
+        role: "user",
+        content: feedback ? `${prompt}\n\n${feedback}` : prompt,
+      },
+    ],
   });
 
   if (response.stop_reason === "refusal") {
@@ -254,4 +291,49 @@ export async function generateDirectionsFromBrief(
   }
 
   return directionsResultSchema.parse(toolUse.input);
+};
+
+/*
+ * Chaînes que le praticien pourrait publier telles quelles, et qui doivent donc
+ * passer la vérification déontologique : la description (2-3 phrases de copy)
+ * et le nom de la direction, qui est du texte libre affiché. Les hex et les
+ * noms de police n'en sont pas — les vérifier n'apporterait que du bruit.
+ */
+function publishableText(result: DirectionsResult): string[] {
+  return result.directions.flatMap((direction) => [
+    direction.name,
+    direction.description,
+  ]);
+}
+
+/**
+ * Génération gardée, avec l'appel modèle injecté — le point d'entrée des tests.
+ *
+ * Ne renvoie jamais un résultat non conforme : soit les trois directions
+ * passent la validation structurelle ET la validation déontologique, soit
+ * l'appel lève (`EthicsComplianceError` après épuisement des reprises, ou
+ * l'erreur structurelle) et rien n'est persisté.
+ */
+export function generateDirectionsWithModel(
+  projectName: string,
+  draft: BriefDraft,
+  callModel: DirectionsModelCall
+): Promise<DirectionsResult> {
+  const prompt = buildPrompt(projectName, draft);
+
+  return generateWithEthicsGuard(
+    (feedback) => callModel(prompt, feedback),
+    {
+      publishableText,
+      label: "directions",
+      maxRetries: ETHICS_MAX_RETRIES,
+    }
+  );
+}
+
+export function generateDirectionsFromBrief(
+  projectName: string,
+  draft: BriefDraft
+): Promise<DirectionsResult> {
+  return generateDirectionsWithModel(projectName, draft, callAnthropic);
 }
