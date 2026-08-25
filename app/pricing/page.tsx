@@ -138,7 +138,8 @@ function PlanCard({ tier }: { tier: KitTier }) {
       </ul>
 
       <Link
-        href={`/signup?plan=${plan.tier}`}
+        /* Sous `/app` : le proxy renvoie vers /login si la session manque. */
+        href={`/app/checkout?plan=${plan.tier}`}
         className={`mt-auto rounded px-5 py-2.5 text-center font-mono text-sm transition-colors ${
           recommended
             ? "bg-ink text-paper hover:bg-ink-soft"

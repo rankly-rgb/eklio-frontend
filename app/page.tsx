@@ -16,6 +16,15 @@ export default function HomePage() {
       <header className="flex items-center justify-between border-b border-rule px-6 py-5 md:px-12">
         <span className="label-mono">Eklio</span>
         <nav className="flex items-center gap-6 font-mono text-sm">
+          {/*
+            La page de tarifs est en anglais (périmètre facturation du Lot 4),
+            d'où un libellé anglais dans une navigation encore française. La
+            page d'accueil reste à traduire ; laisser /pricing injoignable
+            serait la pire des deux incohérences.
+          */}
+          <Link href="/pricing" className="hover:opacity-60">
+            Pricing
+          </Link>
           <Link href="/login" className="hover:opacity-60">
             Connexion
           </Link>

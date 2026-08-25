@@ -10,16 +10,21 @@ import { Button } from "@/components/ui/button";
 import { ErrorNotice } from "@/components/ui/error-notice";
 import { DirectionCard } from "@/components/directions/direction-card";
 import { GenerateKitButton } from "@/components/kit/generate-kit-button";
+import { KIT_PLANS, formatUsd } from "@/lib/billing/plans";
+import type { KitTier } from "@/lib/kit/tiers";
 import type { Tables } from "@/types/supabase";
 
 export function DirectionsSelector({
   projectId,
   directions,
   hasKit,
+  entitledTier,
 }: {
   projectId: string;
   directions: Tables<"directions">[];
   hasKit: boolean;
+  /** Tier acheté, ou `null` si rien n'a encore été payé pour ce projet. */
+  entitledTier: KitTier | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [isSelecting, startSelectTransition] = useTransition();
@@ -91,7 +96,26 @@ export function DirectionsSelector({
           </p>
         </div>
 
-        {selectedId === null ? (
+        {entitledTier === null ? (
+          /*
+           * Rien n'a été payé pour ce projet. On NOMME la sortie au lieu
+           * d'afficher un bouton qui refusera au clic : un écran qui bloque
+           * sans dire où aller se lit comme une panne, et ce parcours en a
+           * déjà fait les frais au brief.
+           */
+          <>
+            <Link
+              href={`/app/checkout?project=${projectId}`}
+              className="rounded bg-ink px-5 py-2.5 font-mono text-sm text-paper transition-colors hover:bg-ink-soft"
+            >
+              Unlock my brand kit
+            </Link>
+            <p className="max-w-[55ch] font-mono text-xs text-ink-muted">
+              One payment, from {formatUsd(KIT_PLANS.starter.amountCents)}. Your
+              brief and these three directions stay exactly as they are.
+            </p>
+          </>
+        ) : selectedId === null ? (
           <>
             <Button variant="primary" disabled aria-describedby="kit-needs-direction">
               Build my brand kit
