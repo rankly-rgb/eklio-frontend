@@ -98,7 +98,7 @@ export const SPECIALTY_OPTIONS: ChoiceOption[] = [
   { value: "other", label: "other" },
 ];
 
-const STAGE_OPTIONS: ChoiceOption[] = [
+export const STAGE_OPTIONS: ChoiceOption[] = [
   { value: "launching", label: "launching the practice" },
   { value: "restructuring", label: "restructuring it" },
   {
@@ -107,14 +107,14 @@ const STAGE_OPTIONS: ChoiceOption[] = [
   },
 ];
 
-const DECISION_CONTEXT_OPTIONS: ChoiceOption[] = [
+export const DECISION_CONTEXT_OPTIONS: ChoiceOption[] = [
   { value: "in_crisis", label: "in crisis right now" },
   { value: "long_considered", label: "has been considering it for a while" },
   { value: "referred", label: "referred by another provider" },
   { value: "directory", label: "found you through a directory" },
 ];
 
-const OBJECTION_OPTIONS: ChoiceOption[] = [
+export const OBJECTION_OPTIONS: ChoiceOption[] = [
   { value: "cost", label: "cost" },
   { value: "will_they_get_me", label: "“will they get me?”" },
   { value: "time", label: "time" },

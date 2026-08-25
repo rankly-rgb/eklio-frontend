@@ -1,14 +1,14 @@
 import type { Tables } from "@/types/supabase";
-import type { Palette } from "@/lib/ai/directions";
+import { paletteFromStored, type Palette } from "@/lib/ai/directions";
 
 type PaletteEntry = { key: keyof Palette; label: string };
 
 const PALETTE_ENTRIES: PaletteEntry[] = [
-  { key: "primaire", label: "primaire" },
-  { key: "secondaire", label: "secondaire" },
+  { key: "primary", label: "primary" },
+  { key: "secondary", label: "secondary" },
   { key: "accent", label: "accent" },
-  { key: "neutre_clair", label: "neutre clair" },
-  { key: "neutre_fonce", label: "neutre foncé" },
+  { key: "neutral_light", label: "light neutral" },
+  { key: "neutral_dark", label: "dark neutral" },
 ];
 
 export function DirectionCard({
@@ -20,7 +20,9 @@ export function DirectionCard({
   selected: boolean;
   children?: React.ReactNode;
 }) {
-  const palette = direction.palette as Palette;
+  // Lecture tolérante : les directions générées avant le Lot 2 portent une
+  // palette aux clés françaises (cf. paletteFromStored).
+  const palette = paletteFromStored(direction.palette);
 
   return (
     <div
@@ -57,9 +59,9 @@ export function DirectionCard({
       </div>
 
       <div className="flex flex-col gap-1 font-mono text-xs text-ink-soft">
-        <span className="label-mono text-ink-muted">Typographies</span>
-        <span>Titres : {direction.typographie_titre}</span>
-        <span>Corps : {direction.typographie_corps}</span>
+        <span className="label-mono text-ink-muted">Typefaces</span>
+        <span>Headings: {direction.typographie_titre}</span>
+        <span>Body: {direction.typographie_corps}</span>
       </div>
 
       {children}

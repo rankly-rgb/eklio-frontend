@@ -36,7 +36,7 @@ export default async function DirectionsPage({
           href={`/app/projets/${project.id}/brief/recapitulatif`}
           className="font-mono text-sm underline hover:opacity-60"
         >
-          ← Récapitulatif
+          ← Review
         </Link>
         <span className="truncate font-mono text-xs text-ink-muted">
           {project.name}
@@ -45,14 +45,14 @@ export default async function DirectionsPage({
 
       <div className="flex flex-col gap-3">
         <p className="font-mono text-xs tracking-[0.08em] text-ink-muted">
-          Directions créatives
+          Creative directions
         </p>
         <h1 className="font-display text-[40px] leading-tight">
-          Trois directions pour votre marque.
+          Three directions for your brand.
         </h1>
         <p className="text-sm text-ink-muted">
-          Choisissez celle qui vous ressemble le plus. Vous pourrez régénérer
-          à tout moment.
+          Pick the one that sounds most like you. You can regenerate at any
+          time.
         </p>
       </div>
 
