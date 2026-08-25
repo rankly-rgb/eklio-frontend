@@ -1,15 +1,5 @@
 import type { Tables } from "@/types/supabase";
-import { paletteFromStored, type Palette } from "@/lib/ai/directions";
-
-type PaletteEntry = { key: keyof Palette; label: string };
-
-const PALETTE_ENTRIES: PaletteEntry[] = [
-  { key: "primary", label: "primary" },
-  { key: "secondary", label: "secondary" },
-  { key: "accent", label: "accent" },
-  { key: "neutral_light", label: "light neutral" },
-  { key: "neutral_dark", label: "dark neutral" },
-];
+import { PALETTE_ENTRIES, paletteFromStored } from "@/lib/ai/directions";
 
 export function DirectionCard({
   direction,

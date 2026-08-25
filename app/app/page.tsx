@@ -7,11 +7,19 @@ import { DeleteProjectButton } from "@/components/delete-project-button";
 import { projectStatusLabel } from "@/lib/projects/status";
 import type { Tables } from "@/types/supabase";
 
+/*
+ * Reprise par statut : « Reprendre » ramène là où le projet en est réellement.
+ * Une fois le kit généré (Lot 3), c'est le livrable qui est le point de
+ * reprise — plus les directions, qui sont désormais derrière soi.
+ */
 function resumeHref(project: Tables<"projects">): string {
   if (project.status === "brief") {
     return `/app/projets/${project.id}/brief/${project.current_step}`;
   }
-  if (project.status === "directions" || project.status === "kit") {
+  if (project.status === "kit") {
+    return `/app/projets/${project.id}/kit`;
+  }
+  if (project.status === "directions") {
     return `/app/projets/${project.id}/directions`;
   }
   return `/app/projets/${project.id}/brief/recapitulatif`;

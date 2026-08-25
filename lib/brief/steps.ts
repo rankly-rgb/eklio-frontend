@@ -231,7 +231,7 @@ export const SITE_GOAL_OPTIONS: ChoiceOption[] = [
   { value: "establish_credibility", label: "establish credibility" },
 ];
 
-const PAGE_OPTIONS: ChoiceOption[] = [
+export const PAGE_OPTIONS: ChoiceOption[] = [
   { value: "home", label: "home" },
   { value: "about", label: "about" },
   { value: "approach", label: "approach" },
@@ -247,7 +247,7 @@ const PAGE_OPTIONS: ChoiceOption[] = [
  * sollicitation est interdite pour ce public (ACA C.3.a, APA 5.05). L'aide du
  * champ le dit explicitement plutôt que de laisser l'omission inexpliquée.
  */
-const PROOF_OPTIONS: ChoiceOption[] = [
+export const PROOF_OPTIONS: ChoiceOption[] = [
   { value: "credentials", label: "credentials & licensure" },
   { value: "training_certifications", label: "training & certifications" },
   { value: "publications", label: "publications" },
