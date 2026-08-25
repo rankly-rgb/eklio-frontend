@@ -3,7 +3,15 @@
 Socle commun **ACA / APA / boards d'État**, lu de la façon la plus restrictive,
 pour ne pas maintenir 50 jeux de règles. Tout contenu généré par Eklio qu'un
 praticien pourrait publier passe par ici : descriptions de directions (câblé au
-Lot 2, cf. `lib/ai/directions.ts`), kit de marque (Lot 3), Monthly Presence.
+Lot 2, cf. `lib/ai/directions.ts`), kit de marque (câblé au Lot 3, cf.
+`lib/ai/kit.ts`), Monthly Presence.
+
+Une seule exception, documentée et testée : les **contre-exemples du guide de
+voix** du kit (`voice_and_tone.dont_examples`). Ils nomment la faute à éviter,
+sont affichés sous « never write this », et ne sont jamais de la copy à
+publier — les vérifier ferait échouer la génération sur sa propre pédagogie.
+Tout le reste du kit, y compris chaque titre et chaque corps de chaque page,
+passe par `checkEthics`.
 
 Couche autonome : elle n'importe rien de `lib/ai`. C'est `lib/ai` qui l'importe.
 

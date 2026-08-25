@@ -102,15 +102,70 @@ plus la cible : ne rien y écrire.
   schéma dans `eklio-backend` : la base US est repartie propre, et le front
   n'applique plus rien. C'est la raison d'être de la règle en tête de fichier.
 
-## Reste pour le lot 3
+## Lot 3 : kit de marque (génération + page de kit)
 
-- Kit de marque complet, prompt multi-constructeurs, export PDF, Stripe,
-  page marketing, statut `kit`.
+- **Schéma** : `brand_kits` était **déjà en place et suffisante** sur la base US
+  — aucune migration n'a été appliquée par le prompt backend du Lot 3, et
+  `types/supabase.ts` était donc déjà à jour (vérifié par régénération et
+  comparaison le 2026-08-25, addendum `ProjectStatus` inchangé).
+- **Pas de colonne `tier`** : `brand_kits` porte `id`, `project_id` (unique),
+  `direction_id`, `content` (jsonb), `multi_builder_prompt`, `pdf_url`,
+  `share_slug` (unique), `created_at`, `updated_at` — et rien d'autre. Le tier
+  qui a produit le kit est donc rangé **dans `content`**, faute de colonne. Si
+  le Lot 4 doit requêter le tier (facturation, statistiques), c'est une
+  migration à faire dans `eklio-backend` — pas ici.
+- **Découpage de la persistance** : le prompt multi-plateformes va dans la
+  colonne `multi_builder_prompt` (colonne de premier ordre déjà prévue au
+  schéma), le reste du livrable dans `content`. Il n'existe qu'à un seul
+  endroit. `project_id` étant unique, une régénération **remplace** le kit
+  (upsert `onConflict: project_id`) : un projet porte un kit et un seul, pas
+  d'historique.
+- **Génération** : `lib/ai/kit.ts`, même mécanique que les directions — SDK
+  serveur-only, outil unique forcé, schéma strict, validation zod — enveloppée
+  par `generateWithEthicsGuard`. Trois gardes cumulées : structurelle, de
+  périmètre (`applyScope` : une page demandée manquante = `KitScopeError`,
+  aucune écriture), et déontologique.
+- **Mapping brief → prompt mutualisé** : extrait dans `lib/ai/brief-context.ts`
+  et utilisé par les directions comme par le kit. Deux copies auraient dérivé à
+  la première question ajoutée au brief.
+- **Contre-exemples du guide de voix (`dont_examples`)** : seules chaînes du kit
+  **exclues** du contrôle déontologique, délibérément. Ce sont des
+  contre-exemples affichés sous « never write this », jamais de la copy à
+  publier ; les vérifier reviendrait à demander au modèle d'illustrer une faute
+  sans jamais l'écrire, et la génération échouerait sur sa propre pédagogie. Le
+  prompt leur demande de **nommer** la faute plutôt que de la démontrer. Un test
+  fige ce contrat.
+- **Seam de gating par tier** : `lib/kit/tiers.ts` (module pur). Starter = 3
+  pages, pas de specs sociales ; Practice = 6 pages + specs ; Signature = tout.
+  Le tier est aujourd'hui constant (`DEFAULT_KIT_TIER = "signature"`, le plus
+  généreux tant que le paiement n'existe pas). Au Lot 4, il n'y a **qu'une
+  ligne à changer** dans `app/app/projets/[id]/kit/actions.ts` : lire le tier
+  acheté au lieu de la constante.
+- **Polices** : toujours affichées en texte, jamais chargées à l'exécution —
+  `next/font` exige un nom connu à la compilation et le modèle choisit le sien
+  à la génération. La page de kit le dit à l'utilisateur.
+- **Partage — limite connue** : `share_slug` est fabriqué et conservé (stable
+  d'une régénération à l'autre), mais la RLS de `brand_kits` est **owner-only**
+  (policy `brand_kits_all_own`). Aucune lecture anonyme par slug n'est possible
+  aujourd'hui : construire une route publique `/kit/[slug]` donnerait un 404
+  pour tout le monde sauf le propriétaire. Ouvrir un vrai partage public est une
+  **décision de schéma à prendre dans `eklio-backend`** (policy de lecture
+  anonyme par slug, ou vue publique) — le front ne la prend pas.
+- **Non testé de bout en bout ici** : toujours aucune `ANTHROPIC_API_KEY` dans
+  cet environnement. Le premier appel réel reste à vérifier une fois la clé
+  renseignée.
+- **Durée de génération** : le kit est nettement plus long que les directions
+  (jusqu'à 8 pages de copy, les specs sociales et le prompt en une réponse). Le
+  point de vigilance `maxDuration` noté au Lot 2 vaut a fortiori ici.
+
+## Reste pour le lot 4
+
+- Pricing en dollars, Stripe, Monthly Presence.
+- **Branchement réel du gating par tier** : lire le tier acheté et le passer à
+  `resolveKitScope()` (voir seam ci-dessus).
+- Partage public du kit, s'il est voulu : décision de schéma côté
+  `eklio-backend` d'abord (cf. limite RLS ci-dessus).
+- Export PDF (`brand_kits.pdf_url` existe et reste vide), page marketing.
 - Régénérer `types/supabase.ts` depuis le projet US après toute évolution du
   schéma dans `eklio-backend` (`supabase gen types typescript --project-id
   fobgdsupyfslxbswfuay`), sans oublier de réappliquer l'addendum manuel.
-- Sur Vercel, le temps de génération (jusqu'à ~1 minute annoncé à
-  l'utilisateur) peut dépasser le timeout par défaut des fonctions
-  serverless sur le plan gratuit (10 s) — vérifier le plan et, si besoin,
-  augmenter `maxDuration` sur la route ou passer par une génération
-  asynchrone dans un lot ultérieur.

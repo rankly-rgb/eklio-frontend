@@ -29,6 +29,14 @@ export default async function DirectionsPage({
     notFound();
   }
 
+  // Sert seulement à savoir s'il faut proposer « construire » ou « reconstruire »
+  // le kit : le livrable lui-même se lit sur /app/projets/[id]/kit.
+  const { data: existingKit } = await supabase
+    .from("brand_kits")
+    .select("id")
+    .eq("project_id", id)
+    .maybeSingle();
+
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-6 py-10">
       <header className="flex items-center justify-between gap-4">
@@ -56,7 +64,11 @@ export default async function DirectionsPage({
         </p>
       </div>
 
-      <DirectionsSelector projectId={project.id} directions={directions} />
+      <DirectionsSelector
+        projectId={project.id}
+        directions={directions}
+        hasKit={existingKit !== null}
+      />
     </div>
   );
 }
