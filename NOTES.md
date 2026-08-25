@@ -479,13 +479,56 @@ aller-retour réel reste à faire par vous :
     `past_due`, et la page Monthly Presence doit le DIRE plutôt que de proposer
     de racheter.
 
+### Consolidation avant merge (correctifs post-revue)
+
+Deux points relevés à la revue de la PR #11, traités sur la même branche.
+
+**Le tier du kit va en COLONNE, et nulle part ailleurs.** Vérification faite :
+l'upsert écrit bien `brand_kits.tier` explicitement depuis `aa1f1a0` — rien à
+corriger, mais rien ne l'empêchait de régresser. Le piège que ferme le test
+ajouté : `brand_kits.tier` a un **défaut `'starter'`**, donc un upsert qui
+n'écrirait pas la colonne enregistrerait tout kit en `starter` sans rien lever.
+Le défaut d'une colonne ne casse pas — il ment.
+
+Le risque symétrique est la **double écriture**. Écrire le tier à la fois dans
+la colonne et dans `content` ferait cohabiter deux copies d'un même fait, ce
+qui est *exactement* le désalignement colonne/JSONB qu'on cherche à éviter. Le
+contrat figé est donc : **un seul écrivain**, la colonne, et un jsonb qui ne
+porte plus le tier du tout. Colonne et `content` ne peuvent pas se contredire
+parce qu'il n'y a rien à contredire. Les kits d'avant le Lot 4 gardent leur
+`content.tier` et restent relus, mais plus rien ne l'écrit.
+
+**`/login` honore `next`** (`lib/auth/next-url.ts`, module pur). Le proxy posait
+le paramètre, personne ne le consommait. Le correctif refuse tout ce qui n'est
+pas un chemin interne — et ce qui compte n'est pas `http://`, que tout le monde
+filtre, mais les façons d'écrire « ailleurs » qui *ressemblent* à un chemin :
+`//evil.example` (URL protocol-relative), `/\evil.example` (le navigateur lit
+`\` comme `/`), les variantes encodées, et les caractères de contrôle que les
+navigateurs **retirent** avant de résoudre l'URL — `/\t/evil.example` devient
+`//evil.example`. Un `next` refusé n'échoue jamais la connexion : bloquer
+l'authentification punirait la victime, pas l'attaquant.
+
+L'autre moitié était dans le proxy, qui n'emportait que le `pathname` :
+`/app/checkout?plan=signature` revenait en `/app/checkout`, et le praticien
+atterrissait sur le tier recommandé par défaut — un Signature à $249 dégradé en
+Practice à $149, derrière une page de checkout parfaitement crédible.
+
+Les trois correctifs ont été vérifiés **par mutation** : chaque assertion a été
+confirmée capable d'échouer en réintroduisant le bug qu'elle décrit.
+
+**Lockfile** : `package-lock.json` est légitime (npm, lockfileVersion 3, 516
+paquets, racine alignée sur `package.json`), et `npm ci` le reproduit dans un
+répertoire vierge. Il reste versionné et **hors** `.gitignore` — le piège du
+lockfile vide signalé côté backend ne s'applique pas ici.
+
 ### Limites connues, à traiter ensuite
 
-- **`/login` ignore le paramètre `next`.** Le proxy le pose bien
-  (`/login?next=/app/checkout`), mais `signIn` redirige inconditionnellement
-  vers `/app`. Un praticien parti de `/pricing` sans session atterrit donc sur
-  son tableau de bord au lieu du checkout. Correctif volontairement laissé de
-  côté ici : il touche `lib/actions/auth.ts`, hors du périmètre facturation.
+- **`signUp` n'honore pas `next`.** Un praticien parti de `/pricing` *sans
+  compte* crée son compte, confirme son email et atterrit sur `/app` : la
+  destination se perd au passage par la boîte mail. Le correctif de ce lot ne
+  couvre que la connexion, volontairement — porter `next` à travers un lien de
+  confirmation d'email demande de le faire transiter par `emailRedirectTo` et
+  `/auth/callback`, ce qui est une autre décision.
 - **La page d'accueil est toujours en français** alors que `/pricing` est en
   anglais, d'où un libellé « Pricing » dans une navigation française. Laisser
   `/pricing` injoignable aurait été la pire des deux incohérences.
