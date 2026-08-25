@@ -47,7 +47,11 @@ export const paletteSchema = z.object({
 
 export const directionSchema = z.object({
   name: z.string().min(1).max(60),
-  description: z.string().min(1).max(400),
+  // 600 et non 400 : en anglais, « 2 à 3 phrases » chaleureuses tiennent
+  // rarement sous 400 caractères, et la limite faisait échouer la validation
+  // structurelle à chaque génération réelle. Le budget est aussi demandé au
+  // modèle (schéma d'outil + prompt), la borne n'étant qu'un filet.
+  description: z.string().min(1).max(600),
   palette: paletteSchema,
   heading_font: z.string().min(1).max(60),
   body_font: z.string().min(1).max(60),
@@ -117,7 +121,7 @@ const DIRECTIONS_TOOL: Anthropic.Tool = {
             description: {
               type: "string",
               description:
-                "2 to 3 sentences describing the brand personality and why it fits this practice.",
+                "2 to 3 sentences describing the brand personality and why it fits this practice. Keep it under 500 characters.",
             },
             palette: {
               type: "object",
@@ -227,7 +231,7 @@ Propose exactly 3 creative directions, each coherent with this brief and each cl
 
 For each direction:
 - Give it a name of 2 to 4 words a clinician would be comfortable saying out loud.
-- Describe it in 2 to 3 sentences: the personality it carries, and why it fits this practice.
+- Describe it in 2 to 3 sentences — under 500 characters — covering the personality it carries and why it fits this practice.
 - Choose a palette of 5 colors consistent with the color families and the contrast level asked for.
 - Choose two real, available typefaces matching the type style asked for — one for headings, one for body copy.
 
