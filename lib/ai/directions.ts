@@ -4,10 +4,10 @@ import { getAnthropicClient } from "@/lib/ai/client";
 import type { BriefDraft } from "@/lib/brief/schemas";
 import {
   EMOTION_OPTIONS,
-  FAMILLE_CHROMATIQUE_OPTIONS,
-  METIER_OPTIONS,
-  OBJECTIF_SITE_OPTIONS,
-  STYLE_TYPOGRAPHIQUE_OPTIONS,
+  COLOR_FAMILY_OPTIONS,
+  LICENSE_TYPE_OPTIONS,
+  SITE_GOAL_OPTIONS,
+  TYPE_STYLE_OPTIONS,
   TONE_SLIDERS,
   optionLabel,
 } from "@/lib/brief/steps";
@@ -130,30 +130,30 @@ function toneSummary(draft: BriefDraft): string {
 
 function buildPrompt(projectName: string, draft: BriefDraft): string {
   const metier =
-    draft.metier === "autre"
-      ? (draft.metier_autre ?? "non précisé")
-      : (optionLabel(METIER_OPTIONS, draft.metier) ?? "non précisé");
+    draft.license_type === "other"
+      ? (draft.license_type_other ?? "non précisé")
+      : (optionLabel(LICENSE_TYPE_OPTIONS, draft.license_type) ?? "non précisé");
 
   return `Vous êtes directeur·rice artistique senior pour Eklio, un service qui crée des identités de marque pour des solopreneurs français (coachs, thérapeutes, consultants, formateurs, freelances, artisans).
 
 Voici le brief de marque rempli par le client pour le projet « ${projectName} » :
 
 - Métier : ${metier}
-- Offre principale : ${draft.offre_principale ?? "non précisé"}
-- Problème résolu : ${draft.probleme_resolu ?? "non précisé"}
-- Résultat pour le client : ${draft.resultat_client ?? "non précisé"}
-- Différenciation : ${draft.differenciation ?? "non précisé"}
-- Cible : ${draft.cible_description ?? "non précisé"}
+- Offre principale : ${draft.offer ?? "non précisé"}
+- Problème résolu : ${draft.problem_addressed ?? "non précisé"}
+- Résultat pour le client : ${draft.client_gains ?? "non précisé"}
+- Différenciation : ${draft.differentiation ?? "non précisé"}
+- Cible : ${draft.ideal_client ?? "non précisé"}
 - Ton souhaité : ${toneSummary(draft)}
 - Émotions à transmettre : ${labelsFor(EMOTION_OPTIONS, draft.emotions)}
-- À éviter dans le ton : ${draft.a_eviter_ton ?? "aucune contrainte précisée"}
-- Familles de couleurs souhaitées : ${labelsFor(FAMILLE_CHROMATIQUE_OPTIONS, draft.familles_chromatiques)}
-- Niveau de contraste souhaité : ${draft.niveau_contraste ?? "non précisé"}
-- Couleurs à éviter : ${draft.couleurs_a_eviter ?? "aucune"}
-- Univers admirés : ${draft.univers_admires ?? "non précisé"}
-- Style typographique souhaité : ${optionLabel(STYLE_TYPOGRAPHIQUE_OPTIONS, draft.style_typographique) ?? "non précisé"}
-- Niveau de caractère souhaité : ${draft.niveau_caractere ?? "non précisé"}
-- Objectif du site : ${optionLabel(OBJECTIF_SITE_OPTIONS, draft.objectif_site) ?? "non précisé"}
+- À éviter dans le ton : ${draft.tone_to_avoid ?? "aucune contrainte précisée"}
+- Familles de couleurs souhaitées : ${labelsFor(COLOR_FAMILY_OPTIONS, draft.color_families)}
+- Niveau de contraste souhaité : ${draft.contrast_level ?? "non précisé"}
+- Couleurs à éviter : ${draft.colors_to_avoid ?? "aucune"}
+- Univers admirés : ${draft.admired_worlds ?? "non précisé"}
+- Style typographique souhaité : ${optionLabel(TYPE_STYLE_OPTIONS, draft.type_style) ?? "non précisé"}
+- Niveau de caractère souhaité : ${draft.character_level ?? "non précisé"}
+- Objectif du site : ${optionLabel(SITE_GOAL_OPTIONS, draft.site_goal) ?? "non précisé"}
 
 Proposez exactement 3 directions créatives distinctes et cohérentes avec ce brief, en français. Chaque direction doit avoir une personnalité clairement différenciée des deux autres (par exemple : une plus sobre, une plus audacieuse, une plus chaleureuse — adaptez selon le brief, ne vous limitez pas à cet exemple). Pour chaque direction, choisissez des polices réelles et disponibles qui correspondent au style souhaité, et une palette de 5 couleurs cohérente avec les familles chromatiques demandées.`;
 }

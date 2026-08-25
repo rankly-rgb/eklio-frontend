@@ -12,14 +12,12 @@ import type { BriefDraft } from "@/lib/brief/schemas";
  * en anglais américain ; les commentaires restent en français, comme partout
  * ailleurs dans le dépôt.
  *
- * NOMMAGE — délibéré, ne pas « corriger » isolément.
- * Les clés persistées (`nom_activite`, `metier`, `offre_principale`, …) et les
- * tableaux d'options exportés gardent leurs noms d'origine : `lib/ai/directions.ts`
- * les lit et reste gelé jusqu'au Lot 2. `metier` porte désormais le type de
- * licence, et sa branche « other » conserve la valeur littérale `"autre"` pour
- * la même raison (directions.ts la compare). Seuls les libellés affichés, les
- * valeurs d'options et la validation changent ici. C'est le Lot 2 qui renommera
- * les clés en réécrivant la couche de génération.
+ * NOMMAGE — les clés persistées et les tableaux d'options sont en anglais
+ * depuis le Lot 2, alignés sur les libellés affichés : `license_type` (le champ
+ * porte un TYPE DE LICENCE, pas une profession libre), `practice_name`,
+ * `offer`, `color_families`… Les briefs déjà enregistrés portent les anciennes
+ * clés françaises ; la traduction se fait à la lecture, en un seul endroit :
+ * `normalizeBriefDraft()` dans lib/brief/schemas.ts.
  */
 
 export type SliderDef = {
@@ -64,7 +62,7 @@ export type FieldDef =
     }
   | {
       kind: "sliders";
-      name: "curseurs_de_ton";
+      name: "tone_sliders";
       label: string;
       sliders: SliderDef[];
     };
@@ -78,14 +76,14 @@ export type StepDef = {
   fields: FieldDef[];
 };
 
-/* Types de licence. `autre` = « other » — valeur gelée jusqu'au Lot 2 (cf. en-tête). */
-export const METIER_OPTIONS: ChoiceOption[] = [
+/* Types de licence. `other` est la branche libre, précisée par `license_type_other`. */
+export const LICENSE_TYPE_OPTIONS: ChoiceOption[] = [
   { value: "therapist", label: "therapist (generalist)" },
   { value: "lpc", label: "LPC — licensed professional counselor" },
   { value: "lmft", label: "LMFT — marriage & family therapist" },
   { value: "psychologist", label: "psychologist" },
   { value: "lcsw", label: "LCSW — clinical social worker" },
-  { value: "autre", label: "other" },
+  { value: "other", label: "other" },
 ];
 
 export const SPECIALTY_OPTIONS: ChoiceOption[] = [
@@ -100,7 +98,7 @@ export const SPECIALTY_OPTIONS: ChoiceOption[] = [
   { value: "other", label: "other" },
 ];
 
-const STADE_OPTIONS: ChoiceOption[] = [
+const STAGE_OPTIONS: ChoiceOption[] = [
   { value: "launching", label: "launching the practice" },
   { value: "restructuring", label: "restructuring it" },
   {
@@ -109,7 +107,7 @@ const STADE_OPTIONS: ChoiceOption[] = [
   },
 ];
 
-const CONTEXTE_ACHAT_OPTIONS: ChoiceOption[] = [
+const DECISION_CONTEXT_OPTIONS: ChoiceOption[] = [
   { value: "in_crisis", label: "in crisis right now" },
   { value: "long_considered", label: "has been considering it for a while" },
   { value: "referred", label: "referred by another provider" },
@@ -141,7 +139,7 @@ export const EMOTION_OPTIONS: ChoiceOption[] = [
  * Les pastilles sont des données d'aperçu chromatique (contenu du brief),
  * pas des couleurs d'interface : elles ne passent donc pas par les tokens.
  */
-export const FAMILLE_CHROMATIQUE_OPTIONS: ChoiceOption[] = [
+export const COLOR_FAMILY_OPTIONS: ChoiceOption[] = [
   {
     value: "warm_neutrals",
     label: "warm neutrals",
@@ -184,14 +182,14 @@ export const FAMILLE_CHROMATIQUE_OPTIONS: ChoiceOption[] = [
   },
 ];
 
-const NIVEAU_CONTRASTE_OPTIONS: ChoiceOption[] = [
+const CONTRAST_LEVEL_OPTIONS: ChoiceOption[] = [
   { value: "soft", label: "soft" },
   { value: "balanced", label: "balanced" },
   { value: "defined", label: "defined" },
 ];
 
 /* Chaque style est rendu dans sa propre police pour être choisi à l'œil. */
-export const STYLE_TYPOGRAPHIQUE_OPTIONS: ChoiceOption[] = [
+export const TYPE_STYLE_OPTIONS: ChoiceOption[] = [
   {
     value: "editorial_serif",
     label: "editorial serif",
@@ -220,13 +218,13 @@ export const STYLE_TYPOGRAPHIQUE_OPTIONS: ChoiceOption[] = [
   },
 ];
 
-const NIVEAU_CARACTERE_OPTIONS: ChoiceOption[] = [
+const CHARACTER_LEVEL_OPTIONS: ChoiceOption[] = [
   { value: "understated", label: "understated" },
   { value: "confident", label: "confident" },
   { value: "singular", label: "singular" },
 ];
 
-export const OBJECTIF_SITE_OPTIONS: ChoiceOption[] = [
+export const SITE_GOAL_OPTIONS: ChoiceOption[] = [
   { value: "book_consultations", label: "book consultations" },
   { value: "explain_approach", label: "explain your approach" },
   { value: "collect_inquiries", label: "collect inquiries" },
@@ -249,7 +247,7 @@ const PAGE_OPTIONS: ChoiceOption[] = [
  * sollicitation est interdite pour ce public (ACA C.3.a, APA 5.05). L'aide du
  * champ le dit explicitement plutôt que de laisser l'omission inexpliquée.
  */
-const PREUVE_OPTIONS: ChoiceOption[] = [
+const PROOF_OPTIONS: ChoiceOption[] = [
   { value: "credentials", label: "credentials & licensure" },
   { value: "training_certifications", label: "training & certifications" },
   { value: "publications", label: "publications" },
@@ -258,10 +256,10 @@ const PREUVE_OPTIONS: ChoiceOption[] = [
 ];
 
 export const TONE_SLIDERS: SliderDef[] = [
-  { name: "ton_sobre_audacieux", left: "reserved", right: "expressive" },
-  { name: "ton_chaleureux_professionnel", left: "warm", right: "clinical" },
-  { name: "ton_classique_contemporain", left: "classic", right: "contemporary" },
-  { name: "ton_minimal_expressif", left: "minimal", right: "rich" },
+  { name: "tone_reserved_expressive", left: "reserved", right: "expressive" },
+  { name: "tone_warm_clinical", left: "warm", right: "clinical" },
+  { name: "tone_classic_contemporary", left: "classic", right: "contemporary" },
+  { name: "tone_minimal_rich", left: "minimal", right: "rich" },
 ];
 
 export const STEPS: StepDef[] = [
@@ -274,23 +272,23 @@ export const STEPS: StepDef[] = [
     fields: [
       {
         kind: "text",
-        name: "nom_activite",
+        name: "practice_name",
         label: "Practice name",
         required: true,
       },
       {
         kind: "choice",
-        name: "metier",
+        name: "license_type",
         label: "License type",
         required: true,
-        options: METIER_OPTIONS,
+        options: LICENSE_TYPE_OPTIONS,
       },
       {
         kind: "text",
-        name: "metier_autre",
+        name: "license_type_other",
         label: "Your license type, in your own words",
         required: true,
-        visibleIf: (values) => values.metier === "autre",
+        visibleIf: (values) => values.license_type === "other",
       },
       {
         kind: "multi",
@@ -301,16 +299,16 @@ export const STEPS: StepDef[] = [
       },
       {
         kind: "textarea",
-        name: "offre_principale",
+        name: "offer",
         label: "What you offer",
         help: "In a sentence or two — individual therapy, couples intensives, groups.",
         required: true,
       },
       {
         kind: "choice",
-        name: "stade",
+        name: "stage",
         label: "Stage",
-        options: STADE_OPTIONS,
+        options: STAGE_OPTIONS,
       },
     ],
   },
@@ -323,14 +321,14 @@ export const STEPS: StepDef[] = [
     fields: [
       {
         kind: "textarea",
-        name: "probleme_resolu",
+        name: "problem_addressed",
         label: "Problem you help with",
         help: "Describe it as a situation someone is living, not a diagnostic label.",
         required: true,
       },
       {
         kind: "textarea",
-        name: "resultat_client",
+        name: "client_gains",
         label: "What the client gains",
         // Garde-fou rédactionnel (Lot 0) : oriente vers une formulation sans
         // promesse de résultat, ce que la génération vérifiera au Lot 2.
@@ -345,7 +343,7 @@ export const STEPS: StepDef[] = [
       },
       {
         kind: "textarea",
-        name: "differenciation",
+        name: "differentiation",
         label: "What sets you apart",
       },
     ],
@@ -359,16 +357,16 @@ export const STEPS: StepDef[] = [
     fields: [
       {
         kind: "textarea",
-        name: "cible_description",
+        name: "ideal_client",
         label: "Your ideal client",
         help: "A situation tells us more than a label — “first-gen professionals carrying success guilt” rather than “anxiety”.",
         required: true,
       },
       {
         kind: "choice",
-        name: "contexte_achat",
+        name: "decision_context",
         label: "Decision context",
-        options: CONTEXTE_ACHAT_OPTIONS,
+        options: DECISION_CONTEXT_OPTIONS,
       },
       {
         kind: "multi",
@@ -389,7 +387,7 @@ export const STEPS: StepDef[] = [
     fields: [
       {
         kind: "sliders",
-        name: "curseurs_de_ton",
+        name: "tone_sliders",
         label: "Tone sliders",
         sliders: TONE_SLIDERS,
       },
@@ -404,7 +402,7 @@ export const STEPS: StepDef[] = [
       },
       {
         kind: "text",
-        name: "a_eviter_ton",
+        name: "tone_to_avoid",
         label: "Avoid",
         help: "Words or postures you do not want anywhere near your practice.",
       },
@@ -419,27 +417,27 @@ export const STEPS: StepDef[] = [
     fields: [
       {
         kind: "multi",
-        name: "familles_chromatiques",
+        name: "color_families",
         label: "Color families",
         help: "Sage and dusty blue are the directory default — standing apart is allowed.",
         required: true,
-        options: FAMILLE_CHROMATIQUE_OPTIONS,
+        options: COLOR_FAMILY_OPTIONS,
         max: 3,
       },
       {
         kind: "choice",
-        name: "niveau_contraste",
+        name: "contrast_level",
         label: "Contrast level",
-        options: NIVEAU_CONTRASTE_OPTIONS,
+        options: CONTRAST_LEVEL_OPTIONS,
       },
       {
         kind: "text",
-        name: "couleurs_a_eviter",
+        name: "colors_to_avoid",
         label: "Colors to avoid",
       },
       {
         kind: "textarea",
-        name: "univers_admires",
+        name: "admired_worlds",
         label: "Admired worlds",
         help: "Brands, places or objects whose atmosphere speaks to you.",
       },
@@ -454,17 +452,17 @@ export const STEPS: StepDef[] = [
     fields: [
       {
         kind: "choice",
-        name: "style_typographique",
+        name: "type_style",
         label: "Type style",
         required: true,
-        options: STYLE_TYPOGRAPHIQUE_OPTIONS,
+        options: TYPE_STYLE_OPTIONS,
       },
       {
         kind: "choice",
-        name: "niveau_caractere",
+        name: "character_level",
         label: "Character level",
         required: true,
-        options: NIVEAU_CARACTERE_OPTIONS,
+        options: CHARACTER_LEVEL_OPTIONS,
       },
     ],
   },
@@ -477,36 +475,36 @@ export const STEPS: StepDef[] = [
     fields: [
       {
         kind: "choice",
-        name: "objectif_site",
+        name: "site_goal",
         label: "Site goal",
         required: true,
-        options: OBJECTIF_SITE_OPTIONS,
+        options: SITE_GOAL_OPTIONS,
       },
       {
         kind: "text",
-        name: "action_attendue",
+        name: "primary_action",
         label: "Primary action",
         help: "The exact words on your main button — for example: book a consultation.",
         required: true,
       },
       {
         kind: "multi",
-        name: "pages_souhaitees",
+        name: "pages_wanted",
         label: "Pages wanted",
         options: PAGE_OPTIONS,
       },
       {
         kind: "multi",
-        name: "preuves_disponibles",
+        name: "available_proof",
         label: "Available proof",
         // Garde-fou rédactionnel (Lot 0) : l'absence de « témoignages » est
         // une contrainte déontologique, pas un oubli — on l'explique.
         help: "Client testimonials are intentionally left out: ACA and APA advertising rules prohibit soliciting them. Credentials and training carry that weight instead.",
-        options: PREUVE_OPTIONS,
+        options: PROOF_OPTIONS,
       },
       {
         kind: "text",
-        name: "contraintes",
+        name: "constraints",
         label: "Constraints",
       },
     ],

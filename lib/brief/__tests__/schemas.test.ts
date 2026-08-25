@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   briefDraftSchema,
+  normalizeBriefDraft,
   parseStoredBriefDraft,
-  PREUVES_DISPONIBLES,
+  AVAILABLE_PROOF,
   step1Schema,
   step4Schema,
   step5Schema,
@@ -19,11 +20,11 @@ import { STEPS, TONE_SLIDERS } from "@/lib/brief/steps";
  */
 
 const validStep1 = {
-  nom_activite: "Hearth Counseling",
-  metier: "lmft",
+  practice_name: "Hearth Counseling",
+  license_type: "lmft",
   specialties: ["couples", "trauma_emdr"],
-  offre_principale: "Couples therapy and weekend intensives.",
-  stade: "premiumizing",
+  offer: "Couples therapy and weekend intensives.",
+  stage: "premiumizing",
 };
 
 describe("étape 1 — licence et spécialités", () => {
@@ -33,27 +34,27 @@ describe("étape 1 — licence et spécialités", () => {
 
   it("refuse un brief sans type de licence", () => {
     const withoutLicense: Record<string, unknown> = { ...validStep1 };
-    delete withoutLicense.metier;
+    delete withoutLicense.license_type;
     const result = step1Schema.safeParse(withoutLicense);
     expect(result.success).toBe(false);
     expect(
-      result.error?.issues.some((i) => i.path[0] === "metier")
+      result.error?.issues.some((i) => i.path[0] === "license_type")
     ).toBe(true);
   });
 
   it("exige la précision libre quand la licence est « other »", () => {
-    const result = step1Schema.safeParse({ ...validStep1, metier: "autre" });
+    const result = step1Schema.safeParse({ ...validStep1, license_type: "other" });
     expect(result.success).toBe(false);
     expect(
-      result.error?.issues.some((i) => i.path[0] === "metier_autre")
+      result.error?.issues.some((i) => i.path[0] === "license_type_other")
     ).toBe(true);
   });
 
   it("accepte « other » dès que la précision est fournie", () => {
     const result = step1Schema.safeParse({
       ...validStep1,
-      metier: "autre",
-      metier_autre: "Licensed art therapist",
+      license_type: "other",
+      license_type_other: "Licensed art therapist",
     });
     expect(result.success).toBe(true);
   });
@@ -77,10 +78,10 @@ describe("étape 1 — licence et spécialités", () => {
 
 describe("étape 4 — ressentis", () => {
   const base = {
-    ton_sobre_audacieux: 2,
-    ton_chaleureux_professionnel: 2,
-    ton_classique_contemporain: 3,
-    ton_minimal_expressif: 3,
+    tone_reserved_expressive: 2,
+    tone_warm_clinical: 2,
+    tone_classic_contemporary: 3,
+    tone_minimal_rich: 3,
   };
 
   it("exige exactement 3 ressentis", () => {
@@ -104,17 +105,17 @@ describe("étape 4 — ressentis", () => {
       emotions: ["calm", "trust", "safety"],
     });
     expect(result.success).toBe(true);
-    expect(result.data?.ton_sobre_audacieux).toBe(3);
-    expect(result.data?.ton_chaleureux_professionnel).toBe(3);
-    expect(result.data?.ton_classique_contemporain).toBe(3);
-    expect(result.data?.ton_minimal_expressif).toBe(3);
+    expect(result.data?.tone_reserved_expressive).toBe(3);
+    expect(result.data?.tone_warm_clinical).toBe(3);
+    expect(result.data?.tone_classic_contemporary).toBe(3);
+    expect(result.data?.tone_minimal_rich).toBe(3);
     // Les 4 curseurs déclarés sont bien ceux que l'étape 4 valide.
     expect(TONE_SLIDERS.map((s) => s.name).sort()).toEqual(
       [
-        "ton_chaleureux_professionnel",
-        "ton_classique_contemporain",
-        "ton_minimal_expressif",
-        "ton_sobre_audacieux",
+        "tone_classic_contemporary",
+        "tone_minimal_rich",
+        "tone_reserved_expressive",
+        "tone_warm_clinical",
       ]
     );
   });
@@ -122,8 +123,8 @@ describe("étape 4 — ressentis", () => {
 
 describe("étape 5 — familles de couleurs", () => {
   it("en accepte 1 à 3, pas 0 ni 4", () => {
-    const parse = (familles_chromatiques: string[]) =>
-      step5Schema.safeParse({ familles_chromatiques }).success;
+    const parse = (color_families: string[]) =>
+      step5Schema.safeParse({ color_families }).success;
     expect(parse(["deep_blues"])).toBe(true);
     expect(parse(["deep_blues", "warm_neutrals", "monochrome"])).toBe(true);
     expect(parse([])).toBe(false);
@@ -136,7 +137,7 @@ describe("étape 5 — familles de couleurs", () => {
 describe("étape 7 — preuves disponibles", () => {
   it("n'offre aucune option de témoignage client", () => {
     // ACA C.3.a / APA 5.05 : la sollicitation de témoignages est interdite.
-    for (const value of PREUVES_DISPONIBLES) {
+    for (const value of AVAILABLE_PROOF) {
       expect(value).not.toMatch(/testimonial|review|rating/i);
     }
   });
@@ -204,16 +205,16 @@ describe("configuration et schémas", () => {
 describe("lecture tolérante du brief stocké", () => {
   it("conserve les champs valides et écarte les valeurs périmées", () => {
     const draft = parseStoredBriefDraft({
-      nom_activite: "Hearth Counseling",
-      metier: "therapeute", // valeur de l'ancien brief français
-      familles_chromatiques: ["deep_blues"],
+      practice_name: "Hearth Counseling",
+      license_type: "therapeute", // valeur de l'ancien brief français
+      color_families: ["deep_blues"],
       emotions: ["calm", "trust", "safety"],
       inconnu: "ignoré",
     });
 
-    expect(draft.nom_activite).toBe("Hearth Counseling");
-    expect(draft.metier).toBeUndefined();
-    expect(draft.familles_chromatiques).toEqual(["deep_blues"]);
+    expect(draft.practice_name).toBe("Hearth Counseling");
+    expect(draft.license_type).toBeUndefined();
+    expect(draft.color_families).toEqual(["deep_blues"]);
     expect(draft.emotions).toEqual(["calm", "trust", "safety"]);
     expect("inconnu" in draft).toBe(false);
   });
@@ -229,41 +230,41 @@ describe("parcours complet des 7 étapes", () => {
   /* Un brief entièrement rempli, tel qu'une praticienne le saisirait. */
   const fullBrief = {
     // 1 — Your practice
-    nom_activite: "Hearth Counseling",
-    metier: "lmft",
+    practice_name: "Hearth Counseling",
+    license_type: "lmft",
     specialties: ["couples", "trauma_emdr"],
-    offre_principale: "Couples therapy and weekend intensives.",
-    stade: "premiumizing",
+    offer: "Couples therapy and weekend intensives.",
+    stage: "premiumizing",
     // 2 — Positioning
-    probleme_resolu: "Partners who keep having the same fight.",
-    resultat_client: "A clearer view of what the fight is really about.",
+    problem_addressed: "Partners who keep having the same fight.",
+    client_gains: "A clearer view of what the fight is really about.",
     alternatives: "Directories, or waiting another year.",
-    differenciation: "Fifteen years with couples, EMDR-trained.",
+    differentiation: "Fifteen years with couples, EMDR-trained.",
     // 3 — Ideal client
-    cible_description: "First-gen professionals carrying success guilt.",
-    contexte_achat: "long_considered",
+    ideal_client: "First-gen professionals carrying success guilt.",
+    decision_context: "long_considered",
     objections: ["cost", "will_they_get_me"],
     // 4 — Voice & tone
-    ton_sobre_audacieux: 2,
-    ton_chaleureux_professionnel: 2,
-    ton_classique_contemporain: 4,
-    ton_minimal_expressif: 2,
+    tone_reserved_expressive: 2,
+    tone_warm_clinical: 2,
+    tone_classic_contemporary: 4,
+    tone_minimal_rich: 2,
     emotions: ["safety", "steadiness", "warmth"],
-    a_eviter_ton: "hustle language, exclamation marks",
+    tone_to_avoid: "hustle language, exclamation marks",
     // 5 — Palette
-    familles_chromatiques: ["warm_neutrals", "muted_plum_slate"],
-    niveau_contraste: "soft",
-    couleurs_a_eviter: "sage",
-    univers_admires: "Aesop stores, Kinfolk.",
+    color_families: ["warm_neutrals", "muted_plum_slate"],
+    contrast_level: "soft",
+    colors_to_avoid: "sage",
+    admired_worlds: "Aesop stores, Kinfolk.",
     // 6 — Typography
-    style_typographique: "editorial_serif",
-    niveau_caractere: "understated",
+    type_style: "editorial_serif",
+    character_level: "understated",
     // 7 — Your website
-    objectif_site: "book_consultations",
-    action_attendue: "book a consultation",
-    pages_souhaitees: ["home", "about", "approach", "fees", "contact"],
-    preuves_disponibles: ["credentials", "training_certifications"],
-    contraintes: "No stock photos of people.",
+    site_goal: "book_consultations",
+    primary_action: "book a consultation",
+    pages_wanted: ["home", "about", "approach", "fees", "contact"],
+    available_proof: ["credentials", "training_certifications"],
+    constraints: "No stock photos of people.",
   };
 
   it("franchit chaque étape sans blocage", () => {
@@ -283,11 +284,79 @@ describe("parcours complet des 7 étapes", () => {
 
   it("bloque l'étape dont un champ obligatoire manque", () => {
     const incomplete: Record<string, unknown> = { ...fullBrief };
-    delete incomplete.action_attendue;
+    delete incomplete.primary_action;
     const result = stepSchemas[7].safeParse(incomplete);
     expect(result.success).toBe(false);
     expect(
-      result.error?.issues.some((i) => i.path[0] === "action_attendue")
+      result.error?.issues.some((i) => i.path[0] === "primary_action")
     ).toBe(true);
+  });
+});
+
+describe("rétrocompatibilité des clés françaises (Lot 2)", () => {
+  it("relit un brief entièrement persisté sous les anciennes clés", () => {
+    const draft = parseStoredBriefDraft({
+      nom_activite: "Hearth Counseling",
+      metier: "lmft",
+      offre_principale: "Couples therapy.",
+      probleme_resolu: "Partners who keep having the same fight.",
+      resultat_client: "A clearer view of the pattern.",
+      cible_description: "First-gen professionals.",
+      ton_sobre_audacieux: 2,
+      a_eviter_ton: "hustle language",
+      familles_chromatiques: ["warm_neutrals"],
+      niveau_contraste: "soft",
+      style_typographique: "editorial_serif",
+      niveau_caractere: "understated",
+      objectif_site: "book_consultations",
+      action_attendue: "book a consultation",
+      preuves_disponibles: ["credentials"],
+      contraintes: "No stock photos.",
+    });
+
+    expect(draft.practice_name).toBe("Hearth Counseling");
+    expect(draft.license_type).toBe("lmft");
+    expect(draft.offer).toBe("Couples therapy.");
+    expect(draft.problem_addressed).toBe(
+      "Partners who keep having the same fight."
+    );
+    expect(draft.client_gains).toBe("A clearer view of the pattern.");
+    expect(draft.ideal_client).toBe("First-gen professionals.");
+    expect(draft.tone_reserved_expressive).toBe(2);
+    expect(draft.tone_to_avoid).toBe("hustle language");
+    expect(draft.color_families).toEqual(["warm_neutrals"]);
+    expect(draft.contrast_level).toBe("soft");
+    expect(draft.type_style).toBe("editorial_serif");
+    expect(draft.character_level).toBe("understated");
+    expect(draft.site_goal).toBe("book_consultations");
+    expect(draft.primary_action).toBe("book a consultation");
+    expect(draft.available_proof).toEqual(["credentials"]);
+    expect(draft.constraints).toBe("No stock photos.");
+  });
+
+  it("traduit la valeur littérale « autre » en « other »", () => {
+    const draft = parseStoredBriefDraft({
+      metier: "autre",
+      metier_autre: "Licensed art therapist",
+    });
+    expect(draft.license_type).toBe("other");
+    expect(draft.license_type_other).toBe("Licensed art therapist");
+  });
+
+  it("laisse la clé anglaise l'emporter sur son alias français", () => {
+    const draft = parseStoredBriefDraft({
+      metier: "lcsw",
+      license_type: "lmft",
+      nom_activite: "Ancien nom",
+      practice_name: "Hearth Counseling",
+    });
+    expect(draft.license_type).toBe("lmft");
+    expect(draft.practice_name).toBe("Hearth Counseling");
+  });
+
+  it("normalise sans valider — la validation reste à parseStoredBriefDraft", () => {
+    expect(normalizeBriefDraft({ metier: "n_importe_quoi" })).toEqual({
+      license_type: "n_importe_quoi",
+    });
   });
 });
