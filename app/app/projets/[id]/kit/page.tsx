@@ -5,6 +5,7 @@ import { parseStoredBriefDraft } from "@/lib/brief/schemas";
 import { practiceName } from "@/lib/ai/brief-context";
 import { paletteFromStored } from "@/lib/ai/directions";
 import { parseStoredKit } from "@/lib/kit/content";
+import { FALLBACK_KIT_TIER, parseKitTier } from "@/lib/kit/tiers";
 import { BrandKitView } from "@/components/kit/brand-kit-view";
 import { GenerateKitButton } from "@/components/kit/generate-kit-button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -54,6 +55,16 @@ export default async function KitPage({
   const draft = parseStoredBriefDraft(briefRow?.data);
   const kit = parseStoredKit(kitRow.content);
 
+  /*
+   * Le tier LIVRÉ vient de la colonne, pas du jsonb. `brand_kits.tier` est
+   * contrainte par un CHECK en base mais rendue en `string` par le générateur
+   * de types, d'où la relecture. Repli sur le tier des kits d'avant le Lot 4
+   * (`content.tier`) puis, à défaut, sur le plus petit : une valeur inattendue
+   * ne doit jamais afficher un périmètre plus large que ce qui a été payé.
+   */
+  const deliveredTier =
+    parseKitTier(kitRow.tier) ?? kit?.tier ?? FALLBACK_KIT_TIER;
+
   const header = (
     <header className="flex items-center justify-between gap-4">
       <Link
@@ -95,6 +106,7 @@ export default async function KitPage({
         headingFont={direction?.typographie_titre ?? "not specified"}
         bodyFont={direction?.typographie_corps ?? "not specified"}
         kit={kit}
+        tier={deliveredTier}
         websitePrompt={kitRow.multi_builder_prompt ?? ""}
       />
 

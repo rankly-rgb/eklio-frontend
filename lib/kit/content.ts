@@ -93,18 +93,21 @@ export type SocialTemplate = z.infer<typeof socialTemplateSchema>;
 export type KitContent = z.infer<typeof kitContentSchema>;
 
 /*
- * Ce qui part réellement en base, dans `content` : le kit plus le tier qui l'a
- * produit.
+ * Ce qui part réellement en base, dans `content`.
  *
- * Le tier vit dans le jsonb parce qu'il n'a PAS de colonne dédiée sur la base
- * US (schéma vérifié le 2026-08-25 : `brand_kits` porte id, project_id,
- * direction_id, content, multi_builder_prompt, pdf_url, share_slug, created_at,
- * updated_at — et rien d'autre). Le front ne migre pas le schéma : si le Lot 4
- * a besoin de requêter le tier, c'est une migration à faire dans
- * `eklio-backend`, et ce champ devient alors une colonne.
+ * Le tier N'Y EST PLUS. Au Lot 3 il vivait dans ce jsonb faute de colonne
+ * dédiée ; la migration du Lot 4 (`eklio-backend`) a ajouté `brand_kits.tier`,
+ * colonne de premier ordre contrainte par un CHECK, et c'est elle qui fait
+ * désormais foi — c'est la seule qui soit requêtable et qui ne puisse pas
+ * dériver du contenu.
+ *
+ * Le champ reste ACCEPTÉ en lecture, et seulement en lecture : les kits
+ * générés avant le Lot 4 le portent dans leur jsonb, et les refuser
+ * rendrait leur page illisible pour rien. Plus rien ne l'écrit.
  */
 export const storedKitSchema = kitContentSchema.extend({
-  tier: kitTierSchema,
+  /** Hérité du Lot 3, toléré en relecture. La vérité est `brand_kits.tier`. */
+  tier: kitTierSchema.optional(),
 });
 
 export type StoredKit = z.infer<typeof storedKitSchema>;

@@ -2,7 +2,7 @@ import { CopyButton } from "@/components/kit/copy-button";
 import { EthicsDisclaimer } from "@/components/ethics-disclaimer";
 import { PALETTE_ENTRIES, type Palette } from "@/lib/ai/directions";
 import { optionLabel, PAGE_OPTIONS } from "@/lib/brief/steps";
-import { KIT_TIER_RULES } from "@/lib/kit/tiers";
+import { KIT_TIER_RULES, type KitTier } from "@/lib/kit/tiers";
 import type { PageCopy, StoredKit } from "@/lib/kit/content";
 
 /*
@@ -124,6 +124,7 @@ export function BrandKitView({
   headingFont,
   bodyFont,
   kit,
+  tier,
   websitePrompt,
 }: {
   practiceName: string;
@@ -132,13 +133,19 @@ export function BrandKitView({
   headingFont: string;
   bodyFont: string;
   kit: StoredKit;
+  /*
+   * Le tier LIVRÉ, lu sur `brand_kits.tier` par la page. Il arrive en prop
+   * plutôt que depuis `kit.tier` : la colonne fait foi depuis le Lot 4, le
+   * champ du jsonb n'est plus qu'un héritage du Lot 3.
+   */
+  tier: KitTier;
   websitePrompt: string;
 }) {
   return (
     <article className="flex flex-col gap-10">
       <header className="flex flex-col gap-3">
         <p className="font-mono text-xs tracking-[0.08em] text-ink-muted">
-          Brand kit · {directionName} · {KIT_TIER_RULES[kit.tier].label}
+          Brand kit · {directionName} · {KIT_TIER_RULES[tier].label}
         </p>
         <h1 className="font-display text-[40px] leading-tight">
           {practiceName}
