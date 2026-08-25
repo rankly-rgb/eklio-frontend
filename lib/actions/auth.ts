@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { signedInRedirectPath } from "@/lib/auth/next-url";
 
 export type AuthFormState = { error: string } | null;
 
@@ -28,7 +29,22 @@ export async function signIn(
     return { error: "Email ou mot de passe incorrect." };
   }
 
-  redirect("/app");
+  /*
+   * Retour à la page demandée AVANT la connexion, pas au tableau de bord.
+   *
+   * Le proxy pose `?next=` quand il intercepte une page protégée ; jusqu'ici
+   * personne ne le consommait, et tout le monde atterrissait sur `/app`. Ça se
+   * voyait surtout sur le tunnel de paiement : un praticien parti de `/pricing`
+   * pour acheter se retrouvait sur son tableau de bord, sans rien qui lui dise
+   * où était passé son achat. Une intention perdue au moment précis où elle
+   * était la plus forte.
+   *
+   * `next` vient de l'URL, donc d'où on veut : `signedInRedirectPath` refuse
+   * tout ce qui n'est pas un chemin interne (cf. `lib/auth/next-url.ts`). Un
+   * `next` refusé ne fait jamais échouer la connexion — il est simplement
+   * ignoré au profit du tableau de bord.
+   */
+  redirect(signedInRedirectPath(String(formData.get("next") ?? "")));
 }
 
 export async function signUp(

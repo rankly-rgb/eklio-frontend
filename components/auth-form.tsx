@@ -6,9 +6,20 @@ import type { AuthFormState } from "@/lib/actions/auth";
 export function AuthForm({
   action,
   submitLabel,
+  next,
 }: {
   action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
   submitLabel: string;
+  /**
+   * Destination demandée avant la connexion, telle que le proxy l'a posée.
+   *
+   * Elle voyage en champ caché plutôt qu'en `bind()` sur l'action : le
+   * formulaire est déjà un composant client partagé entre connexion et
+   * inscription, et un champ caché ne change rien à sa signature. La valeur
+   * n'est PAS fiable pour autant — elle vient de l'URL, et repasse donc par le
+   * contrôle anti-open-redirect côté serveur.
+   */
+  next?: string;
 }) {
   const [state, formAction, isPending] = useActionState<AuthFormState, FormData>(
     action,
@@ -17,6 +28,7 @@ export function AuthForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <label className="flex flex-col gap-1 font-mono text-sm">
         Email
         <input
