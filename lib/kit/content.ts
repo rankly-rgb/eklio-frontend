@@ -16,14 +16,41 @@ import { kitTierSchema, type PageKey } from "@/lib/kit/tiers";
  * qu'à un seul endroit.
  */
 
-const shortText = z.string().trim().min(1).max(400);
-const bodyText = z.string().trim().min(1).max(4000);
+/*
+ * Bornes hautes volontairement LARGES.
+ *
+ * L'API n'autorise pas `minItems`/`maxItems` dans un schéma d'outil strict :
+ * « 3 à 5 exemples » n'est qu'une consigne en langage naturel, jamais une
+ * garantie. Une borne serrée côté zod ne discipline donc pas le modèle — elle
+ * jette un kit entier, après deux minutes de génération, parce qu'il a écrit un
+ * exemple de trop. Ces bornes ne sont plus qu'un garde-fou contre l'aberrant.
+ *
+ * Deux traitements, selon ce que coûte le dépassement :
+ * - une LISTE D'EXEMPLES en trop est du surplus → on garde les premiers ;
+ * - de la PROSE trop longue est du contenu → on l'accepte, jamais on ne la
+ *   tronque au milieu d'une phrase.
+ */
+const shortText = z.string().trim().min(1).max(800);
+const bodyText = z.string().trim().min(1).max(12000);
+
+/**
+ * Liste d'exemples : au moins un, et on ne conserve que les `max` premiers.
+ *
+ * Normaliser plutôt que rejeter — c'est toute la différence entre un kit livré
+ * et un « Something went wrong » après deux minutes d'attente.
+ */
+function cappedExamples(max: number, item = shortText) {
+  return z
+    .array(item)
+    .min(1)
+    .transform((items) => items.slice(0, max));
+}
 
 export const voiceGuideSchema = z.object({
-  /* Exactement 3 adjectifs : au-delà, ce n'est plus un guide, c'est une liste. */
-  adjectives: z.array(z.string().trim().min(1).max(40)).length(3),
-  do_examples: z.array(shortText).min(3).max(5),
-  dont_examples: z.array(shortText).min(3).max(5),
+  /* Le guide en affiche 3 : les suivants sont écartés, pas refusés. */
+  adjectives: cappedExamples(3, z.string().trim().min(1).max(60)),
+  do_examples: cappedExamples(5),
+  dont_examples: cappedExamples(5),
 });
 
 export const pageSectionSchema = z.object({
@@ -39,7 +66,9 @@ export const pageSectionSchema = z.object({
  */
 export const pageCopySchema = z.object({
   page: z.enum(PAGES_WANTED),
-  sections: z.array(pageSectionSchema).min(1).max(8),
+  // Borne haute large : une page riche en sections reste un livrable valide,
+  // et la refuser jetterait tout le kit avec elle.
+  sections: z.array(pageSectionSchema).min(1).max(20),
 });
 
 export const socialTemplateSchema = z.object({

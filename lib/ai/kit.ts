@@ -63,10 +63,27 @@ export type KitInput = {
  * génération = contenu + prompt, et pas un seul bloc.
  */
 export const kitGenerationSchema = kitContentSchema.extend({
-  website_prompt: z.string().trim().min(1).max(12000),
+  // Borne haute large, même raison que dans `lib/kit/content.ts` : ce prompt
+  // décrit jusqu'à 8 pages, et le rogner n'aurait aucun sens.
+  website_prompt: z.string().trim().min(1).max(60000),
 });
 
 export type KitGeneration = z.infer<typeof kitGenerationSchema>;
+
+/**
+ * Levée quand le modèle a été coupé par `max_tokens` avant d'avoir fini.
+ *
+ * Distincte des autres échecs : elle est ACTIONNABLE (réessayer, ou demander
+ * moins de pages), là où une erreur de structure ne l'est pas. Sans elle, une
+ * réponse tronquée se présente comme un JSON d'outil invalide et l'utilisateur
+ * reçoit « Something went wrong » pour un problème de longueur.
+ */
+export class KitTruncatedError extends Error {
+  constructor() {
+    super("Le modèle a été coupé par max_tokens avant la fin du kit.");
+    this.name = "KitTruncatedError";
+  }
+}
 
 /** Levée quand le kit rendu ne couvre pas les pages du périmètre demandé. */
 export class KitScopeError extends Error {
@@ -81,7 +98,7 @@ export class KitScopeError extends Error {
   }
 }
 
-const KIT_TOOL: Anthropic.Tool = {
+export const KIT_TOOL: Anthropic.Tool = {
   name: "compose_brand_kit",
   description:
     "Return the complete brand kit for this practice: positioning, brand story, voice guide, website copy for each requested page, branded social template specs, and one multi-platform website prompt.",
@@ -294,26 +311,77 @@ export type KitModelCall = (
   feedback: string | null
 ) => Promise<KitGeneration>;
 
-const callAnthropic: KitModelCall = async (prompt, feedback) => {
-  const response = await getAnthropicClient().messages.create({
-    model: "claude-opus-5",
-    // Le kit est bien plus long que les directions : jusqu'à 8 pages de copy,
-    // les specs sociales et le prompt multi-plateformes dans une seule réponse.
-    max_tokens: 32000,
-    output_config: { effort: "medium" },
-    system: KIT_SYSTEM_PROMPT,
-    tools: [KIT_TOOL],
-    tool_choice: { type: "tool", name: KIT_TOOL.name },
-    messages: [
-      {
-        role: "user",
-        content: feedback ? `${prompt}\n\n${feedback}` : prompt,
-      },
-    ],
-  });
+/*
+ * Budget de sortie du kit. Il est bien plus large que celui des directions :
+ * jusqu'à 8 pages de copy, les specs sociales et le prompt multi-plateformes
+ * dans une seule réponse — auxquels s'ajoutent les jetons de raisonnement, la
+ * réflexion adaptative étant active par défaut sur Claude Opus 5.
+ */
+export const KIT_MAX_TOKENS = 32000;
 
+/*
+ * Au-delà de ce budget, le SDK REFUSE un appel non streamé.
+ *
+ * `Anthropic.calculateNonstreamingTimeout()` estime la durée à
+ * `60 min × max_tokens / 128000` et lève dès que ça dépasse 10 minutes, soit
+ * `max_tokens > 21333`. C'est un garde CLIENT : il se déclenche avant le
+ * moindre appel réseau, en zéro seconde, sans statut HTTP ni entrée dans
+ * l'onglet Réseau — ce qui rendait la panne invisible.
+ *
+ * C'est exactement ce qui séparait les deux générations : les directions
+ * (8000 jetons) passent sous le seuil, le kit (32000) le franchit. Même clé,
+ * même SDK, même modèle — seul le budget différait.
+ *
+ * D'où le streaming ci-dessous, qui est la réponse prévue par le SDK.
+ */
+export const NON_STREAMING_MAX_TOKENS = Math.floor((128000 * 10) / 60);
+
+const callAnthropic: KitModelCall = async (prompt, feedback) => {
+  /*
+   * Streaming obligatoire, pas décoratif : sans lui, `messages.create()` lève
+   * côté client avant d'émettre la requête (cf. NON_STREAMING_MAX_TOKENS).
+   * `finalMessage()` rassemble le flux et rend le message complet, donc le
+   * reste de la fonction reste identique à celui des directions.
+   */
+  const response = await getAnthropicClient()
+    .messages.stream({
+      model: "claude-opus-5",
+      max_tokens: KIT_MAX_TOKENS,
+      output_config: { effort: "medium" },
+      system: KIT_SYSTEM_PROMPT,
+      tools: [KIT_TOOL],
+      tool_choice: { type: "tool", name: KIT_TOOL.name },
+      messages: [
+        {
+          role: "user",
+          content: feedback ? `${prompt}\n\n${feedback}` : prompt,
+        },
+      ],
+    })
+    .finalMessage();
+
+  return parseKitResponse(response);
+};
+
+/**
+ * Transforme une réponse du modèle en kit validé, ou lève en nommant la raison.
+ *
+ * Extrait de l'appel réseau pour être testable sans API : c'est ici que se
+ * décide la différence entre un échec DIAGNOSTIQUÉ et un « Something went
+ * wrong » opaque.
+ */
+export function parseKitResponse(response: Anthropic.Message): KitGeneration {
   if (response.stop_reason === "refusal") {
     throw new Error("The model refused to generate the brand kit.");
+  }
+
+  /*
+   * Coupure par `max_tokens` : le bloc d'outil est alors incomplet et son JSON
+   * ne se valide pas. On le dit ICI, tant qu'on connaît la vraie raison —
+   * sinon l'échec se présente plus bas comme une banale erreur de structure.
+   */
+  if (response.stop_reason === "max_tokens") {
+    throw new KitTruncatedError();
   }
 
   const toolUse = response.content.find(
@@ -324,7 +392,7 @@ const callAnthropic: KitModelCall = async (prompt, feedback) => {
   }
 
   return kitGenerationSchema.parse(toolUse.input);
-};
+}
 
 /**
  * Aligne le kit sur le périmètre demandé : lève si une page manque, écarte

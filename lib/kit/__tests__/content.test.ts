@@ -48,13 +48,69 @@ describe("parseStoredKit", () => {
         website_copy: [{ page: "boutique", sections: [{ heading: "H", body: "B" }] }],
       })
     ).toBeNull();
-    // Guide de voix à 2 adjectifs au lieu de 3.
+    // Guide de voix SANS aucun adjectif : plus un guide du tout.
     expect(
       parseStoredKit({
         ...VALID,
-        voice_and_tone: { ...VALID.voice_and_tone, adjectives: ["warm", "direct"] },
+        voice_and_tone: { ...VALID.voice_and_tone, adjectives: [] },
       })
     ).toBeNull();
+  });
+});
+
+describe("bornes des listes d'exemples — normaliser, pas rejeter", () => {
+  /*
+   * L'API n'autorise pas `minItems`/`maxItems` dans un schéma d'outil strict :
+   * « 3 à 5 exemples » n'est qu'une consigne, jamais une garantie. Une borne
+   * serrée côté zod ne discipline pas le modèle, elle jette un kit entier
+   * après deux minutes de génération. C'est exactement ce qui s'est produit :
+   * 6 contre-exemples au lieu de 5, et tout le livrable était perdu.
+   */
+  it("accepte un surplus d'exemples et ne garde que les premiers", () => {
+    const kit = parseStoredKit({
+      ...VALID,
+      voice_and_tone: {
+        adjectives: ["warm", "direct", "unhurried", "steady", "plain"],
+        do_examples: ["A.", "B.", "C.", "D.", "E.", "F.", "G."],
+        // Le cas réel : 6 contre-exemples pour un maximum annoncé de 5.
+        dont_examples: ["A.", "B.", "C.", "D.", "E.", "F."],
+      },
+    });
+
+    expect(kit).not.toBeNull();
+    expect(kit!.voice_and_tone.adjectives).toEqual([
+      "warm",
+      "direct",
+      "unhurried",
+    ]);
+    expect(kit!.voice_and_tone.do_examples).toHaveLength(5);
+    expect(kit!.voice_and_tone.dont_examples).toHaveLength(5);
+  });
+
+  it("accepte un nombre d'exemples inférieur au format nominal", () => {
+    const kit = parseStoredKit({
+      ...VALID,
+      voice_and_tone: {
+        adjectives: ["warm", "direct"],
+        do_examples: ["A."],
+        dont_examples: ["B."],
+      },
+    });
+
+    // Un guide un peu court reste un guide ; le refuser coûterait tout le kit.
+    expect(kit).not.toBeNull();
+    expect(kit!.voice_and_tone.adjectives).toEqual(["warm", "direct"]);
+  });
+
+  it("refuse quand même une liste vide", () => {
+    for (const key of ["adjectives", "do_examples", "dont_examples"]) {
+      expect(
+        parseStoredKit({
+          ...VALID,
+          voice_and_tone: { ...VALID.voice_and_tone, [key]: [] },
+        })
+      ).toBeNull();
+    }
   });
 });
 
