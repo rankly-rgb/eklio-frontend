@@ -18,8 +18,12 @@ Ce repo ne fait que consommer les types TypeScript générés depuis Supabase
 
 - Next.js (App Router) + TypeScript + Tailwind CSS v4
 - Supabase (Postgres, Auth, RLS)
-- Anthropic (Claude) — appels serveur uniquement, pas encore branchés (stub)
-- Stripe — pas encore intégré (emplacement prévu dans le schéma et l'UI)
+- Anthropic (Claude) — appels serveur uniquement (directions, kit de marque,
+  Monthly Presence). Les générations longues passent obligatoirement par
+  `messages.stream()` : le SDK refuse tout appel non streamé au-delà d'environ
+  21 300 jetons de sortie, et lève **côté client**, avant la moindre requête.
+- Stripe — checkout hébergé + webhook signé. Le webhook est la **seule**
+  autorité sur ce qui est payé : aucune redirection n'accorde de droit.
 - Déploiement : Vercel
 
 ## Setup local
@@ -46,24 +50,54 @@ Voir `.env.example`. Ne jamais committer `.env.local`.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Dashboard Supabase → Project Settings → API → `anon` `public` key | idem |
 | `SUPABASE_SERVICE_ROLE_KEY` | Dashboard Supabase → Project Settings → API → `service_role` key (secrète) | idem — **jamais** en variable `NEXT_PUBLIC_*` |
 | `ANTHROPIC_API_KEY` | Console Anthropic | idem, réservée aux route handlers serveur |
-| `NEXT_PUBLIC_SITE_URL` | URL publique du déploiement (ex. `https://eklio.vercel.app`) | idem — sert de base au lien de confirmation d'email (`emailRedirectTo`) ; sans elle, repli sur `http://localhost:3000` |
+| `NEXT_PUBLIC_SITE_URL` | URL publique du déploiement (ex. `https://eklio.vercel.app`) | idem — base du lien de confirmation d'email (`emailRedirectTo`) **et** des URL de retour de Stripe Checkout ; sans elle, repli sur `http://localhost:3000` |
+| `STRIPE_SECRET_KEY` | Dashboard Stripe → Developers → API keys (`sk_test_…` / `sk_live_…`) | idem — **jamais** en `NEXT_PUBLIC_*` |
+| `STRIPE_WEBHOOK_SECRET` | `stripe listen` en local, ou Dashboard → Webhooks → signing secret (`whsec_…`) | idem — sans elle la route webhook refuse **tout** event |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Dashboard Stripe → API keys (`pk_test_…` / `pk_live_…`) | idem |
+| `STRIPE_PRICE_STARTER` / `_PRACTICE` / `_SIGNATURE` / `_MONTHLY_PRESENCE` | Dashboard Stripe → Products, un prix par tier + l'abonnement (`price_…`) | idem — ⚠️ ces ids **diffèrent** entre le mode test et le mode live |
 
 Les variables `NEXT_PUBLIC_*` sont exposées au bundle client : n'y mettre que
-l'URL et la clé anon, jamais la service_role key ni la clé Anthropic.
+l'URL, la clé anon et la clé publiable Stripe — jamais la service_role key, la
+clé Anthropic ni la clé secrète Stripe.
+
+Les **montants** ne sont pas des variables d'environnement : ils vivent dans
+`lib/billing/plans.ts`, seule source du prix affiché comme du prix facturé.
+L'environnement ne porte que les **identifiants** de prix Stripe.
+
+### Paiement en mode test
+
+La procédure complète (création des prix, `stripe listen`, carte de test,
+vérifications en base, rejeu d'un event pour l'idempotence) est décrite dans
+`NOTES.md`, section « Checkout Stripe en mode test ». En résumé :
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+# reporter le whsec_… affiché dans .env.local, puis redémarrer npm run dev
+```
+
+Carte de test : `4242 4242 4242 4242`, date future quelconque, CVC quelconque.
 
 ## Structure
 
 ```
 app/                 routes (App Router) : pages, layouts, route handlers
   login/, signup/    auth email/mot de passe
-  app/               espace connecté (guided flow à venir), protégé par proxy.ts
+  pricing/           tarifs publics (anglais) — 3 tiers + add-on + FAQ
+  app/               espace connecté, protégé par proxy.ts
+    checkout/        choix du tier, add-on, retours succès / annulation
+    projets/[id]/    brief → directions → kit → presence
+  api/stripe/        route handler du webhook Stripe (signature + idempotence)
   auth/callback/     échange du code de confirmation email contre une session
-components/          composants UI partagés
+components/          composants UI partagés (billing/, kit/, presence/, ui/…)
 lib/
   supabase/          clients Supabase (browser, server, admin, proxy)
   actions/           server actions (auth, etc.)
   fonts.ts           chargement des 3 typographies (voir note Recoleta ci-dessous)
-  ai/                stub pour les futurs appels Claude (non implémenté)
+  ai/                appels Claude : directions, kit, monthly-presence
+  ethics/            socle déontologique + garde de régénération (modules purs)
+  billing/           catalogue (prix, tiers) et droits lus en base
+  stripe/            client, checkout, métadonnées, traitement des events
+  kit/, brief/, presence/, projects/   modules purs (formes, périmètres, mois)
 types/supabase.ts    types générés depuis le schéma Supabase US (voir eklio-backend)
 proxy.ts             ex-"middleware" (renommé en Next.js 16) : refresh de session + garde /app
 ```
@@ -85,6 +119,7 @@ npm run dev      # serveur de dev
 npm run build    # build de production
 npm run start    # sert le build de production
 npm run lint     # ESLint
+npm run test     # Vitest (modules purs, gardes de génération, webhook)
 ```
 
 ## Déploiement Vercel

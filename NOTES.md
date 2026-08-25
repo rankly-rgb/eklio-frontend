@@ -271,14 +271,244 @@ actionnable de la longueur du générique.
 **Vérifié en réel** : génération complète en 140 s, les 6 pages demandées.
 Cause 100 % frontend, aucune intervention backend.
 
-## Reste pour le lot 4
+## Lot 4 : pricing en dollars, Stripe, Monthly Presence
 
-- Pricing en dollars, Stripe, Monthly Presence.
-- **Branchement réel du gating par tier** : lire le tier acheté et le passer à
-  `resolveKitScope()` (voir seam ci-dessus).
-- Partage public du kit, s'il est voulu : décision de schéma côté
-  `eklio-backend` d'abord (cf. limite RLS ci-dessus).
-- Export PDF (`brand_kits.pdf_url` existe et reste vide), page marketing.
-- Régénérer `types/supabase.ts` depuis le projet US après toute évolution du
-  schéma dans `eklio-backend` (`supabase gen types typescript --project-id
-  fobgdsupyfslxbswfuay`), sans oublier de réappliquer l'addendum manuel.
+### Ce qui a été vérifié en base avant d'écrire une ligne
+
+Le schéma du Lot 4 est bien appliqué sur l'US et le front ne fait que le
+consommer. Trois écarts entre le brief du lot et la base réelle, tous relevés
+en interrogeant `fobgdsupyfslxbswfuay` :
+
+- `subscriptions` n'a **pas** de colonne `stripe_customer_id` (le brief la
+  supposait). La résolution customer → user passe donc uniquement par
+  `profiles.stripe_customer_id`, qui est unique — c'est d'ailleurs plus sain :
+  une seule correspondance canonique, pas deux à tenir synchronisées.
+- `purchases` porte `amount_cents` (pas `amount`), plus
+  `stripe_checkout_session_id` (unique), `stripe_payment_intent_id` et un
+  `status` contraint (`pending`/`paid`/`refunded`/`failed`).
+- `monthly_presence_content` porte un `status`
+  (`pending`/`generating`/`complete`/`failed`) que le brief ne mentionnait pas.
+
+`brand_kits.tier` existe bien, avec le kit de test déjà backfillé en
+`signature`, et la note du Lot 3 ci-dessus (« pas de colonne `tier` ») est
+désormais périmée : la migration backend l'a ajoutée.
+
+### `.env.local` — le repointage n'est PAS le sujet
+
+Le brief du lot demandait de signaler que `.env.local` pointe sur l'EU et doit
+être repointé sur l'US. **Ce n'est plus vrai** : le fichier pointe déjà sur
+`https://fobgdsupyfslxbswfuay.supabase.co` et porte ses cinq variables
+renseignées (URL, anon, service_role, site URL, clé Anthropic).
+
+Ce qui manque réellement pour tester le Lot 4, ce sont les **quatre variables
+Stripe**, absentes du fichier : `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, plus les quatre ids de prix
+(`STRIPE_PRICE_STARTER`, `_PRACTICE`, `_SIGNATURE`, `_MONTHLY_PRESENCE`).
+Voir `.env.example`, qui les documente.
+
+### Trois « tiers » qui ne veulent pas dire la même chose
+
+C'est la distinction la plus facile à confondre, et la confondre coûterait de
+l'argent dans un sens ou dans l'autre :
+
+- le tier **acheté** — `purchases`, via `resolveEntitledTier`. C'est le DROIT
+  COURANT. `purchases` est un journal d'ÉVÉNEMENTS (un upgrade ajoute une
+  ligne, il n'en remplace aucune), donc le droit est le **plus généreux** des
+  achats payés, jamais le dernier. Prendre le dernier dégraderait un client qui
+  vient de payer davantage.
+- le tier **livré** — `brand_kits.tier`. L'INSTANTANÉ de la génération, qui
+  reste vrai même après une montée en gamme. C'est lui que la page de kit
+  affiche. Le commentaire de la colonne en base dit exactement cela.
+- le tier **paramètre** de `resolveKitScope()`, qui ne fait que traduire l'un ou
+  l'autre en périmètre de pages.
+
+La couture du Lot 3 a tenu sa promesse : le branchement s'est fait chez
+l'appelant (`app/app/projets/[id]/kit/actions.ts`), et pas une ligne de la
+génération n'a bougé.
+
+`DEFAULT_KIT_TIER = "signature"` a disparu au profit de
+`FALLBACK_KIT_TIER = "starter"`. Le sens du repli s'est INVERSÉ : tant que le
+paiement n'existait pas, servir le plus généreux était le bon choix ; depuis
+qu'il existe, une valeur inattendue ne doit jamais ouvrir le livrable le plus
+complet. Ce repli ne sert qu'à RELIRE un kit déjà livré — aucune génération
+n'en part, elles partent toutes d'un achat payé.
+
+Corollaire : `brand_kits.tier` étant une colonne, le tier n'est plus écrit dans
+le jsonb `content`. Il y reste **toléré en lecture** pour les kits du Lot 3
+déjà en base ; deux copies auraient dérivé à la première montée en gamme.
+
+### Stripe — ce qui accorde un droit, et ce qui n'en accorde aucun
+
+**Le webhook fait autorité, et lui seul.** Rien d'autre dans l'application
+n'écrit `purchases` ni `subscriptions` : ni la page de succès, ni une server
+action, ni un formulaire. Une redirection se forge dans la barre d'adresse ;
+une signature HMAC, non. La page de succès RELIT ce que le webhook a écrit, et
+affiche « confirmation en cours » avec un rafraîchissement automatique **borné**
+tant que la ligne n'est pas là — une roue qui tourne indéfiniment ne dit rien
+de plus qu'un écran figé.
+
+**Idempotence.** `stripe_events` porte `stripe_event_id` en clé primaire. Le
+verrou est posé AVANT le traitement et **défait si celui-ci échoue** : sans ce
+désarmement, le verrou se retournerait contre nous — le rejeu de Stripe verrait
+« déjà traité » et laisserait un paiement encaissé sans droit accordé. On
+préfère un rejeu de trop à un droit perdu.
+
+**Le code de retour est un contrat.** 2xx signifie « traité, ne rejoue pas ».
+On ne le rend donc que si l'event est traité, dupliqué ou délibérément ignoré.
+Une panne rend 500, pour que Stripe REVIENNE.
+
+**Deux pièges de l'API `2026-07-29.dahlia`**, vérifiés dans les types du SDK
+(`stripe@22.5.0`) plutôt que supposés :
+- `current_period_end` n'est **plus** sur l'abonnement, il vit sur ses ITEMS.
+  Lire l'ancien emplacement aurait rendu `undefined` en silence, donc un accès
+  sans échéance. On retient la date la plus lointaine — c'est jusque-là que le
+  praticien a payé.
+- une facture ne porte **plus** `subscription` à la racine : l'abonnement qui
+  l'a produite est dans `parent.subscription_details`.
+
+**Le montant écrit dans `purchases` vient du CATALOGUE**, pas de
+`amount_total` : quand l'add-on est gardé, le total de la session comprend
+aussi les $39 du premier mois, qui ne sont pas un achat de kit.
+
+**La service_role bypasse la RLS.** Chaque écriture du webhook porte donc
+elle-même la contrainte que la policy aurait portée — d'où le
+`.is("stripe_customer_id", null)` de `linkCustomer`, qui empêche d'écraser la
+correspondance d'un autre compte.
+
+**Un seul customer Stripe par utilisateur**, pour le paiement unique comme pour
+l'abonnement : c'est ce qui rend la résolution customer → user possible. La clé
+d'idempotence de la création dérive de l'id utilisateur, donc deux onglets ne
+créent pas deux customers.
+
+**L'add-on est coché par défaut ET le dit**, à côté de sa microcopy. Cocher par
+défaut sans le dire serait un dark pattern — et ce produit s'adresse à des
+cliniciens tenus de ne pas en employer dans leur propre publicité.
+
+### Monthly Presence — les cinq leçons du kit, appliquées d'emblée
+
+C'est la surface publiable la plus volumineuse et la plus répétée du produit :
+le kit se relit une fois, ceci part en ligne douze fois par mois.
+
+1. **Streaming.** `PRESENCE_MAX_TOKENS = 24000` est délibérément au-dessus du
+   seuil du SDK (~21 333) : ce livrable ne tient pas en dessous. Un test vérifie
+   le TRANSPORT (`stream()` appelé, `create()` jamais), parce que `create()`
+   lèverait côté CLIENT, en zéro seconde, sans statut HTTP ni entrée réseau.
+2. **Aucune borne cassante.** Les listes sont normalisées, jamais refusées sur
+   leur compte ; un mois plus court est accepté. Seule une liste VIDE est
+   refusée. La prose garde des bornes larges.
+3. **Déontologie sans piège.** `generateWithEthicsGuard` et
+   `ETHICS_SYSTEM_RULES` réutilisés tels quels. Le prompt ne demande jamais au
+   modèle d'ÉCRIRE une liste d'interdits dans le livrable — c'est ce qui avait
+   fait échouer le kit sur sa propre conformité — et un test fige ce contrat.
+   **Rien n'est exclu du contrôle**, notes de calendrier comprises : elles sont
+   lues juste avant de publier, et une consigne fautive s'y recopierait.
+4. `stop_reason: "max_tokens"` lève `PresenceTruncatedError` — un échec de
+   LONGUEUR, actionnable, pas un JSON invalide opaque.
+5. `export const maxDuration = 300` sur la **page** qui porte l'action (les
+   Server Actions en héritent), et l'interface annonce une à deux minutes.
+
+**Le point de fuite déontologique n'est pas celui du kit.** Sur un site, la
+promesse de résultat se glisse dans la page About ; sur un réseau social, elle
+se glisse dans le **hook** — la première ligne doit arrêter le défilement, et
+c'est exactement ce qu'un modèle entraîné au copywriting produit pour y
+arriver. Le prompt système le dit explicitement.
+
+**Écriture par la service_role, obligatoirement** :
+`monthly_presence_content` est en INSERT et UPDATE refusés aux clients par RLS.
+L'appartenance du projet est donc vérifiée AVANT, avec le client de session.
+Le statut n'est écrit qu'à la fin, en `complete` : sans ordonnanceur pour le
+nettoyer, un `generating` intermédiaire laisserait un mois éternellement « en
+cours » qu'aucun bouton ne débloque.
+
+**Le mois est calé au premier en UTC.** Le fuseau du serveur ne doit pas
+décider dans quel mois tombe un livrable : un praticien à Honolulu et un
+serveur à Francfort ne sont pas d'accord sur la date pendant dix heures par
+jour.
+
+### Seams anti-churn — documentés, PAS construits
+
+Le churn de 10-15 %/mois est le risque central du modèle économique : une
+cohorte est à moitié partie avant la fin de l'année, et l'acquisition ne fait
+que remplir un seau percé. Trois coutures sont identifiées dans
+`lib/billing/plans.ts` (`TODO(retention)`), près du modèle d'abonnement :
+
+1. **calendrier livré**, pas seulement généré (un abonnement qu'on doit aller
+   consulter se résilie ; un abonnement qui arrive se garde) ;
+2. **rappels de publication** le jour dit, avec le texte prêt à copier ;
+3. **publication facilitée** — copier-coller douze fois dans Instagram est le
+   vrai coût du produit pour l'utilisateur.
+
+Aucun cron, aucun ordonnanceur n'est écrit : c'est une décision
+d'infrastructure qui n'appartient pas au front.
+
+### Checkout Stripe en mode test — procédure, NON exécutée ici
+
+**Aucune clé Stripe n'était disponible dans cet environnement** (les quatre
+variables sont absentes de `.env.local`), donc aucun paiement de test n'a été
+joué. Le code compile, `lint`, `tsc` et les 225 tests passent, mais le premier
+aller-retour réel reste à faire par vous :
+
+1. Dashboard Stripe **en mode test** → Products : créer quatre prix — trois
+   uniques (`$79`, `$149`, `$249`) et un récurrent mensuel (`$39`). Relever les
+   quatre `price_…` et les mettre dans `.env.local`
+   (`STRIPE_PRICE_STARTER`, `_PRACTICE`, `_SIGNATURE`, `_MONTHLY_PRESENCE`).
+   ⚠️ Ces ids DIFFÈRENT entre le mode test et le mode live.
+2. Developers → API keys : copier `sk_test_…` dans `STRIPE_SECRET_KEY` et
+   `pk_test_…` dans `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
+3. Dans un terminal : `stripe login`, puis
+   `stripe listen --forward-to localhost:3000/api/stripe/webhook`.
+   La commande affiche un `whsec_…` : le mettre dans `STRIPE_WEBHOOK_SECRET`
+   et **redémarrer `npm run dev`** (les variables sont lues au démarrage).
+4. Aller sur `/pricing` → « Choose Practice » → `/app/checkout`. Laisser la case
+   Monthly Presence cochée. Le total affiché doit être **$188** ($149 + $39).
+5. Payer avec la carte de test `4242 4242 4242 4242`, n'importe quelle date
+   future et n'importe quel CVC.
+6. Vérifier dans le terminal `stripe listen` : `checkout.session.completed` puis
+   `customer.subscription.created` doivent renvoyer **200**.
+7. Vérifier en base : une ligne `purchases` en `status = 'paid'` au montant
+   **14900** (le kit seul, pas les $188), une ligne `subscriptions` en `active`
+   avec `current_period_end` renseigné, une ligne `stripe_events` par event, et
+   `profiles.stripe_customer_id` rempli.
+8. Rejouer le même event (`stripe events resend <evt_…>`) : la réponse doit être
+   `{"status":"duplicate"}` et **aucune** seconde ligne `purchases` ne doit
+   apparaître.
+9. Décocher l'add-on et refaire un achat : la session doit passer en
+   `mode: payment`, `purchases` gagner une ligne, `subscriptions` rester
+   inchangée.
+10. `stripe trigger invoice.payment_failed` : l'abonnement doit passer en
+    `past_due`, et la page Monthly Presence doit le DIRE plutôt que de proposer
+    de racheter.
+
+### Limites connues, à traiter ensuite
+
+- **`/login` ignore le paramètre `next`.** Le proxy le pose bien
+  (`/login?next=/app/checkout`), mais `signIn` redirige inconditionnellement
+  vers `/app`. Un praticien parti de `/pricing` sans session atterrit donc sur
+  son tableau de bord au lieu du checkout. Correctif volontairement laissé de
+  côté ici : il touche `lib/actions/auth.ts`, hors du périmètre facturation.
+- **La page d'accueil est toujours en français** alors que `/pricing` est en
+  anglais, d'où un libellé « Pricing » dans une navigation française. Laisser
+  `/pricing` injoignable aurait été la pire des deux incohérences.
+- **Aucun portail de gestion d'abonnement** (`billingPortal.sessions`) : le
+  praticien voit son abonnement mais ne peut pas le résilier depuis
+  l'application. La microcopy promet « Cancel anytime » — à tenir au prochain
+  lot.
+- **Toujours aucun appel Anthropic réel joué ici** : la génération Monthly
+  Presence n'a pas été exécutée contre l'API.
+
+## Reste après le lot 4
+
+- Brancher les seams anti-churn (cron/ordonnanceur, envoi mensuel, rappels).
+- Portail Stripe de gestion d'abonnement, pour tenir la promesse « Cancel
+  anytime » dans l'application.
+- Partage public du kit (`/kit/[slug]` + policy de lecture anonyme) : toujours
+  une décision de schéma à prendre dans `eklio-backend` d'abord.
+- `maxDuration` côté Vercel sur la génération du kit comme sur celle du mois
+  (le code le pose sur la page de presence ; le plan Vercel doit suivre).
+- Correctif `stop_reason` sur `lib/ai/directions.ts` : les directions ne
+  distinguent toujours pas la coupure par longueur d'une erreur de structure,
+  contrairement au kit et au mois.
+- Purge des données de test + retrait des `TODO(post-test-data)`.
+- Export PDF (`brand_kits.pdf_url` existe et reste vide).
+- Mise en prod : variables Vercel pointées sur l'US, Site URL de prod, SMTP
+  réel, endpoint webhook Stripe en mode live, rotation des secrets.

@@ -537,3 +537,29 @@ describe("route du webhook — la signature d'abord", () => {
     vi.doUnmock("@/lib/stripe/webhook-store");
   });
 });
+
+describe("résolution de l'utilisateur sur un event d'abonnement", () => {
+  it("se contente de l'id utilisateur, sans exiger le tier", async () => {
+    /*
+     * Un event d'abonnement n'a pas besoin du tier. Exiger des métadonnées
+     * COMPLÈTES perdrait le seul indice disponible quand la correspondance
+     * customer → user manque en base — et l'abonnement se retrouverait sans
+     * propriétaire alors que son identité était écrite noir sur blanc.
+     */
+    const { ports, recorded } = makePorts();
+
+    const outcome = await processStripeEvent(
+      ports,
+      subscriptionEvent(
+        "customer.subscription.updated",
+        stripeSubscription({
+          customer: "cus_jamais_vu",
+          metadata: { eklio_user_id: USER },
+        })
+      )
+    );
+
+    expect(outcome.status).toBe("processed");
+    expect(recorded.subscriptions[0].userId).toBe(USER);
+  });
+});

@@ -46,6 +46,22 @@ export function buildCheckoutMetadata({
 }
 
 /**
+ * L'utilisateur seul, sans exiger le reste.
+ *
+ * `parseCheckoutMetadata` rend `null` dès que le TIER manque, ce qui est juste
+ * pour un achat — sans tier il n'y a rien à écrire dans `purchases`. Mais un
+ * event d'abonnement n'a besoin que de savoir À QUI il appartient : lui
+ * appliquer la même exigence perdrait le seul indice disponible quand la
+ * correspondance customer → user n'a pas pu être écrite.
+ */
+export function readMetadataUserId(
+  raw: Record<string, string> | null | undefined
+): string | null {
+  const userId = raw?.[METADATA_KEYS.userId]?.trim();
+  return userId ? userId : null;
+}
+
+/**
  * Relit les métadonnées d'un objet Stripe. Rend `null` si l'essentiel manque.
  *
  * L'essentiel, c'est l'utilisateur et le tier : sans eux, il n'y a rien à

@@ -1,6 +1,9 @@
 import type Stripe from "stripe";
 import { KIT_PLANS, CURRENCY } from "@/lib/billing/plans";
-import { parseCheckoutMetadata } from "@/lib/stripe/metadata";
+import {
+  parseCheckoutMetadata,
+  readMetadataUserId,
+} from "@/lib/stripe/metadata";
 import type { KitTier } from "@/lib/kit/tiers";
 import type { SubscriptionStatus } from "@/types/supabase";
 
@@ -276,16 +279,17 @@ async function handleSubscriptionChange(
   event: Stripe.Event,
   subscription: Stripe.Subscription
 ): Promise<WebhookOutcome> {
-  const metadata = parseCheckoutMetadata(
+  /*
+   * Ici on ne lit QUE l'utilisateur : un event d'abonnement n'a pas besoin du
+   * tier, et exiger des métadonnées complètes perdrait le seul indice
+   * disponible quand la correspondance customer → user manque en base.
+   */
+  const metadataUserId = readMetadataUserId(
     subscription.metadata as Record<string, string> | null
   );
   const customerId = idOf(subscription.customer);
 
-  const userId = await resolveUserId(
-    ports,
-    metadata?.userId ?? null,
-    customerId
-  );
+  const userId = await resolveUserId(ports, metadataUserId, customerId);
 
   if (!userId) {
     return {
