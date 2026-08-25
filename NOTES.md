@@ -270,6 +270,7 @@ actionnable de la longueur du générique.
 
 **Vérifié en réel** : génération complète en 140 s, les 6 pages demandées.
 Cause 100 % frontend, aucune intervention backend.
+
 ## Reste pour le lot 4
 
 - Pricing en dollars, Stripe, Monthly Presence.
