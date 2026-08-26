@@ -539,6 +539,74 @@ lockfile vide signalé côté backend ne s'applique pas ici.
 - **Toujours aucun appel Anthropic réel joué ici** : la génération Monthly
   Presence n'a pas été exécutée contre l'API.
 
+## Durcissement avant prod
+
+### `maxDuration` — il n'y a pas de « route de génération » à équiper
+
+Le bloqueur prod du cœur produit. La génération de kit tourne ~140 s et aucun
+segment ne relevait son plafond : elle marche en local, où aucune limite ne
+s'applique, et échoue en production.
+
+Le piège est dans l'architecture. Les générations sont des **Server Actions**,
+et `maxDuration` s'applique « à toutes les Server Actions utilisées sur la
+page » (doc Next, section Server Actions). Le plafond est donc porté par **la
+page où le bouton est rendu** — pas par `actions.ts`, pas par `lib/ai/*`.
+Chercher « la route de génération » ne mène nulle part : il n'y en a pas.
+
+D'où **quatre** segments à équiper, pas un :
+
+| segment | action portée | rôle |
+|---|---|---|
+| `…/brief/recapitulatif` | `generateDirections` | la **toute première** génération du tunnel |
+| `…/directions` | `generateDirections` **et** `generateKit` | la **première** génération de kit |
+| `…/kit` | `generateKit` | les **ré**générations seulement |
+| `…/presence` | `generatePresence` | déjà équipé au Lot 4 |
+
+Deux erreurs faciles, toutes deux silencieuses :
+
+- **n'équiper que `…/kit`** laisse le chemin nominal timeouter, puisque la
+  première génération part de `…/directions`. Le correctif *paraît* posé ;
+- **oublier `…/brief/recapitulatif`**, qui n'était sur aucune liste. C'est le
+  balayage d'imports du test qui l'a trouvée.
+
+Le test (`app/__tests__/max-duration.test.ts`) ne tient donc **pas** un
+inventaire à la main : il remonte la chaîne d'imports depuis chaque `page.tsx`
+et exige un plafond partout où une génération est atteignable. Un inventaire
+manuel oublie toujours une page, et l'oubli ne se voit qu'en production.
+
+Vérification faite sur la **sortie de build**, pas sur le source :
+`.next/server/functions-config-manifest.json` — ce que la plateforme lit —
+porte bien `maxDuration: 300` sur les quatre routes. Avant, seule `…/presence`
+y figurait.
+
+**Réserve honnête** : la garde déontologique accorde jusqu'à deux reprises, donc
+un pire cas (3 × ~140 s) dépasse 300 s. Le plafond couvre une passe et une
+reprise ; au-delà, l'échec est franc et réessayable plutôt que silencieux.
+Monter plus haut risquerait de dépasser la limite du plan et de faire échouer le
+déploiement.
+
+### `stop_reason: "max_tokens"` sur les directions
+
+Les directions traitaient `refusal` mais pas la troncature — seules des trois
+générations à ne pas le faire. Sans ce contrôle, une réponse coupée ne se
+présente pas comme un problème de longueur : le bloc d'outil est incomplet, son
+JSON ne valide pas, et le praticien lit « Something went wrong » pour un échec
+qui a un nom et une réponse (réessayer).
+
+Aligné sur `kit.ts` : `DirectionsTruncatedError`, `parseDirectionsResponse()`
+extraite de l'appel réseau pour être testable sans API, et `DIRECTIONS_MAX_TOKENS`
+qui nomme le budget. Un test vérifie que ce budget reste **sous** le seuil non
+streamé (~21 333) — c'est ce qui autorise cet appel à rester en
+`messages.create()` là où le kit et le mois doivent streamer.
+
+Le correctif va jusqu'au **message utilisateur** (`TOO_LONG_ERROR`) et jusqu'au
+log serveur (`logGenerationFailure`, qui nomme la nature de l'échec) : s'arrêter
+à l'erreur typée l'aurait laissée retomber dans le générique, et le diagnostic
+serait resté invisible.
+
+Risque réel faible — 8 000 jetons pour trois directions courtes. C'est de
+l'uniformisation préventive, pas une panne qui guette.
+
 ## Reste après le lot 4
 
 - Brancher les seams anti-churn (cron/ordonnanceur, envoi mensuel, rappels).
@@ -546,11 +614,9 @@ lockfile vide signalé côté backend ne s'applique pas ici.
   anytime » dans l'application.
 - Partage public du kit (`/kit/[slug]` + policy de lecture anonyme) : toujours
   une décision de schéma à prendre dans `eklio-backend` d'abord.
-- `maxDuration` côté Vercel sur la génération du kit comme sur celle du mois
-  (le code le pose sur la page de presence ; le plan Vercel doit suivre).
-- Correctif `stop_reason` sur `lib/ai/directions.ts` : les directions ne
-  distinguent toujours pas la coupure par longueur d'une erreur de structure,
-  contrairement au kit et au mois.
+- Vérifier que le plan Vercel autorise bien 300 s de durée de fonction (le code
+  les demande désormais sur les quatre segments de génération — voir
+  « Durcissement avant prod » ci-dessous).
 - Purge des données de test + retrait des `TODO(post-test-data)`.
 - Export PDF (`brand_kits.pdf_url` existe et reste vide).
 - Mise en prod : variables Vercel pointées sur l'US, Site URL de prod, SMTP
