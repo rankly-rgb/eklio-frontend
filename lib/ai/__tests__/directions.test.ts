@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type Anthropic from "@anthropic-ai/sdk";
 import {
+  DIRECTIONS_MAX_TOKENS,
   DIRECTIONS_SYSTEM_PROMPT,
+  DirectionsTruncatedError,
   directionsResultSchema,
   generateDirectionsWithModel,
   paletteFromStored,
+  parseDirectionsResponse,
   type DirectionsModelCall,
   type DirectionsResult,
 } from "@/lib/ai/directions";
+import { NON_STREAMING_MAX_TOKENS } from "@/lib/ai/kit";
 import { EthicsComplianceError } from "@/lib/ethics/enforce";
 import { ETHICS_SYSTEM_RULES } from "@/lib/ethics/rules";
 import type { BriefDraft } from "@/lib/brief/schemas";
@@ -204,5 +209,89 @@ describe("palette stockée", () => {
     ).toEqual(COMPLIANT.directions[0].palette);
     expect(paletteFromStored(null)).toEqual({});
     expect(paletteFromStored("#fff")).toEqual({});
+  });
+});
+
+/*
+ * Diagnostic des réponses du modèle — aligné sur `kit.test.ts` et
+ * `monthly-presence.test.ts`.
+ *
+ * Les directions traitaient `refusal` mais PAS `max_tokens`, seules des trois
+ * générations à ne pas le faire. Le risque est faible ici (8 000 jetons pour
+ * trois directions courtes), mais « improbable » n'est pas « impossible » — et
+ * sans ce contrôle, une troncature ne se présente pas comme un problème de
+ * longueur : le bloc d'outil est incomplet, son JSON ne valide pas, et le
+ * praticien lit « Something went wrong » pour un échec qui a un nom, une cause
+ * et une réponse (réessayer).
+ */
+function messageWith(
+  stopReason: Anthropic.Message["stop_reason"],
+  input: unknown = COMPLIANT
+): Anthropic.Message {
+  return {
+    id: "msg_1",
+    type: "message",
+    role: "assistant",
+    model: "claude-opus-5",
+    stop_reason: stopReason,
+    stop_sequence: null,
+    usage: { input_tokens: 1, output_tokens: 1 },
+    content: [
+      { type: "tool_use", id: "tu_1", name: "propose_directions", input },
+    ],
+  } as unknown as Anthropic.Message;
+}
+
+describe("diagnostic des réponses du modèle", () => {
+  it("nomme la troncature au lieu de la laisser passer pour une erreur de structure", () => {
+    // Coupé par max_tokens : le JSON de l'outil est incomplet. Sans ce
+    // contrôle, l'échec remonterait en erreur zod opaque.
+    expect(() =>
+      parseDirectionsResponse(messageWith("max_tokens", { partial: true }))
+    ).toThrow(DirectionsTruncatedError);
+  });
+
+  it("attrape la troncature AVANT la validation de structure", () => {
+    /*
+     * L'ordre compte, et c'est tout l'objet du correctif : même avec une
+     * charge utile par ailleurs valide, un `max_tokens` doit être signalé comme
+     * une coupure. Si la validation zod passait d'abord, une réponse tronquée
+     * mais syntaxiquement complète serait acceptée en silence.
+     */
+    expect(() => parseDirectionsResponse(messageWith("max_tokens"))).toThrow(
+      DirectionsTruncatedError
+    );
+  });
+
+  it("distingue le refus du modèle", () => {
+    expect(() => parseDirectionsResponse(messageWith("refusal"))).toThrow(
+      /refused/i
+    );
+  });
+
+  it("échoue clairement si aucun outil n'a été appelé", () => {
+    const response = {
+      ...messageWith("end_turn"),
+      content: [{ type: "text", text: "Voici mes idées." }],
+    } as unknown as Anthropic.Message;
+
+    expect(() => parseDirectionsResponse(response)).toThrow(/No direction/i);
+  });
+
+  it("rend les directions validées sur une réponse normale", () => {
+    expect(parseDirectionsResponse(messageWith("tool_use"))).toEqual(COMPLIANT);
+  });
+});
+
+describe("budget de sortie", () => {
+  it("reste sous le seuil au-delà duquel le SDK refuse un appel non streamé", () => {
+    /*
+     * C'est ce qui autorise les directions à rester en `messages.create()` là
+     * où le kit et le mois DOIVENT streamer. Si ce budget venait à franchir le
+     * seuil, l'appel échouerait côté client, en zéro seconde, sans statut HTTP
+     * — la panne muette qui a coûté le débogage du kit.
+     */
+    expect(DIRECTIONS_MAX_TOKENS).toBe(8000);
+    expect(DIRECTIONS_MAX_TOKENS).toBeLessThan(NON_STREAMING_MAX_TOKENS);
   });
 });

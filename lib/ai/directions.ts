@@ -214,6 +214,66 @@ const ETHICS_MAX_RETRIES = 2;
  * l'envelopper. `feedback` est nul à la première tentative, puis porte
  * l'instruction corrective construite à partir des violations trouvées.
  */
+/*
+ * Budget de sortie des directions : trois directions courtes, aucune copy
+ * longue. Bien plus modeste que le kit (32 000) ou le mois (24 000), et
+ * confortablement SOUS le seuil au-delà duquel le SDK refuse un appel non
+ * streamé (~21 333, cf. `NON_STREAMING_MAX_TOKENS` dans `lib/ai/kit.ts`) —
+ * c'est pourquoi cet appel-ci peut rester en `messages.create()`.
+ */
+export const DIRECTIONS_MAX_TOKENS = 8000;
+
+/**
+ * Levée quand le modèle a été coupé par `max_tokens` avant d'avoir fini.
+ *
+ * Alignement sur `KitTruncatedError` et `PresenceTruncatedError`. Le risque est
+ * ici plus faible qu'ailleurs — 8 000 jetons pour trois directions courtes —
+ * mais « improbable » n'est pas « impossible », et sans ce contrôle une
+ * troncature ne se présente PAS comme un problème de longueur : le bloc d'outil
+ * est incomplet, son JSON ne valide pas, et l'échec remonte en erreur zod
+ * opaque. Le praticien lit « Something went wrong » pour un problème qui a un
+ * nom et une réponse.
+ */
+export class DirectionsTruncatedError extends Error {
+  constructor() {
+    super("Le modèle a été coupé par max_tokens avant la fin des directions.");
+    this.name = "DirectionsTruncatedError";
+  }
+}
+
+/**
+ * Transforme une réponse du modèle en directions validées, ou lève en nommant
+ * la raison.
+ *
+ * Extraite de l'appel réseau pour être testable sans API — même découpage que
+ * `parseKitResponse` et `parsePresenceResponse`. C'est ici que se décide la
+ * différence entre un échec DIAGNOSTIQUÉ et un « Something went wrong » opaque.
+ */
+export function parseDirectionsResponse(
+  response: Anthropic.Message
+): DirectionsResult {
+  if (response.stop_reason === "refusal") {
+    throw new Error("The model refused to generate directions.");
+  }
+
+  /*
+   * Coupure par longueur : on le dit ICI, tant qu'on connaît la vraie raison.
+   * Plus bas, elle se présenterait comme une banale erreur de structure.
+   */
+  if (response.stop_reason === "max_tokens") {
+    throw new DirectionsTruncatedError();
+  }
+
+  const toolUse = response.content.find(
+    (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+  );
+  if (!toolUse) {
+    throw new Error("No direction was generated.");
+  }
+
+  return directionsResultSchema.parse(toolUse.input);
+}
+
 export type DirectionsModelCall = (
   prompt: string,
   feedback: string | null
@@ -228,7 +288,7 @@ export type DirectionsModelCall = (
 const callAnthropic: DirectionsModelCall = async (prompt, feedback) => {
   const response = await getAnthropicClient().messages.create({
     model: "claude-opus-5",
-    max_tokens: 8000,
+    max_tokens: DIRECTIONS_MAX_TOKENS,
     output_config: { effort: "medium" },
     system: DIRECTIONS_SYSTEM_PROMPT,
     tools: [DIRECTIONS_TOOL],
@@ -241,18 +301,7 @@ const callAnthropic: DirectionsModelCall = async (prompt, feedback) => {
     ],
   });
 
-  if (response.stop_reason === "refusal") {
-    throw new Error("The model refused to generate directions.");
-  }
-
-  const toolUse = response.content.find(
-    (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
-  );
-  if (!toolUse) {
-    throw new Error("No direction was generated.");
-  }
-
-  return directionsResultSchema.parse(toolUse.input);
+  return parseDirectionsResponse(response);
 };
 
 /*
