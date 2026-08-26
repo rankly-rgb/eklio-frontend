@@ -6,6 +6,22 @@ import { missingBriefSteps } from "@/lib/brief/completeness";
 import { BrandSheet } from "@/components/ui/brand-sheet";
 import { GenerateDirectionsButton } from "@/components/brief/generate-directions-button";
 
+/*
+ * Même raison qu'aux pages directions et kit : cette page porte
+ * `generateDirections` via `GenerateDirectionsButton`, et le `maxDuration` d'un
+ * segment couvre les Server Actions qui y sont utilisées.
+ *
+ * C'est la TOUTE PREMIÈRE génération du tunnel — celle qui ouvre le parcours
+ * IA. Elle n'était sur aucune liste : c'est le balayage d'imports de
+ * `app/__tests__/max-duration.test.ts` qui l'a trouvée, précisément parce qu'un
+ * inventaire tenu à la main oublie toujours une page.
+ *
+ * Le budget des directions est plus modeste (8 000 jetons contre 32 000 pour le
+ * kit), mais la garde déontologique peut y ajouter deux reprises. 300 s, aligné
+ * sur les autres segments de génération.
+ */
+export const maxDuration = 300;
+
 function sliderText(value: number, left: string, right: string): string {
   if (value === 3) return "balanced (3/5)";
   return value < 3

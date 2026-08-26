@@ -12,6 +12,20 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { MONTHLY_PRESENCE } from "@/lib/billing/plans";
 
 /*
+ * Même raison qu'à la page directions : cette page porte `generateKit` via
+ * `GenerateKitButton`, et le `maxDuration` d'un segment couvre les Server
+ * Actions qui y sont utilisées.
+ *
+ * Ici, c'est la REgénération (« Rebuild my brand kit ») — la première
+ * génération, elle, part de la page directions, qui porte donc la même valeur.
+ * Les deux segments doivent l'avoir : équiper un seul laisserait la moitié des
+ * générations sans plafond relevé.
+ *
+ * 300 s, aligné sur directions et presence.
+ */
+export const maxDuration = 300;
+
+/*
  * Page de kit. Elle rend le livrable enregistré — elle ne génère rien.
  *
  * Trois états, aucun écran vide :

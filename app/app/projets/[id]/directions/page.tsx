@@ -4,6 +4,33 @@ import { createClient } from "@/lib/supabase/server";
 import { DirectionsSelector } from "@/components/directions/directions-selector";
 import { resolveEntitledTier } from "@/lib/billing/entitlements";
 
+/*
+ * Durée maximale de la fonction serverless de CE segment.
+ *
+ * Ce n'est pas la page qui est lente, ce sont les Server Actions qu'elle
+ * porte : `maxDuration` s'applique « à toutes les Server Actions utilisées sur
+ * la page » (doc `maxDuration`, section Server Actions). Il n'existe donc PAS
+ * de « route de génération » unique à équiper — l'action vit là où le bouton
+ * est rendu.
+ *
+ * Cette page en porte DEUX, et c'est ce qui rend ce segment plus critique que
+ * la page de kit :
+ * - `generateDirections` (budget 8 000 jetons) ;
+ * - `generateKit` (32 000 jetons, ~140 s observées), via `GenerateKitButton`
+ *   dans `DirectionsSelector`.
+ *
+ * C'est ici que se fait la PREMIÈRE génération de kit — celle que tout
+ * utilisateur traverse. N'équiper que `…/kit` aurait laissé le chemin nominal
+ * timeouter en production tout en donnant l'impression que le correctif était
+ * posé : la page de kit ne sert qu'aux REgénérations.
+ *
+ * 300 s, aligné sur `…/presence`. Réserve honnête : la garde déontologique
+ * accorde jusqu'à deux reprises, donc un pire cas (3 × ~140 s) dépasse ce
+ * plafond. 300 couvre une passe et une reprise ; au-delà, l'échec est franc et
+ * réessayable plutôt que silencieux.
+ */
+export const maxDuration = 300;
+
 export default async function DirectionsPage({
   params,
 }: PageProps<"/app/projets/[id]/directions">) {

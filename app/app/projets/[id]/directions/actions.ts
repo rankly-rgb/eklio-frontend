@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { generateDirectionsFromBrief } from "@/lib/ai/directions";
+import {
+  DirectionsTruncatedError,
+  generateDirectionsFromBrief,
+} from "@/lib/ai/directions";
 import { EthicsComplianceError } from "@/lib/ethics/enforce";
 import { parseStoredBriefDraft } from "@/lib/brief/schemas";
 
@@ -21,6 +24,53 @@ const GENERIC_ERROR = "Something went wrong. Please try again.";
  */
 const ETHICS_ERROR =
   "We couldn't generate compliant directions this time. Please try again.";
+
+/*
+ * Coupure par longueur. Comme pour le kit, c'est l'échec où « réessayer » a une
+ * chance réelle d'aboutir : on le distingue donc du générique, qui ne dit rien
+ * d'actionnable.
+ */
+const TOO_LONG_ERROR =
+  "The directions ran longer than we could generate in one pass. Please try again.";
+
+/*
+ * Journalisation de l'échec, avec sa NATURE — même règle qu'au kit et au mois.
+ *
+ * Le message rendu au praticien ne dit rien d'exploitable, donc la vraie cause
+ * doit rester lisible côté serveur, nommée plutôt que noyée dans un
+ * `console.error(error)` brut. C'est ce qui avait manqué au débogage du kit :
+ * l'échec réel était dans le bruit du serveur de dev.
+ */
+function logGenerationFailure(error: unknown): void {
+  if (error instanceof EthicsComplianceError) {
+    console.error(
+      `[generateDirections] ÉCHEC déontologique après ${error.attempts} tentative(s) :`,
+      error.violations
+    );
+    return;
+  }
+  if (error instanceof DirectionsTruncatedError) {
+    console.error(
+      "[generateDirections] ÉCHEC longueur : réponse coupée par max_tokens."
+    );
+    return;
+  }
+  if (error instanceof z.ZodError) {
+    console.error(
+      "[generateDirections] ÉCHEC structure : les directions ne valident pas le schéma —",
+      error.issues.map((issue) => `${issue.path.join(".")} : ${issue.message}`)
+    );
+    return;
+  }
+
+  const detail = error as { name?: string; message?: string; status?: number };
+  console.error(
+    `[generateDirections] ÉCHEC ${detail?.name ?? "inconnu"}${
+      detail?.status ? ` (HTTP ${detail.status})` : ""
+    } : ${detail?.message ?? String(error)}`,
+    error
+  );
+}
 
 /*
  * Génère (ou régénère) les 3 directions créatives d'un projet à partir de
@@ -78,14 +128,17 @@ export async function generateDirections(
   try {
     result = await generateDirectionsFromBrief(project.name, draft);
   } catch (error) {
-    console.error("[generateDirections] appel Anthropic", error);
-    // Échec structurel comme échec déontologique : rien n'est persisté, la
+    // Échec structurel, de longueur ou déontologique : rien n'est persisté, la
     // génération s'arrête avant la moindre écriture.
-    return {
-      ok: false,
-      error:
-        error instanceof EthicsComplianceError ? ETHICS_ERROR : GENERIC_ERROR,
-    };
+    logGenerationFailure(error);
+
+    if (error instanceof EthicsComplianceError) {
+      return { ok: false, error: ETHICS_ERROR };
+    }
+    if (error instanceof DirectionsTruncatedError) {
+      return { ok: false, error: TOO_LONG_ERROR };
+    }
+    return { ok: false, error: GENERIC_ERROR };
   }
 
   // Remplace intégralement les directions précédentes (régénération).
