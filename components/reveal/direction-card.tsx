@@ -50,7 +50,7 @@ export function DirectionCard({
         recommended ? "border-accent" : "border-line"
       }`}
     >
-      <h2 className="font-display text-card-title font-medium tracking-card-title text-ink">
+      <h2 className="font-display text-card-title font-medium tracking-card-title text-ink max-lg:text-card-title-sm">
         {direction.name}
       </h2>
       {/* Deux lignes réservées : les trois cartes s'alignent quoi qu'il arrive. */}
@@ -68,7 +68,13 @@ export function DirectionCard({
 
       <div className="mt-5 grid grid-cols-3">
         {strip.map(({ role, hex }) => (
-          <div key={role} className="h-[34px]" style={{ background: hex }} />
+          <div
+            key={role}
+            // 34px au bureau, 40px en mobile (Écran 8) : la bande doit rester
+            // lisible quand la carte occupe toute la largeur.
+            className="h-[34px] max-lg:h-10"
+            style={{ background: hex }}
+          />
         ))}
       </div>
       <div className="mt-2 grid grid-cols-3">
@@ -117,7 +123,8 @@ export function DirectionCard({
           variant={recommended ? "accent" : "secondary"}
           onClick={onChoose}
           disabled={pending}
-          className="w-full"
+          // 44px en mobile : c'est la cible tactile de la référence.
+          className="w-full max-lg:h-11 max-lg:text-helper"
         >
           {pending ? "One moment…" : "Choose this direction"}
         </Button>

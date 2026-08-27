@@ -9,6 +9,7 @@ import { planMonth, type MonthlySlot } from "@/lib/generation/monthly";
 import { monthReadyEmail } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/transport";
 import { canSend, parseEmailState, recordSend } from "@/lib/email/state";
+import { track } from "@/lib/analytics";
 
 /*
  * Le run mensuel — le 1er à 00:00 America/New_York.
@@ -277,6 +278,7 @@ async function notify(
   const outcome = await sendEmail(email);
   if (outcome.ok) {
     await recordSend(admin, userId, user.user_metadata, "month_ready");
+    track("email_sent", { kind: "month_ready", delivered: outcome.delivered });
   } else {
     console.error("[cron/monthly] envoi e-mail", outcome.error);
   }

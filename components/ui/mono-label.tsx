@@ -31,6 +31,13 @@ const TRACKING: Record<MonoTracking, string> = {
   url: "tracking-mono-url",
 };
 
+/*
+ * `accent` mesure 4.20:1 sur `--bg` : sous le seuil AA du texte courant, mais
+ * au-dessus de celui du GRAND texte. Il n'est donc légitime que sur les
+ * libellés mono que les références y posent — « LEADING » et « READY » — qui
+ * sont des états, jamais la seule façon de lire une information. Pour un
+ * message que l'utilisateur DOIT lire, voir `InlineError`.
+ */
 const TONE: Record<MonoTone, string> = {
   ink: "text-ink",
   "ink-2": "text-ink-2",

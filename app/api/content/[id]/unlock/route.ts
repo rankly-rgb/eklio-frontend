@@ -5,6 +5,7 @@ import {
   isEntitledToMonthlyPresence,
 } from "@/lib/billing/entitlements";
 import { createMonthlyPresenceCheckout } from "@/lib/stripe/checkout";
+import { track } from "@/lib/analytics";
 
 /*
  * POST /api/content/[id]/unlock — ouvre le checkout Monthly Presence depuis
@@ -51,6 +52,7 @@ export async function POST(
       userId,
       email,
     });
+    track("unlock_opened", {});
     return json({ entitled: false, checkoutUrl });
   } catch (error) {
     return serverError("POST /api/content/unlock", error);

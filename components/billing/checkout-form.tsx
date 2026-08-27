@@ -137,7 +137,7 @@ export function CheckoutForm({
         <Button onClick={handleSubmit} disabled={isPending}>
           {isPending ? "Opening secure checkout…" : "Continue to payment"}
         </Button>
-        <p className="font-mono text-mono tracking-mono-14 text-ink-2">
+        <p className="text-helper leading-prose text-ink-2">
           Payment is handled by Stripe. We never see your card details.
         </p>
         {error ? <InlineError>{error}</InlineError> : null}

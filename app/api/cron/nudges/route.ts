@@ -9,6 +9,7 @@ import {
 } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/transport";
 import { canSend, parseEmailState, recordSend } from "@/lib/email/state";
+import { track } from "@/lib/analytics";
 
 /*
  * Les deux relances (§7), balayées une fois par jour.
@@ -160,5 +161,6 @@ async function send(
   }
 
   await recordSend(admin, userId, user.user_metadata, kind);
+  track("email_sent", { kind, delivered: outcome.delivered });
   return true;
 }

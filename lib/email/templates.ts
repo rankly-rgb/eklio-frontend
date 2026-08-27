@@ -1,5 +1,6 @@
 import type { OutgoingEmail } from "@/lib/email/transport";
 import { unsubscribeUrl } from "@/lib/email/state";
+import { EMAIL_COLORS } from "@/lib/email/palette";
 
 /*
  * Les trois e-mails transactionnels (§7).
@@ -12,12 +13,13 @@ import { unsubscribeUrl } from "@/lib/email/state";
  * Le HTML est volontairement minimal — tableaux et styles en ligne, sans
  * police web ni image. Les clients e-mail cassent tout le reste, et un e-mail
  * qui arrive en texte lisible vaut mieux qu'un e-mail qui arrive cassé.
+ *
+ * Les couleurs viennent de `lib/email/palette.ts` : aucun client e-mail ne
+ * résout `var(--ink)`, d'où le seul endroit du dépôt où les tokens sont
+ * recopiés — et il dit pourquoi.
  */
 
-const INK = "#26211C";
-const INK_2 = "#6F675E";
-const BG = "#FDFCFA";
-const LINE = "#EBE6E0";
+const { ink: INK, ink2: INK_2, bg: BG, line: LINE } = EMAIL_COLORS;
 
 function layout({
   heading,

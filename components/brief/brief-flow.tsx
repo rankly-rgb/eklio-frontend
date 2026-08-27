@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress7, StepCounter } from "@/components/ui/progress7";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { PreviewRail } from "@/components/brief/preview-rail";
+import { PreviewSheet } from "@/components/brief/preview-sheet";
 import { SaveStateLabel } from "@/components/brief/save-state";
 import { useBriefAutosave } from "@/components/brief/use-brief-autosave";
 import {
@@ -157,7 +158,7 @@ export function BriefFlow({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-none p-[20px_var(--gutter)_0] max-md:p-[0_var(--gutter-sm)]">
+      <div className="flex-none p-[20px_var(--gutter)_0] max-md:p-[40px_var(--gutter-sm)_0]">
         {/* Bureau : compteur à droite AU-DESSUS de la jauge (Écrans 1 et 2).
             Mobile : la jauge passe tout en haut, le compteur dessous (Écran 8). */}
         <div className="mb-2.5 flex justify-end max-md:hidden">
@@ -176,7 +177,7 @@ export function BriefFlow({
           className={`flex min-w-0 flex-1 flex-col ${
             // L'Écran 1 (palette) respire à 44px, l'Écran 2 (ton) à 32px.
             step.id === "palette" ? "pt-[44px]" : "pt-8"
-          } pl-[var(--gutter)] pr-14 max-md:px-[var(--gutter-sm)]`}
+          } pl-[var(--gutter)] pr-14 max-md:px-[var(--gutter-sm)] max-lg:pb-[168px]`}
         >
           <div key={step.id} className="question-enter flex max-w-brief flex-col">
             <MonoLabel tracking="18">{step.eyebrow}</MonoLabel>
@@ -200,7 +201,7 @@ export function BriefFlow({
             {issue ? (
               <p
                 role="alert"
-                className="mt-6 text-helper leading-prose text-accent"
+                className="mt-6 border-l border-accent pl-3 text-helper leading-prose text-ink"
               >
                 {issue}
               </p>
@@ -233,6 +234,9 @@ export function BriefFlow({
 
         <PreviewRail model={preview} />
       </div>
+
+      {/* Sous 1024px le rail disparaît : la maquette passe en feuille basse. */}
+      <PreviewSheet model={preview} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { authenticate, badRequest, json, notFound } from "@/lib/api/handler";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import { SITE_PROMPT_TARGETS, buildSitePrompt } from "@/lib/kit/site-prompt";
+import { track } from "@/lib/analytics";
 
 /*
  * GET /api/brand-kits/[id]/site-prompt?target=squarespace
@@ -29,6 +30,8 @@ export async function GET(
   if (!kit.selectedDirection) {
     return badRequest("Choose a direction before copying the site prompt.");
   }
+
+  track("site_prompt_copied", { brandKitId: id, target });
 
   return json({
     target,

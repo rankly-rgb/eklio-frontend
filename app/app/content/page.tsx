@@ -24,7 +24,7 @@ export default async function ContentPage() {
     home.brandKit?.selectedDirection ?? home.brandKit?.directions?.[0] ?? null;
 
   return (
-    <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)]">
+    <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)] max-md:pt-10">
       <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
         This month, in your brand
       </h1>

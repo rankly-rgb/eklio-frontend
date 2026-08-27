@@ -30,7 +30,9 @@ export function SaveStateLabel({
     <div role="status" aria-live="polite" className="pb-5">
       {message ? (
         state === "error" ? (
-          <p className="text-helper leading-prose text-accent">{message}</p>
+          <p className="border-l border-accent pl-3 text-helper leading-prose text-ink">
+            {message}
+          </p>
         ) : (
           <MonoLabel tracking="18" tone="ink-3" className="opacity-60">
             {message}

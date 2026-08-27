@@ -9,6 +9,7 @@ import {
   serverError,
 } from "@/lib/api/handler";
 import { toggleChecklistItem } from "@/lib/data/checklist";
+import { track } from "@/lib/analytics";
 
 /* PATCH /api/checklist/[id] — coche ou décoche un item de la checklist. */
 
@@ -32,7 +33,13 @@ export async function PATCH(
     parsed.data.done
   );
 
-  if (outcome.ok) return json({ item: outcome.item });
+  if (outcome.ok) {
+    if (parsed.data.done) {
+      // La CLÉ de l'item, pas son libellé : le libellé est de la copy.
+      track("checklist_item_completed", { key: outcome.item.key });
+    }
+    return json({ item: outcome.item });
+  }
   if (outcome.reason === "not-found") return notFound();
   return serverError("PATCH /api/checklist", outcome.detail);
 }

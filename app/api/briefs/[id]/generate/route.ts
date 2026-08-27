@@ -8,6 +8,7 @@ import {
   runGenerationPipeline,
 } from "@/lib/generation/pipeline";
 import { readJob, startedJob, withJob } from "@/lib/generation/job";
+import { track } from "@/lib/analytics";
 
 /*
  * POST /api/briefs/[id]/generate — démarre la génération, rend un id de job.
@@ -79,6 +80,8 @@ export async function POST(
 
   if (error || !kit) return serverError("POST /api/briefs/generate", error);
 
+  track("generation_started", { brandKitId: kit.id });
+
   after(async () => {
     try {
       await runGenerationPipeline({
@@ -88,7 +91,14 @@ export async function POST(
         brandKitId: kit.id,
         userId,
       });
+      track("generation_succeeded", { brandKitId: kit.id });
     } catch (pipelineError) {
+      track("generation_failed", {
+        brandKitId: kit.id,
+        // Le NOM de l'erreur, jamais son message : il peut citer de la copy.
+        reason:
+          pipelineError instanceof Error ? pipelineError.name : "unknown",
+      });
       if (!(pipelineError instanceof GenerationNotImplementedError)) {
         console.error("[generate] pipeline", pipelineError);
       }

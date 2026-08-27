@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,16 @@ export function RevealView({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [compare, setCompare] = useState(false);
+
+  /*
+   * La révélation PRÉCHARGE la page de kit (§9). C'est la seule destination
+   * possible depuis cet écran, et elle est lourde : la maquette à 900px, la
+   * palette, le guide de voix. Sans préchargement, le clic sur « Choose this
+   * direction » se paie en attente juste après une minute de génération.
+   */
+  useEffect(() => {
+    router.prefetch(`/app/brand-kits/${brandKitId}`);
+  }, [router, brandKitId]);
 
   async function choose(direction: Direction) {
     setError(null);
@@ -81,6 +91,11 @@ export function RevealView({
         Each one is a complete identity. You can change your mind later.
       </p>
 
+      {/*
+        Mobile (Écran 8) : une carte par écran, le HAUT de la suivante rogné et
+        visible. C'est ce qui dit qu'il y en a d'autres — une carte seule se
+        lirait comme la seule proposition.
+      */}
       <div
         className={`mt-9 grid w-reveal-grid max-w-full gap-6 ${
           compare ? "grid-cols-3" : "grid-cols-3 max-lg:grid-cols-1"
@@ -99,7 +114,7 @@ export function RevealView({
       </div>
 
       {error ? (
-        <p role="alert" className="mt-6 text-helper leading-prose text-accent">
+        <p role="alert" className="mt-6 border-l border-accent pl-3 text-helper leading-prose text-ink">
           {error}
         </p>
       ) : null}

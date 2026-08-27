@@ -1,4 +1,5 @@
 import { authenticate, json, serverError } from "@/lib/api/handler";
+import { track } from "@/lib/analytics";
 
 /*
  * POST /api/briefs — crée un projet et son brief, rend l'identifiant.
@@ -37,5 +38,6 @@ export async function POST() {
     return serverError("POST /api/briefs", briefError);
   }
 
+  track("brief_started", { projectId: project.id });
   return json({ id: project.id }, { status: 201 });
 }

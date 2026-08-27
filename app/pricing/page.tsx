@@ -272,7 +272,7 @@ export default function PricingPage() {
                 palette, your voice, your specialties — and held to the same
                 advertising-ethics rules as the rest of your copy.
               </p>
-              <p className="font-mono text-mono tracking-mono-14 text-ink-2">
+              <p className="text-helper leading-prose text-ink-2">
                 {MONTHLY_PRESENCE.defaultOnMicrocopy}
               </p>
             </div>

@@ -42,7 +42,11 @@ export function TextField({
         {...props}
       />
       {error ? (
-        <p id={`${id}-error`} role="alert" className="text-helper text-accent">
+        <p
+          id={`${id}-error`}
+          role="alert"
+          className="border-l border-accent pl-3 text-helper text-ink"
+        >
           {error}
         </p>
       ) : null}
@@ -84,7 +88,11 @@ export function TextAreaField({
         {...props}
       />
       {error ? (
-        <p id={`${id}-error`} role="alert" className="text-helper text-accent">
+        <p
+          id={`${id}-error`}
+          role="alert"
+          className="border-l border-accent pl-3 text-helper text-ink"
+        >
           {error}
         </p>
       ) : null}
@@ -92,10 +100,22 @@ export function TextAreaField({
   );
 }
 
-/** Erreur d'une ligne, sous le champ ou sous le groupe. Dit quoi faire ensuite. */
+/*
+ * Erreur d'une ligne, sous le champ ou sous le groupe. Elle dit quoi faire
+ * ensuite.
+ *
+ * Le TEXTE est en `--ink`, pas en `--accent` : l'argile sur le fond de page
+ * mesure 4.20:1, sous le seuil AA du texte courant (cf.
+ * `lib/brand/__tests__/contrast.test.ts`). Un message d'erreur illisible est
+ * une contradiction. L'argile reste, en filet de 1px — c'est ce qui le fait
+ * lire comme une erreur, sans aplat de couleur ni perte de contraste.
+ */
 export function InlineError({ children }: { children: React.ReactNode }) {
   return (
-    <p role="alert" className="text-helper leading-prose text-accent">
+    <p
+      role="alert"
+      className="border-l border-accent pl-3 text-helper leading-prose text-ink"
+    >
       {children}
     </p>
   );

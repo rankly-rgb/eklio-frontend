@@ -28,7 +28,7 @@ export function HomeView({ home }: { home: HomeModel }) {
     : null;
 
   return (
-    <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)]">
+    <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)] max-md:pt-10">
       <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
         {greeting(home.firstName)}
       </h1>
@@ -133,7 +133,7 @@ export function HomeView({ home }: { home: HomeModel }) {
  */
 function EmptyHome() {
   return (
-    <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)]">
+    <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)] max-md:pt-10">
       <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
         {greeting(null)}
       </h1>

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { authenticate, notFound } from "@/lib/api/handler";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import { renderBrandKitPdf } from "@/lib/kit/pdf";
+import { track } from "@/lib/analytics";
 
 /*
  * GET /api/brand-kits/[id]/pdf — le kit de marque en PDF.
@@ -24,6 +25,7 @@ export async function GET(
   const kit = await loadBrandKit(auth.session.supabase, id, auth.session.userId);
   if (!kit) return notFound();
 
+  track("pdf_downloaded", { brandKitId: id });
   const pdf = renderBrandKitPdf(kit);
   const name = (kit.practiceName ?? "brand-kit")
     .toLowerCase()

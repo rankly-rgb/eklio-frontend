@@ -48,7 +48,7 @@ export function StartBriefButton({
         {pending ? "One moment…" : label}
       </Button>
       {error ? (
-        <p role="alert" className="text-helper text-accent">
+        <p role="alert" className="border-l border-accent pl-3 text-helper text-ink">
           {error}
         </p>
       ) : null}

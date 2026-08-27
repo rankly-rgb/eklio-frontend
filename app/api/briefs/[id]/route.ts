@@ -13,6 +13,7 @@ import {
   patchBrief,
   readPreview,
 } from "@/lib/data/brief";
+import { track } from "@/lib/analytics";
 
 /*
  * Le brief d'un projet.
@@ -69,6 +70,11 @@ export async function PATCH(
   );
 
   if (outcome.ok) {
+    if (parsed.data.completed_steps) {
+      const last = Math.max(...parsed.data.completed_steps, 0);
+      track("brief_step_completed", { step: last });
+      if (last === 7) track("brief_reviewed", {});
+    }
     return json({
       brief: outcome.brief,
       data: outcome.data,

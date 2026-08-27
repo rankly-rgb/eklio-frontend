@@ -78,7 +78,7 @@ export function ChecklistCard({ items: initial }: { items: ChecklistItem[] }) {
       </div>
 
       {error ? (
-        <p role="alert" className="mt-4 text-helper leading-prose text-accent">
+        <p role="alert" className="mt-4 border-l border-accent pl-3 text-helper leading-prose text-ink">
           {error}
         </p>
       ) : null}

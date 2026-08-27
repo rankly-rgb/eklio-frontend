@@ -9,6 +9,7 @@ import {
   serverError,
 } from "@/lib/api/handler";
 import { selectDirection } from "@/lib/data/brand-kit";
+import { track } from "@/lib/analytics";
 
 /*
  * POST /api/brand-kits/[id]/direction — retient une des trois directions.
@@ -39,6 +40,7 @@ export async function POST(
   );
 
   if (outcome.ok) {
+    track("direction_chosen", { brandKitId: id });
     return json({
       selectedDirectionId: outcome.kit.row.selected_direction_id,
     });
