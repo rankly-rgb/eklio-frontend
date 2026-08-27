@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { sans, mono } from "@/lib/fonts";
+import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Eklio — L'identité de marque qui vous ressemble",
+  title: "Eklio — a brand identity that sounds like you",
   description:
-    "Transformez un brief guidé en identité de marque complète : stratégie, palette, typographies, direction artistique, et un prompt prêt à coller dans votre constructeur de site préféré.",
+    "A guided 7-step brief becomes a complete brand identity: positioning, palette, typography, voice and a site prompt you can paste into your website builder.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -15,14 +15,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   // ne porte que sur les attributs de ces deux balises.
   return (
     <html
-      lang="fr"
+      lang="en"
       suppressHydrationWarning
-      className={`${sans.variable} ${mono.variable} h-full antialiased`}
+      className={`${fontVariables} h-full`}
     >
-      <body
-        suppressHydrationWarning
-        className="min-h-full flex flex-col bg-paper text-ink"
-      >
+      <head>
+        {/*
+          Les trois polices de l'app sont auto-hébergées par next/font. Ces
+          preconnect servent les polices de MARQUE, chargées dynamiquement
+          depuis Google au changement de modèle de prévisualisation (§4).
+        */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin=""
+        />
+      </head>
+      <body suppressHydrationWarning className="flex min-h-full flex-col">
         {children}
       </body>
     </html>

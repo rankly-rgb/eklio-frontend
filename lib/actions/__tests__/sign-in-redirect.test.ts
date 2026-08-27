@@ -128,7 +128,7 @@ describe("connexion refusée — aucune redirection, quel que soit `next`", () =
     // Un `next` valide ne doit pas devenir une porte d'entrée : la redirection
     // n'a lieu qu'APRÈS une authentification réussie.
     await expect(signIn(null, formData)).resolves.toEqual({
-      error: "Email ou mot de passe incorrect.",
+      error: "That email and password don't match. Try again.",
     });
   });
 });

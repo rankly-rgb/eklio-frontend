@@ -125,26 +125,34 @@ const FLOOR_SECONDS = 300;
 const pages = findPages(APP_DIR);
 const generationPages = pages.filter(reachesGeneration);
 
+/*
+ * Les pages de génération sont en cours de reconstruction : l'arborescence
+ * française (`/app/projets/[id]/directions|kit|presence`) a été retirée au lot
+ * 1, et la révélation (`/app/brand-kits/[id]/reveal`) arrive au lot 6. Le
+ * balayage ci-dessus reste actif — il équipe automatiquement toute page qui
+ * atteindra de nouveau une génération — mais la liste nominale est réarmée
+ * quand ces pages existent.
+ */
+const EXPECTED_GENERATION_PAGES: string[] = [];
+
 describe("maxDuration sur les pages qui portent une génération", () => {
-  it("trouve bien des pages de génération (le balayage n'est pas vide)", () => {
-    // Sans cette garde, un balayage cassé rendrait tous les tests suivants
+  it("le balayage lit bien l'arborescence des pages", () => {
+    // Sans cette garde, un balayage cassé rendrait les tests suivants
     // vacuously true — le pire des faux verts.
     expect(pages.length).toBeGreaterThan(0);
-    expect(generationPages.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("couvre les trois pages attendues, `…/directions` comprise", () => {
+  it("couvre les pages de génération attendues", () => {
     const relative = generationPages
       .map((file) => file.slice(APP_DIR.length).replace(/\\/g, "/"))
       .sort();
 
-    /*
-     * `…/directions` est la plus facile à oublier et la plus coûteuse à
-     * manquer : c'est de là que part la PREMIÈRE génération de kit.
-     */
-    expect(relative).toContain("/app/projets/[id]/directions/page.tsx");
-    expect(relative).toContain("/app/projets/[id]/kit/page.tsx");
-    expect(relative).toContain("/app/projets/[id]/presence/page.tsx");
+    for (const expected of EXPECTED_GENERATION_PAGES) {
+      expect(relative).toContain(expected);
+    }
+    // TODO(lot 6) : réarmer EXPECTED_GENERATION_PAGES avec
+    // "/app/brand-kits/[id]/reveal/page.tsx" dès que la révélation existe.
+    expect(generationPages.length).toBe(EXPECTED_GENERATION_PAGES.length);
   });
 
   it.each(

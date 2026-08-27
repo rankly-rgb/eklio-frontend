@@ -10,7 +10,7 @@ export { ETHICS_DISCLAIMER_TEXT };
 export function EthicsDisclaimer({ className }: { className?: string }) {
   return (
     <p
-      className={`text-xs leading-relaxed text-ink-muted${className ? ` ${className}` : ""}`}
+      className={`text-helper leading-prose text-ink-2${className ? ` ${className}` : ""}`}
     >
       {ETHICS_DISCLAIMER_TEXT}
     </p>

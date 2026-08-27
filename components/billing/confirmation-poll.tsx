@@ -42,7 +42,7 @@ export function ConfirmationPoll({ children }: { children: React.ReactNode }) {
 
   if (gaveUp) {
     return (
-      <p className="text-base leading-relaxed text-ink-soft">
+      <p className="text-body leading-prose text-ink-2">
         Your payment went through, but the confirmation is taking longer than
         usual to reach us. Nothing is lost — reload this page in a minute, or
         write to us and we&rsquo;ll sort it out. You will not be charged twice.

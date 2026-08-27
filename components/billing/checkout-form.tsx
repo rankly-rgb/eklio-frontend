@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { startCheckout } from "@/app/app/checkout/actions";
 import { Button } from "@/components/ui/button";
-import { ErrorNotice } from "@/components/ui/error-notice";
+import { InlineError } from "@/components/ui/text-field";
 import { formatUsd, KIT_PLANS, MONTHLY_PRESENCE } from "@/lib/billing/plans";
 import type { KitTier } from "@/lib/kit/tiers";
 
@@ -48,21 +48,21 @@ export function CheckoutForm({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4 rounded border border-rule p-6">
+      <div className="flex flex-col gap-4 rounded-card border border-line p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-display text-2xl">{plan.label} brand kit</h2>
-          <span className="font-mono text-sm">
+          <h2 className="font-display text-card-title font-medium tracking-card-title">{plan.label} brand kit</h2>
+          <span className="font-mono text-mono tracking-mono-14">
             {formatUsd(plan.amountCents)} once
           </span>
         </div>
-        <p className="text-sm leading-relaxed text-ink-soft">{plan.tagline}</p>
+        <p className="text-ui leading-prose text-ink-2">{plan.tagline}</p>
       </div>
 
       <label
-        className={`flex cursor-pointer gap-4 rounded border p-6 transition-colors ${
+        className={`flex cursor-pointer gap-4 rounded-card border p-6 transition-colors ${
           withMonthlyPresence
-            ? "border-rule-strong bg-accent-tint"
-            : "border-rule bg-paper"
+            ? "border-line bg-card"
+            : "border-line bg-bg"
         }`}
       >
         <input
@@ -73,52 +73,52 @@ export function CheckoutForm({
         />
         <span className="flex flex-col gap-3">
           <span className="flex flex-wrap items-baseline justify-between gap-3">
-            <span className="font-display text-xl">
+            <span className="font-display text-card-title font-medium tracking-card-title">
               {MONTHLY_PRESENCE.label}
             </span>
-            <span className="font-mono text-sm">
+            <span className="font-mono text-mono tracking-mono-14">
               {formatUsd(MONTHLY_PRESENCE.amountCents)}/
               {MONTHLY_PRESENCE.interval}
             </span>
           </span>
-          <span className="text-sm leading-relaxed text-ink-soft">
+          <span className="text-ui leading-prose text-ink-2">
             {MONTHLY_PRESENCE.tagline}
           </span>
-          <ul className="flex flex-col gap-1 text-sm text-ink-soft">
+          <ul className="flex flex-col gap-1 text-ui text-ink-2">
             {MONTHLY_PRESENCE.highlights.map((highlight) => (
               <li key={highlight} className="flex gap-2">
-                <span aria-hidden="true" className="text-ink-muted">
+                <span aria-hidden="true" className="text-ink-2">
                   —
                 </span>
                 <span>{highlight}</span>
               </li>
             ))}
           </ul>
-          <span className="font-mono text-xs text-ink-muted">
+          <span className="font-mono text-mono tracking-mono-14 text-ink-2">
             {MONTHLY_PRESENCE.defaultOnMicrocopy}
           </span>
         </span>
       </label>
 
-      <div className="flex flex-col gap-4 border-t border-rule pt-6">
-        <dl className="flex flex-col gap-2 text-sm">
+      <div className="flex flex-col gap-4 border-t border-line pt-6">
+        <dl className="flex flex-col gap-2 text-ui">
           <div className="flex justify-between gap-4">
-            <dt className="text-ink-soft">{plan.label} brand kit</dt>
-            <dd className="font-mono">{formatUsd(plan.amountCents)}</dd>
+            <dt className="text-ink-2">{plan.label} brand kit</dt>
+            <dd className="font-mono text-mono tracking-mono-14">{formatUsd(plan.amountCents)}</dd>
           </div>
           {withMonthlyPresence && (
             <div className="flex justify-between gap-4">
-              <dt className="text-ink-soft">
+              <dt className="text-ink-2">
                 {MONTHLY_PRESENCE.label}, first month
               </dt>
-              <dd className="font-mono">
+              <dd className="font-mono text-mono tracking-mono-14">
                 {formatUsd(MONTHLY_PRESENCE.amountCents)}
               </dd>
             </div>
           )}
-          <div className="flex justify-between gap-4 border-t border-rule pt-2">
+          <div className="flex justify-between gap-4 border-t border-line pt-2">
             <dt>Due today</dt>
-            <dd className="font-mono">
+            <dd className="font-mono text-mono tracking-mono-14">
               {formatUsd(
                 plan.amountCents +
                   (withMonthlyPresence ? MONTHLY_PRESENCE.amountCents : 0)
@@ -128,7 +128,7 @@ export function CheckoutForm({
         </dl>
 
         {withMonthlyPresence && (
-          <p className="text-sm text-ink-muted">
+          <p className="text-ui text-ink-2">
             After today, {formatUsd(MONTHLY_PRESENCE.amountCents)} per month for
             Monthly Presence. The brand kit is not charged again.
           </p>
@@ -137,10 +137,10 @@ export function CheckoutForm({
         <Button onClick={handleSubmit} disabled={isPending}>
           {isPending ? "Opening secure checkout…" : "Continue to payment"}
         </Button>
-        <p className="font-mono text-xs text-ink-muted">
+        <p className="font-mono text-mono tracking-mono-14 text-ink-2">
           Payment is handled by Stripe. We never see your card details.
         </p>
-        {error && <ErrorNotice message={error} />}
+        {error ? <InlineError>{error}</InlineError> : null}
       </div>
     </div>
   );

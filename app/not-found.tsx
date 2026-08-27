@@ -1,21 +1,19 @@
-import Link from "next/link";
+import { ButtonLink } from "@/components/ui/button";
+import { MonoLabel } from "@/components/ui/mono-label";
 
 export default function NotFound() {
   return (
-    <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-4 px-6 py-24">
-      <p className="font-mono text-xs tracking-[0.08em] text-ink-muted">404</p>
-      <h1 className="font-display text-[40px] leading-tight">
-        Cette page n&rsquo;existe pas.
+    <main className="route-enter mx-auto flex w-full max-w-[520px] flex-1 flex-col justify-center gap-5 px-[var(--gutter-sm)] py-24">
+      <MonoLabel tracking="18">404</MonoLabel>
+      <h1 className="font-display text-question font-medium leading-tight tracking-h1">
+        This page doesn&rsquo;t exist.
       </h1>
-      <p className="text-base text-ink-soft">
-        Le lien est peut-être erroné, ou ce contenu ne vous appartient pas.
+      <p className="text-helper leading-prose text-ink-2">
+        The link may be wrong, or this content may not be yours.
       </p>
-      <Link
-        href="/app"
-        className="mt-2 self-start rounded bg-ink px-5 py-2.5 font-mono text-sm text-paper transition-colors hover:bg-ink-soft"
-      >
-        Retour à vos projets
-      </Link>
-    </div>
+      <ButtonLink href="/app" variant="secondary" className="mt-2 self-start">
+        Back to your brand
+      </ButtonLink>
+    </main>
   );
 }

@@ -1,5 +1,21 @@
-import type { ChoiceOption } from "@/components/ui/choice-group";
 import type { BriefDraft } from "@/lib/brief/schemas";
+
+/*
+ * TODO(lot 4) — ce fichier CODE EN DUR le catalogue (types de licence,
+ * spécialités, familles chromatiques…). Le §6 du cahier des charges veut ce
+ * catalogue LU EN BASE (`license_types`, `specialties`, `palette_families`…)
+ * pour que la copy change sans déploiement. Il est remplacé par
+ * `lib/catalog/` au lot 4 ; il ne subsiste ici que le temps que les
+ * générations du lot 2 continuent de compiler.
+ */
+export type ChoiceOption = {
+  value: string;
+  label: string;
+  /** Aperçu de couleurs (familles chromatiques) — données, pas décor. */
+  swatches?: string[];
+  /** Classe de police pour rendre l'option dans sa propre typographie. */
+  labelClassName?: string;
+};
 
 /*
  * Configuration déclarative des 7 étapes du brief : question de cadrage,

@@ -1,96 +1,39 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
 /*
- * Design tokens — identité visuelle Eklio (lot 1, fond blanc).
- * Le crème n'est plus une couleur de page : c'est un accent réservé à la
- * fiche de marque, aux options sélectionnées et aux badges d'état.
- * Aucune couleur en dur dans les composants : tout passe par ces tokens.
+ * Feuille de base. Elle ne définit AUCUNE valeur : tout vient de
+ * `styles/tokens.css`. Elle ne fait que poser les bases du document, l'anneau
+ * de focus et les quatre mouvements décrits au §3 du cahier des charges.
  */
-:root {
-  /* surfaces */
-  --paper: #ffffff;
-  --paper-raised: #fafaf9;
-
-  /* texte */
-  --ink: #131313;
-  --ink-soft: #2a2a2a;
-  --ink-muted: #6b6b68;
-
-  /* traits */
-  --rule: #e6e4df;
-  --rule-strong: #d8d2c4;
-
-  /* accent — le crème de la marque, uniquement en aplat d'accent */
-  --accent-surface: #f1ebdf;
-  --accent-tint: #faf6ee;
-
-  /* fonctionnel */
-  --danger: #a4342b;
-  --success: #2f6b4f;
-}
-
-/*
- * Recoleta Bold (display). La licence n'est pas encore achetée : le fichier
- * public/fonts/Recoleta-Bold.woff2 peut être absent. Le @font-face ne casse
- * jamais le build — en son absence le navigateur retombe sur Georgia.
- * Voir NOTES.md pour brancher le fichier une fois obtenu.
- */
-@font-face {
-  font-family: "Recoleta";
-  src: url("/fonts/Recoleta-Bold.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@theme inline {
-  --color-paper: var(--paper);
-  --color-paper-raised: var(--paper-raised);
-  --color-ink: var(--ink);
-  --color-ink-soft: var(--ink-soft);
-  --color-ink-muted: var(--ink-muted);
-  --color-rule: var(--rule);
-  --color-rule-strong: var(--rule-strong);
-  --color-accent-surface: var(--accent-surface);
-  --color-accent-tint: var(--accent-tint);
-  --color-danger: var(--danger);
-  --color-success: var(--success);
-
-  --font-display: "Recoleta", Georgia, "Times New Roman", serif;
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-ibm-plex-mono);
-}
 
 body {
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: var(--text-body);
+  line-height: var(--leading-prose);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Focus visible partout — ne jamais supprimer l'outline. */
+/* Anneau de focus visible partout, argile à 40 %. Ne jamais le supprimer. */
 :focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-}
-
-/* Libellés utilitaires en capitales (mono, 12px, espacé). */
-.label-mono {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  border-radius: var(--radius-check);
 }
 
 /*
- * Mouvement : transition unique au changement d'étape —
- * 150 ms, opacité + translation de 4px. Rien d'autre.
+ * ── Mouvement (§3) ───────────────────────────────────────────────────────
+ * Quatre mouvements, pas un de plus. Les transitions de tokens de la
+ * prévisualisation et de sélection vivent sur les composants concernés, en
+ * `transition-*` Tailwind adossé aux durées ci-dessus.
  */
-@keyframes step-enter {
+
+@keyframes eklio-rise {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -98,12 +41,53 @@ body {
   }
 }
 
-.step-enter {
-  animation: step-enter 150ms ease-out;
+@keyframes eklio-pop {
+  from {
+    transform: scale(0.6);
+  }
+  to {
+    transform: scale(1);
+  }
 }
 
+/* Changement de route : fondu 200 ms + montée de 8px. */
+.route-enter {
+  animation: eklio-rise var(--dur-route) var(--ease-out) both;
+}
+
+/* Changement de question : fondu 200 ms + glissement de 8px. */
+.question-enter {
+  animation: eklio-rise var(--dur-question) var(--ease-out) both;
+}
+
+/*
+ * Les trois cartes de la révélation montent en séquence, 120 ms d'écart.
+ * L'index est passé en `--stagger-index` par le composant.
+ */
+.reveal-rise {
+  animation: eklio-rise var(--dur-route) var(--ease-out) both;
+  animation-delay: calc(var(--stagger-index, 0) * var(--stagger-reveal));
+}
+
+/* La pastille de coche entre en grandissant depuis 0.6, 150 ms. */
+.check-pop {
+  animation: eklio-pop var(--dur-select) var(--ease-out) both;
+}
+
+/*
+ * `prefers-reduced-motion` rend TOUT instantané — pas d'exception, pas de
+ * « réduit mais quand même animé ». Balaie aussi les transitions posées en
+ * utilitaires sur les composants.
+ */
 @media (prefers-reduced-motion: reduce) {
-  .step-enter {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }

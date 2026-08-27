@@ -23,10 +23,10 @@ export async function signIn(
     if (error.code === "email_not_confirmed") {
       return {
         error:
-          "Votre adresse email n'a pas encore été confirmée. Cliquez sur le lien reçu par email, ou réinscrivez-vous pour en recevoir un nouveau.",
+          "Your email address isn't confirmed yet. Click the link we sent you, or sign up again to get a new one.",
       };
     }
-    return { error: "Email ou mot de passe incorrect." };
+    return { error: "That email and password don't match. Try again." };
   }
 
   /*
@@ -55,7 +55,7 @@ export async function signUp(
   const password = String(formData.get("password") ?? "");
 
   if (password.length < 8) {
-    return { error: "Le mot de passe doit contenir au moins 8 caractères." };
+    return { error: "Use a password of at least 8 characters." };
   }
 
   const supabase = await createClient();
@@ -68,10 +68,10 @@ export async function signUp(
   });
 
   if (error) {
-    return { error: "Impossible de créer le compte : " + error.message };
+    return { error: `We couldn't create the account: ${error.message}` };
   }
 
-  redirect("/signup/verifiez-vos-emails");
+  redirect("/signup/check-your-email");
 }
 
 export async function signOut() {

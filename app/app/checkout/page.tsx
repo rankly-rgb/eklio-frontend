@@ -59,15 +59,15 @@ export default async function CheckoutPage({
       <header className="flex flex-col gap-3">
         <Link
           href="/pricing"
-          className="font-mono text-sm underline hover:opacity-60"
+          className="text-ui text-ink-2 underline decoration-[var(--line)] underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"
         >
           ← All plans
         </Link>
-        <h1 className="font-display text-[40px] leading-tight">
+        <h1 className="font-display text-question font-medium leading-tight tracking-h1">
           Your order
         </h1>
         {projectName && (
-          <p className="font-mono text-sm text-ink-muted">
+          <p className="text-helper text-ink-2">
             Unlocking the kit for {projectName}
           </p>
         )}
@@ -75,8 +75,8 @@ export default async function CheckoutPage({
 
       <CheckoutForm tier={tier} projectId={projectId} />
 
-      <section className="flex flex-col gap-3 border-t border-rule pt-6">
-        <p className="label-mono text-ink-muted">Change tier</p>
+      <section className="flex flex-col gap-3 border-t border-line pt-6">
+        <p className="font-mono text-mono uppercase tracking-mono-16 text-ink-2">Change tier</p>
         <div className="flex flex-wrap gap-3">
           {ORDERED_PLANS.filter((plan) => plan.tier !== tier).map((plan) => (
             <Link
@@ -87,7 +87,7 @@ export default async function CheckoutPage({
                   ? { plan: plan.tier, project: projectId }
                   : { plan: plan.tier },
               }}
-              className="rounded border border-rule px-4 py-2 font-mono text-sm transition-colors hover:bg-paper-raised"
+              className="inline-flex h-10 items-center rounded-pill border border-line px-[26px] text-ui text-ink transition-colors hover:bg-card"
             >
               {plan.label} · {formatUsd(plan.amountCents)}
             </Link>

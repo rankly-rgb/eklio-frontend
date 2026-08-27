@@ -2,14 +2,19 @@
 
 import { useActionState } from "react";
 import type { AuthFormState } from "@/lib/actions/auth";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/ui/text-field";
+import { InlineError } from "@/components/ui/text-field";
 
 export function AuthForm({
   action,
   submitLabel,
+  passwordAutoComplete = "current-password",
   next,
 }: {
   action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
   submitLabel: string;
+  passwordAutoComplete?: "current-password" | "new-password";
   /**
    * Destination demandée avant la connexion, telle que le proxy l'a posée.
    *
@@ -27,43 +32,32 @@ export function AuthForm({
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
-      {next && <input type="hidden" name="next" value={next} />}
-      <label className="flex flex-col gap-1 font-mono text-sm">
-        Email
-        <input
-          type="email"
-          name="email"
-          required
-          autoComplete="email"
-          className="rounded border border-rule bg-paper px-3 py-2 font-sans text-base text-ink hover:bg-paper-raised focus:border-ink-soft"
-        />
-      </label>
-      <label className="flex flex-col gap-1 font-mono text-sm">
-        Mot de passe
-        <input
-          type="password"
-          name="password"
-          required
-          minLength={8}
-          autoComplete="current-password"
-          className="rounded border border-rule bg-paper px-3 py-2 font-sans text-base text-ink hover:bg-paper-raised focus:border-ink-soft"
-        />
-      </label>
+    <form action={formAction} className="flex flex-col gap-5">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
 
-      {state?.error && (
-        <p role="alert" className="font-mono text-sm text-danger">
-          {state.error}
-        </p>
-      )}
+      <TextField
+        id="email"
+        name="email"
+        type="email"
+        label="Email"
+        required
+        autoComplete="email"
+      />
+      <TextField
+        id="password"
+        name="password"
+        type="password"
+        label="Password"
+        required
+        minLength={8}
+        autoComplete={passwordAutoComplete}
+      />
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="mt-2 rounded bg-ink px-6 py-3 font-mono text-sm text-paper transition-colors hover:bg-ink-soft disabled:opacity-50"
-      >
-        {isPending ? "Patientez…" : submitLabel}
-      </button>
+      {state?.error ? <InlineError>{state.error}</InlineError> : null}
+
+      <Button type="submit" disabled={isPending} className="mt-1 self-start">
+        {isPending ? "One moment…" : submitLabel}
+      </Button>
     </form>
   );
 }
