@@ -75,6 +75,21 @@ body {
 }
 
 /*
+ * Les tokens de marque s'ANIMENT : un changement de palette dans le brief
+ * traverse la maquette en 500 ms au lieu de la remonter. Les propriétés
+ * custom ne s'animent pas d'elles-mêmes — ce sont les propriétés qui les
+ * CONSOMMENT qui portent la transition, d'où la descente sur tout le sous-arbre.
+ */
+.brand-preview,
+.brand-preview *:not(.brand-preview-static) {
+  transition:
+    background-color var(--dur-token) var(--ease-token),
+    border-color var(--dur-token) var(--ease-token),
+    color var(--dur-token) var(--ease-token),
+    fill var(--dur-token) var(--ease-token);
+}
+
+/*
  * `prefers-reduced-motion` rend TOUT instantané — pas d'exception, pas de
  * « réduit mais quand même animé ». Balaie aussi les transitions posées en
  * utilitaires sur les composants.
