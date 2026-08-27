@@ -1,6 +1,25 @@
-Need to install the following packages:
-supabase@2.116.0
-Ok to proceed? (y) export type Json =
+/*
+ * Types du schéma Supabase — GÉNÉRÉ, ne pas éditer à la main au-dessus de
+ * l'addendum en bas de fichier.
+ *
+ * Source : projet US `eklio-backend-us` (ref fobgdsupyfslxbswfuay, us-east-1),
+ * dont le schéma est porté par le repo `eklio-backend` (source de vérité).
+ *
+ * Régénérer avec :
+ *   npx --yes supabase@latest gen types typescript \
+ *     --project-id fobgdsupyfslxbswfuay > types/supabase.ts
+ * puis réappliquer l'addendum en fin de fichier.
+ *
+ * `--yes` n'est PAS décoratif. Sans lui, npx pose sa question d'installation
+ * sur la sortie STANDARD, et la redirection l'écrit dans le fichier :
+ *   Need to install the following packages:
+ *   supabase@2.116.0
+ *   Ok to proceed? (y) export type Json =
+ * Le fichier ne compile alors plus dès sa première ligne, et `tsc` comme
+ * `eslint` s'arrêtent là — c'est arrivé, et ça a cassé la branche.
+ */
+
+export type Json =
   | string
   | number
   | boolean
@@ -1065,6 +1084,37 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+/* ------------------------------------------------------------------------
+ * ADDENDUM MANUEL — à réappliquer après chaque régénération.
+ *
+ * Ces colonnes sont des `text` contraints par un CHECK, pas des enums
+ * Postgres : `supabase gen types` les rend donc en `string`. On conserve les
+ * unions côté TypeScript pour garder l'exhaustivité dans l'UI et dans les
+ * mappings. Elles doivent rester synchronisées avec les contraintes en base —
+ * vérifiées contre `pg_constraint` le 2026-08-27 :
+ *
+ *   projects.status                  = ANY (ARRAY['brief','brief_complete','directions','kit'])
+ *   subscriptions.status             = ANY (ARRAY['incomplete','incomplete_expired','trialing',
+ *                                                 'active','past_due','canceled','unpaid','paused'])
+ *   purchases.status                 = ANY (ARRAY['pending','paid','refunded','failed'])
+ *   monthly_presence_content.status  = ANY (ARRAY['locked','draft','ready','published'])
+ *
+ * ATTENTION — `monthly_presence_content.status` A CHANGÉ. Il valait
+ * `pending`/`generating`/`complete`/`failed` au Lot 4 ; le schéma backend l'a
+ * remplacé par un cycle de publication (`locked`/`draft`/`ready`/`published`),
+ * avec de nouvelles colonnes `caption`, `visual_spec` et `published_at`.
+ * L'union ci-dessous suit la base, pas l'ancien lot. Le code de génération
+ * mensuelle écrit encore `'complete'`, valeur que le CHECK REFUSE désormais :
+ * cf. `app/app/projets/[id]/presence/actions.ts`, à reprendre avec le reste de
+ * la persistance de Monthly Presence.
+ *
+ * `brand_kits.tier` et `purchases.tier` sont eux aussi contraints
+ * (starter/practice/signature) mais leur union n'est PAS dupliquée ici : elle
+ * vit dans `lib/kit/tiers.ts` (`KIT_TIERS`), qui la tient depuis le Lot 3 et
+ * la vérifie contre le type généré.
+ * ---------------------------------------------------------------------- */
+
 export type ProjectStatus = "brief" | "brief_complete" | "directions" | "kit"
 
 export type SubscriptionStatus =
@@ -1080,7 +1130,7 @@ export type SubscriptionStatus =
 export type PurchaseStatus = "pending" | "paid" | "refunded" | "failed"
 
 export type MonthlyPresenceStatus =
-  | "pending"
-  | "generating"
-  | "complete"
-  | "failed"
+  | "locked"
+  | "draft"
+  | "ready"
+  | "published"
