@@ -38,6 +38,17 @@ export type ProjectRow = Tables<"projects">;
  * lit a sa propre colonne.
  */
 export const briefDataSchema = z.object({
+  /*
+   * Étape 1 — l'étape de vie du cabinet.
+   *
+   * ÉCART SIGNALÉ : le §5 demande des « stage cards », mais le schéma backend
+   * ne porte aucune table de catalogue pour ce choix, contrairement à
+   * `site_goals` ou `specialties`. Il vit donc ici, dans la part libre du
+   * brief, et personne d'autre ne le lit. Une table `practice_stages` et une
+   * colonne `project_briefs.practice_stage_id` sont demandées au dépôt de
+   * schéma ; le jour où elles existent, cette clé disparaît.
+   */
+  stage: z.string().max(40).optional(),
   /** Étape 2 — « or say it your way », côté problème puis côté gain. */
   problem_text: z.string().max(400).optional(),
   gain_text: z.string().max(400).optional(),

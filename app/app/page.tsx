@@ -1,4 +1,4 @@
-import { ButtonLink } from "@/components/ui/button";
+import { StartBriefButton } from "@/components/brief/start-brief-button";
 
 /*
  * Accueil de rétention (Écran 7). Cette version ne porte que la coquille : la
@@ -16,9 +16,9 @@ export default function AppHomePage() {
         Your first brand takes about 7 minutes. Here&rsquo;s what you&rsquo;ll
         get.
       </p>
-      <ButtonLink href="/app/briefs/new" variant="primary" className="mt-6">
-        Start my brief
-      </ButtonLink>
+      <div className="mt-6">
+        <StartBriefButton />
+      </div>
     </main>
   );
 }
