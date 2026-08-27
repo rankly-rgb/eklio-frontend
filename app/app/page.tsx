@@ -1,24 +1,20 @@
-import { StartBriefButton } from "@/components/brief/start-brief-button";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { loadHome } from "@/lib/data/home";
+import { HomeView } from "@/components/home/home-view";
 
 /*
- * Accueil de rétention (Écran 7). Cette version ne porte que la coquille : la
- * salutation et le point d'entrée du brief. La carte de marque, la checklist
- * de lancement et la grille de contenu du mois arrivent au lot 8, avec leurs
- * lectures agrégées.
+ * L'accueil (Écran 7). Le même agrégat que `GET /api/home`, par la même
+ * fonction : l'écran et la route ne peuvent pas diverger.
  */
-export default function AppHomePage() {
-  return (
-    <main className="route-enter flex-1 px-[var(--gutter)] pt-8 max-md:px-[var(--gutter-sm)]">
-      <h1 className="font-display text-h1 font-medium leading-tight tracking-h1">
-        Your brand
-      </h1>
-      <p className="mt-4 max-w-[520px] text-helper leading-prose text-ink-2">
-        Your first brand takes about 7 minutes. Here&rsquo;s what you&rsquo;ll
-        get.
-      </p>
-      <div className="mt-6">
-        <StartBriefButton />
-      </div>
-    </main>
-  );
+export default async function AppHomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?next=/app");
+
+  const home = await loadHome(supabase, user.id);
+
+  return <HomeView home={home} />;
 }

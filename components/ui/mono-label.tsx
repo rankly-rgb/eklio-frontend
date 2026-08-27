@@ -46,6 +46,7 @@ export function MonoLabel({
   uppercase = true,
   as: Tag = "span",
   className = "",
+  id,
 }: {
   children: ReactNode;
   tracking?: MonoTracking;
@@ -55,9 +56,12 @@ export function MonoLabel({
   uppercase?: boolean;
   as?: ElementType;
   className?: string;
+  /** Utile quand le libellé sert de titre à une section (`aria-labelledby`). */
+  id?: string;
 }) {
   return (
     <Tag
+      id={id}
       className={`font-mono ${size === "11" ? "text-mono" : "text-mono-sm"} ${
         TRACKING[tracking]
       } ${TONE[tone]} ${uppercase ? "uppercase" : ""} ${className}`}
