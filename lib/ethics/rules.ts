@@ -65,9 +65,28 @@ startup vocabulary.`;
 
 export type EthicsSeverity = "block" | "warn";
 
+/*
+ * Les six identifiants de la table `ethics_rules`.
+ *
+ * Chaque pattern ci-dessous porte celui de la règle qu'il fait respecter. Ce
+ * n'est pas décoratif : `brand_kits.ethics_check.flagged[].rule_id` référence
+ * cette table, et c'est ce qui empêche l'infobulle du badge BOARD-SAFE COPY et
+ * le chemin d'application de diverger (§7). La LISTE des règles et leur TEXTE
+ * vivent en base, jamais ici — seul le rattachement vit dans le code.
+ */
+export type EthicsRuleId =
+  | "timeframe"
+  | "proven"
+  | "client_voice"
+  | "credential"
+  | "scarcity"
+  | "diagnosis";
+
 export type ForbiddenPattern = {
   /** Insensible à la casse, sans drapeau `g` (exec doit rester sans état). */
   pattern: RegExp;
+  /** Règle de `ethics_rules` que ce pattern fait respecter. */
+  ruleId: EthicsRuleId;
   /** Formulation lisible, réutilisée dans le feedback de régénération. */
   reason: string;
   severity: EthicsSeverity;
@@ -107,6 +126,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
       `\\b(?:${RESOLUTION_VERB})\\b(?:\\s+\\w+){0,3}\\s+\\b(?:${CONDITION})\\b`,
       "i"
     ),
+    ruleId: "proven",
     reason:
       "Promet de résoudre une condition nommée. Décrire le travail, jamais son résultat.",
     severity: "block",
@@ -115,6 +135,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.a — "free you from / rid you of" : la même promesse sans le verbe.
     pattern:
       /\b(?:free\s+you\s+from|rid\s+you\s+of|get\s+rid\s+of|take\s+away\s+your|make\s+(?:it|your\s+\w+)\s+go\s+away)\b/i,
+    ruleId: "proven",
     reason:
       "Promet de faire disparaître la difficulté du lecteur. Reformuler vers la compréhension de cette difficulté.",
     severity: "block",
@@ -126,6 +147,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
       `\\b(?:${CONDITION})\\b[^.!?]{0,30}?\\b(?:is|are|will\\s+be|'?ll\\s+be)\\s+(?:gone|behind\\s+you|history|a\\s+thing\\s+of\\s+the\\s+past|no\\s+longer\\s+(?:a\\s+problem|an\\s+issue))\\b`,
       "i"
     ),
+    ruleId: "proven",
     reason:
       "Promet la disparition de la difficulté. Décrire le travail, pas l'état supposé qu'il laisse.",
     severity: "block",
@@ -134,6 +156,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.a — une promesse datée reste une promesse de résultat.
     pattern:
       /\b(?:results?|relief|change|changes|healing|progress|improvement|breakthrough|transformation|better)\b[^.!?]{0,40}?\bin\s+(?:as\s+little\s+as\s+|just\s+|only\s+)?\d+\s*(?:days?|weeks?|months?|sessions?)\b/i,
+    ruleId: "timeframe",
     reason:
       "Promet un résultat dans un délai donné. Retirer le délai et la promesse.",
     severity: "block",
@@ -141,6 +164,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
   {
     // ACA C.3.a — "guarantee" est une promesse de résultat sous toutes ses formes.
     pattern: /\bguarantee(?:s|d|ing)?\b/i,
+    ruleId: "proven",
     reason:
       "Garantit un résultat. Aucun résultat thérapeutique ne peut être garanti en publicité.",
     severity: "block",
@@ -151,6 +175,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // dire que les résultats sont "proven" ne l'est pas.
     pattern:
       /\b(?:clinically|scientifically|medically|statistically)\s+proven\b|\bproven\s+(?:to\b|results?\b|method|approach|system|technique|protocol|track\s+record)/i,
+    ruleId: "proven",
     reason:
       "Affirme une efficacité prouvée. Nommer la modalité sans affirmer que le résultat est prouvé.",
     severity: "block",
@@ -162,6 +187,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // « most of my clients feel better » est attrapé par le pattern témoignage.
     pattern:
       /\b(?:\d{1,3}\s*(?:%|percent)|\d+\s+out\s+of\s+\d+|nine\s+out\s+of\s+ten)\s+(?:of\s+)?(?:my|our|her|his|their)?\s*(?:clients?|patients?)\b|\bsuccess\s+rate\b/i,
+    ruleId: "proven",
     reason:
       "Annonce un taux de réussite auprès des clients. Les statistiques de résultat sont interdites.",
     severity: "block",
@@ -170,6 +196,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.a — promettre la durabilité d'un résultat reste une promesse.
     pattern:
       /\b(?:lasting|permanent|life-?long|complete|full)\s+(?:relief|results?|recovery|healing|peace|calm|freedom)\b/i,
+    ruleId: "proven",
     reason:
       "Promet un résultat durable ou total. Décrire la direction du travail, pas sa permanence.",
     severity: "block",
@@ -180,6 +207,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // personnalisation, pas une efficacité — d'où le lookahead négatif.
     pattern:
       /\b(?:treatment|therapy|approach|method)\s+that\s+(?:actually\s+|really\s+)?(?:works|will\s+work)\b(?!\s+(?:best\s+)?for\s+you)/i,
+    ruleId: "proven",
     reason:
       "Affirme que la prise en charge fonctionne. Décrire la modalité sans promettre qu'elle réussit.",
     severity: "block",
@@ -190,14 +218,28 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.b / APA 5.05 — solliciter ou publier un témoignage de client
     // (actuel ou ancien) est interdit ; nommer le format l'est donc aussi.
     pattern: /\btestimonials?\b/i,
+    ruleId: "client_voice",
     reason:
       "Fait référence à des témoignages. Cette audience ne peut en publier aucun.",
     severity: "block",
   },
   {
-    // ACA C.3.b / APA 5.05 — l'éloge de client paraphrasé est un témoignage.
+    /*
+     * ACA C.3.b / APA 5.05 — l'éloge de client paraphrasé est un témoignage.
+     *
+     * Le possessif est FACULTATIF. Il ne l'était pas, et le motif manquait
+     * alors l'exemple que la table `ethics_rules` donne elle-même de cette
+     * règle : « Clients often tell me... ». Un contre-exemple cité en base et
+     * non attrapé par le code, c'est exactement la dérive que le §7 demande
+     * d'empêcher entre l'infobulle du badge et le chemin d'application.
+     *
+     * L'adverbe de fréquence intercalé est absorbé pour la même raison, et
+     * la liste en est FERMÉE : un `\w+` générique bloquerait « clients with
+     * anxiety report », qui décrit une population, pas un éloge.
+     */
     pattern:
-      /\b(?:my|our|her|his|their)\s+(?:clients?|patients?)\s+(?:say|says|said|report|reports|reported|tell|told|describe|describes|rave|love|feel|feels|felt|often\s+say)\b/i,
+      /\b(?:(?:my|our|her|his|their)\s+)?(?:clients?|patients?)\s+(?:often|frequently|sometimes|usually|always|regularly|routinely|consistently)?\s*(?:say|says|said|report|reports|reported|tell|tells|told|describe|describes|rave|love|feel|feels|felt)\b/i,
+    ruleId: "client_voice",
     reason:
       "Paraphrase l'éloge de clients. Un témoignage client ne peut être ni sollicité ni publié.",
     severity: "block",
@@ -208,6 +250,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // supervisor" reste légitime (cas testé).
     pattern:
       /\bclient\s+(?:reviews?|feedback|ratings?)\b|\bpatient\s+reviews?\b|\b(?:reviewed|rated|recommended)\s+by\s+(?:my|our|former|past|hundreds\s+of|\d+)\s*(?:clients?|patients?)\b/i,
+    ruleId: "client_voice",
     reason:
       "Utilise un langage d'avis ou de note client, qui fonctionne comme un témoignage.",
     severity: "block",
@@ -216,6 +259,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.b — une note en étoiles est un avis client, glyphe compris.
     pattern:
       /\bfive[-\s]star\b|\b\d(?:\.\d)?\s*(?:\/\s*5|out\s+of\s+5)\s*stars?\b|[★⭐]/iu,
+    ruleId: "client_voice",
     reason:
       "Contient une note en étoiles, qui se lit comme une évaluation de clients.",
     severity: "block",
@@ -223,6 +267,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
   {
     // ACA C.3.b — "success story" est un témoignage sous un autre nom.
     pattern: /\b(?:success|client|patient)\s+stor(?:y|ies)\b/i,
+    ruleId: "client_voice",
     reason:
       "Présente des parcours clients comme preuve, ce qui fonctionne comme un témoignage.",
     severity: "block",
@@ -236,6 +281,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // practices" est une expression légitime (cas testé).
     pattern:
       /(?:\b(?:best|top|leading|premier|foremost|most\s+trusted|top-?rated|number\s+one)|#\s*1)\s+(?:\w+\s+){0,2}(?:therapist|therapists|counselor|counselors|counsellor|psychologist|psychologists|clinician|clinicians|clinic|provider|providers|coach|therapy)\b/i,
+    ruleId: "scarcity",
     reason:
       "Superlatif auto-décerné. Un classement comparatif ne peut être étayé et reste interdit.",
     severity: "block",
@@ -245,9 +291,23 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // la distinction peut être réelle, mais elle doit être vérifiée à la main.
     pattern:
       /\b(?:award-?winning|nationally\s+recognized|world-?class|world-?renowned|renowned)\b/i,
+    ruleId: "credential",
     reason:
       "Revendique une reconnaissance possiblement non étayable. Préférer des credentials vérifiables.",
     severity: "warn",
+  },
+
+  // ── Credentials gonflés ──────────────────────────────────────────────────
+  {
+    // ACA C.4.a / APA 5.01(a) — une formation n'est pas une certification.
+    // L'exemple porté par `ethics_rules.credential` en base est
+    // « Certified in EMDR after a weekend intensive. »
+    pattern:
+      /\b(?:weekend|two-?day|one-?day|\d+-?(?:day|hour))\s+(?:certification|certificate|certified|intensive)\b|\bcertified\b[^.!?]{0,40}\b(?:weekend|workshop|webinar|ce\s+course|short\s+course)\b/i,
+    ruleId: "credential",
+    reason:
+      "Présente une formation courte comme une certification. Nommer la formation suivie, pas un titre qu'elle ne confère pas.",
+    severity: "block",
   },
 
   // ── Diagnostic du lecteur ────────────────────────────────────────────────
@@ -257,6 +317,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
       `\\byou\\s+(?:have|clearly\\s+have|probably\\s+have|likely\\s+have|are\\s+suffering\\s+from|suffer\\s+from)\\s+(?:\\w+\\s+){0,2}\\b(?:${CONDITION})\\b`,
       "i"
     ),
+    ruleId: "diagnosis",
     reason:
       "Pose un diagnostic au lecteur. Décrire une expérience vécue, jamais attribuer un diagnostic.",
     severity: "block",
@@ -267,6 +328,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.a — la pression commerciale est inappropriée pour un soin clinique.
     pattern:
       /\bonly\s+\d+\s+(?:spots?|slots?|places?|openings?)\s+(?:left|remaining|available)\b|\blimited[-\s]time\s+offer\b|\bact\s+now\b|\bdon'?t\s+wait\b|\blast\s+chance\b|\bbook\s+(?:now\s+)?before\s+(?:prices|rates|spots)\b/i,
+    ruleId: "scarcity",
     reason:
       "Emploie une tactique d'urgence ou de rareté, inappropriée pour un service clinique.",
     severity: "block",
@@ -323,6 +385,8 @@ function findViolation(pattern: RegExp, text: string): RegExpExecArray | null {
 }
 
 export type EthicsViolation = {
+  /** Règle de `ethics_rules` enfreinte — repris tel quel dans `ethics_check`. */
+  ruleId: EthicsRuleId;
   reason: string;
   severity: EthicsSeverity;
   /** Extrait fautif, cité tel quel dans les logs et le feedback de régénération. */
@@ -346,12 +410,12 @@ export function checkEthics(text: string): EthicsCheckResult {
 
   if (!text) return { ok: true, violations };
 
-  for (const { pattern, reason, severity } of FORBIDDEN_PATTERNS) {
+  for (const { pattern, ruleId, reason, severity } of FORBIDDEN_PATTERNS) {
     // Les mentions prohibitives (« no testimonials ») ne sont pas des
     // violations : c'est le socle appliqué, pas transgressé.
     const match = findViolation(pattern, text);
     if (match) {
-      violations.push({ reason, severity, excerpt: match[0].trim() });
+      violations.push({ ruleId, reason, severity, excerpt: match[0].trim() });
     }
   }
 

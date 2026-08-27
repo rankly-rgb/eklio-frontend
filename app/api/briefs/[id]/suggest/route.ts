@@ -52,6 +52,7 @@ export async function POST(
     const text = await suggestFieldText({
       supabase: auth.session.supabase,
       projectId: id,
+      userId: auth.session.userId,
       field: parsed.data.field,
     });
     return json({ text });

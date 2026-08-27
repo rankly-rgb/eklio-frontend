@@ -1,5 +1,22 @@
 import { z } from "zod";
-import { PAGES_WANTED } from "@/lib/brief/schemas";
+/*
+ * Les pages qu'un kit peut livrer.
+ *
+ * Pas d'entrée `testimonials`, volontairement : la sollicitation de
+ * témoignages clients est interdite aux praticiens licenciés (ACA C.3.a,
+ * APA 5.05). Ce sont les diplômes, formations, publications et affiliations
+ * qui en tiennent lieu.
+ */
+export const PAGES_WANTED = [
+  "home",
+  "about",
+  "approach",
+  "specialties",
+  "fees",
+  "faq",
+  "contact",
+  "blog",
+] as const;
 
 /*
  * Périmètre du livrable par tier — la couture (« seam ») du gating.

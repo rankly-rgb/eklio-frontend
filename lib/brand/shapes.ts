@@ -139,8 +139,24 @@ export const directionSchema = z.object({
       "The keyword row is nowrap: joined, it must stay under 33 characters"
     ),
   rendering: renderingSchema.optional(),
+  /*
+   * La direction RECOMMANDÉE — bordure argile et bouton `accent` sur l'écran
+   * de révélation (Écran 4). C'est une donnée, pas une position : la pipeline
+   * la pose sur celle qui est bâtie sur la palette « LEADING » du praticien et
+   * sur sa paire typographique. La coder par index ferait mentir la carte le
+   * jour où les palettes sont réordonnées.
+   *
+   * La base tolère les clés supplémentaires : ses CHECK vérifient ce qu'ils
+   * nomment, pas l'absence du reste.
+   */
+  recommended: z.boolean().optional(),
 });
 export type Direction = z.infer<typeof directionSchema>;
+
+/** La direction recommandée, ou la première à défaut. */
+export function recommendedDirection(directions: Direction[]): Direction | null {
+  return directions.find((entry) => entry.recommended) ?? directions[0] ?? null;
+}
 
 export const directionsSchema = z
   .array(directionSchema)

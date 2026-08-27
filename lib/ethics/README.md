@@ -19,16 +19,37 @@ Couche autonome : elle n'importe rien de `lib/ai`. C'est `lib/ai` qui l'importe.
 
 | Niveau | Où | Quoi |
 | --- | --- | --- |
-| 1 — pilotage | `ETHICS_SYSTEM_RULES` (`rules.ts`) | règles injectées dans le prompt de génération |
-| 2 — vérification | `checkEthics` / `generateWithEthicsGuard` | contrôle côté code + régénération automatique |
+| 1 — pilotage | `ETHICS_SYSTEM_RULES` (`rules.ts`) + `rulesBlock()` (`guard.ts`) | règles injectées dans le prompt de génération |
+| 2 — vérification | `checkEthics` (`rules.ts`), `enforceEthics` (`guard.ts`) | contrôle côté code + réécriture ciblée |
 | 3 — transparence | `EthicsDisclaimer` (`components/ethics-disclaimer.tsx`) | le praticien relit, adapte et reste responsable |
 
 Le niveau 1 seul ne suffit pas : un modèle peut ignorer une consigne. Le niveau
 2 est ce qui empêche du non-conforme d'être persisté.
 
+### Ce que `guard.ts` AJOUTE au niveau 2
+
+Il l'étend, il ne le double pas. Trois ajouts, et rien d'autre :
+
+1. **Les règles viennent de la base.** La table `ethics_rules` porte le texte
+   des six règles ; chaque pattern de `rules.ts` porte le `ruleId` de celle
+   qu'il fait respecter. L'infobulle du badge BOARD-SAFE COPY et le chemin
+   d'application lisent la même source et ne peuvent pas diverger.
+
+2. **Réécriture CIBLÉE** au lieu de régénération complète.
+   `generateWithEthicsGuard` rejoue toute la génération quand une phrase
+   dérape — une à deux minutes perdues pour un mot. `enforceEthics` ne réécrit
+   que le champ fautif, en citant l'extrait et le texte de la règle.
+
+3. **Le verdict est persisté** dans `brand_kits.ethics_check`, sous la forme
+   qu'impose `brand_kit_ethics_check_valid` :
+   `{ passed, flagged: [{ field, excerpt, rule_id }], checked_at }`.
+
+`generateWithEthicsGuard` reste en place : c'est le bon outil quand la reprise
+doit porter sur le RÉSULTAT ENTIER plutôt que sur une ligne.
+
 ## Comment l'utiliser
 
-`lib/ai/directions.ts` est le câblage de référence : `ETHICS_SYSTEM_RULES` y est
+`lib/generation/pipeline.ts` est le câblage de référence : `ETHICS_SYSTEM_RULES` y est
 injecté dans le prompt **système** (`DIRECTIONS_SYSTEM_PROMPT`) et le `feedback`
 de reprise est concaténé au message utilisateur — les règles de niveau 1 restent
 ainsi hors de portée des consignes de style. Le squelette ci-dessous concatène

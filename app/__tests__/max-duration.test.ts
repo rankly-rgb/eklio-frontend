@@ -3,48 +3,43 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 
 /*
- * Toute page qui porte une génération IA doit relever son `maxDuration`.
+ * Tout ce qui porte une génération IA doit relever son `maxDuration`.
  *
  * ── Pourquoi ce test existe ──────────────────────────────────────────────
  *
- * Il n'y a PAS de « route de génération » à équiper. Les générations sont des
- * Server Actions, et `maxDuration` s'applique « à toutes les Server Actions
- * utilisées sur la page » (doc Next, section Server Actions) : le plafond est
- * donc porté par LA PAGE OÙ LE BOUTON EST RENDU, pas par le fichier
- * `actions.ts`, ni par le module `lib/ai/*` qui fait l'appel.
+ * Rien ne prévient quand un plafond manque : ça marche en local, où aucun
+ * plafond ne s'applique, et ça timeoute en production. D'où ce balayage, qui
+ * REMONTE la chaîne d'imports depuis chaque point d'entrée plutôt que de faire
+ * confiance à une liste tenue à la main.
  *
- * Conséquence contre-intuitive, et c'est tout l'intérêt de ce test :
- * `generateKit` est atteignable depuis DEUX pages — `…/directions` (première
- * génération, le chemin que tout le monde traverse) et `…/kit` (régénération).
- * N'équiper que `…/kit` laisse le chemin nominal timeouter en production tout
- * en donnant l'impression que le correctif est posé.
+ * ── Ce qui a changé au lot 6 ─────────────────────────────────────────────
  *
- * Le jour où quelqu'un rend un bouton de génération sur une nouvelle page — ou
- * déplace celui-ci — rien ne le préviendra : ça marchera en local, où aucun
- * plafond ne s'applique, et ça timeoutera en production. D'où ce balayage, qui
- * REMONTE la chaîne d'imports depuis chaque page plutôt que de faire confiance
- * à une liste tenue à la main.
+ * La génération était portée par des SERVER ACTIONS, donc par les PAGES qui
+ * rendaient leur bouton (`maxDuration` s'applique « à toutes les Server
+ * Actions utilisées sur la page »). Elle vit désormais dans des ROUTE
+ * HANDLERS, où le plafond se pose sur la route elle-même. Le balayage couvre
+ * donc `page.tsx` ET `route.ts`.
  */
 
 const ROOT = resolve(__dirname, "../..");
 const APP_DIR = join(ROOT, "app");
 
 /*
- * Les points d'entrée d'une génération longue. Un composant ou un module qui
- * porte l'un de ces noms met la page qui le rend sous plafond.
+ * Les points d'entrée d'une génération longue. Un module qui porte l'un de ces
+ * noms met le fichier de route qui l'atteint sous plafond.
  */
 const GENERATION_MARKERS = [
-  "generateKit",
-  "generateDirections",
-  "generatePresence",
+  "runGenerationPipeline",
+  "suggestFieldText",
+  "callGeneration",
 ];
 
-/** Toutes les `page.tsx` de l'application. */
-function findPages(dir: string): string[] {
+/** Chaque `page.tsx` et chaque `route.ts` de l'application. */
+function findEntryPoints(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
-    if (entry.isDirectory()) return findPages(full);
-    return entry.name === "page.tsx" ? [full] : [];
+    if (entry.isDirectory()) return findEntryPoints(full);
+    return entry.name === "page.tsx" || entry.name === "route.ts" ? [full] : [];
   });
 }
 
@@ -80,34 +75,23 @@ function reachesGeneration(entry: string): boolean {
 
     const source = readFileSync(file, "utf8");
 
-    // La page elle-même ne compte pas comme appelante : ce sont ses imports
-    // qui amènent l'action. On regarde donc les specs importés.
-    for (const match of source.matchAll(/from\s+["']([^"']+)["']/g)) {
-      const resolved = resolveImport(match[1], file);
-      if (!resolved) continue;
-
-      if (
-        GENERATION_MARKERS.some((marker) =>
-          new RegExp(`\\b${marker}\\b`).test(source)
-        ) &&
-        /actions(\.ts)?$/.test(resolved)
-      ) {
-        return true;
-      }
-      queue.push(resolved);
-    }
-
     if (
-      file !== entry &&
-      GENERATION_MARKERS.some((marker) => new RegExp(`\\b${marker}\\b`).test(source))
+      GENERATION_MARKERS.some((marker) =>
+        new RegExp(`\\b${marker}\\b`).test(source)
+      )
     ) {
       return true;
+    }
+
+    for (const match of source.matchAll(/from\s+["']([^"']+)["']/g)) {
+      const resolved = resolveImport(match[1], file);
+      if (resolved) queue.push(resolved);
     }
   }
   return false;
 }
 
-/** Valeur de `export const maxDuration` d'une page, ou `null`. */
+/** Valeur de `export const maxDuration` d'un fichier, ou `null`. */
 function maxDurationOf(file: string): number | null {
   const match = readFileSync(file, "utf8").match(
     /^export const maxDuration = (\d+);?$/m
@@ -116,52 +100,40 @@ function maxDurationOf(file: string): number | null {
 }
 
 /*
- * Plancher. La génération de kit a été observée à ~140 s pour une passe ; le
- * défaut des plateformes serverless est très en dessous. 300 est la valeur
- * retenue partout, alignée sur `…/presence`.
+ * Plancher. Une passe de génération a été observée à ~140 s ; le défaut des
+ * plateformes serverless est très en dessous. Une simple suggestion de champ
+ * est bien plus courte, d'où un plancher plus bas mais non nul.
  */
-const FLOOR_SECONDS = 300;
+const FLOOR_SECONDS = 60;
+const PIPELINE_FLOOR_SECONDS = 300;
 
-const pages = findPages(APP_DIR);
-const generationPages = pages.filter(reachesGeneration);
+const entryPoints = findEntryPoints(APP_DIR);
+const generationEntryPoints = entryPoints.filter(reachesGeneration);
 
-/*
- * Les pages de génération sont en cours de reconstruction : l'arborescence
- * française (`/app/projets/[id]/directions|kit|presence`) a été retirée au lot
- * 1, et la révélation (`/app/brand-kits/[id]/reveal`) arrive au lot 6. Le
- * balayage ci-dessus reste actif — il équipe automatiquement toute page qui
- * atteindra de nouveau une génération — mais la liste nominale est réarmée
- * quand ces pages existent.
- */
-const EXPECTED_GENERATION_PAGES: string[] = [];
+function relative(file: string): string {
+  return file.slice(APP_DIR.length).replace(/\\/g, "/");
+}
 
-describe("maxDuration sur les pages qui portent une génération", () => {
-  it("le balayage lit bien l'arborescence des pages", () => {
+describe("maxDuration sur ce qui porte une génération", () => {
+  it("le balayage lit bien l'arborescence", () => {
     // Sans cette garde, un balayage cassé rendrait les tests suivants
     // vacuously true — le pire des faux verts.
-    expect(pages.length).toBeGreaterThan(0);
+    expect(entryPoints.length).toBeGreaterThan(0);
+    expect(generationEntryPoints.length).toBeGreaterThan(0);
   });
 
-  it("couvre les pages de génération attendues", () => {
-    const relative = generationPages
-      .map((file) => file.slice(APP_DIR.length).replace(/\\/g, "/"))
-      .sort();
-
-    for (const expected of EXPECTED_GENERATION_PAGES) {
-      expect(relative).toContain(expected);
-    }
-    // TODO(lot 6) : réarmer EXPECTED_GENERATION_PAGES avec
-    // "/app/brand-kits/[id]/reveal/page.tsx" dès que la révélation existe.
-    expect(generationPages.length).toBe(EXPECTED_GENERATION_PAGES.length);
+  it("la route qui lance la pipeline est couverte", () => {
+    const routes = generationEntryPoints.map(relative);
+    expect(routes).toContain("/api/briefs/[id]/generate/route.ts");
+    expect(
+      maxDurationOf(join(APP_DIR, "api/briefs/[id]/generate/route.ts"))
+    ).toBeGreaterThanOrEqual(PIPELINE_FLOOR_SECONDS);
   });
 
   it.each(
-    generationPages.map((file) => [
-      file.slice(APP_DIR.length).replace(/\\/g, "/"),
-      file,
-    ])
+    generationEntryPoints.map((file) => [relative(file), file] as const)
   )("%s relève son plafond", (_label, file) => {
-    const value = maxDurationOf(file as string);
+    const value = maxDurationOf(file);
 
     expect(value).not.toBeNull();
     expect(value!).toBeGreaterThanOrEqual(FLOOR_SECONDS);
