@@ -159,3 +159,38 @@ export async function createCheckoutSession(
   }
   return session.url;
 }
+
+/**
+ * Checkout de l'abonnement SEUL — la tuile verrouillée du calendrier et la
+ * carte Monthly Presence du kit y mènent.
+ *
+ * Pas de ligne de kit : ce praticien a déjà payé le sien. Le `mode` est
+ * `subscription`, et les métadonnées sont posées sur l'abonnement pour que le
+ * webhook sache à qui le rattacher même si la correspondance customer → user
+ * n'existait pas encore.
+ */
+export async function createMonthlyPresenceCheckout(
+  supabase: Client,
+  { userId, email }: { userId: string; email: string }
+): Promise<string> {
+  const customerId = await ensureStripeCustomer(supabase, { userId, email });
+  const metadata = { eklio_user_id: userId };
+  const base = siteUrl();
+
+  const session = await getStripeClient().checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    client_reference_id: userId,
+    line_items: [{ price: monthlyPresencePriceId(), quantity: 1 }],
+    metadata,
+    subscription_data: { metadata },
+    success_url: `${base}/app/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${base}/app/checkout/canceled`,
+    allow_promotion_codes: false,
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe n'a pas rendu d'URL de checkout.");
+  }
+  return session.url;
+}

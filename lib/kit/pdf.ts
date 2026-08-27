@@ -1,0 +1,325 @@
+import type { BrandKit } from "@/lib/data/brand-kit";
+import { hexToRgb } from "@/lib/brand/color";
+import { ETHICS_DISCLAIMER_TEXT } from "@/lib/ethics/disclaimer";
+
+/*
+ * Export PDF du kit de marque — écrit à la main, sans dépendance.
+ *
+ * POURQUOI À LA MAIN — les deux voies habituelles coûtent trop cher ici :
+ * un rendu headless (Puppeteer/Playwright) ajoute ~300 Mo au déploiement et un
+ * navigateur à faire tourner en serverless ; une bibliothèque de mise en page
+ * ajoute une dépendance pour ce qui est, en pratique, une page de texte et
+ * cinq rectangles de couleur. Le format PDF 1.4 avec les polices de base
+ * (Helvetica, Times) suffit exactement à ça.
+ *
+ * CE QUE CE PDF EST — un livrable de référence : les hex de la palette, les
+ * noms des polices, le guide de voix, la copy du site. Les COULEURS y sont
+ * réelles (rectangles remplis aux valeurs du praticien). Ce que ce PDF n'est
+ * PAS — un rendu de la maquette : les polices de marque ne sont pas embarquées,
+ * les titres sont composés en Times. Le kit à l'écran reste la référence
+ * visuelle, ce fichier est ce qu'on imprime ou qu'on envoie à un prestataire.
+ */
+
+const PAGE_WIDTH = 595.28; // A4 en points
+const PAGE_HEIGHT = 841.89;
+const MARGIN = 56;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+
+type Font = "title" | "body" | "mono";
+
+const FONT_RESOURCE: Record<Font, string> = {
+  title: "/F1",
+  body: "/F2",
+  mono: "/F3",
+};
+
+/*
+ * Largeurs moyennes par police, en millièmes de cadratin. Les métriques
+ * exactes des polices de base demanderaient une table AFM entière ; ces
+ * moyennes suffisent à décider où couper une ligne, ce qui est le seul usage
+ * qu'on en fait.
+ */
+const AVERAGE_WIDTH: Record<Font, number> = {
+  title: 0.5,
+  body: 0.5,
+  mono: 0.6,
+};
+
+/** Échappe une chaîne pour un littéral PDF, et retire ce qui n'est pas latin-1. */
+function escapeText(text: string): string {
+  return text
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, "-")
+    .replace(/·/g, "-")
+    .replace(/[^\x20-\x7e\xa0-\xff]/g, "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+}
+
+/** Coupe un paragraphe à la largeur disponible, sans couper de mot. */
+function wrap(text: string, font: Font, size: number, width: number): string[] {
+  const maxChars = Math.max(8, Math.floor(width / (size * AVERAGE_WIDTH[font])));
+  const lines: string[] = [];
+
+  for (const paragraph of text.split("\n")) {
+    if (paragraph.trim() === "") {
+      lines.push("");
+      continue;
+    }
+    let current = "";
+    for (const word of paragraph.split(/\s+/)) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (candidate.length <= maxChars) {
+        current = candidate;
+      } else {
+        if (current) lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+  }
+
+  return lines;
+}
+
+/** Un flux de contenu par page, construit en coordonnées PDF (origine en bas). */
+class PageBuilder {
+  private readonly parts: string[] = [];
+  private cursor = PAGE_HEIGHT - MARGIN;
+
+  get isEmpty(): boolean {
+    return this.parts.length === 0;
+  }
+
+  get remaining(): number {
+    return this.cursor - MARGIN;
+  }
+
+  space(points: number): void {
+    this.cursor -= points;
+  }
+
+  text(
+    content: string,
+    { font, size, leading, gray = 0 }: { font: Font; size: number; leading: number; gray?: number }
+  ): void {
+    for (const line of wrap(content, font, size, CONTENT_WIDTH)) {
+      this.cursor -= leading;
+      if (line === "") continue;
+      this.parts.push(
+        `BT ${gray} g ${FONT_RESOURCE[font]} ${size} Tf 1 0 0 1 ${MARGIN.toFixed(2)} ${this.cursor.toFixed(2)} Tm (${escapeText(line)}) Tj ET`
+      );
+    }
+  }
+
+  rule(): void {
+    this.cursor -= 10;
+    this.parts.push(
+      `0.85 g ${MARGIN} ${this.cursor.toFixed(2)} ${CONTENT_WIDTH} 0.7 re f`
+    );
+    this.cursor -= 6;
+  }
+
+  /** Bandeau de swatches aux couleurs réelles du praticien. */
+  swatches(colors: { role: string; hex: string }[]): void {
+    const height = 46;
+    const gap = 8;
+    const width = (CONTENT_WIDTH - gap * (colors.length - 1)) / colors.length;
+    this.cursor -= height;
+
+    colors.forEach(({ hex }, index) => {
+      const rgb = hexToRgb(hex);
+      if (!rgb) return;
+      const x = MARGIN + index * (width + gap);
+      this.parts.push(
+        `${(rgb.r / 255).toFixed(3)} ${(rgb.g / 255).toFixed(3)} ${(rgb.b / 255).toFixed(3)} rg ` +
+          `${x.toFixed(2)} ${this.cursor.toFixed(2)} ${width.toFixed(2)} ${height} re f`
+      );
+    });
+
+    this.cursor -= 14;
+    colors.forEach(({ role, hex }, index) => {
+      const x = MARGIN + index * (width + gap);
+      this.parts.push(
+        `BT 0.35 g /F3 8 Tf 1 0 0 1 ${x.toFixed(2)} ${this.cursor.toFixed(2)} Tm (${escapeText(`${role.toUpperCase()} ${hex}`)}) Tj ET`
+      );
+    });
+    this.cursor -= 6;
+  }
+
+  build(): string {
+    return this.parts.join("\n");
+  }
+}
+
+/** Compose le fichier PDF à partir des flux de page. */
+function assemble(pages: string[]): Uint8Array {
+  const objects: string[] = [];
+  const pageCount = pages.length;
+
+  // 1 catalogue, 2 pages, 3..(2+n) pages, puis les contenus, puis 3 polices.
+  const pageIds = pages.map((_, index) => 3 + index);
+  const contentIds = pages.map((_, index) => 3 + pageCount + index);
+  const fontIds = [3 + pageCount * 2, 4 + pageCount * 2, 5 + pageCount * 2];
+
+  objects.push("<< /Type /Catalog /Pages 2 0 R >>");
+  objects.push(
+    `<< /Type /Pages /Count ${pageCount} /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] >>`
+  );
+
+  pages.forEach((_, index) => {
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] ` +
+        `/Resources << /Font << /F1 ${fontIds[0]} 0 R /F2 ${fontIds[1]} 0 R /F3 ${fontIds[2]} 0 R >> >> ` +
+        `/Contents ${contentIds[index]} 0 R >>`
+    );
+  });
+
+  pages.forEach((stream) => {
+    objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+  });
+
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>");
+
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [];
+
+  objects.forEach((body, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${body}\nendobj\n`;
+  });
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+
+  // latin-1 : les littéraux ont déjà été réduits à cette plage par escapeText.
+  const bytes = new Uint8Array(pdf.length);
+  for (let index = 0; index < pdf.length; index += 1) {
+    bytes[index] = pdf.charCodeAt(index) & 0xff;
+  }
+  return bytes;
+}
+
+export function renderBrandKitPdf(kit: BrandKit): Uint8Array {
+  const direction = kit.selectedDirection ?? kit.directions?.[0] ?? null;
+  const practice = kit.practiceName ?? "Your practice";
+
+  const pages: PageBuilder[] = [];
+  let page = new PageBuilder();
+  pages.push(page);
+
+  /** Passe à une nouvelle page si le bloc suivant n'y tient plus. */
+  const ensure = (needed: number) => {
+    if (page.remaining < needed) {
+      page = new PageBuilder();
+      pages.push(page);
+    }
+  };
+
+  page.text(practice, { font: "title", size: 26, leading: 32 });
+  if (direction) {
+    page.text(`${direction.name.toUpperCase()} - SELECTED`, {
+      font: "mono",
+      size: 9,
+      leading: 18,
+      gray: 0.45,
+    });
+  }
+  page.rule();
+  page.space(10);
+
+  if (direction) {
+    page.text("PALETTE", { font: "mono", size: 9, leading: 18, gray: 0.45 });
+    page.swatches([
+      { role: "primary", hex: direction.palette.primary },
+      { role: "secondary", hex: direction.palette.secondary },
+      { role: "light", hex: direction.palette.light },
+      { role: "dark", hex: direction.palette.dark },
+      { role: "paper", hex: direction.palette.paper },
+    ]);
+    page.space(14);
+
+    page.text("TYPOGRAPHY", { font: "mono", size: 9, leading: 18, gray: 0.45 });
+    page.text(`Headings: ${direction.typography.heading_font}`, {
+      font: "body",
+      size: 11,
+      leading: 16,
+    });
+    page.text(`Body: ${direction.typography.body_font}`, {
+      font: "body",
+      size: 11,
+      leading: 16,
+    });
+    page.space(14);
+
+    page.text("HOME PAGE", { font: "mono", size: 9, leading: 18, gray: 0.45 });
+    if (direction.hero.overline) {
+      page.text(direction.hero.overline, {
+        font: "mono",
+        size: 9,
+        leading: 15,
+        gray: 0.45,
+      });
+    }
+    page.text(direction.hero.headline, { font: "title", size: 20, leading: 26 });
+    page.text(direction.hero.subhead, { font: "body", size: 11, leading: 17, gray: 0.3 });
+    page.text(`Button: ${direction.hero.cta_label}`, {
+      font: "body",
+      size: 11,
+      leading: 20,
+      gray: 0.3,
+    });
+    page.space(10);
+
+    ensure(160);
+    page.text("ABOUT", { font: "mono", size: 9, leading: 18, gray: 0.45 });
+    page.text(direction.about_excerpt, { font: "body", size: 11, leading: 17 });
+    page.space(14);
+  }
+
+  if (kit.voiceGuide) {
+    ensure(200);
+    page.text("VOICE & TONE", { font: "mono", size: 9, leading: 18, gray: 0.45 });
+    page.text("Sounds like you", { font: "title", size: 14, leading: 22 });
+    for (const line of kit.voiceGuide.sounds_like) {
+      page.text(`- ${line}`, { font: "body", size: 11, leading: 16 });
+    }
+    page.space(8);
+    page.text("Never write this", { font: "title", size: 14, leading: 22 });
+    for (const line of kit.voiceGuide.never_write) {
+      page.text(`- ${line}`, { font: "body", size: 11, leading: 16, gray: 0.45 });
+    }
+    page.space(14);
+  }
+
+  if (kit.socialTemplates) {
+    ensure(180);
+    page.text("SOCIAL TEMPLATES", { font: "mono", size: 9, leading: 18, gray: 0.45 });
+    for (const template of kit.socialTemplates) {
+      page.text(
+        `${template.layout.toUpperCase()} (${template.type}) - ${template.headline}`,
+        { font: "body", size: 11, leading: 16 }
+      );
+    }
+    page.space(14);
+  }
+
+  ensure(120);
+  page.rule();
+  page.text(ETHICS_DISCLAIMER_TEXT, {
+    font: "body",
+    size: 9,
+    leading: 13,
+    gray: 0.45,
+  });
+
+  return assemble(pages.filter((entry) => !entry.isEmpty).map((entry) => entry.build()));
+}

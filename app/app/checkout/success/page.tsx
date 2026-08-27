@@ -3,7 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { ConfirmationPoll } from "@/components/billing/confirmation-poll";
 import { KIT_PLANS, MONTHLY_PRESENCE } from "@/lib/billing/plans";
 import { parseKitTier } from "@/lib/kit/tiers";
-import { getSubscriptionState } from "@/lib/billing/entitlements";
+import {
+  getSubscription,
+  isEntitledToMonthlyPresence,
+} from "@/lib/billing/entitlements";
 
 /*
  * Retour de Stripe après un paiement accepté.
@@ -50,9 +53,10 @@ export default async function CheckoutSuccessPage({
 
   const confirmed = purchase?.status === "paid";
   const tier = parseKitTier(purchase?.tier);
-  const subscription = user
-    ? await getSubscriptionState(supabase, user.id)
-    : null;
+  const subscription = user ? await getSubscription(supabase, user.id) : null;
+  // Une seule règle d'accès dans toute l'application (§7) — y compris ici,
+  // sur un écran qui ne fait que raconter ce qui vient d'être encaissé.
+  const subscribed = isEntitledToMonthlyPresence(subscription);
 
   const header = (
     <header className="flex flex-col gap-3">
@@ -96,7 +100,7 @@ export default async function CheckoutSuccessPage({
       <div className="flex flex-col gap-4">
         <p className="text-body leading-prose text-ink-2">
           {tier ? `Your ${KIT_PLANS[tier].label} brand kit is unlocked.` : "Your brand kit is unlocked."}{" "}
-          {subscription?.isActive
+          {subscribed
             ? `${MONTHLY_PRESENCE.label} is active — your first month of content is ready to generate.`
             : "You can build it from your project as soon as you've picked a creative direction."}
         </p>
@@ -116,7 +120,7 @@ export default async function CheckoutSuccessPage({
         >
           {purchase?.project_id ? "Go to my project" : "Go to my projects"}
         </Link>
-        {subscription?.isActive && purchase?.project_id && (
+        {subscribed && purchase?.project_id && (
           <Link
             href={`/app/projets/${purchase.project_id}/presence`}
             className="inline-flex h-10 items-center rounded-pill border border-line px-[26px] text-ui text-ink transition-colors hover:bg-card"
