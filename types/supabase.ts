@@ -1065,3 +1065,22 @@ export const Constants = {
     Enums: {},
   },
 } as const
+export type ProjectStatus = "brief" | "brief_complete" | "directions" | "kit"
+
+export type SubscriptionStatus =
+  | "incomplete"
+  | "incomplete_expired"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "paused"
+
+export type PurchaseStatus = "pending" | "paid" | "refunded" | "failed"
+
+export type MonthlyPresenceStatus =
+  | "pending"
+  | "generating"
+  | "complete"
+  | "failed"
