@@ -18,10 +18,10 @@ Ce repo ne fait que consommer les types TypeScript générés depuis Supabase
 
 - Next.js (App Router) + TypeScript + Tailwind CSS v4
 - Supabase (Postgres, Auth, RLS)
-- Anthropic (Claude) — appels serveur uniquement (directions, kit de marque,
-  Monthly Presence). Les générations longues passent obligatoirement par
-  `messages.stream()` : le SDK refuse tout appel non streamé au-delà d'environ
-  21 300 jetons de sortie, et lève **côté client**, avant la moindre requête.
+- Anthropic (Claude) — appels serveur uniquement (directions et copy du kit,
+  contenu mensuel, suggestions du brief). Les budgets de sortie restent SOUS
+  le seuil au-delà duquel le SDK refuse un appel non streamé (~21 300 jetons)
+  et lève **côté client**, avant la moindre requête.
 - Stripe — checkout hébergé + webhook signé. Le webhook est la **seule**
   autorité sur ce qui est payé : aucune redirection n'accorde de droit.
 - Déploiement : Vercel
@@ -80,37 +80,48 @@ Carte de test : `4242 4242 4242 4242`, date future quelconque, CVC quelconque.
 ## Structure
 
 ```
-app/                 routes (App Router) : pages, layouts, route handlers
-  login/, signup/    auth email/mot de passe
-  pricing/           tarifs publics (anglais) — 3 tiers + add-on + FAQ
-  app/               espace connecté, protégé par proxy.ts
-    checkout/        choix du tier, add-on, retours succès / annulation
-    projets/[id]/    brief → directions → kit → presence
-  api/stripe/        route handler du webhook Stripe (signature + idempotence)
-  auth/callback/     échange du code de confirmation email contre une session
-components/          composants UI partagés (billing/, kit/, presence/, ui/…)
+design/reference/     les huit écrans approuvés — LE CONTRAT VISUEL
+styles/tokens.css     seule source des couleurs, rayons, ombres, échelles
+app/                  routes (App Router) : pages, layouts, route handlers
+  login/, signup/     auth email/mot de passe
+  pricing/            tarifs publics — 3 tiers + add-on + FAQ
+  dev/ui, dev/preview galeries de contrôle visuel (non liées, sans données)
+  app/                espace connecté, protégé par proxy.ts
+    briefs/[id]       le brief en 7 étapes + son récapitulatif
+    brand-kits/[id]   le kit ; `/reveal` porte génération puis révélation
+    content/          le mois entier
+    checkout/         choix du tier, add-on, retours succès / annulation
+  api/                LA surface HTTP de l'interface (cf. §7 du cahier des charges)
+    cron/             run mensuel et relances, appelés par Vercel Cron
+components/
+  ui/                 primitives (Button, MonoLabel, Progress7, glyphes…)
+  preview/            <BrandPreview> et les quatre cartes de marque
+  brief/ reveal/ kit/ home/   un dossier par écran
 lib/
-  supabase/          clients Supabase (browser, server, admin, proxy)
-  actions/           server actions (auth, etc.)
-  fonts.ts           chargement des 3 typographies (voir note Recoleta ci-dessous)
-  ai/                appels Claude : directions, kit, monthly-presence
-  ethics/            socle déontologique + garde de régénération (modules purs)
-  billing/           catalogue (prix, tiers) et droits lus en base
-  stripe/            client, checkout, métadonnées, traitement des events
-  kit/, brief/, presence/, projects/   modules purs (formes, périmètres, mois)
-types/supabase.ts    types générés depuis le schéma Supabase US (voir eklio-backend)
-proxy.ts             ex-"middleware" (renommé en Next.js 16) : refresh de session + garde /app
+  brand/              formes, couleurs dérivées, échantillon
+  catalog/            lecture du catalogue en base (ton, palettes, paires…)
+  data/               clients typés (brief, kit, checklist, calendrier, accueil)
+  generation/         pipeline, sélection déterministe, validation, job
+  ethics/             socle déontologique + Ethics Guard
+  email/              transport, état d'envoi, gabarits
+  billing/, stripe/, kit/, api/
+types/supabase.ts     types générés depuis le schéma Supabase US (voir eklio-backend)
+proxy.ts              ex-"middleware" (renommé en Next.js 16) : session + garde /app
+DELIVERY.md           écarts au contrat visuel, demandes de schéma, décisions
 ```
 
 ## Typographies
 
-- **Inter** (corps) et **IBM Plex Mono** (interface/labels) : chargées via
-  `next/font/google`, rien à faire.
-- **Recoleta Bold** (titres) est une police commerciale non disponible sur
-  Google Fonts. En attendant l'achat de la licence, `lib/fonts.ts` utilise
-  **Fraunces** comme placeholder visuel sur le rôle `--font-display`. Les
-  instructions pour brancher les vrais fichiers `.woff2` via
-  `next/font/local` sont commentées directement dans `lib/fonts.ts`.
+Trois familles, chargées par `next/font/google` (`lib/fonts.ts`), donc
+auto-hébergées — zéro requête vers Google au runtime :
+
+- **Fraunces** — titres, questions du brief, wordmark.
+- **Karla** — corps de texte et interface.
+- **IBM Plex Mono** — bandeaux, hex, prix, libellés d'état, barre d'URL.
+
+Les polices de MARQUE (celles des paires du catalogue) sont chargées
+DYNAMIQUEMENT depuis Google au changement de modèle : elles ne sont pas
+connues au build. Les `preconnect` du layout racine existent pour elles.
 
 ## Commandes
 
@@ -119,7 +130,7 @@ npm run dev      # serveur de dev
 npm run build    # build de production
 npm run start    # sert le build de production
 npm run lint     # ESLint
-npm run test     # Vitest (modules purs, gardes de génération, webhook)
+npm run test     # Vitest (modules purs, gardes, contraintes de rendu, contraste)
 ```
 
 ## Déploiement Vercel
@@ -134,12 +145,18 @@ npm run test     # Vitest (modules purs, gardes de génération, webhook)
 4. Déployer. Le build (`next build`) est vérifié en local avant chaque push
    sur `claude/eklio-bootstrap-ukuxfu`.
 
-## Ce qui n'est PAS encore implémenté (stubs volontaires)
+## Ce qui reste ouvert
 
-- Génération IA réelle (guided flow, 3 directions, kit de marque) — `lib/ai/`
-  et `app/app/page.tsx` contiennent des TODO explicites.
-- Stripe (paiement, webhooks).
-- Export PDF du kit de marque.
-- Génération du prompt multi-constructeurs (Lovable/Framer/Webflow).
-- Page publique partageable d'un kit de marque (`share_slug` déjà en base,
-  policy RLS publique à ajouter le moment venu).
+Voir `DELIVERY.md` pour le détail — écarts au contrat visuel, demandes au
+dépôt de schéma, décisions structurantes. En résumé :
+
+- **Le contraste du chrome ne passe pas AA sur trois paires**, avec les
+  valeurs des références. Décision à prendre par un humain.
+- **Quatre manques de schéma** contournés ici : `practice_stages`, un état de
+  génération de premier ordre, `email_log`, et `projects.current_step` qui
+  peut désormais être supprimée.
+- **La comparaison visuelle côte à côte** n'a pas pu être faite : aucun
+  navigateur n'est installé dans l'environnement de développement. Chaque
+  écran a été construit en lisant le balisage de sa référence.
+- **Page publique partageable d'un kit** (`share_slug` déjà en base, policy
+  RLS publique à ajouter le moment venu).
