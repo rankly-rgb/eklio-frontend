@@ -2,8 +2,26 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadBrief, readPreview } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
-import { resumeStep, type StepDraft } from "@/lib/brief/flow";
+import { STEP_COUNT, resumeStep, type StepDraft } from "@/lib/brief/flow";
 import { BriefFlow } from "@/components/brief/brief-flow";
+
+/**
+ * `?step=3` — posé par les liens « Edit » du récapitulatif.
+ *
+ * C'est une AMORCE, pas une autorité : la page lit toujours `progress_step`,
+ * et le paramètre ne fait que décider par quelle question on entre. Il ne
+ * s'écrit nulle part, et une valeur aberrante retombe sur l'étape reprise.
+ */
+function seedStep(
+  raw: string | string[] | undefined,
+  brief: { progress_step: number }
+): number {
+  const value = Number(Array.isArray(raw) ? raw[0] : raw);
+  if (!Number.isInteger(value) || value < 1 || value > STEP_COUNT) {
+    return resumeStep(brief);
+  }
+  return value;
+}
 
 /*
  * Le brief (Écrans 1, 2 et 8).
@@ -12,8 +30,12 @@ import { BriefFlow } from "@/components/brief/brief-flow";
  * clé primaire. L'étape reprise vient de `progress_step`, canonique (§0.5) —
  * `projects.current_step` n'est ni lu ni écrit.
  */
-export default async function BriefPage({ params }: PageProps<"/app/briefs/[id]">) {
+export default async function BriefPage({
+  params,
+  searchParams,
+}: PageProps<"/app/briefs/[id]">) {
   const { id } = await params;
+  const query = await searchParams;
 
   const supabase = await createClient();
   const {
@@ -54,7 +76,7 @@ export default async function BriefPage({ params }: PageProps<"/app/briefs/[id]"
         projectId={id}
         catalog={catalog}
         initialDraft={draft}
-        initialStep={resumeStep(bundle.brief)}
+        initialStep={seedStep(query.step, bundle.brief)}
         initialCompleted={bundle.brief.completed_steps}
         initialPreview={preview}
       />
