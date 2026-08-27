@@ -55,6 +55,9 @@ Voir `.env.example`. Ne jamais committer `.env.local`.
 | `STRIPE_WEBHOOK_SECRET` | `stripe listen` en local, ou Dashboard → Webhooks → signing secret (`whsec_…`) | idem — sans elle la route webhook refuse **tout** event |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Dashboard Stripe → API keys (`pk_test_…` / `pk_live_…`) | idem |
 | `STRIPE_PRICE_STARTER` / `_PRACTICE` / `_SIGNATURE` / `_MONTHLY_PRESENCE` | Dashboard Stripe → Products, un prix par tier + l'abonnement (`price_…`) | idem — ⚠️ ces ids **diffèrent** entre le mode test et le mode live |
+| `RESEND_API_KEY` | Dashboard Resend → API Keys | idem — **absente**, rien n'est envoyé : l'envoi est journalisé et le cron continue |
+| `EMAIL_FROM` | Expéditeur affiché, sur un domaine **vérifié** chez Resend | idem — sinon tout part en spam ou est refusé |
+| `CRON_SECRET` | Généré à la main, partagé avec Vercel Cron | idem — **absent**, les routes de cron répondent 404 à tout le monde. Sans lui, n'importe qui déclencherait une génération payante par utilisateur |
 
 Les variables `NEXT_PUBLIC_*` sont exposées au bundle client : n'y mettre que
 l'URL, la clé anon et la clé publiable Stripe — jamais la service_role key, la
