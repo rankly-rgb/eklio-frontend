@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { BrowserFrame } from "@/components/ui/browser-frame";
 import { useBrandFont } from "@/components/preview/use-brand-font";
 import { domainFor } from "@/lib/brand/derive";
-import { MockupSection } from "@/components/site/mockup-section";
+import { MockupSection, type Wrap } from "@/components/site/mockup-section";
+import { InlineEdit } from "@/components/site/inline-edit";
+import {
+  limitForTarget,
+  patchForTarget,
+  targetField,
+  type EditTarget,
+} from "@/lib/site/edit";
 import { activePage } from "@/lib/site/mockup";
 import { siteTokenVariables } from "@/lib/site/tokens";
 import type { SiteEditorState } from "@/components/site/use-site-editor";
+import type { SiteCatalog } from "@/lib/site/types";
 
 /*
  * La maquette — `preview`, rendue telle qu'elle arrive.
@@ -32,18 +40,39 @@ import type { SiteEditorState } from "@/components/site/use-site-editor";
  */
 export function Mockup({
   editor,
-  editable,
+  catalog,
 }: {
   editor: SiteEditorState;
-  /** Enveloppe chaque texte éditable — posé par le lot 5. */
-  editable?: (node: ReactNode, field: string, value: string) => ReactNode;
+  catalog: SiteCatalog;
 }) {
-  const { preview } = editor.envelope;
+  const { preview, spec } = editor.envelope;
   const ready = useBrandFont(preview.tokens.google_fonts_url);
   const [pageKey, setPageKey] = useState<string | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
 
   const page = activePage(preview.pages, pageKey);
+  const { commit, error } = editor;
+
+  /*
+   * L'ENVELOPPE de l'édition en place. Elle est construite ici, une fois, et
+   * descend jusqu'à chaque texte : la limite vient du catalogue, le patch vient
+   * du descripteur, et le refus de la base s'affiche sur le champ que
+   * `error.field` désigne — jamais en toast.
+   */
+  const editable: Wrap = useCallback(
+    (node: ReactNode, target: EditTarget, value: string) => (
+      <InlineEdit
+        value={value}
+        limit={limitForTarget(catalog, spec, target)}
+        label={targetField(target)}
+        error={error?.field === targetField(target) ? error.message : null}
+        onCommit={(next) => commit(patchForTarget(spec, target, next))}
+      >
+        {node}
+      </InlineEdit>
+    ),
+    [catalog, spec, commit, error]
+  );
 
   useEffect(() => {
     if (!fullScreen) return;
@@ -79,6 +108,7 @@ export function Mockup({
             page.sections.map((section) => (
               <MockupSection
                 key={section.key}
+                page={page.key}
                 section={section}
                 editable={editable}
               />

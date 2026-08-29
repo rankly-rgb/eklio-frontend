@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { fieldItems, fieldText } from "@/lib/site/mockup";
 import { CTA_LABEL_FLOOR_PX, CTA_LABEL_FLOOR_WEIGHT } from "@/lib/site/tokens";
+import type { EditTarget } from "@/lib/site/edit";
 import type { PreviewSection } from "@/lib/site/types";
 
 /*
@@ -25,15 +26,18 @@ import type { PreviewSection } from "@/lib/site/types";
 const TINTED = new Set(["intro", "specialties", "credentials", "fees", "footer"]);
 
 export function MockupSection({
+  page,
   section,
   editable,
 }: {
+  /** La clé de la PAGE : une clé de section ne suffit pas à identifier une
+   *  section — `footer` existe sur les quatre pages. */
+  page: string;
   section: PreviewSection;
-  /** Enveloppe chaque texte — l'édition en place arrive au lot 5. */
-  editable?: (node: ReactNode, field: string, value: string) => ReactNode;
+  /** Enveloppe chaque texte éditable. Absent : maquette en lecture seule. */
+  editable?: Wrap;
 }) {
-  const wrap =
-    editable ?? ((node: ReactNode) => node);
+  const wrap: Wrap = editable ?? ((node: ReactNode) => node);
   const tinted = TINTED.has(section.type);
 
   return (
@@ -49,25 +53,37 @@ export function MockupSection({
         <Hero section={section} wrap={wrap} />
       ) : section.type === "intro" ? (
         <Intro section={section} wrap={wrap} />
-      ) : section.type === "footer" ? (
-        <Footer section={section} wrap={wrap} />
       ) : (
-        <Block section={section} wrap={wrap} />
+        <Block page={page} section={section} wrap={wrap} />
       )}
     </section>
   );
 }
 
-type Wrap = (node: ReactNode, field: string, value: string) => ReactNode;
+export type Wrap = (
+  node: ReactNode,
+  target: EditTarget,
+  value: string
+) => ReactNode;
+
+/** Le descripteur d'un champ de section, page comprise. */
+function fieldTarget(
+  page: string,
+  section: PreviewSection,
+  field: string,
+  index?: number
+): EditTarget {
+  return { kind: "section", page, section: section.key, field, index };
+}
 
 function Heading({
   children,
-  field,
+  target,
   value,
   wrap,
 }: {
   children: ReactNode;
-  field: string;
+  target: EditTarget;
   value: string;
   wrap: Wrap;
 }) {
@@ -82,7 +98,7 @@ function Heading({
         color: "var(--s-primary-text)",
       }}
     >
-      {wrap(children, field, value)}
+      {wrap(children, target, value)}
     </h3>
   );
 }
@@ -100,13 +116,13 @@ function AccentRule() {
 
 function Body({
   text,
-  field,
+  target,
   wrap,
   size = 15,
   max = 560,
 }: {
   text: string;
-  field: string;
+  target: EditTarget;
   wrap: Wrap;
   size?: number;
   max?: number;
@@ -121,7 +137,7 @@ function Body({
         maxWidth: max,
       }}
     >
-      {wrap(text, field, text)}
+      {wrap(text, target, text)}
     </p>
   );
 }
@@ -143,7 +159,7 @@ function Hero({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
             color: "var(--s-secondary-text)",
           }}
         >
-          {wrap(overline, "hero.overline", overline)}
+          {wrap(overline, { kind: "hero", field: "overline" }, overline)}
         </div>
       ) : null}
 
@@ -159,7 +175,7 @@ function Hero({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
           marginTop: overline ? 16 : 0,
         }}
       >
-        {wrap(headline, "hero.headline", headline)}
+        {wrap(headline, { kind: "hero", field: "headline" }, headline)}
       </h2>
 
       {subhead ? (
@@ -174,7 +190,7 @@ function Hero({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
             opacity: 0.86,
           }}
         >
-          {wrap(subhead, "hero.subhead", subhead)}
+          {wrap(subhead, { kind: "hero", field: "subhead" }, subhead)}
         </p>
       ) : null}
 
@@ -198,7 +214,7 @@ function Hero({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
             color: "var(--s-cta-ink)",
           }}
         >
-          {wrap(ctaLabel, "hero.cta_label", ctaLabel)}
+          {wrap(ctaLabel, { kind: "hero", field: "cta_label" }, ctaLabel)}
         </div>
       ) : null}
     </div>
@@ -225,32 +241,28 @@ function Intro({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
         maxWidth: 620,
       }}
     >
-      {wrap(body, "about_excerpt", body)}
+      {wrap(body, { kind: "about" }, body)}
     </p>
   );
 }
 
-function Footer({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
-  const body = fieldText(section.fields, "body");
-  if (!body) return null;
-
-  return (
-    <p
-      style={{
-        fontFamily: "var(--s-body)",
-        fontSize: 13,
-        lineHeight: 1.6,
-        color: "var(--s-dark)",
-        opacity: 0.7,
-      }}
-    >
-      {wrap(body, `pages.${section.key}.body`, body)}
-    </p>
-  );
-}
-
-/** Le gabarit générique : titre, filet, paragraphe, liste. */
-function Block({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
+/**
+ * Le gabarit générique : titre, filet, paragraphe, liste.
+ *
+ * Il couvre neuf des onze types du catalogue, et sert aussi de repli à un type
+ * que la base ajouterait : un type inconnu n'est pas ignoré, il est rendu, et
+ * aucune copy ne disparaît.
+ */
+function Block({
+  page,
+  section,
+  wrap,
+}: {
+  page: string;
+  section: PreviewSection;
+  wrap: Wrap;
+}) {
+  const isFooter = section.type === "footer";
   const heading = fieldText(section.fields, "heading");
   const body = fieldText(section.fields, "body");
   const items = fieldItems(section.fields, "items");
@@ -260,7 +272,11 @@ function Block({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
     <div>
       {heading ? (
         <>
-          <Heading field={`${section.key}.heading`} value={heading} wrap={wrap}>
+          <Heading
+            target={fieldTarget(page, section, "heading")}
+            value={heading}
+            wrap={wrap}
+          >
             {heading}
           </Heading>
           <AccentRule />
@@ -268,8 +284,16 @@ function Block({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
       ) : null}
 
       {body ? (
-        <div className="mt-4">
-          <Body text={body} field={`${section.key}.body`} wrap={wrap} />
+        <div className={heading ? "mt-4" : ""}>
+          <Body
+            text={body}
+            target={fieldTarget(page, section, "body")}
+            wrap={wrap}
+            /* Le pied de page est une mention légale : petite, discrète, et
+               large — pas un paragraphe de corps. */
+            size={isFooter ? 13 : 15}
+            max={isFooter ? 900 : 560}
+          />
         </div>
       ) : null}
 
@@ -292,7 +316,7 @@ function Block({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
                   color: "var(--s-primary-text)",
                 }}
               >
-                {wrap(item, `${section.key}.items.${index}`, item)}
+                {wrap(item, fieldTarget(page, section, "items", index), item)}
               </span>
             ))}
           </div>
@@ -315,7 +339,7 @@ function Block({ section, wrap }: { section: PreviewSection; wrap: Wrap }) {
                   className="mt-1.5 size-1.5 flex-none rounded-pill"
                   style={{ background: "var(--s-accent)" }}
                 />
-                <span>{wrap(item, `${section.key}.items.${index}`, item)}</span>
+                <span>{wrap(item, fieldTarget(page, section, "items", index), item)}</span>
               </li>
             ))}
           </ul>

@@ -139,7 +139,7 @@ export function SiteEditor({
         </aside>
 
         <div className="min-w-0 flex-1 max-[1100px]:order-first max-[1100px]:w-full">
-          <Mockup editor={editor} />
+          <Mockup editor={editor} catalog={catalog} />
         </div>
 
         {/* Contrôles en feuille par le bas — sous 1100px seulement. */}

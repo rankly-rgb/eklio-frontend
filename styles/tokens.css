@@ -58,6 +58,9 @@
   /* paires de contraste en échec — 8.06:1 sur --bg, 7.40:1 sur --card, donc
      lisible en texte courant, contrairement à --accent */
   --danger: #8c2f1e;
+  /* compteur de caractères à 90 % de la limite — ambre foncée, 5.77:1 sur
+     --bg et 5.30:1 sur --card : un avertissement doit se LIRE */
+  --warning: #8a5a12;
 
   /* Anneau de focus — accent à 40 %. */
   --focus-ring: rgba(180, 101, 63, 0.4);
@@ -173,4 +176,5 @@
   --color-surface-2: var(--surface-2);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
+  --color-warning: var(--warning);
 }

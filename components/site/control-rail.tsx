@@ -4,6 +4,8 @@ import { ColorSection } from "@/components/site/color-section";
 import { ContrastSection } from "@/components/site/contrast-section";
 import { TypographySection } from "@/components/site/typography-section";
 import { PagesSection } from "@/components/site/pages-section";
+import { CopySection } from "@/components/site/copy-section";
+import { DetailsSection } from "@/components/site/details-section";
 import type { SiteEditorState } from "@/components/site/use-site-editor";
 import type { Direction } from "@/lib/brand/shapes";
 import type { SiteCatalog } from "@/lib/site/types";
@@ -22,10 +24,12 @@ export function ControlRail({
   editor,
   catalog,
   pairings,
+  direction,
 }: {
   editor: SiteEditorState;
   catalog: SiteCatalog;
   pairings: TypePairing[];
+  /** La direction retenue — lue seulement pour les originaux de `seed_clamped`. */
   direction: Direction;
 }) {
   return (
@@ -34,6 +38,8 @@ export function ControlRail({
       <ContrastSection editor={editor} />
       <TypographySection editor={editor} pairings={pairings} />
       <PagesSection editor={editor} catalog={catalog} />
+      <CopySection editor={editor} catalog={catalog} direction={direction} />
+      <DetailsSection editor={editor} catalog={catalog} direction={direction} />
     </div>
   );
 }
