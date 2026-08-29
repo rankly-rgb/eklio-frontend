@@ -141,3 +141,43 @@ describe("isSiteError", () => {
     expect(isSiteError(null)).toBe(false);
   });
 });
+
+describe("`payment_required` — une offre, pas une erreur", () => {
+  it("remonte en 402", async () => {
+    const { client } = stub({
+      error: {
+        code: "payment_required",
+        message: "This kit isn't unlocked yet.",
+      },
+    });
+    const result = await siteSpecGet(client, "kit-1");
+
+    // 402 est le seul code dont le sens est « voici comment continuer » plutôt
+    // que « vous avez fait quelque chose de mal ». Le client ouvre le checkout.
+    expect(!result.ok && result.status).toBe(402);
+    expect(!result.ok && result.error.code).toBe("payment_required");
+  });
+
+  it("vaut pour toutes les entrées, pas seulement la lecture", async () => {
+    // La barrière est en base : une route qui oublierait de vérifier ne reçoit
+    // rien, au lieu de tout.
+    for (const call of [siteSpecPatch, siteSpecFixContrast]) {
+      const { client } = stub({
+        error: { code: "payment_required", message: "…" },
+      });
+      const result = await call(client, "kit-1", {} as never);
+      expect(!result.ok && result.status).toBe(402);
+    }
+  });
+
+  it("ne se confond pas avec `unauthenticated`", async () => {
+    // 401 veut dire « connectez-vous » ; 402 veut dire « payez ». Les
+    // confondre enverrait une praticienne connectée sur un écran de login.
+    const { client } = stub({
+      error: { code: "unauthenticated", message: "Sign in to edit your site spec." },
+    });
+    expect((await siteSpecGet(client, "k")).ok).toBe(false);
+    const result = await siteSpecGet(client, "k");
+    expect(!result.ok && result.status).toBe(401);
+  });
+});

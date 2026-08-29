@@ -10,10 +10,18 @@ import type { RevealDirection } from "@/lib/brand/shapes";
 /*
  * La révélation (Écran 4).
  *
- * CHOISIR UNE DIRECTION quand le kit n'est PAS payé n'écrit rien : ça ouvre le
- * checkout, avec Monthly Presence coché et la microcopy qui le dit. Écrire le
- * choix puis demander de payer laisserait un kit « choisi » mais fermé, et
- * c'est exactement l'état que la page de kit ne sait pas rendre.
+ * ELLE EST GRATUITE, ET ENTIÈRE. Trois directions complètes sont l'argument de
+ * vente : c'est ce qui convertit, et rien ici n'est flouté, tronqué ni retenu.
+ * Ce qui est payant commence au CHOIX d'une direction.
+ *
+ * ⚠ `paid` N'EST PLUS UNE BARRIÈRE. Il décide de ce que le bouton DIT, et rien
+ * d'autre. La barrière est en base : elle refuse l'écriture, la route la rend
+ * en 402, et on ouvre le checkout. Avant, `paid` était un `if` ici au-dessus
+ * d'une route ouverte — un `fetch` passait à côté, et tout s'ouvrait derrière.
+ *
+ * Le registre est celui d'une offre. « This one's ready when you are », pas
+ * « access denied » : elle n'a rien fait de mal, elle n'a simplement pas encore
+ * payé.
  *
  * Les trois cartes montent en séquence, 120 ms d'écart (§3) — instantané en
  * mouvement réduit, comme tout le reste.
@@ -34,6 +42,7 @@ export function RevealView({
   regenerationsLeft: number | null;
 }) {
   const router = useRouter();
+  const checkoutHref = `/app/checkout?project=${projectId}`;
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [compare, setCompare] = useState(false);
@@ -52,9 +61,10 @@ export function RevealView({
     setError(null);
 
     if (!paid) {
-      // Le paiement précède l'écriture : le webhook est la seule autorité sur
-      // ce qui est payé, et un kit « choisi mais fermé » n'a pas d'écran.
-      router.push(`/app/checkout?project=${projectId}`);
+      // Raccourci d'affordance, pas une garde : on sait déjà où ça mène, donc
+      // on y va sans faire l'aller-retour. Si `paid` mentait, la base refuse
+      // et le 402 ci-dessous nous amène au même endroit.
+      router.push(checkoutHref);
       return;
     }
 
@@ -65,6 +75,20 @@ export function RevealView({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ directionId: direction.id }),
       });
+
+      /*
+       * 402 : la base a refusé l'écriture. Ce n'est pas un échec à annoncer —
+       * on l'emmène au checkout, avec l'adresse que la route a renvoyée. Le
+       * cas se produit quand `paid` et la base ne disent pas la même chose,
+       * c'est-à-dire exactement quand l'ancien `if` client laissait passer.
+       */
+      if (response.status === 402) {
+        const body = (await response.json().catch(() => null)) as
+          | { checkoutUrl?: string }
+          | null;
+        router.push(body?.checkoutUrl ?? checkoutHref);
+        return;
+      }
 
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as
@@ -108,6 +132,7 @@ export function RevealView({
             practiceName={practiceName}
             index={index}
             pending={pendingId === direction.id}
+            paid={paid}
             onChoose={() => void choose(direction)}
           />
         ))}

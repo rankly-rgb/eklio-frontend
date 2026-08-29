@@ -335,6 +335,18 @@ export const SITE_ERROR_CODES = [
   "invalid_target",
   "unauthenticated",
   "no_direction",
+  /*
+   * ⚠ Le kit n'est pas payé.
+   *
+   * La barrière est EN BASE (`brand_kit_entitled`), pas dans nos routes : une
+   * route qui oublierait de vérifier ne reçoit rien, au lieu de tout. C'est
+   * l'inverse du modèle précédent, où le paiement était un `if` côté client
+   * au-dessus d'une route ouverte.
+   *
+   * Ce n'est PAS une erreur à afficher. C'est une offre : on ouvre le
+   * checkout, avec le kit en contexte.
+   */
+  "payment_required",
 ] as const;
 export type SiteErrorCode = (typeof SITE_ERROR_CODES)[number];
 

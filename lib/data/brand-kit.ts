@@ -157,7 +157,31 @@ export type SelectDirectionOutcome =
   | { ok: true; kit: BrandKit }
   | { ok: false; reason: "not-found" }
   | { ok: false; reason: "unknown-direction" }
+  /** La base a refusé l'écriture : le kit n'est pas payé. */
+  | { ok: false; reason: "payment-required" }
   | { ok: false; reason: "write-failed"; detail: unknown };
+
+/**
+ * La base a-t-elle refusé cette écriture faute de paiement ?
+ *
+ * Deux formes, parce que la barrière peut se poser de deux façons et qu'on ne
+ * veut pas d'un 500 selon laquelle a été choisie :
+ *
+ *   - une EXCEPTION nommée — un trigger qui lève `payment_required` ;
+ *   - AUCUNE LIGNE RENDUE — une policy RLS qui filtre la ligne au lieu de
+ *     lever. PostgREST ne signale alors rien : l'`UPDATE` touche zéro ligne et
+ *     `error` est nul.
+ *
+ * Le second cas est ambigu en théorie (la ligne pourrait avoir disparu entre
+ * les deux requêtes) mais pas en pratique : `selectDirection` vient de la lire
+ * et de vérifier l'id de direction. Un « zéro ligne » ici veut dire qu'on nous
+ * a refusé l'écriture, et le pire scénario si on se trompe est qu'on propose un
+ * checkout au lieu d'une erreur — ce qui reste la meilleure des deux erreurs.
+ */
+function refusedForPayment(error: { message?: string; code?: string } | null): boolean {
+  const haystack = `${error?.code ?? ""} ${error?.message ?? ""}`;
+  return /payment_required|brand_kit_entitled/i.test(haystack);
+}
 
 /**
  * Retient une direction.
@@ -169,6 +193,12 @@ export type SelectDirectionOutcome =
  * Coche ensuite l'item « Choose your creative direction » de la checklist via
  * `complete_choose_direction`, qui est idempotente : rechoisir une direction
  * ne rouvre pas l'item, et ne le recoche pas deux fois.
+ *
+ * ⚠ CETTE FONCTION N'EST PLUS LA BARRIÈRE DE PAIEMENT, ET NE L'A JAMAIS
+ * CORRECTEMENT ÉTÉ. Le `paid` de l'écran de révélation était un `if` côté
+ * client au-dessus d'une route ouverte : un `fetch` passait à côté. La barrière
+ * est désormais en base (`brand_kit_entitled`), et ce qu'on fait ici, c'est
+ * RECONNAÎTRE son refus pour le rendre en 402 — pas le reproduire.
  */
 export async function selectDirection(
   supabase: Client,
@@ -193,6 +223,15 @@ export async function selectDirection(
     .select("*")
     .single();
 
+  if (refusedForPayment(error)) {
+    return { ok: false, reason: "payment-required" };
+  }
+  if (!error && !row) {
+    // Zéro ligne touchée sur un kit qu'on vient de lire : c'est un refus, pas
+    // une panne. Journalisé parce qu'un jour ce sera peut-être autre chose.
+    console.info("[brand-kit] écriture de direction refusée sans erreur", brandKitId);
+    return { ok: false, reason: "payment-required" };
+  }
   if (error || !row) return { ok: false, reason: "write-failed", detail: error };
 
   const { error: checklistError } = await supabase.rpc(

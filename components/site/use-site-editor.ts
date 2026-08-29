@@ -106,7 +106,18 @@ function changedKeys(from: SiteSpec, to: SiteSpec): (keyof SiteSpec)[] {
 
 export function useSiteEditor(
   brandKitId: string,
-  initial: SiteSpecEnvelope
+  initial: SiteSpecEnvelope,
+  /**
+   * Appelé quand la base répond `payment_required` (402).
+   *
+   * Ce n'est pas une erreur à afficher : c'est une offre. L'appelant ouvre le
+   * checkout avec le kit en contexte. Le cas est rare — la page refuse déjà
+   * d'exister pour une praticienne non entitled — mais il arrive si le droit
+   * tombe pendant qu'elle édite (remboursement, litige), et à ce
+   * moment-là un « access denied » sur un écran qu'elle utilisait serait la
+   * plus mauvaise façon possible de l'apprendre.
+   */
+  onPaymentRequired: () => void
 ): SiteEditorState {
   const [envelope, setEnvelope] = useState(initial);
   const [inFlight, setInFlight] = useState(0);
@@ -174,6 +185,15 @@ export function useSiteEditor(
       });
       const body = await response.json().catch(() => null);
 
+      if (response.status === 402) {
+        // Le droit est tombé pendant l'édition. On rend le spec à son dernier
+        // état confirmé et on ouvre le checkout — pas de message d'échec.
+        pending.current = {};
+        setEnvelope((current) => ({ ...current, spec: rollbackTo }));
+        onPaymentRequired();
+        return;
+      }
+
       if (!response.ok) {
         // Le contrat le garantit : une erreur n'a rien écrit. On revient donc
         // à l'état confirmé, et on abandonne ce qui attendait — le réenvoyer
@@ -208,7 +228,7 @@ export function useSiteEditor(
       // Ce qui est arrivé pendant l'envoi part maintenant, en un seul patch.
       if (Object.keys(pending.current).length > 0) flushRef.current();
     }
-  }, [brandKitId, adopt]);
+  }, [brandKitId, adopt, onPaymentRequired]);
 
   useEffect(() => {
     flushRef.current = () => void flush();
@@ -256,6 +276,10 @@ export function useSiteEditor(
           // l'utilisatrice, donc pas un message — un no-op.
           return;
         }
+        if (response.status === 402) {
+          onPaymentRequired();
+          return;
+        }
         if (!response.ok) {
           setError(
             (payload as { error?: SiteErrorBody } | null)?.error ?? {
@@ -276,7 +300,7 @@ export function useSiteEditor(
         setInFlight((count) => count - 1);
       }
     },
-    [brandKitId, adopt]
+    [brandKitId, adopt, onPaymentRequired]
   );
 
   const setTarget = useCallback(

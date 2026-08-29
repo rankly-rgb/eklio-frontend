@@ -46,6 +46,13 @@ export type SiteRpcResult<T> = SiteRpcOk<T> | SiteRpcFailure;
  */
 const STATUS: Record<SiteErrorCode, number> = {
   unauthenticated: 401,
+  /*
+   * 402, et le client n'en fait PAS un message d'erreur : il ouvre le
+   * checkout. « Payment required » est littéralement ce que ce code veut dire,
+   * et c'est la seule réponse dont le sens est « voici comment continuer »
+   * plutôt que « vous avez fait quelque chose de mal ».
+   */
+  payment_required: 402,
   not_found: 404,
   no_fix_needed: 409,
   too_long: 400,

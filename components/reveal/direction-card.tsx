@@ -29,12 +29,21 @@ export function DirectionCard({
   index,
   onChoose,
   pending,
+  paid,
 }: {
   direction: RevealDirection;
   practiceName: string | null;
   index: number;
   onChoose: () => void;
   pending: boolean;
+  /**
+   * Ce que le bouton DIT, et rien d'autre.
+   *
+   * Ce n'est pas une garde — la barrière est en base. Non payé, le bouton
+   * annonce honnêtement qu'il mène au paiement, dans le registre d'une offre :
+   * elle n'a rien fait de mal, elle n'a simplement pas encore payé.
+   */
+  paid: boolean;
 }) {
   const ready = useBrandFont(direction.typography.google_fonts_url);
   const model = previewModelFromDirection(direction, practiceName);
@@ -130,7 +139,11 @@ export function DirectionCard({
           // 44px en mobile : c'est la cible tactile de la référence.
           className="w-full max-lg:h-11 max-lg:text-helper"
         >
-          {pending ? "One moment…" : "Choose this direction"}
+          {pending
+            ? "One moment…"
+            : paid
+              ? "Choose this direction"
+              : "This one's ready when you are"}
         </Button>
       </div>
     </article>

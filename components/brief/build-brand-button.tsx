@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { readOffer } from "@/lib/api/offer";
 
 /*
  * « Build my brand » — démarre la génération et part vers l'écran d'attente.
@@ -23,6 +24,15 @@ export function BuildBrandButton({ projectId }: { projectId: string }) {
       const response = await fetch(`/api/briefs/${projectId}/generate`, {
         method: "POST",
       });
+
+      // 402 : l'allocation gratuite est épuisée. C'est une offre, pas un
+      // échec — on ouvre le checkout, avec le projet en contexte.
+      const offer = await readOffer(response);
+      if (offer) {
+        router.push(offer.checkoutUrl);
+        return;
+      }
+
       const body = (await response.json().catch(() => null)) as
         | { jobId?: string; error?: string }
         | null;

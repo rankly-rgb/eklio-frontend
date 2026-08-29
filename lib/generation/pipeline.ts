@@ -540,9 +540,30 @@ function assemble(
     never_write: draft.voice_guide.never_write,
   };
 
+  /*
+   * La ligne de la tuile `signature`, dans l'ordre de ce qu'on sait vraiment :
+   *
+   *   1. ce qu'elle a écrit elle-même (`practitioner_line`) ;
+   *   2. son NOM, désormais demandé à l'étape 1, composé avec sa licence ;
+   *   3. le nom du cabinet — le repli d'avant, qui nommait la structure et
+   *      jamais la personne.
+   *
+   * Le deuxième cas est nouveau : jusqu'ici la tuile disait « Elm & Ember
+   * Counseling, LCSW », ce qui attribue une licence à une raison sociale. Rien
+   * ne se COMPOSE à partir de `practitioner_line` en sens inverse — un nom
+   * portant une virgule, un titre en deux mots ou un suffixe ne se redécoupe
+   * pas, et c'est pour ça que les deux champs existent séparément.
+   */
+  const practitionerName = bundle.data.practitioner_name?.trim();
   const practitionerLine =
     bundle.data.practitioner_line?.trim() ||
-    (license?.label ? `${practiceName}, ${license.label}` : practiceName);
+    (practitionerName
+      ? license?.label
+        ? `${practitionerName}, ${license.label}`
+        : practitionerName
+      : license?.label
+        ? `${practiceName}, ${license.label}`
+        : practiceName);
 
   return { directions, socialTemplates, voiceGuide, practitionerLine };
 }

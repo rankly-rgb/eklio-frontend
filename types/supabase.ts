@@ -940,6 +940,17 @@ export type Database = {
         Args: { p_brand_kit_id: string }
         Returns: undefined
       }
+      /*
+       * AJOUT MANUEL — le compteur de générations, atomique.
+       *
+       * Consomme une unité et renvoie `false` quand l'allocation est épuisée.
+       * L'atomicité est TOUT l'intérêt : lire un compteur puis décider laisse
+       * deux POST concurrents lire le même nombre et passer tous les deux.
+       */
+      consume_generation_credit: {
+        Args: { p_brand_kit_id: string }
+        Returns: boolean
+      }
       ensure_month_skeleton: {
         Args: { p_month: string; p_user_id: string }
         Returns: number

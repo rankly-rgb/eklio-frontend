@@ -54,7 +54,19 @@ export default async function SiteEditorPage({
     readCatalog(supabase),
   ]);
 
+  const checkoutHref = `/app/checkout?project=${kit.projectId}`;
+
   if (!envelope.ok) {
+    /*
+     * ⚠ L'ÉCRAN N'EXISTE PAS pour une praticienne qui n'a pas payé.
+     *
+     * `site_spec_get` répond `payment_required` : on l'envoie au checkout
+     * plutôt que de rendre un éditeur vide. Un éditeur sans spec n'aurait rien
+     * à montrer — pas de maquette, pas de contraste, pas d'instructions — et
+     * une coquille vide se lit comme une panne, pas comme une offre. La
+     * révélation, elle, reste gratuite et entière : c'est là qu'on vend.
+     */
+    if (envelope.error.code === "payment_required") redirect(checkoutHref);
     if (envelope.error.code === "not_found") redirect(`/app/brand-kits/${id}/reveal`);
     throw new Error(`[site-editor] ${envelope.error.code}: ${envelope.error.message}`);
   }
@@ -67,6 +79,7 @@ export default async function SiteEditorPage({
       initial={envelope.data}
       catalog={catalog}
       pairings={briefCatalog.typePairings}
+      checkoutHref={checkoutHref}
       direction={kit.selectedDirection}
     />
   );

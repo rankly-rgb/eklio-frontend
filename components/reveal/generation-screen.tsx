@@ -6,6 +6,7 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import { Button } from "@/components/ui/button";
 import { CheckGlyph } from "@/components/ui/glyphs";
 import { GENERATION_STAGES } from "@/lib/generation/job";
+import { readOffer } from "@/lib/api/offer";
 
 /*
  * L'écran d'attente (Écran 3).
@@ -85,7 +86,18 @@ export function GenerationScreen({
 
   async function retry() {
     setRetrying(true);
-    await fetch(`/api/briefs/${projectId}/generate`, { method: "POST" });
+    const response = await fetch(`/api/briefs/${projectId}/generate`, {
+      method: "POST",
+    });
+
+    // L'allocation gratuite est épuisée : on l'emmène au checkout plutôt que
+    // de lui faire relancer une génération qui ne partira pas.
+    const offer = await readOffer(response);
+    if (offer) {
+      router.push(offer.checkoutUrl);
+      return;
+    }
+
     router.refresh();
   }
 

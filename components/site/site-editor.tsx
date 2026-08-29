@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Button } from "@/components/ui/button";
 import { useSiteEditor } from "@/components/site/use-site-editor";
@@ -37,6 +38,7 @@ export function SiteEditor({
   catalog,
   pairings,
   direction,
+  checkoutHref,
 }: {
   brandKitId: string;
   initial: SiteSpecEnvelope;
@@ -45,8 +47,21 @@ export function SiteEditor({
   pairings: TypePairing[];
   /** La direction retenue — lue seulement pour les originaux de `seed_clamped`. */
   direction: Direction;
+  /** Où mener si la base répond `payment_required` en cours d'édition. */
+  checkoutHref: string;
 }) {
-  const editor = useSiteEditor(brandKitId, initial);
+  const router = useRouter();
+
+  /*
+   * Le droit peut tomber PENDANT l'édition — un remboursement, un litige. La
+   * base refuse alors l'écriture, et on ouvre le checkout au lieu d'afficher
+   * un refus : c'est une offre, pas une porte fermée.
+   */
+  const onPaymentRequired = useCallback(() => {
+    router.push(checkoutHref);
+  }, [router, checkoutHref]);
+
+  const editor = useSiteEditor(brandKitId, initial, onPaymentRequired);
   const [sheetOpen, setSheetOpen] = useState(false);
   const { undo, redo, canUndo, canRedo } = editor;
 
