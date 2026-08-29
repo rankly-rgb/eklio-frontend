@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import {
   getSubscription,
+  isBrandKitEntitled,
   isEntitledToMonthlyPresence,
 } from "@/lib/billing/entitlements";
 import { BrandKitView } from "@/components/kit/brand-kit-view";
@@ -15,6 +16,11 @@ import { builderOf } from "@/lib/site/output";
  *
  * Sans direction retenue, il n'y a rien à rendre : on renvoie sur la
  * révélation plutôt que d'afficher un kit à moitié vide.
+ *
+ * ⚠ LE DROIT SE DEMANDE À LA BASE, pas à la colonne d'à côté. Cette page était
+ * gardée par `selected_direction_id`, ce qui n'est pas une garde mais un effet
+ * de bord : une praticienne non payante ne pouvait plus écrire cette colonne,
+ * donc elle n'arrivait pas jusqu'ici. Ça tombe dès qu'une ligne existe déjà.
  */
 export default async function BrandKitPage({
   params,
@@ -32,6 +38,12 @@ export default async function BrandKitPage({
 
   if (!kit.selectedDirection) {
     redirect(`/app/brand-kits/${id}/reveal`);
+  }
+
+  // La révélation reste gratuite et entière : c'est là qu'on vend, et c'est là
+  // qu'on la renvoie si le kit n'est pas déverrouillé.
+  if (!(await isBrandKitEntitled(supabase, id))) {
+    redirect(`/app/checkout?project=${kit.projectId}`);
   }
 
   /*

@@ -941,6 +941,18 @@ export type Database = {
         Returns: undefined
       }
       /*
+       * AJOUT MANUEL — la question du droit, posée à la base.
+       *
+       * Le kit est-il déverrouillé pour l'appelante ? La réponse vit EN BASE
+       * et ne se recompose pas ici : une seconde copie de cette phrase
+       * finirait par diverger de la première, et c'est la copie la plus
+       * permissive qui gagnerait.
+       */
+      brand_kit_entitled: {
+        Args: { p_brand_kit_id: string }
+        Returns: boolean
+      }
+      /*
        * AJOUT MANUEL — le compteur de générations, atomique.
        *
        * Consomme une unité et renvoie `false` quand l'allocation est épuisée.

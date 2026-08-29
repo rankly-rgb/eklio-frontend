@@ -142,3 +142,91 @@ export async function resolveEntitledTier(
 
   return highestTier(tiers);
 }
+
+/* ── Le droit sur UN kit — la base fait autorité ─────────────────────────── */
+
+/**
+ * Ce kit est-il déverrouillé pour l'appelante ?
+ *
+ * ⚠ ON NE REPOSE PAS LA QUESTION ICI. `brand_kit_entitled` vit en base, à côté
+ * des policies qui refusent déjà les écritures ; une seconde implémentation de
+ * la même phrase finirait par diverger de la première, et le jour où ça
+ * arrive c'est la version la plus permissive qui gagne — c'est-à-dire nous.
+ * `resolveEntitledTier` ci-dessus répond à une AUTRE question (« quel palier
+ * a-t-elle payé »), pour un autre usage.
+ *
+ * ── ÉCHEC FERMÉ ─────────────────────────────────────────────────────────
+ *
+ * Une erreur de lecture rend `false`. Un droit qu'on n'a pas pu vérifier n'est
+ * pas un droit accordé : le pire résultat d'un refus injustifié est un
+ * checkout affiché à quelqu'un qui a payé — visible, réparable, et qui remonte
+ * en support. Le pire résultat de l'inverse est un livrable qui part sans
+ * contrepartie, et celui-là ne remonte jamais.
+ */
+export async function isBrandKitEntitled(
+  supabase: Client,
+  brandKitId: string
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("brand_kit_entitled", {
+    p_brand_kit_id: brandKitId,
+  });
+
+  if (error) {
+    console.error("[entitlements] brand_kit_entitled", error);
+    return false;
+  }
+  return data === true;
+}
+
+/* ── Les projets qu'on n'a pas payés ─────────────────────────────────────── */
+
+/**
+ * Combien de projets de cette utilisatrice ne sont adossés à AUCUN achat.
+ *
+ * ── Pourquoi ce compte, et pas celui des projets ────────────────────────
+ *
+ * Le plafond existe pour empêcher de remettre à zéro l'allocation de
+ * génération avec « New brief » : le crédit est par kit, un kit par projet,
+ * donc sans plafond la porte à côté est grande ouverte.
+ *
+ * Mais quelqu'un qui a payé ne cultive rien. Compter ses projets payés
+ * reviendrait à lui opposer un mur après trois achats — un ticket de support
+ * qu'on ne devrait jamais recevoir. Le compte ne porte donc que sur les
+ * projets NON ADOSSÉS À UN ACHAT, et le refus n'atteint jamais que ceux à qui
+ * il est destiné.
+ *
+ * ── L'achat sans projet ─────────────────────────────────────────────────
+ *
+ * Un checkout lancé depuis `/pricing`, avant d'avoir choisi un projet, écrit
+ * `project_id: null`. `resolveEntitledTier` le fait valoir pour TOUS ses
+ * projets ; le même raisonnement s'applique ici, sinon on refuserait un
+ * nouveau brief à quelqu'un qui vient de payer.
+ */
+export async function countUnpaidProjects(
+  supabase: Client,
+  userId: string
+): Promise<number> {
+  const [{ data: projects, error: projectsError }, { data: purchases, error: purchasesError }] =
+    await Promise.all([
+      supabase.from("projects").select("id").eq("user_id", userId),
+      supabase.from("purchases").select("project_id").eq("status", "paid"),
+    ]);
+
+  if (projectsError || purchasesError) {
+    // On ne DEVINE pas. Zéro laisse passer la création, ce qui est le bon sens
+    // du repli ici : le plafond est une mesure anti-abus, pas une garde de
+    // sécurité, et le crédit de génération reste atomique derrière.
+    console.error(
+      "[entitlements] comptage des projets non payés",
+      projectsError ?? purchasesError
+    );
+    return 0;
+  }
+
+  const paid = purchases ?? [];
+  // Un achat sans projet vaut pour tous : rien n'est « non payé ».
+  if (paid.some((row) => row.project_id === null)) return 0;
+
+  const paidProjects = new Set(paid.map((row) => row.project_id));
+  return (projects ?? []).filter((project) => !paidProjects.has(project.id)).length;
+}
