@@ -6,10 +6,13 @@ import { RailSection } from "@/components/site/rail-section";
 import {
   FIX_ALL_MAX_STEPS,
   contrastSummary,
+  fixAllReport,
   hasUnfixableFailure,
   isBelowAa,
   nextPairToFix,
+  pairNote,
   pairReading,
+  type FixAllReport,
 } from "@/lib/site/contrast";
 import type { SiteEditorState } from "@/components/site/use-site-editor";
 
@@ -42,10 +45,12 @@ import type { SiteEditorState } from "@/components/site/use-site-editor";
 export function ContrastSection({ editor }: { editor: SiteEditorState }) {
   const { contrast } = editor.envelope;
   const [fixing, setFixing] = useState<string | null>(null);
+  const [report, setReport] = useState<FixAllReport | null>(null);
   const summary = contrastSummary(contrast);
 
   async function fixOne(pairId: string) {
     setFixing(pairId);
+    setReport(null);
     try {
       await editor.fixContrast(pairId);
     } finally {
@@ -61,14 +66,22 @@ export function ContrastSection({ editor }: { editor: SiteEditorState }) {
    */
   async function fixAll() {
     setFixing("all");
+    setReport(null);
     try {
       for (let step = 0; step < FIX_ALL_MAX_STEPS; step += 1) {
         const pair = nextPairToFix(editor.envelope.contrast);
-        if (!pair) return;
+        if (!pair) break;
         await editor.fixContrast(pair.pair_id);
       }
     } finally {
       setFixing(null);
+      /*
+       * On RAPPORTE ce qui a été obtenu, on n'annonce pas un succès. Les appels
+       * ont pu tous réussir et laisser une paire en échec : un correctif
+       * déplace un jeton, et toute paire qui le partage bouge avec lui.
+       * `editor.envelope.contrast` est ici celui du DERNIER appel.
+       */
+      setReport(fixAllReport(editor.envelope.contrast));
     }
   }
 
@@ -91,10 +104,11 @@ export function ContrastSection({ editor }: { editor: SiteEditorState }) {
       <ul className="flex flex-col gap-2">
         {contrast.pairs.map((pair) => {
           const below = isBelowAa(pair);
+          const note = pairNote(pair);
           return (
             <li
               key={pair.pair_id}
-              className="flex items-center gap-3 border-b border-line pb-2 last:border-b-0 last:pb-0"
+              className="flex flex-wrap items-center gap-3 border-b border-line pb-2 last:border-b-0 last:pb-0"
             >
               <span className="flex flex-none items-center gap-0.5" aria-hidden="true">
                 {/* Les deux couleurs mesurées, telles qu'elles arrivent : `fg`
@@ -138,21 +152,49 @@ export function ContrastSection({ editor }: { editor: SiteEditorState }) {
                   Fix
                 </button>
               ) : null}
+
+              {/*
+                Une NOTE en clair plutôt qu'une infobulle : c'est la même
+                information, et elle ne demande ni survol ni pointeur. Une
+                infobulle sur une ligne non focalisable serait invisible au
+                clavier — et c'est précisément la ligne qu'il ne faut pas lire
+                de travers.
+              */}
+              {note ? (
+                <p className="w-full text-meta leading-body text-ink-2">{note}</p>
+              ) : null}
             </li>
           );
         })}
       </ul>
 
+      {report ? (
+        <p
+          role="status"
+          className={`mt-4 border-l pl-3 text-meta leading-body ${
+            report.done ? "border-line text-ink-2" : "border-[var(--danger)] text-ink"
+          }`}
+        >
+          {report.message}
+        </p>
+      ) : null}
+
       {!summary.passes ? (
         <div className="mt-4 flex flex-col gap-2">
+          {/*
+            « Fix them all » n'est PAS l'action principale de ce bloc : le
+            geste par défaut reste le `Fix` d'une ligne, où l'on voit ce qu'on
+            change. Elle existe pour la cascade, que personne ne peut suivre de
+            tête — d'où un lien et non un bouton.
+          */}
           {nextPairToFix(contrast) ? (
             <button
               type="button"
               disabled={fixing !== null}
               onClick={() => void fixAll()}
-              className="h-9 rounded-pill border border-line px-5 text-ui text-ink hover:bg-card disabled:opacity-40"
+              className="self-start text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4 disabled:opacity-40"
             >
-              {fixing === "all" ? "Fixing…" : "Fix them all"}
+              {fixing === "all" ? "Working through them…" : "Fix them all, worst first"}
             </button>
           ) : null}
 

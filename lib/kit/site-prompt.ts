@@ -3,37 +3,34 @@ import type { Direction } from "@/lib/brand/shapes";
 import { ETHICS_DISCLAIMER_TEXT } from "@/lib/ethics/disclaimer";
 
 /*
- * ⚠ SUPERSÉDÉ AU LOT 11 — CONSERVÉ EN ATTENTE D'UNE DÉCISION. ⚠
+ * ⚠ SUPERSÉDÉ AU LOT 11 — À SUPPRIMER DÈS QUE LE GUIDE DE VOIX EST DANS
+ *   `output`. ⚠
  *
- * La base est désormais la source unique de la sortie destinée aux
- * constructeurs : `site_output_get` / `output` dans l'enveloppe de l'éditeur de
- * site. Les quatre surfaces qui lisaient CE fichier ont été remplacées
- * (bloc et bouton du kit, route `/api/brand-kits/[id]/site-prompt`, nudge de
- * l'accueil). Plus rien ne l'importe.
+ * La base est la source unique de la sortie destinée aux constructeurs
+ * (`site_output_get` / `output` dans l'enveloppe de l'éditeur de site). Les
+ * quatre surfaces qui lisaient CE fichier ont été remplacées ; plus rien ne
+ * l'importe.
  *
- * Il N'EST PAS SUPPRIMÉ parce qu'il porte trois choses que la sortie du
- * contrat ne couvre PAS :
+ * L'inventaire avait relevé trois choses que la sortie du contrat ne portait
+ * pas. Les trois ont été tranchées :
  *
- *   1. LE GUIDE DE VOIX. Les blocs « SOUNDS LIKE » et « NEVER WRITE » de
- *      `brand_kits.voice_guide` partaient chez le constructeur. La sortie du
- *      contrat porte bien les règles publicitaires (« Do not invent
- *      testimonials… », « Use the provided copy exactly as written »), mais
- *      pas la voix de la praticienne ni ses contre-exemples.
- *   2. `practitioner_line`. L'ancien prompt émettait une ligne
- *      « PRACTITIONER: … ». `practice_details` porte le nom, la licence, la
- *      ville et l'État, pas cette ligne libre.
- *   3. `ETHICS_DISCLAIMER_TEXT`. Le disclaimer complet fermait le prompt. La
- *      checklist de la feuille en couvre le fond, pas la formulation.
+ *   1. LE GUIDE DE VOIX — « SOUNDS LIKE » / « NEVER WRITE ». RETENU : le
+ *      backend l'ajoute à `output`, pour les sept cibles. Rien à construire
+ *      ici, il arrive dans la sortie rendue.
+ *   2. `practitioner_line` — a révélé un manque plus large : le nom de la
+ *      praticienne n'était PAS dans `practice_details`, seulement le nom de la
+ *      practice. Le backend ajoute `practitioner_name` ; l'éditeur le rend dès
+ *      que la clé apparaît, en tête de « Your details », et le réclame quand il
+ *      est vide (cf. `lib/site/details.ts`).
+ *   3. LE TEXTE DU DISCLAIMER DÉONTOLOGIQUE — PERTE ACCEPTÉE. Le bloc de
+ *      contraintes de la sortie en porte le fond, et la praticienne a le texte
+ *      complet sur son kit.
  *
- * Aucune des trois n'est perdue POUR LA PRACTICIENNE — le guide de voix et la
- * ligne de praticien restent sur le kit, dans le PDF et sur les tuiles
- * sociales. Ce qui disparaît, c'est leur présence dans le texte qui part chez
- * un constructeur qui va, lui, écrire de la copy.
- *
- * À trancher : soit le backend ajoute ces trois blocs à `output`, soit on
- * assume la perte et ce fichier part avec son test. Tant que ce n'est pas
- * tranché, il reste — et il ne coûte rien : il n'est plus dans aucun graphe
- * d'imports d'écran.
+ * CE QUI RESTE À FAIRE : quand le guide de voix est effectivement dans
+ * `output` — vérifié sur une vraie réponse, pas sur une annonce — supprimer ce
+ * fichier ET `lib/kit/__tests__/site-prompt.test.ts`, et retirer
+ * `site_prompt_copied` de `lib/analytics.ts`. Il ne restera alors rien de
+ * valeur ici.
  *
  * ────────────────────────────────────────────────────────────────────────
  *

@@ -97,6 +97,17 @@ export type SpecPage = {
 };
 
 export type PracticeDetails = {
+  /*
+   * ⚠ Le nom de la PRATICIENNE, distinct du nom de la practice.
+   *
+   * Il arrive après le reste : `practice_details` ne portait que
+   * `practice_name`, et un site de thérapie qui ne nomme pas la thérapeute est
+   * un problème de conformité, pas seulement une omission bizarre. Le champ est
+   * donc rendu SOUS CONDITION DE PRÉSENCE de la clé (cf.
+   * `lib/site/details.ts`) : tant que la base ne l'expose pas, on ne propose
+   * pas un contrôle dont l'écriture serait refusée en `unknown_field`.
+   */
+  practitioner_name?: string | null;
   practice_name?: string | null;
   license_label?: string | null;
   license_number?: string | null;

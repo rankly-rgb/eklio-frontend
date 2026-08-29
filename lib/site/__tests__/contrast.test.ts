@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   contrastSummary,
+  fixAllReport,
   hasUnfixableFailure,
   isBelowAa,
+  levelWord,
   nextPairToFix,
+  pairNote,
   pairReading,
 } from "@/lib/site/contrast";
 import { CONTRAST_PAIR_IDS } from "@/lib/site/types";
@@ -146,13 +149,95 @@ describe("la pastille de résumé", () => {
   });
 });
 
-describe("`AA_large` est un échec ici", () => {
-  it("parce que ces sept paires mesurent du texte courant", () => {
-    const pair = failing().pairs[0];
+describe("sous 4.5, on signale — y compris `AA_large`", () => {
+  it("parce que SIX des sept paires mesurent du texte courant", () => {
+    const pair = failing().pairs[2]; // primary_on_paper
     expect(pair.level).toBe("AA_large");
     expect(isBelowAa(pair)).toBe(true);
     // Et le contrat lui donne bien un correctif : la cible est 4.5, pas 3.
     expect(pair.suggested_fix).not.toBeNull();
+    expect(levelWord(pair)).toBe("AA large");
+  });
+
+  it("la septième est un libellé de BOUTON, et ne doit pas lire « fail »", () => {
+    /*
+     * `cta_label_on_primary` mesure un libellé sur un aplat, et la sortie
+     * imprime pour lui un plancher de taille explicite. La règle stricte
+     * reste — la paire est signalée et le correctif proposé — mais le mot
+     * change : elle ne peut pas lire « fail » à propos de quelque chose qui
+     * passe à la taille où c'est imprimé.
+     */
+    const cta = failing().pairs[0];
+    expect(cta.pair_id).toBe("cta_label_on_primary");
+    expect(isBelowAa(cta)).toBe(true);
+    expect(levelWord(cta)).toBe("below AA");
+    expect(levelWord(cta)).not.toBe("fail");
+    expect(cta.suggested_fix).not.toBeNull();
+  });
+
+  it("elle est la SEULE à porter cette note, et seulement en échec", () => {
+    const report = failing();
+    const cta = report.pairs[0];
+
+    expect(pairNote(cta)).toContain("18px bold");
+    expect(pairNote(cta)).toContain("comfortable to read, not compliant");
+    // Pas de chiffre de norme dans la note : le plancher imprimé est 18px gras
+    // et le seuil « grand texte » de WCAG est 18.66px gras. Affirmer la
+    // conformité à 18px serait faux de 0,66px.
+    expect(pairNote(cta)).not.toContain("WCAG");
+
+    for (const pair of report.pairs.slice(1)) {
+      expect(pairNote(pair)).toBeNull();
+    }
+    // Et rien quand elle passe.
+    expect(pairNote(CLAY_AND_SAND.contrast.pairs[0])).toBeNull();
+  });
+
+  it("un `fail` de texte courant garde son mot", () => {
+    const secondary = failing().pairs[3];
+    expect(secondary.level).toBe("fail");
+    expect(levelWord(secondary)).toBe("fail");
+  });
+});
+
+describe("le compte rendu de « Fix them all »", () => {
+  it("n'annonce jamais un succès : il lit `passes_aa`", () => {
+    const report = fixAllReport(CLAY_AND_SAND.contrast);
+    expect(report.done).toBe(true);
+    expect(report.message).toBe(
+      "All seven pairs reach AA. The closest is now 4.51:1."
+    );
+  });
+
+  it("NOMME la paire qui résiste quand il en reste une", () => {
+    // Les appels ont pu tous réussir et laisser une paire en échec : un
+    // correctif déplace un jeton, et toute paire qui le partage bouge avec lui.
+    const report = fixAllReport(failing());
+    expect(report.done).toBe(false);
+    expect(report.message).toContain("3 pairs are still below AA");
+    expect(report.message).toContain("Button label on your primary color");
+    expect(report.message).toContain("4.22:1");
+  });
+
+  it("distingue « recommence » de « rien de plus à appliquer »", () => {
+    const stuck = failing();
+    for (const pair of stuck.pairs) pair.suggested_fix = null;
+
+    const report = fixAllReport(stuck);
+    expect(report.done).toBe(false);
+    expect(report.message).toContain("no shade of that color reaches AA");
+  });
+
+  it("accorde le singulier", () => {
+    const one = failing();
+    one.pairs[0].ratio = 5.2;
+    one.pairs[0].level = "AA";
+    one.pairs[0].suggested_fix = null;
+    one.pairs[2].ratio = 4.8;
+    one.pairs[2].level = "AA";
+    one.pairs[2].suggested_fix = null;
+
+    expect(fixAllReport(one).message).toContain("One pair is still below AA");
   });
 });
 
@@ -211,6 +296,10 @@ describe("la ligne d'une paire", () => {
   });
 
   it("écrit `AA large` en toutes lettres", () => {
-    expect(pairReading(failing().pairs[0])).toBe("4.22:1 · AA large");
+    expect(pairReading(failing().pairs[2])).toBe("3.91:1 · AA large");
+  });
+
+  it("écrit `below AA` sur le libellé du bouton", () => {
+    expect(pairReading(failing().pairs[0])).toBe("4.22:1 · below AA");
   });
 });
