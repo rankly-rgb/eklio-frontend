@@ -170,7 +170,11 @@ export function SiteEditor({
 
       {/* ── Sortie ──────────────────────────────────────────────────────── */}
       <div className="mt-10">
-        <OutputPanel editor={editor} catalog={catalog} brandKitId={brandKitId} />
+        <OutputPanel
+          editor={editor}
+          catalog={catalog}
+          brandKitId={brandKitId}
+        />
       </div>
     </main>
   );
