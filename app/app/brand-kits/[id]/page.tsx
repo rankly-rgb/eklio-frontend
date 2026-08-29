@@ -5,6 +5,7 @@ import {
   getSubscription,
   isBrandKitEntitled,
   isEntitledToMonthlyPresence,
+  purchaseWasReversed,
 } from "@/lib/billing/entitlements";
 import { BrandKitView } from "@/components/kit/brand-kit-view";
 import { siteSpecGet } from "@/lib/site/rpc";
@@ -43,7 +44,10 @@ export default async function BrandKitPage({
   // La révélation reste gratuite et entière : c'est là qu'on vend, et c'est là
   // qu'on la renvoie si le kit n'est pas déverrouillé.
   if (!(await isBrandKitEntitled(supabase, id))) {
-    redirect(`/app/checkout?project=${kit.projectId}`);
+    const reversed = await purchaseWasReversed(supabase, kit.projectId);
+    redirect(
+      `/app/checkout?project=${kit.projectId}${reversed ? "&reversed=1" : ""}`
+    );
   }
 
   /*

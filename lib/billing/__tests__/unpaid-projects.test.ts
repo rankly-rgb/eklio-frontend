@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import { countUnpaidProjects, isBrandKitEntitled } from "@/lib/billing/entitlements";
+import {
+  countUnpaidProjects,
+  isBrandKitEntitled,
+  lockedMessage,
+} from "@/lib/billing/entitlements";
 
 /*
  * Le plafond porte sur les projets NON PAYÉS.
@@ -119,5 +123,29 @@ describe("isBrandKitEntitled — échec fermé", () => {
     } as unknown as SupabaseClient<Database>;
 
     expect(await isBrandKitEntitled(supabase, "kit-1")).toBe(false);
+  });
+});
+
+describe("ce qu'on dit quand le kit est fermé", () => {
+  it("la même phrase pour une carte volée et pour un litige de mauvaise foi", () => {
+    // On ne sait pas lequel des deux on a en face, et un produit qui accuse se
+    // trompera un jour sur quelqu'un dont la carte a servi sans lui.
+    expect(lockedMessage(true)).toBe(
+      "That purchase was reversed, so this kit is locked. You can unlock it again whenever you like."
+    );
+  });
+
+  it("dit ce qui s'est passé et comment revenir, rien d'autre", () => {
+    const message = lockedMessage(true);
+    expect(message).toContain("reversed");
+    expect(message).toContain("unlock it again");
+    // Pas de reproche, pas de compte à rebours, aucune mention du fichier
+    // qu'elle a déjà — il est à elle.
+    expect(message).not.toMatch(/fraud|chargeback|violation|suspend|delete/i);
+  });
+
+  it("distingue « jamais payé » de « annulé »", () => {
+    expect(lockedMessage(false)).toBe("Your kit is ready when you are.");
+    expect(lockedMessage(false)).not.toContain("reversed");
   });
 });

@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getStripeClient } from "@/lib/stripe/client";
 import type { WebhookPorts } from "@/lib/stripe/webhook";
+import type { PurchaseStatus } from "@/types/supabase";
 import type { Json } from "@/types/supabase";
 
 /*
@@ -118,6 +119,113 @@ export function createWebhookPorts(): WebhookPorts {
       );
 
       if (error) throw error;
+    },
+
+    async grantPlanAllowance({ projectId, tier, stripeEventId }): Promise<void> {
+      /*
+       * Sans projet, il n'y a rien à créditer : un checkout lancé depuis
+       * `/pricing` vaut pour tous les projets du praticien, et l'allocation se
+       * pose sur un projet précis. Le droit, lui, est déjà accordé par la
+       * ligne `purchases`.
+       */
+      if (!projectId) return;
+
+      const { error } = await supabase.rpc("grant_plan_allowance", {
+        p_project_id: projectId,
+        p_tier: tier,
+        p_stripe_event_id: stripeEventId,
+      });
+
+      if (error) throw error;
+    },
+
+    async purchaseByPaymentIntent(paymentIntentId) {
+      /*
+       * LA SECONDE LECTURE. `purchases` est unique sur la session de checkout,
+       * mais les events de charge ne la connaissent pas : ils portent le
+       * PaymentIntent, que l'achat a stocké au paiement.
+       *
+       * `maybeSingle()` et non `single()` : un remboursement sur un paiement
+       * qui n'a jamais produit de ligne est un cas réel, pas une exception.
+       */
+      const { data, error } = await supabase
+        .from("purchases")
+        .select("id, status, project_id")
+        .eq("stripe_payment_intent_id", paymentIntentId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[stripe-webhook] lecture achat par payment_intent", error);
+        throw error;
+      }
+      if (!data) return null;
+
+      return {
+        id: data.id,
+        status: data.status as PurchaseStatus,
+        projectId: data.project_id,
+      };
+    },
+
+    async recordStatusTransition(t): Promise<void> {
+      /*
+       * LE JOURNAL D'ABORD, la ligne ensuite.
+       *
+       * `stripe_event_id` y est unique : si l'insertion passe, c'est que cet
+       * event n'a jamais été appliqué. Écrire le statut d'abord laisserait,
+       * sur un rejeu arrivé pendant l'écriture, un achat modifié deux fois
+       * dont le journal ne porterait qu'une trace — et c'est le journal qui
+       * sert à rendre l'état d'avant.
+       *
+       * Le conflit d'unicité n'est PAS une erreur : c'est la réponse. On sort
+       * sans toucher à l'achat.
+       */
+      const { error: ledgerError } = await supabase
+        .from("purchase_status_events")
+        .insert({
+          purchase_id: t.purchaseId,
+          status: t.status,
+          previous_status: t.previousStatus,
+          stripe_event_id: t.stripeEventId,
+          reason: t.reason,
+        });
+
+      if (ledgerError) {
+        if (ledgerError.code === UNIQUE_VIOLATION) return;
+        throw ledgerError;
+      }
+
+      const { error } = await supabase
+        .from("purchases")
+        .update({ status: t.status, updated_at: new Date().toISOString() })
+        .eq("id", t.purchaseId);
+
+      if (error) throw error;
+    },
+
+    async previousStatusBefore(purchaseId, intoStatuses) {
+      /*
+       * Le `previous_status` de la DERNIÈRE entrée dans l'un de ces statuts.
+       *
+       * On filtre sur `status` plutôt que de prendre la ligne la plus récente :
+       * un achat contesté puis remboursé porte deux transitions, et rendre
+       * « celle d'avant la dernière » rendrait l'état d'avant le
+       * remboursement, pas celui d'avant le litige.
+       */
+      const { data, error } = await supabase
+        .from("purchase_status_events")
+        .select("previous_status")
+        .eq("purchase_id", purchaseId)
+        .in("status", intoStatuses)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[stripe-webhook] lecture du statut antérieur", error);
+        return null;
+      }
+      return (data?.previous_status as PurchaseStatus | undefined) ?? null;
     },
 
     async upsertSubscription(row): Promise<void> {

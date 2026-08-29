@@ -34,6 +34,18 @@ export default async function CheckoutPage({
     : params.project;
 
   /*
+   * `?reversed=1` — l'achat a été annulé (remboursé, ou contesté). Le drapeau
+   * ne change AUCUN droit : il n'ajoute qu'une phrase, pour qu'elle ne
+   * découvre pas un écran de paiement sans comprendre pourquoi elle y est.
+   *
+   * La même phrase pour tout le monde. Une carte volée et un litige de
+   * mauvaise foi ne se distinguent pas d'ici, et un produit qui accuse se
+   * trompera un jour sur quelqu'un dont la carte a servi sans lui.
+   */
+  const reversed =
+    (Array.isArray(params.reversed) ? params.reversed[0] : params.reversed) === "1";
+
+  /*
    * Un `?project=` inventé ne doit pas rattacher un paiement au projet d'un
    * autre : la RLS filtre par propriétaire, donc un projet absent du résultat
    * est simplement ignoré et le paiement part sans rattachement — il vaudra
@@ -66,6 +78,12 @@ export default async function CheckoutPage({
         <h1 className="font-display text-question font-medium leading-tight tracking-h1">
           Your order
         </h1>
+        {reversed && (
+          <p className="border-l border-accent pl-3 text-helper leading-prose text-ink">
+            That purchase was reversed, so your kit is locked. You can unlock it
+            again here — everything you wrote is still saved.
+          </p>
+        )}
         {projectName && (
           <p className="text-helper text-ink-2">
             Unlocking the kit for {projectName}

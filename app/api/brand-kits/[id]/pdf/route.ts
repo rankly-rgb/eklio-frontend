@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authenticate, notFound } from "@/lib/api/handler";
-import { isBrandKitEntitled } from "@/lib/billing/entitlements";
+import {
+  isBrandKitEntitled,
+  lockedMessage,
+  purchaseWasReversed,
+} from "@/lib/billing/entitlements";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import { renderBrandKitPdf } from "@/lib/kit/pdf";
 import { track } from "@/lib/analytics";
@@ -41,10 +45,20 @@ export async function GET(
   if (!kit) return notFound();
 
   if (!(await isBrandKitEntitled(auth.session.supabase, id))) {
+    /*
+     * Le texte change selon qu'elle n'a jamais payé ou que l'achat a été
+     * annulé — mais PAS selon la raison de l'annulation : carte volée et
+     * litige de mauvaise foi lisent la même phrase. Nous ne savons pas lequel
+     * des deux nous avons en face.
+     */
+    const reversed = await purchaseWasReversed(
+      auth.session.supabase,
+      kit.projectId
+    );
     return NextResponse.json(
       {
-        error: "Your kit is ready when you are.",
-        checkoutUrl: `/app/checkout?project=${kit.projectId}`,
+        error: lockedMessage(reversed),
+        checkoutUrl: `/app/checkout?project=${kit.projectId}${reversed ? "&reversed=1" : ""}`,
       },
       { status: 402 }
     );

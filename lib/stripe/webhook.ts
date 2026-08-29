@@ -5,7 +5,7 @@ import {
   readMetadataUserId,
 } from "@/lib/stripe/metadata";
 import type { KitTier } from "@/lib/kit/tiers";
-import type { SubscriptionStatus } from "@/types/supabase";
+import type { PurchaseStatus, SubscriptionStatus } from "@/types/supabase";
 
 /*
  * Traitement des events Stripe — la logique, sans le transport.
@@ -41,6 +41,29 @@ export const HANDLED_EVENT_TYPES = [
   "customer.subscription.updated",
   "customer.subscription.deleted",
   "invoice.payment_failed",
+  /*
+   * ── L'ARGENT QUI REPART ─────────────────────────────────────────────────
+   *
+   * Un remboursement et un litige retirent l'argent ; sans ces events, le kit
+   * restait déverrouillé après un chargeback. Ils sont tous clés sur le
+   * PAYMENT INTENT et non sur la session de checkout : Stripe les émet sur la
+   * charge, qui ne connaît pas la session. D'où une seconde lecture,
+   * `purchaseByPaymentIntent`.
+   */
+  "charge.refunded",
+  "charge.dispute.created",
+  "charge.dispute.closed",
+  /*
+   * Un remboursement peut ÉCHOUER après avoir réussi — la banque le rejette,
+   * l'argent revient chez nous, et le droit doit revenir avec lui.
+   *
+   * Les deux noms sont écoutés parce que celui qui arrive dépend de la version
+   * d'API du compte : `charge.refund.updated` sur les anciennes,
+   * `refund.updated` sur les récentes. N'en écouter qu'un laisserait la
+   * réouverture silencieusement inappliquée sur l'autre moitié des comptes.
+   */
+  "charge.refund.updated",
+  "refund.updated",
 ] as const;
 
 export type HandledEventType = (typeof HANDLED_EVENT_TYPES)[number];
@@ -104,11 +127,64 @@ export type WebhookPorts = {
   /** Note la correspondance customer → user si elle manquait. */
   linkCustomer(userId: string, customerId: string): Promise<void>;
   recordPurchase(row: PurchaseRow): Promise<void>;
+  /**
+   * Ouvre l'allocation du palier acheté.
+   *
+   * Idempotente sur l'id d'event côté base : un rejeu de Stripe ne double pas
+   * ce qu'elle a payé. Appelée sur LES DEUX chemins de déverrouillage — le
+   * paiement immédiat et le paiement différé confirmé. C'est le même
+   * déverrouillage, et le second a déjà été oublié une fois.
+   */
+  grantPlanAllowance(input: {
+    projectId: string | null;
+    tier: KitTier;
+    stripeEventId: string;
+  }): Promise<void>;
+  /**
+   * L'achat correspondant à un PaymentIntent — LA seconde lecture.
+   *
+   * Les events de remboursement et de litige ne portent pas la session de
+   * checkout, sur laquelle `purchases` est unique. Ils portent la charge, et
+   * donc le PaymentIntent, que l'achat a stocké au moment du paiement.
+   */
+  purchaseByPaymentIntent(
+    paymentIntentId: string
+  ): Promise<{ id: string; status: PurchaseStatus; projectId: string | null } | null>;
+  /**
+   * Change le statut d'un achat ET journalise la transition, ensemble.
+   *
+   * Les deux écritures sont UN seul port pour qu'aucun appelant ne puisse
+   * faire l'une sans l'autre : un statut changé sans ligne de journal est un
+   * litige gagné qu'on ne saura plus rendre.
+   */
+  recordStatusTransition(transition: StatusTransition): Promise<void>;
+  /**
+   * Le statut qui précédait la dernière entrée DANS l'un de ces statuts.
+   *
+   * C'est ce qui rend un litige gagné à son état d'avant plutôt qu'à un `paid`
+   * codé en dur — l'achat pouvait être `partially_refunded` quand le litige a
+   * été ouvert, et le rendre `paid` lui offrirait le remboursement en prime.
+   */
+  previousStatusBefore(
+    purchaseId: string,
+    intoStatuses: PurchaseStatus[]
+  ): Promise<PurchaseStatus | null>;
   upsertSubscription(row: SubscriptionRow): Promise<void>;
   /** Passe l'abonnement en `past_due` sans toucher au reste de la ligne. */
   markSubscriptionPastDue(stripeSubscriptionId: string): Promise<void>;
   /** Relit l'abonnement chez Stripe (statut et période à jour). */
   fetchSubscription(id: string): Promise<Stripe.Subscription | null>;
+};
+
+export type StatusTransition = {
+  purchaseId: string;
+  status: PurchaseStatus;
+  /** Relu de la LIGNE, jamais supposé. */
+  previousStatus: PurchaseStatus;
+  /** L'id de l'event Stripe — unique dans le journal. */
+  stripeEventId: string;
+  /** Le type d'event qui a causé la transition, pour le diagnostic. */
+  reason: string;
 };
 
 export type WebhookOutcome =
@@ -233,7 +309,8 @@ async function handleCheckoutSession(
   type:
     | "checkout.session.completed"
     | "checkout.session.async_payment_succeeded"
-    | "checkout.session.async_payment_failed"
+    | "checkout.session.async_payment_failed",
+  eventId: string
 ): Promise<WebhookOutcome> {
   const metadata = parseCheckoutMetadata(
     session.metadata as Record<string, string> | null
@@ -295,6 +372,20 @@ async function handleCheckoutSession(
     status,
     paidAt: paid ? new Date().toISOString() : null,
   });
+
+  /*
+   * L'ALLOCATION DU PALIER, sur les deux chemins de déverrouillage.
+   *
+   * Rien à ouvrir tant que l'argent n'est pas là : un `pending` n'accorde
+   * aucun droit, et un `failed` encore moins.
+   */
+  if (paid) {
+    await ports.grantPlanAllowance({
+      projectId: metadata.projectId,
+      tier: metadata.tier,
+      stripeEventId: eventId,
+    });
+  }
 
   /*
    * L'add-on a été gardé : la session porte un abonnement. On le RELIT chez
@@ -385,6 +476,224 @@ async function handleInvoiceFailed(
   return { status: "processed", type };
 }
 
+
+/* ── L'argent qui repart ─────────────────────────────────────────────────── */
+
+/**
+ * Retrouve l'achat visé par un event de charge.
+ *
+ * Toujours par le PAYMENT INTENT : `purchases` est unique sur la session de
+ * checkout, mais une charge ne connaît pas la session. On ne retombe pas sur
+ * l'id de charge — la colonne n'existe pas, et deviner un rattachement sur un
+ * event qui retire de l'argent serait le pire endroit pour deviner.
+ */
+async function purchaseFor(
+  ports: WebhookPorts,
+  paymentIntent: string | { id: string } | null | undefined,
+  type: string
+): Promise<
+  | { found: true; purchase: { id: string; status: PurchaseStatus; projectId: string | null } }
+  | { found: false; outcome: WebhookOutcome }
+> {
+  const paymentIntentId = idOf(paymentIntent);
+  if (!paymentIntentId) {
+    return {
+      found: false,
+      outcome: { status: "ignored", type, reason: "event sans payment_intent" },
+    };
+  }
+
+  const purchase = await ports.purchaseByPaymentIntent(paymentIntentId);
+  if (!purchase) {
+    /*
+     * Aucun achat pour ce PaymentIntent : c'est le cas d'un remboursement sur
+     * un paiement qui n'a jamais produit de ligne — un achat ignoré faute de
+     * métadonnées, par exemple. Il n'y a rien à révoquer, et inventer une
+     * ligne ici serait pire que de ne rien faire.
+     */
+    return {
+      found: false,
+      outcome: {
+        status: "ignored",
+        type,
+        reason: "aucun achat pour ce payment_intent",
+      },
+    };
+  }
+
+  return { found: true, purchase };
+}
+
+/** Applique une transition, ou l'ignore quand elle ne change rien. */
+async function transition(
+  ports: WebhookPorts,
+  purchase: { id: string; status: PurchaseStatus },
+  next: PurchaseStatus,
+  event: Stripe.Event
+): Promise<WebhookOutcome> {
+  if (purchase.status === next) {
+    // Une transition vers soi-même n'apprend rien au journal, et son
+    // `previous_status` mentirait à la prochaine restauration.
+    return {
+      status: "ignored",
+      type: event.type,
+      reason: `achat déjà en ${next}`,
+    };
+  }
+
+  await ports.recordStatusTransition({
+    purchaseId: purchase.id,
+    status: next,
+    previousStatus: purchase.status,
+    stripeEventId: event.id,
+    reason: event.type,
+  });
+
+  return { status: "processed", type: event.type };
+}
+
+/**
+ * `charge.refunded` — remboursement total ou partiel.
+ *
+ * Stripe émet cet event à CHAQUE remboursement : deux remboursements partiels
+ * font deux events, et celui qui complète la somme fait passer en `refunded`.
+ * Chacun a son propre id, donc chacun laisse sa ligne dans le journal.
+ */
+async function handleChargeRefunded(
+  ports: WebhookPorts,
+  charge: Stripe.Charge,
+  event: Stripe.Event
+): Promise<WebhookOutcome> {
+  const found = await purchaseFor(ports, charge.payment_intent, event.type);
+  if (!found.found) return found.outcome;
+
+  const refunded = charge.amount_refunded ?? 0;
+  const total = charge.amount ?? 0;
+  const full = total > 0 && refunded >= total;
+
+  return transition(
+    ports,
+    found.purchase,
+    full ? "refunded" : "partially_refunded",
+    event
+  );
+}
+
+/**
+ * `charge.dispute.created` — l'argent est DÉJÀ parti.
+ *
+ * Stripe retire les fonds à l'ouverture, avant toute décision. On révoque donc
+ * tout de suite, et `disputed` reste distinct de `refunded` : l'argent peut
+ * revenir, et le journal garde de quoi rendre l'état d'avant.
+ */
+async function handleDisputeCreated(
+  ports: WebhookPorts,
+  dispute: Stripe.Dispute,
+  event: Stripe.Event
+): Promise<WebhookOutcome> {
+  const found = await purchaseFor(ports, dispute.payment_intent, event.type);
+  if (!found.found) return found.outcome;
+
+  return transition(ports, found.purchase, "disputed", event);
+}
+
+/**
+ * `charge.dispute.closed` — gagné, on rend ; perdu, on en reste là.
+ *
+ * ⚠ Le retour se lit DANS LE JOURNAL, jamais en dur. Un achat pouvait être
+ * `partially_refunded` au moment où le litige s'est ouvert ; le rendre `paid`
+ * lui offrirait le remboursement en prime.
+ *
+ * Quand le journal ne porte rien à rendre — une ligne perdue, un `disputed`
+ * posé à la main — on LAISSE `disputed` et on le crie dans les logs. C'est la
+ * même asymétrie que partout ailleurs : un refus injustifié remonte en
+ * support, une remise en accès injustifiée ne remonte jamais. Ici le coût est
+ * réel et assumé, parce qu'un litige gagné est rare et qu'il a un chemin
+ * humain.
+ */
+async function handleDisputeClosed(
+  ports: WebhookPorts,
+  dispute: Stripe.Dispute,
+  event: Stripe.Event
+): Promise<WebhookOutcome> {
+  const found = await purchaseFor(ports, dispute.payment_intent, event.type);
+  if (!found.found) return found.outcome;
+
+  if (dispute.status === "lost") {
+    // L'argent ne revient pas. L'achat reste révoqué, et la ligne de journal
+    // le dit explicitement plutôt que de laisser un `disputed` sans épilogue.
+    return transition(ports, found.purchase, "disputed", event);
+  }
+
+  /*
+   * `won` et `warning_closed` : dans les deux cas nous gardons l'argent. Les
+   * autres statuts sont des étapes intermédiaires que `closed` ne devrait pas
+   * porter — on les nomme au lieu de les traiter au hasard.
+   */
+  if (dispute.status !== "won" && dispute.status !== "warning_closed") {
+    return {
+      status: "ignored",
+      type: event.type,
+      reason: `litige clos avec le statut ${dispute.status}`,
+    };
+  }
+
+  const restored = await ports.previousStatusBefore(found.purchase.id, ["disputed"]);
+  if (!restored) {
+    console.error(
+      `[stripe-webhook] litige gagné sans état antérieur pour l'achat ${found.purchase.id} — accès à rouvrir à la main.`
+    );
+    return {
+      status: "ignored",
+      type: event.type,
+      reason: "aucun état antérieur à rendre",
+    };
+  }
+
+  return transition(ports, found.purchase, restored, event);
+}
+
+/**
+ * Le remboursement qui échoue — la banque le rejette, l'argent revient.
+ *
+ * Le droit revient avec lui, repris dans le journal comme pour un litige
+ * gagné. Un `refund` dont le statut n'est pas `failed` est un autre moment de
+ * sa vie (créé, en attente, réussi) et ne change rien ici.
+ */
+async function handleRefundUpdated(
+  ports: WebhookPorts,
+  refund: Stripe.Refund,
+  event: Stripe.Event
+): Promise<WebhookOutcome> {
+  if (refund.status !== "failed") {
+    return {
+      status: "ignored",
+      type: event.type,
+      reason: `remboursement en statut ${refund.status ?? "inconnu"}`,
+    };
+  }
+
+  const found = await purchaseFor(ports, refund.payment_intent, event.type);
+  if (!found.found) return found.outcome;
+
+  const restored = await ports.previousStatusBefore(found.purchase.id, [
+    "refunded",
+    "partially_refunded",
+  ]);
+  if (!restored) {
+    console.error(
+      `[stripe-webhook] remboursement échoué sans état antérieur pour l'achat ${found.purchase.id} — accès à rouvrir à la main.`
+    );
+    return {
+      status: "ignored",
+      type: event.type,
+      reason: "aucun état antérieur à rendre",
+    };
+  }
+
+  return transition(ports, found.purchase, restored, event);
+}
+
 /**
  * Point d'entrée : un event Stripe VÉRIFIÉ, un effet en base.
  *
@@ -413,7 +722,8 @@ export async function processStripeEvent(
         return await handleCheckoutSession(
           ports,
           event.data.object as Stripe.Checkout.Session,
-          event.type
+          event.type,
+          event.id
         );
       case "customer.subscription.created":
       case "customer.subscription.updated":
@@ -427,6 +737,31 @@ export async function processStripeEvent(
         return await handleInvoiceFailed(
           ports,
           event.data.object as Stripe.Invoice
+        );
+      case "charge.refunded":
+        return await handleChargeRefunded(
+          ports,
+          event.data.object as Stripe.Charge,
+          event
+        );
+      case "charge.dispute.created":
+        return await handleDisputeCreated(
+          ports,
+          event.data.object as Stripe.Dispute,
+          event
+        );
+      case "charge.dispute.closed":
+        return await handleDisputeClosed(
+          ports,
+          event.data.object as Stripe.Dispute,
+          event
+        );
+      case "charge.refund.updated":
+      case "refund.updated":
+        return await handleRefundUpdated(
+          ports,
+          event.data.object as Stripe.Refund,
+          event
         );
     }
   } catch (error) {

@@ -680,6 +680,43 @@ export type Database = {
           },
         ]
       }
+      /*
+       * AJOUT MANUEL — le journal APPEND-ONLY des changements de statut d'un
+       * achat. `stripe_event_id` est unique (le même verrou d'idempotence que
+       * `stripe_events`), et `previous_status` est relu de la LIGNE au moment
+       * de la transition : c'est lui qui permet à un litige gagné de rendre
+       * l'état d'avant plutôt qu'un `paid` codé en dur.
+       */
+      purchase_status_events: {
+        Row: {
+          created_at: string
+          id: string
+          previous_status: string
+          purchase_id: string
+          reason: string
+          status: string
+          stripe_event_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          previous_status: string
+          purchase_id: string
+          reason: string
+          status: string
+          stripe_event_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          previous_status?: string
+          purchase_id?: string
+          reason?: string
+          status?: string
+          stripe_event_id?: string
+        }
+        Relationships: []
+      }
       purchases: {
         Row: {
           amount_cents: number
@@ -953,6 +990,19 @@ export type Database = {
         Returns: boolean
       }
       /*
+       * AJOUT MANUEL — l'allocation du palier acheté.
+       *
+       * `service_role` uniquement, et idempotente sur l'event Stripe : le
+       * rejeu d'un event ne double pas l'allocation. Appelée sur LES DEUX
+       * chemins de déverrouillage — le paiement immédiat et le paiement
+       * différé confirmé — parce que c'est le même déverrouillage, et qu'il a
+       * déjà été oublié une fois sur le second.
+       */
+      grant_plan_allowance: {
+        Args: { p_project_id: string; p_tier: string; p_stripe_event_id: string }
+        Returns: undefined
+      }
+      /*
        * AJOUT MANUEL — le compteur de générations, atomique.
        *
        * Consomme une unité et renvoie `false` quand l'allocation est épuisée.
@@ -1158,7 +1208,8 @@ export const Constants = {
  *   projects.status                  = ANY (ARRAY['brief','brief_complete','directions','kit'])
  *   subscriptions.status             = ANY (ARRAY['incomplete','incomplete_expired','trialing',
  *                                                 'active','past_due','canceled','unpaid','paused'])
- *   purchases.status                 = ANY (ARRAY['pending','paid','refunded','failed'])
+ *   purchases.status                 = ANY (ARRAY['pending','paid','refunded',
+ *                                                  'partially_refunded','disputed','failed'])
  *   monthly_presence_content.status  = ANY (ARRAY['locked','draft','ready','published'])
  *
  * ATTENTION — `monthly_presence_content.status` A CHANGÉ. Il valait
@@ -1188,7 +1239,19 @@ export type SubscriptionStatus =
   | "unpaid"
   | "paused"
 
-export type PurchaseStatus = "pending" | "paid" | "refunded" | "failed"
+/*
+ * `disputed` et `partially_refunded` sont arrivés avec la gestion des
+ * remboursements et des litiges. `disputed` n'est PAS `refunded` : l'argent a
+ * été retiré par Stripe et peut revenir si le litige est gagné, d'où la table
+ * `purchase_status_events` qui garde le statut d'avant.
+ */
+export type PurchaseStatus =
+  | "pending"
+  | "paid"
+  | "refunded"
+  | "partially_refunded"
+  | "disputed"
+  | "failed"
 
 export type MonthlyPresenceStatus =
   | "locked"

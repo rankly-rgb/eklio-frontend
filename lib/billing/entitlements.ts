@@ -230,3 +230,58 @@ export async function countUnpaidProjects(
   const paidProjects = new Set(paid.map((row) => row.project_id));
   return (projects ?? []).filter((project) => !paidProjects.has(project.id)).length;
 }
+
+/* ── Ce qu'on dit quand un achat a été annulé ────────────────────────────── */
+
+/**
+ * Les statuts qui veulent dire « l'argent est reparti ».
+ *
+ * `partially_refunded` n'en est PAS : elle a acheté la chose et en a récupéré
+ * une part. Lui fermer le kit pour un geste commercial serait exactement le
+ * genre de mur qu'on vient de retirer du plafond de projets.
+ */
+const REVERSED_STATUSES = ["refunded", "disputed"] as const;
+
+/**
+ * L'achat de ce projet a-t-il été annulé ?
+ *
+ * Sert UNIQUEMENT à choisir le texte : le droit lui-même vient de
+ * `brand_kit_entitled`, en base. On ne redécide rien ici, on explique.
+ */
+export async function purchaseWasReversed(
+  supabase: Client,
+  projectId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("status")
+    .or(`project_id.eq.${projectId},project_id.is.null`)
+    .in("status", [...REVERSED_STATUSES]);
+
+  if (error) {
+    // On ne sait pas : on dira la phrase neutre, qui est vraie dans les deux
+    // cas. Se tromper de texte est moins grave que de se tromper de droit.
+    console.error("[entitlements] lecture des achats annulés", error);
+    return false;
+  }
+  return (data ?? []).length > 0;
+}
+
+/**
+ * La ligne montrée quand le kit est fermé.
+ *
+ * ⚠ LA MÊME POUR TOUT LE MONDE. Une carte volée et un litige de mauvaise foi
+ * reçoivent le mot pour mot identique : nous ne savons pas lequel des deux
+ * nous avons en face, et un produit qui accuse se trompera un jour sur
+ * quelqu'un dont la carte a été utilisée sans lui.
+ *
+ * Elle dit ce qui s'est passé et comment revenir. Rien d'autre : pas de
+ * reproche, pas de compte à rebours, et aucune tentative d'atteindre le
+ * fichier qu'elle a déjà — il est à elle, la révocation ne porte que sur ce
+ * qui vient après.
+ */
+export function lockedMessage(reversed: boolean): string {
+  return reversed
+    ? "That purchase was reversed, so this kit is locked. You can unlock it again whenever you like."
+    : "Your kit is ready when you are.";
+}
