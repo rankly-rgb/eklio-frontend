@@ -1,0 +1,67 @@
+
+> eklio-frontend@0.1.0 build
+> next build
+
+▲ Next.js 16.3.0 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 51ms
+- Experiments (use with caution):
+  · serverActions
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 14.5s
+  Running TypeScript ...
+  Finished TypeScript in 7.7s ...
+  Collecting page data using 1 worker ...
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+  Generating static pages using 1 worker (0/23) ...
+  Generating static pages using 1 worker (5/23) 
+  Generating static pages using 1 worker (11/23) 
+  Generating static pages using 1 worker (17/23) 
+✓ Generating static pages using 1 worker (23/23) in 379ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/brand-kits/[id]/direction
+├ ƒ /api/brand-kits/[id]/pdf
+├ ƒ /api/brand-kits/[id]/site-prompt
+├ ƒ /api/briefs
+├ ƒ /api/briefs/[id]
+├ ƒ /api/briefs/[id]/generate
+├ ƒ /api/briefs/[id]/suggest
+├ ƒ /api/calendar
+├ ƒ /api/catalog
+├ ƒ /api/checklist/[id]
+├ ƒ /api/content/[id]/unlock
+├ ƒ /api/cron/monthly
+├ ƒ /api/cron/nudges
+├ ƒ /api/home
+├ ƒ /api/jobs/[id]
+├ ƒ /api/stripe/webhook
+├ ƒ /api/unsubscribe
+├ ƒ /app
+├ ƒ /app/brand-kits/[id]
+├ ƒ /app/brand-kits/[id]/reveal
+├ ƒ /app/briefs/[id]
+├ ƒ /app/briefs/[id]/review
+├ ƒ /app/checkout
+├ ƒ /app/checkout/canceled
+├ ƒ /app/checkout/success
+├ ƒ /app/content
+├ ƒ /auth/callback
+├ ○ /dev/preview
+├ ○ /dev/ui
+├ ƒ /login
+├ ○ /pricing
+├ ○ /signup
+└ ○ /signup/check-your-email
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+EXIT_CODE=0

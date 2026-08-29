@@ -1,0 +1,187 @@
+=== palette vocabulary: deployed schema {primary,secondary,light,dark,paper} ===
+app/dev/ui/page.tsx:44:          <Button variant="accent">Add Monthly Presence</Button>
+app/dev/ui/page.tsx:68:          <MonoLabel tracking="14" tone="accent">
+app/dev/ui/page.tsx:172:            <span className="flex size-[18px] items-center justify-center rounded-pill bg-accent">
+app/dev/ui/page.tsx:175:            <CheckGlyph size="lg" color="var(--accent)" />
+app/signup/page.tsx:16:        <Link href="/login" className="text-ink underline decoration-[var(--line)] underline-offset-4 hover:decoration-[var(--accent)]">
+app/app/briefs/[id]/review/page.tsx:102:                  className="mt-0.5 flex-none text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+app/login/page.tsx:27:        <Link href="/signup" className="text-ink underline decoration-[var(--line)] underline-offset-4 hover:decoration-[var(--accent)]">
+app/app/checkout/page.tsx:62:          className="text-ui text-ink-2 underline decoration-[var(--line)] underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"
+components/home/content-grid.tsx:176:        tone={ready ? "accent" : "ink-3"}
+components/home/monthly-presence-modal.tsx:64:          <ButtonLink href={checkoutUrl} variant="accent">
+components/home/checklist-card.tsx:60:            className="h-0.5 bg-accent transition-[width] duration-[var(--dur-select)]"
+components/home/checklist-card.tsx:81:        <p role="alert" className="mt-4 border-l border-accent pl-3 text-helper leading-prose text-ink">
+components/kit/palette-section.tsx:93:            passes ? "border-line text-ink-2" : "border-accent text-accent"
+components/home/home-view.tsx:119:            className="self-start text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+components/kit/brand-kit-view.tsx:21: * ÉCART SIGNALÉ : le §2 veut « au plus un bouton primary ou accent par
+components/kit/brand-kit-view.tsx:23: * et « Add Monthly Presence » (accent, Écran 6). Les deux références les
+components/kit/brand-kit-view.tsx:84:            className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+components/kit/brand-kit-view.tsx:109:                    ? "border-b border-accent font-semibold text-ink"
+components/kit/brand-kit-view.tsx:223:                  variant="accent"
+components/reveal/generation-screen.tsx:121:                      <CheckGlyph size="lg" color="var(--accent)" />
+components/reveal/generation-screen.tsx:123:                      <span className="size-1.5 rounded-pill bg-accent" />
+components/reveal/direction-card.tsx:18: * La recommandée porte la bordure argile et le bouton `accent` — un seul par
+components/reveal/direction-card.tsx:50:        recommended ? "border-accent" : "border-line"
+components/reveal/direction-card.tsx:123:          variant={recommended ? "accent" : "secondary"}
+components/ui/glyphs.tsx:56:      className="check-pop absolute flex size-[18px] items-center justify-center rounded-pill bg-accent"
+components/ui/glyphs.tsx:103:          border: "1px solid var(--accent)",
+components/ui/glyphs.tsx:113:          border: "1px solid var(--accent)",
+components/ui/mono-label.tsx:21:export type MonoTone = "ink" | "ink-2" | "ink-3" | "accent";
+components/ui/mono-label.tsx:35: * `accent` mesure 4.20:1 sur `--bg` : sous le seuil AA du texte courant, mais
+components/ui/mono-label.tsx:45:  accent: "text-accent",
+components/brief/brief-flow.tsx:204:                className="mt-6 border-l border-accent pl-3 text-helper leading-prose text-ink"
+components/brief/save-state.tsx:33:          <p className="border-l border-accent pl-3 text-helper leading-prose text-ink">
+components/brief/build-brand-button.tsx:54:        <p role="alert" className="border-l border-accent pl-3 text-helper leading-prose text-ink">
+components/brief/chip-group.tsx:80:                  ? "border-accent bg-card text-ink"
+components/brief/write-for-me.tsx:90:        <p role="alert" className="border-l border-accent pl-3 text-helper leading-prose text-ink">
+app/app/checkout/success/page.tsx:88:          className="text-ui text-ink-2 underline decoration-[var(--line)] underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"
+components/kit/site-prompt-block.tsx:79:                ? "border-accent bg-card text-ink"
+components/billing/checkout-form.tsx:72:          className="mt-1 h-4 w-4 shrink-0 accent-[var(--ink)]"
+components/reveal/reveal-view.tsx:117:        <p role="alert" className="mt-6 border-l border-accent pl-3 text-helper leading-prose text-ink">
+components/ui/progress7.tsx:40:            <div key={position} className="h-[3px] rounded-pill bg-accent" />
+components/ui/progress7.tsx:50:                className="h-[3px] bg-accent transition-[width] duration-[var(--dur-question)]"
+components/ui/button.tsx:8: * `primary` ou `accent` par écran. `accent` est réservé à l'argile — la
+components/ui/button.tsx:13:export type ButtonVariant = "primary" | "secondary" | "accent" | "tertiary";
+components/ui/button.tsx:23:  accent: `${SHAPED} bg-accent px-[26px] font-semibold text-bg hover:opacity-90`,
+components/ui/button.tsx:25:  tertiary: `${BASE} text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4`,
+components/ui/checkbox.tsx:38:          checked ? "bg-accent" : "border border-line"
+components/ui/selectable-card.tsx:51:        selected ? "border-accent" : "border-line"
+components/ui/text-field.tsx:48:          className="border-l border-accent pl-3 text-helper text-ink"
+components/ui/text-field.tsx:94:          className="border-l border-accent pl-3 text-helper text-ink"
+components/ui/text-field.tsx:107: * Le TEXTE est en `--ink`, pas en `--accent` : l'argile sur le fond de page
+components/ui/text-field.tsx:117:      className="border-l border-accent pl-3 text-helper leading-prose text-ink"
+components/brief/start-brief-button.tsx:51:        <p role="alert" className="border-l border-accent pl-3 text-helper text-ink">
+components/preview/brand-preview.tsx:626:  const accent = dominant === primary ? secondary : primary;
+components/preview/brand-preview.tsx:707:          style={{ background: accent }}
+components/preview/brand-preview.tsx:712:          style={{ background: accent }}
+components/preview/cards.tsx:75:          <MonoLabel tracking="14" tone="accent">
+lib/brand/shapes.ts:143:   * La direction RECOMMANDÉE — bordure argile et bouton `accent` sur l'écran
+lib/brand/__tests__/contrast.test.ts:16: *   --accent sur --bg    4.20:1  échoue AA en texte courant, passe en grand
+lib/brand/__tests__/contrast.test.ts:17: *   --bg sur --accent    4.20:1  idem — c'est le libellé du bouton `accent`
+lib/brand/__tests__/contrast.test.ts:30: *   - le libellé du bouton `accent` (Écrans 4 et 6).
+lib/brand/__tests__/contrast.test.ts:44:  accent: "#B4653F",
+lib/brand/__tests__/contrast.test.ts:77:  it("--accent sur --bg échoue en texte courant, passe en grand", () => {
+lib/brand/__tests__/contrast.test.ts:78:    const value = ratio(TOKENS.accent, TOKENS.bg);
+lib/brand/__tests__/contrast.test.ts:84:  it("le libellé du bouton `accent` échoue en texte courant", () => {
+lib/brand/__tests__/contrast.test.ts:87:    const value = ratio(TOKENS.bg, TOKENS.accent);
+lib/brand/__tests__/contrast.test.ts:97:    expect(ratio(TOKENS.accent, TOKENS.bg)).toBeGreaterThan(
+lib/email/palette.ts:25:  accent: "#B4653F",
+lib/brand/sample.ts:139:/** Direction recommandée dans les références (bordure argile, bouton accent). */
+(above = design-doc vocabulary occurrences)
+
+=== deployed vocabulary occurrences ===
+lib/brand/sample.ts:39:    paper: "#FAF6EE",
+lib/brand/sample.ts:67:      paper: "#FAF7F2",
+lib/brand/sample.ts:94:      paper: "#FAF6EE",
+lib/brand/sample.ts:121:      paper: "#F7F6F3",
+lib/brand/derive.ts:81:    "--p-paper": tokens.paper,
+types/supabase.ts:433:          paper_hex: string
+types/supabase.ts:446:          paper_hex: string
+types/supabase.ts:459:          paper_hex?: string
+lib/brand/shapes.ts:26:  "paper",
+lib/brand/shapes.ts:35:  paper: hex,
+lib/brand/shapes.ts:261:  paper: hex,
+
+=== palette type definition ===
+types/supabase.ts:149:          palette: Json
+types/supabase.ts:162:          palette: Json
+types/supabase.ts:175:          palette?: Json
+types/supabase.ts:426:      palette_families: {
+types/supabase.ts:548:          palette_family_ids: string[]
+types/supabase.ts:569:          palette_family_ids?: string[]
+types/supabase.ts:590:          palette_family_ids?: string[]
+types/supabase.ts:920:      brand_kit_palette_valid: { Args: { p: Json }; Returns: boolean }
+
+=== lib/brand/shapes.ts ===
+     1	import { z } from "zod";
+     2	
+     3	/*
+     4	 * Les formes de données de marque, telles que la BASE les contraint.
+     5	 *
+     6	 * Chaque schéma ci-dessous est la transcription d'un CHECK vérifié dans le
+     7	 * projet US `fobgdsupyfslxbswfuay` — pas une interprétation. Les fonctions
+     8	 * citées en commentaire sont celles qui font foi ; si l'une d'elles change,
+     9	 * c'est ici qu'il faut le refléter, et nulle part ailleurs.
+    10	 *
+    11	 * Les valider ICI, avant l'écriture, est ce qui évite qu'un CHECK rejeté
+    12	 * remonte en 500 sur l'écran de révélation d'un praticien (§7).
+    13	 */
+    14	
+    15	const HEX = /^#[0-9A-Fa-f]{6}$/;
+    16	const hex = z.string().regex(HEX, "Expected a #RRGGBB color");
+    17	
+    18	/* ── Palette ────────────────────────────────────────────────────────────── */
+    19	/* `brand_kit_palette_valid` : cinq rôles, tous en hex. */
+    20	
+    21	export const PALETTE_ROLES = [
+    22	  "primary",
+    23	  "secondary",
+    24	  "light",
+    25	  "dark",
+    26	  "paper",
+    27	] as const;
+    28	export type PaletteRole = (typeof PALETTE_ROLES)[number];
+    29	
+    30	export const paletteSchema = z.object({
+    31	  primary: hex,
+    32	  secondary: hex,
+    33	  light: hex,
+    34	  dark: hex,
+    35	  paper: hex,
+    36	});
+    37	export type Palette = z.infer<typeof paletteSchema>;
+    38	
+    39	/* ── Typographie ────────────────────────────────────────────────────────── */
+    40	
+    41	export const typographySchema = z.object({
+    42	  heading_font: z.string().min(1),
+    43	  body_font: z.string().min(1),
+    44	  google_fonts_url: z
+    45	    .string()
+    46	    .startsWith("https://fonts.googleapis.com/css2?family=")
+    47	    .endsWith("display=swap"),
+    48	});
+    49	export type Typography = z.infer<typeof typographySchema>;
+    50	
+    51	/* ── Hero ───────────────────────────────────────────────────────────────── */
+    52	/*
+    53	 * `brand_kit_hero_valid` n'exige que quatre chaînes ; les longueurs viennent
+    54	 * de `brand_kit_directions_rendering_valid`, qui les mesure pour la maquette
+    55	 * de 250px de la carte de direction.
+    56	 */
+    57	
+    58	export const heroSchema = z.object({
+    59	  overline: z.string(),
+    60	  headline: z.string().max(46),
+
+=== BrandPreview path/exports ===
+total 44
+drwxrwxrwx+  2 codespace codespace  4096 Aug 27 14:24 .
+drwxrwxrwx+ 10 codespace root       4096 Aug 27 15:10 ..
+-rw-rw-rw-   1 codespace codespace 21876 Aug 27 14:23 brand-preview.tsx
+-rw-rw-rw-   1 codespace codespace  6157 Aug 27 14:24 cards.tsx
+-rw-rw-rw-   1 codespace codespace  2248 Aug 27 14:27 use-brand-font.ts
+67:export type BrandPreviewProps = SiteProps | SocialProps | ThumbnailProps;
+69:export function BrandPreview(props: BrandPreviewProps) {
+
+=== consumers of brand-preview ===
+app/dev/preview/page.tsx:7:import { BrandPreview } from "@/components/preview/brand-preview";
+app/dev/preview/page.tsx:25: * Galerie de <BrandPreview> — toutes les tailles, toutes les variantes, et les
+app/dev/preview/page.tsx:181:            <BrandPreview model={railModel} size="panel" />
+app/dev/preview/page.tsx:184:            <BrandPreview
+app/dev/preview/page.tsx:192:          <BrandPreview model={model} size="full" />
+app/dev/preview/page.tsx:200:            <BrandPreview
+app/dev/preview/page.tsx:215:            <BrandPreview model={model} variant="thumbnail" shape="palette" />
+app/dev/preview/page.tsx:218:            <BrandPreview model={model} variant="thumbnail" shape="site" />
+app/app/briefs/[id]/review/page.tsx:8:import { BrandPreview } from "@/components/preview/brand-preview";
+app/app/briefs/[id]/review/page.tsx:125:              <BrandPreview model={preview} size="full" />
+components/home/home-view.tsx:5:import { BrandPreview } from "@/components/preview/brand-preview";
+components/home/home-view.tsx:62:              <BrandPreview model={model} variant="thumbnail" shape="site" />
+components/home/home-view.tsx:159:          <BrandPreview model={SAMPLE_PREVIEW} variant="thumbnail" shape="site" />
+components/kit/brand-kit-view.tsx:8:import { BrandPreview } from "@/components/preview/brand-preview";
+components/kit/brand-kit-view.tsx:95:          <BrandPreview
+components/kit/brand-kit-view.tsx:179:              <BrandPreview
+components/reveal/direction-card.tsx:5:import { BrandPreview } from "@/components/preview/brand-preview";
+components/reveal/direction-card.tsx:62:        <BrandPreview
+components/brief/preview-sheet.tsx:5:import { BrandPreview } from "@/components/preview/brand-preview";
+components/brief/preview-sheet.tsx:53:          <BrandPreview model={model} size="panel" />

@@ -1,0 +1,37 @@
+=== next dev lock artifacts ===
+total 156
+drwxrwxrwx+ 8 codespace codespace  4096 Aug 29 10:01 .
+drwxrwxrwx+ 9 codespace codespace  4096 Aug 29 10:02 ..
+drwxrwxrwx+ 3 codespace codespace  4096 Aug 27 15:41 build
+-rw-rw-rw-  1 codespace codespace  6393 Aug 29 10:01 build-manifest.json
+drwxrwxrwx+ 3 codespace codespace  4096 Aug 27 15:41 cache
+-rw-rw-rw-  1 codespace codespace   336 Aug 29 10:01 fallback-build-manifest.json
+-rw-rw-rw-  1 codespace codespace   106 Aug 29 09:34 lock
+drwxrwxrwx+ 2 codespace codespace  4096 Aug 27 15:41 logs
+-rw-rw-rw-  1 codespace codespace    24 Aug 29 09:34 package.json
+-rw-rw-rw-  1 codespace codespace   354 Aug 29 09:34 prerender-manifest.json
+-rw-rw-rw-  1 codespace codespace   308 Aug 29 09:34 routes-manifest.json
+drwxrwxrwx+ 7 codespace codespace  4096 Aug 29 10:01 server
+drwxrwxrwx+ 5 codespace codespace  4096 Aug 27 15:41 static
+-rw-rw-rw-  1 codespace codespace 92883 Aug 29 10:01 trace
+drwxrwxrwx+ 2 codespace codespace  4096 Aug 27 15:41 types
+.next/dev/lock
+.next/server/chunks/_next-internal_server_app_api_content_[id]_unlock_route_actions_0qphmyw.js
+.next/server/chunks/_next-internal_server_app_api_content_[id]_unlock_route_actions_0qphmyw.js.map
+
+=== Next 16 source of the message ===
+
+--- context ---
+
+=== devcontainer ===
+ls: cannot access '.devcontainer': No such file or directory
+
+=== how dev was launched (full cmdline of 7687) ===
+npm run dev --hostname 0.0.0.0 --port 3000                                         
+node /workspaces/eklio-frontend/node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000 
+=== start time of 7712 ===
+Sat Aug 29 09:34:30 2026
+Sat Aug 29 10:03:49 UTC 2026
+
+=== npm run dev script in package.json ===
+6:    "dev": "next dev",

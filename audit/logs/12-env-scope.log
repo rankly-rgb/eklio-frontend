@@ -1,0 +1,166 @@
+=== STRIPE / ANTHROPIC / env accessors not matching process.env.X ===
+lib/billing/plans.ts:50:    priceEnvVar: "STRIPE_PRICE_STARTER",
+lib/billing/plans.ts:65:    priceEnvVar: "STRIPE_PRICE_PRACTICE",
+lib/billing/plans.ts:78:    priceEnvVar: "STRIPE_PRICE_SIGNATURE",
+lib/billing/plans.ts:133:  priceEnvVar: "STRIPE_PRICE_MONTHLY_PRESENCE",
+lib/ai/client.ts:4: * Client Anthropic partagé, strictement serveur. `ANTHROPIC_API_KEY` n'est
+app/api/stripe/webhook/route.ts:55:       * `STRIPE_WEBHOOK_SECRET` manquant : c'est une panne de configuration,
+lib/stripe/client.ts:11: * handlers. Un import depuis un composant client embarquerait `STRIPE_SECRET_KEY`
+lib/stripe/client.ts:34:  const value = process.env[name];
+lib/stripe/client.ts:41:    client = new Stripe(requireEnv("STRIPE_SECRET_KEY"));
+lib/stripe/client.ts:48:  return requireEnv("STRIPE_WEBHOOK_SECRET");
+
+=== lib/stripe/client.ts ===
+     1	import Stripe from "stripe";
+     2	import { MONTHLY_PRESENCE, KIT_PLANS } from "@/lib/billing/plans";
+     3	import type { KitTier } from "@/lib/kit/tiers";
+     4	
+     5	/*
+     6	 * Client Stripe — STRICTEMENT serveur.
+     7	 *
+     8	 * Même convention que `lib/ai/client.ts` : aucune clé n'est écrite dans le
+     9	 * repo, aucune n'est préfixée `NEXT_PUBLIC_` (sauf la publiable, qui l'est par
+    10	 * nature), et ce module n'est importé que par des Server Actions et des route
+    11	 * handlers. Un import depuis un composant client embarquerait `STRIPE_SECRET_KEY`
+    12	 * dans le bundle du navigateur — d'où la lecture PARESSEUSE ci-dessous : rien
+    13	 * n'est lu au chargement du module, donc un import fautif casse au premier
+    14	 * appel plutôt que de fuiter silencieusement au build.
+    15	 *
+    16	 * La version d'API n'est pas épinglée à la main : le SDK envoie la sienne
+    17	 * (`Stripe.apiVersion`), celle contre laquelle ses types sont générés. Épingler
+    18	 * une chaîne différente ici ferait mentir les types sur ce que l'API renvoie.
+    19	 */
+    20	
+    21	let client: Stripe | null = null;
+    22	
+    23	/** Levée quand une variable Stripe manque. Message serveur, jamais rendu tel quel. */
+    24	export class StripeConfigError extends Error {
+    25	  constructor(name: string) {
+    26	    super(
+    27	      `Variable d'environnement Stripe manquante : ${name}. Voir .env.example.`
+    28	    );
+    29	    this.name = "StripeConfigError";
+    30	  }
+    31	}
+    32	
+    33	function requireEnv(name: string): string {
+    34	  const value = process.env[name];
+    35	  if (!value) throw new StripeConfigError(name);
+    36	  return value;
+    37	}
+    38	
+    39	export function getStripeClient(): Stripe {
+    40	  if (!client) {
+    41	    client = new Stripe(requireEnv("STRIPE_SECRET_KEY"));
+    42	  }
+    43	  return client;
+    44	}
+    45	
+    46	/** Secret de signature du webhook. Sans lui, aucun event n'est accepté. */
+    47	export function getWebhookSecret(): string {
+    48	  return requireEnv("STRIPE_WEBHOOK_SECRET");
+    49	}
+    50	
+    51	/**
+    52	 * Id du prix Stripe d'un tier de kit (`price_…`).
+    53	 *
+    54	 * Les ids DIFFÈRENT entre le mode test et le mode live : les figer dans le
+    55	 * repo garantirait de facturer en test contre un catalogue live, ou l'inverse.
+    56	 * `lib/billing/plans.ts` ne porte donc que le NOM de la variable.
+    57	 */
+    58	export function kitPriceId(tier: KitTier): string {
+    59	  return requireEnv(KIT_PLANS[tier].priceEnvVar);
+    60	}
+
+=== lib/ai/client.ts ===
+     1	import Anthropic from "@anthropic-ai/sdk";
+     2	
+     3	/*
+     4	 * Client Anthropic partagé, strictement serveur. `ANTHROPIC_API_KEY` n'est
+     5	 * jamais exposée au client ni préfixée `NEXT_PUBLIC_` ; le SDK la lit
+     6	 * automatiquement depuis l'environnement.
+     7	 *
+     8	 * Aucun composant client n'importe ce module — c'est la règle qui garde la clé
+     9	 * hors du bundle, et elle est vérifiée en balayant la sortie du build, pas à
+    10	 * l'œil.
+    11	 */
+    12	let client: Anthropic | null = null;
+    13	
+    14	export function getAnthropicClient(): Anthropic {
+    15	  if (!client) {
+    16	    client = new Anthropic();
+    17	  }
+    18	  return client;
+    19	}
+    20	
+    21	/** Le modèle utilisé par toutes les générations du produit. */
+    22	export const GENERATION_MODEL = "claude-opus-5";
+
+=== lib/api/cron.ts 1-25 ===
+     1	import { NextResponse } from "next/server";
+     2	
+     3	/*
+     4	 * Garde des routes de cron.
+     5	 *
+     6	 * Vercel Cron appelle ces routes en GET avec `Authorization: Bearer
+     7	 * $CRON_SECRET`. Sans ce contrôle, n'importe qui pourrait déclencher le
+     8	 * remplissage mensuel — c'est-à-dire une génération payante par utilisateur,
+     9	 * autant de fois qu'il le voudrait.
+    10	 *
+    11	 * Sans `CRON_SECRET` en environnement, la route REFUSE tout : un secret
+    12	 * manquant est une porte ouverte, pas une commodité de développement.
+    13	 */
+    14	export function authorizeCron(request: Request): NextResponse | null {
+    15	  const secret = process.env.CRON_SECRET;
+    16	
+    17	  if (!secret) {
+    18	    console.error("[cron] CRON_SECRET absente — appel refusé.");
+    19	    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    20	  }
+    21	
+    22	  const header = request.headers.get("authorization");
+    23	  if (header !== `Bearer ${secret}`) {
+    24	    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    25	  }
+
+=== lib/email/transport.ts 1-40 ===
+     1	/*
+     2	 * Envoi d'e-mails — transport HTTP direct, sans SDK.
+     3	 *
+     4	 * `fetch` vers l'API de Resend suffit : un SDK ajouterait une dépendance pour
+     5	 * un POST JSON. Si `RESEND_API_KEY` n'est pas renseignée, l'envoi est
+     6	 * JOURNALISÉ et rien ne part — un déploiement sans clé ne doit pas faire
+     7	 * échouer un cron, et le silence complet cacherait le problème.
+     8	 */
+     9	
+    10	const ENDPOINT = "https://api.resend.com/emails";
+    11	
+    12	export type OutgoingEmail = {
+    13	  to: string;
+    14	  subject: string;
+    15	  html: string;
+    16	  text: string;
+    17	};
+    18	
+    19	export type SendOutcome =
+    20	  | { ok: true; delivered: boolean }
+    21	  | { ok: false; error: string };
+    22	
+    23	export function emailFrom(): string {
+    24	  return process.env.EMAIL_FROM ?? "Eklio <hello@eklio.com>";
+    25	}
+    26	
+    27	export async function sendEmail(email: OutgoingEmail): Promise<SendOutcome> {
+    28	  const key = process.env.RESEND_API_KEY;
+    29	
+    30	  if (!key) {
+    31	    console.warn(
+    32	      `[email] RESEND_API_KEY absente — e-mail NON envoyé à ${email.to} : « ${email.subject} »`
+    33	    );
+    34	    return { ok: true, delivered: false };
+    35	  }
+    36	
+    37	  try {
+    38	    const response = await fetch(ENDPOINT, {
+    39	      method: "POST",
+    40	      headers: {

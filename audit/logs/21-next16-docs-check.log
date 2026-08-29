@@ -1,0 +1,104 @@
+=== Next 16 docs: serverActions.allowedOrigins ===
+node_modules/next/dist/docs/01-app/02-guides/server-actions.md:82:- **CSRF check.** The request's `Origin` is compared to the `Host` (or `X-Forwarded-Host`). Mismatches are rejected. Configure [`serverActions.allowedOrigins`](/docs/app/api-reference/config/next-config-js/serverActions#allowedorigins) for proxy or CDN domains.
+node_modules/next/dist/docs/01-app/02-guides/server-actions.md:163:      allowedOrigins: ['my-proxy.com', '*.my-proxy.com'],
+node_modules/next/dist/docs/01-app/02-guides/data-security.md:552:For large applications that use reverse proxies or multi-layered backend architectures (where the server API differs from the production domain), it's recommended to use the configuration option [`serverActions.allowedOrigins`](/docs/app/api-reference/config/next-config-js/serverActions) option to specify a list of safe origins. The option accepts an array of strings.
+node_modules/next/dist/docs/01-app/02-guides/data-security.md:559:      allowedOrigins: ['my-proxy.com', '*.my-proxy.com'],
+node_modules/next/dist/docs/01-app/02-guides/multi-zones.md:134:      allowedOrigins: ['your-production-domain.com'],
+node_modules/next/dist/docs/01-app/02-guides/multi-zones.md:140:See [`serverActions.allowedOrigins`](/docs/app/api-reference/config/next-config-js/serverActions#allowedorigins) for more information.
+node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md:464:const allowedOrigins = ['https://acme.com', 'https://my-app.org']
+node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md:474:  const isAllowedOrigin = allowedOrigins.includes(origin)
+node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md:509:const allowedOrigins = ['https://acme.com', 'https://my-app.org']
+node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md:519:  const isAllowedOrigin = allowedOrigins.includes(origin)
+
+=== deprecation notices matching serverActions ===
+node_modules/next/dist/docs/01-app/02-guides/server-actions.md:17:    - app/api-reference/config/next-config-js/serverActions
+node_modules/next/dist/docs/01-app/02-guides/server-actions.md:82:- **CSRF check.** The request's `Origin` is compared to the `Host` (or `X-Forwarded-Host`). Mismatches are rejected. Configure [`serverActions.allowedOrigins`](/docs/app/api-reference/config/next-config-js/serverActions#allowedorigins) for proxy or CDN domains.
+node_modules/next/dist/docs/01-app/02-guides/server-actions.md:83:- **Body size limit.** Action requests are capped at 1MB by default. Configure [`serverActions.bodySizeLimit`](/docs/app/api-reference/config/next-config-js/serverActions#bodysizelimit) when accepting larger payloads.
+node_modules/next/dist/docs/01-app/02-guides/server-actions.md:156:The [`serverActions`](/docs/app/api-reference/config/next-config-js/serverActions) option in `next.config.js` controls framework-level behavior:
+node_modules/next/dist/docs/01-app/02-guides/server-actions.md:162:    serverActions: {
+node_modules/next/dist/docs/01-app/02-guides/data-security.md:552:For large applications that use reverse proxies or multi-layered backend architectures (where the server API differs from the production domain), it's recommended to use the configuration option [`serverActions.allowedOrigins`](/docs/app/api-reference/config/next-config-js/serverActions) option to specify a list of safe origins. The option accepts an array of strings.
+node_modules/next/dist/docs/01-app/02-guides/data-security.md:558:    serverActions: {
+node_modules/next/dist/docs/01-app/02-guides/multi-zones.md:133:    serverActions: {
+node_modules/next/dist/docs/01-app/02-guides/multi-zones.md:140:See [`serverActions.allowedOrigins`](/docs/app/api-reference/config/next-config-js/serverActions#allowedorigins) for more information.
+node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/serverActions.md:2:title: serverActions
+
+=== docs dir present? ===
+01-app
+02-pages
+03-architecture
+04-community
+index.md
+=== server-actions.md 150-175 ===
+When `updateTag`, `revalidatePath`, or `refresh` runs, Next.js re-renders the current route server-side and includes a newly rendered [RSC Payload](/docs/app/glossary#rsc-payload) in the action's response, so the page reflects the change in the same roundtrip. `revalidateTag` with a stale-while-revalidate profile intentionally skips that immediate re-render.
+
+Unlike [`redirect`](/docs/app/api-reference/functions/redirect), none of these throw, so an action can call them and still return a value to the caller. See [How revalidation works](/docs/app/guides/how-revalidation-works) for the underlying model.
+
+## Configuration
+
+The [`serverActions`](/docs/app/api-reference/config/next-config-js/serverActions) option in `next.config.js` controls framework-level behavior:
+
+```js filename="next.config.js"
+/** @type {import('next').NextConfig} */
+module.exports = {
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['my-proxy.com', '*.my-proxy.com'],
+      bodySizeLimit: '2mb',
+    },
+  },
+}
+```
+
+For the closure encryption key, set `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` in the deployment environment. See [Self-hosting: Server Functions encryption key](/docs/app/guides/self-hosting#server-functions-encryption-key) for deployment-specific guidance.
+
+## Deployment considerations
+
+Each Server Action is identified by the [action ID](#security) that is part of its build artifacts. New deployments typically generate new IDs (Next.js rotates them at most every 14 days, even when the source is unchanged), so a client still running the previous build may invoke an action ID that no longer exists. The error surfaces as "[Failed to find Server Action](https://nextjs.org/docs/messages/failed-to-find-server-action)".
+
+
+=== config/serverActions.md head 40 ===
+---
+title: serverActions
+description: Configure Server Actions behavior in your Next.js application.
+related:
+  links:
+    - app/guides/server-actions
+---
+
+Options for configuring Server Actions behavior in your Next.js application. For how Server Actions work, including the security boundary these options tune, see the [Server Actions guide](/docs/app/guides/server-actions).
+
+## `allowedOrigins`
+
+A list of extra safe origin domains from which Server Actions can be invoked. Next.js compares the origin of a Server Action request with the host domain, ensuring they match to prevent CSRF attacks. If not provided, only the same origin is allowed.
+
+```js filename="next.config.js"
+/** @type {import('next').NextConfig} */
+
+module.exports = {
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['my-proxy.com', '*.my-proxy.com'],
+    },
+  },
+}
+```
+
+## `bodySizeLimit`
+
+By default, the maximum size of the request body sent to a Server Action is 1MB, to prevent the consumption of excessive server resources in parsing large amounts of data, as well as potential DDoS attacks.
+
+However, you can configure this limit using the `serverActions.bodySizeLimit` option. It can take the number of bytes or any string format supported by bytes, for example `1000`, `'500kb'` or `'3mb'`.
+
+```js filename="next.config.js"
+/** @type {import('next').NextConfig} */
+
+module.exports = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+}
+```
+
+The limit applies to the raw HTTP request body, including the bytes that `multipart/form-data` adds for boundaries, part headers, and field metadata. If you expect uploads close to the configured value, leave some room for this overhead. For typical multipart uploads, an additional 10–20 KB is a reasonable rule of thumb.
