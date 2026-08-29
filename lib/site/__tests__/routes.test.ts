@@ -154,6 +154,16 @@ describe("les huit entrées du contrat, et rien d'autre", () => {
     expect(rpcSource).toContain(`"${fn}"`);
   });
 
+  it("l'ancien chemin `/site-prompt` a bien disparu", () => {
+    // Il composait le prompt DANS ce dépôt. Deux sources pour un même texte, ça
+    // finit par en donner deux différents.
+    expect(
+      existsSync(join(APP_DIR, "api/brand-kits/[id]/site-prompt/route.ts"))
+    ).toBe(false);
+    expect(existsSync(join(ROOT, "components/kit/site-prompt-block.tsx"))).toBe(false);
+    expect(existsSync(join(ROOT, "components/kit/copy-site-prompt.tsx"))).toBe(false);
+  });
+
   it("aucune route n'écrit brand_kits.site_prompt", () => {
     /*
      * C'est un CACHE que la base rafraîchit à chaque écriture du spec, gardé

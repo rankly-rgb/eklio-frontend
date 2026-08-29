@@ -32,6 +32,7 @@ type Client = SupabaseClient<Database>;
 export type Nudge =
   | { kind: "resume-brief"; message: string; href: string; cta: string }
   | { kind: "choose-direction"; message: string; href: string; cta: string }
+  | { kind: "site-ready"; message: string; href: string; cta: string }
   | { kind: "month-ready"; message: string; href: string; cta: string };
 
 export type HomeModel = {
@@ -162,7 +163,25 @@ function pickNudge({
     };
   }
 
-  // 3. Du contenu prêt ce mois-ci.
+  /*
+   * 3. Une direction retenue, et pas encore de contenu ce mois-ci : ce qui
+   *    manque, c'est le site. Le nudge mène à l'ÉDITEUR, où la maquette et les
+   *    instructions vivent ensemble — plus au bloc de prompt du kit, qui n'existe
+   *    plus.
+   *
+   *    La condition est l'exact complément de celle du nudge suivant : les deux
+   *    ne peuvent pas se disputer l'écran, et AU PLUS UN nudge reste la règle.
+   */
+  if (brandKit?.selectedDirection && calendar.ready_count === 0) {
+    return {
+      kind: "site-ready",
+      message: "Your site instructions are ready. Shape them before you paste.",
+      href: `/app/brand-kits/${brandKit.row.id}/site`,
+      cta: "Open my site",
+    };
+  }
+
+  // 4. Du contenu prêt ce mois-ci.
   if (brandKit && calendar.ready_count > 0) {
     const waiting = calendar.locked_count;
     return {

@@ -6,6 +6,9 @@ import {
   isEntitledToMonthlyPresence,
 } from "@/lib/billing/entitlements";
 import { BrandKitView } from "@/components/kit/brand-kit-view";
+import { siteSpecGet } from "@/lib/site/rpc";
+import { readSiteCatalog } from "@/lib/site/catalog";
+import { builderOf } from "@/lib/site/output";
 
 /*
  * Le kit de marque — Écrans 5 et 6, une seule page qui défile.
@@ -31,7 +34,23 @@ export default async function BrandKitPage({
     redirect(`/app/brand-kits/${id}/reveal`);
   }
 
-  const subscription = await getSubscription(supabase, user.id);
+  /*
+   * Le constructeur retenu, pour la carte « Your site ».
+   *
+   * Les deux lectures sont TOLÉRANTES : un kit dont le spec n'a pas encore été
+   * semé rend la carte sans nom de constructeur, ce qui est vrai. Faire échouer
+   * le kit entier pour un libellé serait disproportionné.
+   */
+  const [subscription, siteSpec, siteCatalog] = await Promise.all([
+    getSubscription(supabase, user.id),
+    siteSpecGet(supabase, id),
+    readSiteCatalog(supabase).catch(() => null),
+  ]);
+
+  const siteBuilderLabel =
+    siteSpec.ok && siteCatalog
+      ? builderOf(siteCatalog.builder_targets, siteSpec.data.spec.target).label
+      : null;
 
   return (
     <BrandKitView
@@ -42,6 +61,7 @@ export default async function BrandKitPage({
       socialTemplates={kit.socialTemplates}
       voiceGuide={kit.voiceGuide}
       practitionerLine={kit.row.practitioner_line}
+      siteBuilderLabel={siteBuilderLabel}
       // Une seule règle d'accès dans toute l'application (§7).
       entitled={isEntitledToMonthlyPresence(subscription)}
       monthlyCheckoutHref={`/app/checkout?project=${kit.projectId}`}

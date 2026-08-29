@@ -61,8 +61,13 @@ export function SelectionDisc({ offset = "8px" }: { offset?: string }) {
 }
 
 /**
- * Chevron du bouton « Copy site prompt » : carré de 6px bordé à droite et en
- * bas, tourné de 45°. Le seul chevron de l'application.
+ * Chevron : carré de 6px bordé à droite et en bas, tourné de 45°. Le seul
+ * chevron de l'application.
+ *
+ * Il portait le menu de « Copy site prompt », retiré au lot 11 avec le reste
+ * de cet ancien chemin. Il reste au catalogue (`/dev/ui`) : c'est le seul
+ * chevron dessiné du système, et le redessiner le jour où un menu revient
+ * serait un doublon.
  */
 export function ChevronGlyph({ color = "var(--bg)" }: { color?: string }) {
   return (

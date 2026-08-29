@@ -1,32 +1,35 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { SectionHeader } from "@/components/ui/section-header";
 import { ButtonLink } from "@/components/ui/button";
 import { BrandPreview } from "@/components/preview/brand-preview";
 import { useBrandFont } from "@/components/preview/use-brand-font";
-import { CopySitePrompt } from "@/components/kit/copy-site-prompt";
-import { SitePromptBlock } from "@/components/kit/site-prompt-block";
+import { SiteCard } from "@/components/kit/site-card";
 import { PaletteSection } from "@/components/kit/palette-section";
 import { EthicsDisclaimer } from "@/components/ethics-disclaimer";
 import { previewModelFromDirection, type Direction, type SocialTemplates, type VoiceGuide } from "@/lib/brand/shapes";
-import type { SitePromptTarget } from "@/lib/kit/site-prompt";
 import { MONTHLY_PRESENCE, formatUsd } from "@/lib/billing/plans";
 
 /*
  * Le kit de marque — Écrans 5 et 6, une seule page qui défile.
  *
  * ÉCART SIGNALÉ : le §2 veut « au plus un bouton primary ou accent par
- * écran ». Cette page en porte deux — « Copy site prompt » (primary, Écran 5)
- * et « Add Monthly Presence » (accent, Écran 6). Les deux références les
- * montrent ainsi, chacune sur son écran, et le §5 demande explicitement que
- * les deux écrans n'en fassent qu'un. Les références l'emportent ; on ne perd
- * pas l'un des deux boutons pour tenir un compte.
+ * écran ». Cette page en porte deux — « Edit your site » (primary, Écran 5, à
+ * la place de l'ancien « Copy site prompt ») et « Add Monthly Presence »
+ * (accent, Écran 6). Les deux références les montrent ainsi, chacune sur son
+ * écran, et le §5 demande explicitement que les deux écrans n'en fassent
+ * qu'un. Les références l'emportent ; on ne perd pas l'un des deux boutons
+ * pour tenir un compte.
+ *
+ * ── Ce qui a changé au lot 11 ────────────────────────────────────────────
+ *
+ * La section « Site prompt » composait le prompt DANS CE DÉPÔT et l'affichait
+ * en bloc. La base est désormais la source unique de la sortie : la section
+ * est remplacée par une carte qui mène à l'éditeur de site, où le texte à
+ * coller vit à côté de la maquette qui le produit.
  */
-
-const SITE_TABS = ["Home", "About", "Services", "Contact"] as const;
 
 export function BrandKitView({
   brandKitId,
@@ -36,6 +39,7 @@ export function BrandKitView({
   socialTemplates,
   voiceGuide,
   practitionerLine,
+  siteBuilderLabel,
   entitled,
   monthlyCheckoutHref,
 }: {
@@ -46,11 +50,11 @@ export function BrandKitView({
   socialTemplates: SocialTemplates | null;
   voiceGuide: VoiceGuide | null;
   practitionerLine: string | null;
+  /** Le constructeur retenu dans le spec de site, ou `null` s'il n'existe pas. */
+  siteBuilderLabel: string | null;
   entitled: boolean;
   monthlyCheckoutHref: string;
 }) {
-  const [tab, setTab] = useState<(typeof SITE_TABS)[number]>("Home");
-  const [target, setTarget] = useState<SitePromptTarget>("squarespace");
   const model = previewModelFromDirection(direction, practiceName);
   const ready = useBrandFont(direction.typography.google_fonts_url);
 
@@ -68,11 +72,12 @@ export function BrandKitView({
         </div>
 
         <div className="flex flex-none items-center gap-4">
-          <CopySitePrompt
-            brandKitId={brandKitId}
-            target={target}
-            onTargetChange={setTarget}
-          />
+          <ButtonLink
+            href={`/app/brand-kits/${brandKitId}/site`}
+            variant="primary"
+          >
+            Edit your site
+          </ButtonLink>
           <a
             href={`/api/brand-kits/${brandKitId}/pdf`}
             className="inline-flex h-10 items-center whitespace-nowrap rounded-pill border border-line px-[26px] text-ui text-ink transition-colors hover:bg-card"
@@ -97,29 +102,20 @@ export function BrandKitView({
             size="full"
             rendering={direction.rendering}
           />
-          <div className="mt-3 flex items-center gap-8 text-ui">
-            {SITE_TABS.map((entry) => (
-              <button
-                key={entry}
-                type="button"
-                aria-pressed={tab === entry}
-                onClick={() => setTab(entry)}
-                className={`pb-1.5 ${
-                  tab === entry
-                    ? "border-b border-accent font-semibold text-ink"
-                    : "text-ink-2 hover:text-ink"
-                }`}
-              >
-                {entry}
-              </button>
-            ))}
-          </div>
           <p className="mt-3 text-helper leading-prose text-ink-2">
-            {/* Le kit livre la copy des quatre pages ; la maquette montre la
-                page d'accueil. Le prompt de site porte les quatre. */}
-            The mockup shows your home page. Your site prompt carries all four.
+            {/* La maquette du kit montre la marque appliquée à une page
+                d'accueil. Les quatre pages, elles, s'éditent dans l'éditeur de
+                site, où la maquette suit chaque changement. */}
+            This is your brand on a page. Your pages, copy and builder
+            instructions live in the site editor.
           </p>
         </div>
+
+        <SiteCard
+          brandKitId={brandKitId}
+          model={model}
+          builderLabel={siteBuilderLabel}
+        />
       </section>
 
       {/* ── Palette ─────────────────────────────────────────────────────── */}
@@ -275,16 +271,6 @@ export function BrandKitView({
           </div>
         </section>
       ) : null}
-
-      {/* ── Site prompt ─────────────────────────────────────────────────── */}
-      <section className="mt-12 flex flex-col gap-6">
-        <SectionHeader title="Site prompt" />
-        <SitePromptBlock
-          brandKitId={brandKitId}
-          target={target}
-          onTargetChange={setTarget}
-        />
-      </section>
 
       <div className="mt-12 max-w-[720px] border-t border-line pt-6">
         <EthicsDisclaimer />

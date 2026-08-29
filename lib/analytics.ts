@@ -23,6 +23,8 @@ export type AnalyticsEvent =
   | "generation_succeeded"
   | "generation_failed"
   | "direction_chosen"
+  /* Supersédé au lot 11 par `site_output_copied`. Conservé tant que
+     `lib/kit/site-prompt.ts` l'est — cf. l'en-tête de ce fichier. */
   | "site_prompt_copied"
   | "pdf_downloaded"
   /* ── L'éditeur de site ────────────────────────────────────────────────

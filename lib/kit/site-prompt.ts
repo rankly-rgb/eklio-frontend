@@ -3,6 +3,40 @@ import type { Direction } from "@/lib/brand/shapes";
 import { ETHICS_DISCLAIMER_TEXT } from "@/lib/ethics/disclaimer";
 
 /*
+ * ⚠ SUPERSÉDÉ AU LOT 11 — CONSERVÉ EN ATTENTE D'UNE DÉCISION. ⚠
+ *
+ * La base est désormais la source unique de la sortie destinée aux
+ * constructeurs : `site_output_get` / `output` dans l'enveloppe de l'éditeur de
+ * site. Les quatre surfaces qui lisaient CE fichier ont été remplacées
+ * (bloc et bouton du kit, route `/api/brand-kits/[id]/site-prompt`, nudge de
+ * l'accueil). Plus rien ne l'importe.
+ *
+ * Il N'EST PAS SUPPRIMÉ parce qu'il porte trois choses que la sortie du
+ * contrat ne couvre PAS :
+ *
+ *   1. LE GUIDE DE VOIX. Les blocs « SOUNDS LIKE » et « NEVER WRITE » de
+ *      `brand_kits.voice_guide` partaient chez le constructeur. La sortie du
+ *      contrat porte bien les règles publicitaires (« Do not invent
+ *      testimonials… », « Use the provided copy exactly as written »), mais
+ *      pas la voix de la praticienne ni ses contre-exemples.
+ *   2. `practitioner_line`. L'ancien prompt émettait une ligne
+ *      « PRACTITIONER: … ». `practice_details` porte le nom, la licence, la
+ *      ville et l'État, pas cette ligne libre.
+ *   3. `ETHICS_DISCLAIMER_TEXT`. Le disclaimer complet fermait le prompt. La
+ *      checklist de la feuille en couvre le fond, pas la formulation.
+ *
+ * Aucune des trois n'est perdue POUR LA PRACTICIENNE — le guide de voix et la
+ * ligne de praticien restent sur le kit, dans le PDF et sur les tuiles
+ * sociales. Ce qui disparaît, c'est leur présence dans le texte qui part chez
+ * un constructeur qui va, lui, écrire de la copy.
+ *
+ * À trancher : soit le backend ajoute ces trois blocs à `output`, soit on
+ * assume la perte et ce fichier part avec son test. Tant que ce n'est pas
+ * tranché, il reste — et il ne coûte rien : il n'est plus dans aucun graphe
+ * d'imports d'écran.
+ *
+ * ────────────────────────────────────────────────────────────────────────
+ *
  * Le prompt de site, par constructeur.
  *
  * Il est COMPOSÉ à la lecture depuis la direction retenue, pas généré ni
