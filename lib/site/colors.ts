@@ -137,8 +137,14 @@ export function swapRolesPatch(
   return { [a]: spec[b], [b]: spec[a] };
 }
 
-/** « Use as primary » — le même échange, avec le primaire comme destination. */
-export function useAsPrimaryPatch(
+/**
+ * « Use as primary » — le même échange, avec le primaire comme destination.
+ *
+ * Le nom n'est PAS `useAsPrimaryPatch` : un identifiant qui commence par
+ * « use » est lu comme un hook par la règle `rules-of-hooks`, et l'appeler
+ * depuis un gestionnaire d'événement devient une erreur de lint.
+ */
+export function promoteToPrimaryPatch(
   spec: Pick<SiteSpec, ColorRoleKey>,
   role: ColorRoleKey
 ): Partial<Record<ColorRoleKey, string>> {

@@ -1,13 +1,19 @@
 "use client";
 
+import { ColorSection } from "@/components/site/color-section";
+import { ContrastSection } from "@/components/site/contrast-section";
 import type { SiteEditorState } from "@/components/site/use-site-editor";
 import type { Direction } from "@/lib/brand/shapes";
 import type { SiteCatalog } from "@/lib/site/types";
 
 /*
- * Le rail de contrôle. Coquille du lot 1 : les sections arrivent aux lots 3
- * à 6 — couleurs et contraste, typographie, pages et sections, copy, détails,
- * instructions.
+ * Le rail de contrôle — les sections, dans l'ordre où on les traverse :
+ * couleurs, contraste, typographie, pages et sections, copy, détails,
+ * instructions, remise à zéro.
+ *
+ * Chaque section lit `editor.envelope` et rien d'autre. Aucune ne garde de
+ * copie locale de l'état : une enveloppe est remplacée EN BLOC à chaque
+ * réponse, et un état local survivrait à ce remplacement en le contredisant.
  */
 export function ControlRail({
   editor,
@@ -17,10 +23,9 @@ export function ControlRail({
   direction: Direction;
 }) {
   return (
-    <div className="p-6">
-      <p className="text-helper leading-prose text-ink-2">
-        {editor.envelope.spec.pages.length} pages in your spec.
-      </p>
+    <div className="flex flex-col">
+      <ColorSection editor={editor} />
+      <ContrastSection editor={editor} />
     </div>
   );
 }
