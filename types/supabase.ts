@@ -992,14 +992,23 @@ export type Database = {
       /*
        * AJOUT MANUEL — l'allocation du palier acheté.
        *
-       * `service_role` uniquement, et idempotente sur l'event Stripe : le
-       * rejeu d'un event ne double pas l'allocation. Appelée sur LES DEUX
-       * chemins de déverrouillage — le paiement immédiat et le paiement
-       * différé confirmé — parce que c'est le même déverrouillage, et qu'il a
-       * déjà été oublié une fois sur le second.
+       * `service_role` uniquement, et idempotente sur `p_grant_key`.
+       *
+       * ⚠ LE TROISIÈME PARAMÈTRE S'APPELLE `p_grant_key`, PAS
+       * `p_stripe_event_id`. Il a une valeur par défaut côté base — le dernier
+       * achat du projet à ce palier — et on la REMPLACE par l'id de l'event
+       * Stripe, qui est la clé de notre propre mode de défaillance : si le
+       * handler jette APRÈS l'appel, `forgetEvent` désarme l'idempotence et
+       * Stripe rejoue le MÊME event. C'est là, et seulement là, qu'un second
+       * octroi pourrait passer ; la même clé l'arrête.
+       *
+       * Un nom de paramètre erroné n'échoue pas discrètement : PostgREST ne
+       * trouve aucune surcharge, la route jette, `forgetEvent` désarme, et
+       * Stripe rejoue à l'infini — un achat enregistré dont l'allocation
+       * n'arrive jamais.
        */
       grant_plan_allowance: {
-        Args: { p_project_id: string; p_tier: string; p_stripe_event_id: string }
+        Args: { p_project_id: string; p_tier: string; p_grant_key?: string }
         Returns: undefined
       }
       /*

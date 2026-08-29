@@ -130,10 +130,17 @@ export function createWebhookPorts(): WebhookPorts {
        */
       if (!projectId) return;
 
+      /*
+       * `p_grant_key` — la clé d'idempotence. La base la fait défaut au dernier
+       * achat du projet à ce palier ; on lui passe plutôt l'id de l'event, qui
+       * couvre notre propre mode de défaillance : un handler qui jette après
+       * cet appel fait désarmer l'idempotence par `forgetEvent`, et Stripe
+       * rejoue le même event. La même clé arrête le second octroi.
+       */
       const { error } = await supabase.rpc("grant_plan_allowance", {
         p_project_id: projectId,
         p_tier: tier,
-        p_stripe_event_id: stripeEventId,
+        p_grant_key: stripeEventId,
       });
 
       if (error) throw error;

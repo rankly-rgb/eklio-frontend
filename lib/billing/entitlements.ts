@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, SubscriptionStatus } from "@/types/supabase";
+import type { Database, PurchaseStatus, SubscriptionStatus } from "@/types/supabase";
 import { highestTier } from "@/lib/billing/plans";
 import { parseKitTier, type KitTier } from "@/lib/kit/tiers";
 
@@ -239,8 +239,21 @@ export async function countUnpaidProjects(
  * `partially_refunded` n'en est PAS : elle a acheté la chose et en a récupéré
  * une part. Lui fermer le kit pour un geste commercial serait exactement le
  * genre de mur qu'on vient de retirer du plafond de projets.
+ *
+ * ⚠ CETTE LISTE DOIT DIRE LA MÊME CHOSE QUE `brand_kit_entitled`, qui est la
+ * seule autorité sur le droit. Elle ne décide rien — elle choisit un TEXTE —
+ * mais si les deux divergent, la praticienne lit « votre achat a été annulé »
+ * sur un kit qui s'ouvre, ou l'inverse. Exporté pour être épinglé par un test :
+ * le jour où la base change d'avis, la divergence doit se voir ici et pas en
+ * production.
  */
-const REVERSED_STATUSES = ["refunded", "disputed"] as const;
+export const REVERSED_STATUSES = ["refunded", "disputed"] as const;
+
+/** Les statuts qui laissent le kit ouvert. Le complément exact du précédent. */
+export const ENTITLING_STATUSES = [
+  "paid",
+  "partially_refunded",
+] as const satisfies readonly PurchaseStatus[];
 
 /**
  * L'achat de ce projet a-t-il été annulé ?

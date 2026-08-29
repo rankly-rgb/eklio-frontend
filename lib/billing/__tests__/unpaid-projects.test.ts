@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import {
+  ENTITLING_STATUSES,
+  REVERSED_STATUSES,
   countUnpaidProjects,
   isBrandKitEntitled,
   lockedMessage,
@@ -147,5 +149,61 @@ describe("ce qu'on dit quand le kit est fermé", () => {
   it("distingue « jamais payé » de « annulé »", () => {
     expect(lockedMessage(false)).toBe("Your kit is ready when you are.");
     expect(lockedMessage(false)).not.toContain("reversed");
+  });
+});
+
+/*
+ * ── L'ACCORD AVEC `brand_kit_entitled` ───────────────────────────────────
+ *
+ * Le droit lui-même vient de la base. Ces constantes ne décident rien : elles
+ * choisissent le TEXTE montré quand un kit est fermé. Mais si elles divergent
+ * de la base, la praticienne lit « votre achat a été annulé » sur un kit qui
+ * s'ouvre, ou l'inverse — et personne ne s'en aperçoit avant qu'elle n'écrive.
+ *
+ * ⚠ CE QUE CE TEST NE PEUT PAS FAIRE : interroger `brand_kit_entitled`. Il
+ * épingle la moitié frontale de l'accord. La moitié arrière se vérifie en
+ * base, et la vérification vaut d'être refaite à chaque changement de l'un des
+ * deux côtés.
+ */
+describe("les statuts, et ce qu'ils font au kit", () => {
+  it("`partially_refunded` laisse le kit OUVERT", () => {
+    // Elle a acheté la chose et en a récupéré une part. Fermer le kit pour un
+    // geste commercial serait le même mur qu'on a retiré du plafond de projets.
+    expect(ENTITLING_STATUSES).toContain("partially_refunded");
+    expect(REVERSED_STATUSES as readonly string[]).not.toContain(
+      "partially_refunded"
+    );
+  });
+
+  it("`refunded` et `disputed` le ferment", () => {
+    expect(REVERSED_STATUSES).toEqual(["refunded", "disputed"]);
+  });
+
+  it("les deux listes ne se recouvrent pas", () => {
+    const overlap = (ENTITLING_STATUSES as readonly string[]).filter((status) =>
+      (REVERSED_STATUSES as readonly string[]).includes(status)
+    );
+    expect(overlap).toEqual([]);
+  });
+
+  it("chaque statut du CHECK est classé, ou explicitement ni l'un ni l'autre", () => {
+    // `pending` et `failed` ne sont ni entitling ni « annulé » : l'argent n'est
+    // jamais arrivé, il n'y a rien à annoncer comme reversé.
+    const all = [
+      "pending",
+      "paid",
+      "refunded",
+      "partially_refunded",
+      "disputed",
+      "failed",
+    ];
+    const classified = [
+      ...(ENTITLING_STATUSES as readonly string[]),
+      ...(REVERSED_STATUSES as readonly string[]),
+    ];
+    expect(all.filter((status) => !classified.includes(status))).toEqual([
+      "pending",
+      "failed",
+    ]);
   });
 });
