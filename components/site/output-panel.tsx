@@ -3,6 +3,7 @@
 import { MonoLabel } from "@/components/ui/mono-label";
 import { SectionHeader } from "@/components/ui/section-header";
 import { CopyBlockRow, CopyButton, CopyChip } from "@/components/site/copy-chip";
+import { StalenessBanner } from "@/components/site/staleness-banner";
 import {
   builderOf,
   copyAllText,
@@ -68,6 +69,10 @@ export function OutputPanel({
   return (
     <section aria-labelledby="site-output" className="flex flex-col gap-5">
       <SectionHeader id="site-output" title="Your instructions" />
+
+      {/* Au-dessus de la sortie, et impossible à manquer : c'est toute la
+          raison d'être du diff. */}
+      <StalenessBanner editor={editor} />
 
       {/* ── Constructeurs ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2.5" role="group" aria-label="Website builder">
