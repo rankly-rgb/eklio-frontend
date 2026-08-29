@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { activePage, fieldItems, fieldText, sectionsOf } from "@/lib/site/mockup";
+import { patchAreas } from "@/lib/site/patch";
 import { CLAY_AND_SAND } from "@/lib/site/__tests__/envelope.fixture";
+
+/** Les bornes de l'éditeur, telles que `site_catalog()` les donne (§5). */
+const LIMITS = {
+  hero_overline: 48,
+  hero_headline: 90,
+  hero_subhead: 220,
+  hero_cta_label: 28,
+  about_excerpt: 600,
+  section_text: 800,
+  extra_instructions: 2000,
+};
 
 /*
  * La maquette lit `preview` et ne recompose rien.
@@ -115,5 +127,19 @@ describe("`extra_instructions` n'atteint jamais la maquette", () => {
   it("elles sont bien dans la sortie, elles", () => {
     // La preuve que le test précédent ne passe pas par accident.
     expect(JSON.stringify(CLAY_AND_SAND.output)).toContain("keep the fee off");
+  });
+});
+
+describe("le champ d'instructions supplémentaires", () => {
+  it("est rangé dans sa propre zone d'analytique", () => {
+    // Ni `copy` ni `structure` : c'est un texte qui ne touche pas le site
+    // maquetté, seulement les instructions.
+    expect(patchAreas({ extra_instructions: "…" })).toEqual(["instructions"]);
+  });
+
+  it("est borné par `extra_instructions`, pas par `section_text`", () => {
+    // 2000 contre 800 : ce n'est pas un champ de section.
+    expect(LIMITS.extra_instructions).toBe(2000);
+    expect(LIMITS.extra_instructions).not.toBe(LIMITS.section_text);
   });
 });

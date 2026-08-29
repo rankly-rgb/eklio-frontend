@@ -6,6 +6,7 @@ import { TypographySection } from "@/components/site/typography-section";
 import { PagesSection } from "@/components/site/pages-section";
 import { CopySection } from "@/components/site/copy-section";
 import { DetailsSection } from "@/components/site/details-section";
+import { InstructionsSection } from "@/components/site/instructions-section";
 import type { SiteEditorState } from "@/components/site/use-site-editor";
 import type { Direction } from "@/lib/brand/shapes";
 import type { SiteCatalog } from "@/lib/site/types";
@@ -40,6 +41,7 @@ export function ControlRail({
       <PagesSection editor={editor} catalog={catalog} />
       <CopySection editor={editor} catalog={catalog} direction={direction} />
       <DetailsSection editor={editor} catalog={catalog} direction={direction} />
+      <InstructionsSection editor={editor} catalog={catalog} />
     </div>
   );
 }
