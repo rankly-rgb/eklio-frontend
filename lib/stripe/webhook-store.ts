@@ -176,36 +176,26 @@ export function createWebhookPorts(): WebhookPorts {
 
     async recordStatusTransition(t): Promise<void> {
       /*
-       * LE JOURNAL D'ABORD, la ligne ensuite.
+       * ⚠ PAS D'INSERT À LA MAIN. `record_purchase_status_event` écrit la ligne
+       * du journal ET fait avancer `purchases.status`, dans la même
+       * transaction. Faire les deux d'ici laisserait une fenêtre où l'un a
+       * réussi et l'autre non — et c'est le journal qui sert à rendre l'état
+       * d'avant après un litige gagné.
        *
-       * `stripe_event_id` y est unique : si l'insertion passe, c'est que cet
-       * event n'a jamais été appliqué. Écrire le statut d'abord laisserait,
-       * sur un rejeu arrivé pendant l'écriture, un achat modifié deux fois
-       * dont le journal ne porterait qu'une trace — et c'est le journal qui
-       * sert à rendre l'état d'avant.
+       * On n'envoie PAS `previousStatus` : la fonction le relit sur la ligne.
+       * C'est mieux que ce qu'on peut offrir — entre notre lecture et notre
+       * écriture, un autre event a pu passer.
        *
-       * Le conflit d'unicité n'est PAS une erreur : c'est la réponse. On sort
-       * sans toucher à l'achat.
+       * L'idempotence sur `stripe_event_id` reste celle de la base : un rejeu
+       * ne crée pas une seconde ligne et ne rejoue pas l'avancement.
        */
-      const { error: ledgerError } = await supabase
-        .from("purchase_status_events")
-        .insert({
-          purchase_id: t.purchaseId,
-          status: t.status,
-          previous_status: t.previousStatus,
-          stripe_event_id: t.stripeEventId,
-          reason: t.reason,
-        });
-
-      if (ledgerError) {
-        if (ledgerError.code === UNIQUE_VIOLATION) return;
-        throw ledgerError;
-      }
-
-      const { error } = await supabase
-        .from("purchases")
-        .update({ status: t.status, updated_at: new Date().toISOString() })
-        .eq("id", t.purchaseId);
+      const { error } = await supabase.rpc("record_purchase_status_event", {
+        p_purchase_id: t.purchaseId,
+        p_new_status: t.status,
+        p_stripe_event_id: t.stripeEventId,
+        p_event_type: t.reason,
+        ...(t.amountCents === undefined ? {} : { p_amount_cents: t.amountCents }),
+      });
 
       if (error) throw error;
     },
@@ -214,7 +204,8 @@ export function createWebhookPorts(): WebhookPorts {
       /*
        * Le `previous_status` de la DERNIÈRE entrée dans l'un de ces statuts.
        *
-       * On filtre sur `status` plutôt que de prendre la ligne la plus récente :
+       * On filtre sur `new_status` plutôt que de prendre la ligne la plus
+       * récente :
        * un achat contesté puis remboursé porte deux transitions, et rendre
        * « celle d'avant la dernière » rendrait l'état d'avant le
        * remboursement, pas celui d'avant le litige.
@@ -223,8 +214,8 @@ export function createWebhookPorts(): WebhookPorts {
         .from("purchase_status_events")
         .select("previous_status")
         .eq("purchase_id", purchaseId)
-        .in("status", intoStatuses)
-        .order("created_at", { ascending: false })
+        .in("new_status", intoStatuses)
+        .order("occurred_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 

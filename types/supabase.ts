@@ -681,38 +681,51 @@ export type Database = {
         ]
       }
       /*
-       * AJOUT MANUEL — le journal APPEND-ONLY des changements de statut d'un
-       * achat. `stripe_event_id` est unique (le même verrou d'idempotence que
-       * `stripe_events`), et `previous_status` est relu de la LIGNE au moment
-       * de la transition : c'est lui qui permet à un litige gagné de rendre
-       * l'état d'avant plutôt qu'un `paid` codé en dur.
+       * AJOUT MANUEL — le journal APPEND-ONLY des changements de statut.
+       *
+       * ⚠ COLONNES CORRIGÉES d'après la table réelle. Mes suppositions étaient
+       * fausses deux fois : `status` n'existe pas — c'est `new_status` — et
+       * `reason` n'existe pas du tout : `event_type` porte le type Stripe brut.
+       * Exactement la classe d'erreur de `p_grant_key`, et pour la même raison
+       * (une déclaration écrite d'après une description, pas d'après la base).
+       *
+       * ⚠ NE PAS ÉCRIRE DANS CETTE TABLE DIRECTEMENT. `record_purchase_status_event`
+       * remplit `previous_status` depuis la ligne et fait avancer
+       * `purchases.status` : un insert à la main ferait diverger le journal de
+       * ce qu'il est censé raconter.
        */
       purchase_status_events: {
         Row: {
+          amount_cents: number | null
           created_at: string
+          event_type: string
           id: string
-          previous_status: string
+          new_status: string
+          occurred_at: string
+          previous_status: string | null
           purchase_id: string
-          reason: string
-          status: string
           stripe_event_id: string
         }
         Insert: {
+          amount_cents?: number | null
           created_at?: string
+          event_type: string
           id?: string
-          previous_status: string
+          new_status: string
+          occurred_at?: string
+          previous_status?: string | null
           purchase_id: string
-          reason: string
-          status: string
           stripe_event_id: string
         }
         Update: {
+          amount_cents?: number | null
           created_at?: string
+          event_type?: string
           id?: string
-          previous_status?: string
+          new_status?: string
+          occurred_at?: string
+          previous_status?: string | null
           purchase_id?: string
-          reason?: string
-          status?: string
           stripe_event_id?: string
         }
         Relationships: []
@@ -975,6 +988,28 @@ export type Database = {
       }
       complete_choose_direction: {
         Args: { p_brand_kit_id: string }
+        Returns: undefined
+      }
+      /*
+       * AJOUT MANUEL — la SEULE façon d'écrire dans `purchase_status_events`.
+       *
+       * Elle remplit `previous_status` depuis la ligne et fait avancer
+       * `purchases.status` : les deux écritures sont indissociables côté base,
+       * ce qui est exactement ce que notre port cherchait à garantir à la main.
+       *
+       * ⚠ NOMS DE PARAMÈTRES NON VÉRIFIÉS — la signature n'a pas été fournie,
+       * et cette base-ci ne porte pas encore la fonction (cf. le test
+       * `unconfirmed-declarations`). C'est la dernière supposition du dépôt, et
+       * elle tombera à la première régénération des types.
+       */
+      record_purchase_status_event: {
+        Args: {
+          p_amount_cents?: number
+          p_event_type: string
+          p_new_status: string
+          p_purchase_id: string
+          p_stripe_event_id: string
+        }
         Returns: undefined
       }
       /*

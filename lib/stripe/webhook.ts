@@ -179,12 +179,25 @@ export type WebhookPorts = {
 export type StatusTransition = {
   purchaseId: string;
   status: PurchaseStatus;
-  /** Relu de la LIGNE, jamais supposé. */
+  /**
+   * Le statut d'avant, tel que NOUS l'avons lu.
+   *
+   * ⚠ Il n'est PAS envoyé à la base : `record_purchase_status_event` le relit
+   * lui-même sur la ligne, dans la même transaction que l'écriture. C'est
+   * strictement mieux que ce que nous pouvons offrir — entre notre lecture et
+   * notre écriture, un autre event a pu passer.
+   *
+   * Il reste ici parce que le handler s'en sert pour ne pas écrire une
+   * transition vers soi-même, et parce que les tests en ont besoin pour dire
+   * ce que le journal doit raconter.
+   */
   previousStatus: PurchaseStatus;
   /** L'id de l'event Stripe — unique dans le journal. */
   stripeEventId: string;
-  /** Le type d'event qui a causé la transition, pour le diagnostic. */
+  /** Le type d'event Stripe brut. La colonne s'appelle `event_type`. */
   reason: string;
+  /** Le montant concerné, quand l'event en porte un. */
+  amountCents?: number;
 };
 
 export type WebhookOutcome =
@@ -529,7 +542,8 @@ async function transition(
   ports: WebhookPorts,
   purchase: { id: string; status: PurchaseStatus },
   next: PurchaseStatus,
-  event: Stripe.Event
+  event: Stripe.Event,
+  amountCents?: number
 ): Promise<WebhookOutcome> {
   if (purchase.status === next) {
     // Une transition vers soi-même n'apprend rien au journal, et son
@@ -547,6 +561,7 @@ async function transition(
     previousStatus: purchase.status,
     stripeEventId: event.id,
     reason: event.type,
+    amountCents,
   });
 
   return { status: "processed", type: event.type };
@@ -575,7 +590,8 @@ async function handleChargeRefunded(
     ports,
     found.purchase,
     full ? "refunded" : "partially_refunded",
-    event
+    event,
+    refunded
   );
 }
 
@@ -594,7 +610,7 @@ async function handleDisputeCreated(
   const found = await purchaseFor(ports, dispute.payment_intent, event.type);
   if (!found.found) return found.outcome;
 
-  return transition(ports, found.purchase, "disputed", event);
+  return transition(ports, found.purchase, "disputed", event, dispute.amount);
 }
 
 /**
@@ -622,7 +638,7 @@ async function handleDisputeClosed(
   if (dispute.status === "lost") {
     // L'argent ne revient pas. L'achat reste révoqué, et la ligne de journal
     // le dit explicitement plutôt que de laisser un `disputed` sans épilogue.
-    return transition(ports, found.purchase, "disputed", event);
+    return transition(ports, found.purchase, "disputed", event, dispute.amount);
   }
 
   /*
@@ -650,7 +666,7 @@ async function handleDisputeClosed(
     };
   }
 
-  return transition(ports, found.purchase, restored, event);
+  return transition(ports, found.purchase, restored, event, dispute.amount);
 }
 
 /**
@@ -691,7 +707,7 @@ async function handleRefundUpdated(
     };
   }
 
-  return transition(ports, found.purchase, restored, event);
+  return transition(ports, found.purchase, restored, event, refund.amount);
 }
 
 /**

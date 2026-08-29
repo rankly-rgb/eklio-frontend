@@ -80,10 +80,15 @@ describe("le refus de paiement, sous ses deux formes", () => {
     expect(!outcome.ok && outcome.reason).toBe("payment-required");
   });
 
-  it("AUCUNE LIGNE rendue par une policy RLS, sans erreur", async () => {
-    // PostgREST ne signale rien : l'UPDATE touche zéro ligne et `error` est
-    // nul. C'est le cas qui, avant, remontait en 500.
-    const { supabase } = client({ data: null, error: null });
+  it("porte le message mesuré du backend", async () => {
+    const { supabase } = client({
+      data: null,
+      error: {
+        code: "42501",
+        message:
+          "payment_required: choosing a direction is part of the paid kit.",
+      },
+    });
 
     const outcome = await selectDirection(
       supabase,
@@ -109,6 +114,45 @@ describe("le refus de paiement, sous ses deux formes", () => {
     );
 
     expect(!outcome.ok && outcome.reason).toBe("payment-required");
+  });
+});
+
+describe("⚠ zéro ligne n'est PAS un refus de paiement", () => {
+  it("aucune exception, zéro ligne → 404, pas un checkout", async () => {
+    /*
+     * La RLS filtre la ligne AVANT que le trigger ne s'exécute : c'est un
+     * NON-PROPRIÉTAIRE. Lui proposer un paiement, c'était le mauvais écran —
+     * et surtout une confirmation que ce kit existe.
+     */
+    const { supabase } = client({ data: null, error: null });
+
+    const outcome = await selectDirection(
+      supabase,
+      KIT,
+      USER,
+      SAMPLE_DIRECTIONS[0].id
+    );
+
+    expect(!outcome.ok && outcome.reason).toBe("not-found");
+    expect(!outcome.ok && outcome.reason).not.toBe("payment-required");
+  });
+
+  it("le SQLSTATE seul ne suffit pas à conclure au paiement", async () => {
+    // 42501 est `insufficient_privilege`, que la RLS emploie aussi. C'est le
+    // MESSAGE qui nomme la cause.
+    const { supabase } = client({
+      data: null,
+      error: { code: "42501", message: "permission denied for table brand_kits" },
+    });
+
+    const outcome = await selectDirection(
+      supabase,
+      KIT,
+      USER,
+      SAMPLE_DIRECTIONS[0].id
+    );
+
+    expect(!outcome.ok && outcome.reason).toBe("write-failed");
   });
 });
 

@@ -181,3 +181,37 @@ describe("`payment_required` — une offre, pas une erreur", () => {
     expect(!result.ok && result.status).toBe(401);
   });
 });
+
+/*
+ * ── LA FORME VERBATIM DU REFUS ───────────────────────────────────────────
+ *
+ * Mesurée par le backend, reprise mot pour mot. Le point qui compte : il n'y a
+ * PAS de clé `field`. Un composant qui indexerait dessus pour choisir où
+ * afficher le refus n'afficherait rien du tout — or ce refus-là ne s'affiche
+ * pas, il ouvre le checkout.
+ */
+const PAYMENT_REQUIRED_VERBATIM = {
+  error: {
+    code: "payment_required",
+    message:
+      "Your three directions are yours to look at. Choosing one, and everything that comes with it, is part of the paid kit.",
+  },
+};
+
+describe("`payment_required`, tel que la base l'émet", () => {
+  it("est reconnu par `isSiteError` sans clé `field`", () => {
+    expect(isSiteError(PAYMENT_REQUIRED_VERBATIM)).toBe(true);
+    expect(PAYMENT_REQUIRED_VERBATIM.error).not.toHaveProperty("field");
+  });
+
+  it("remonte en 402 avec son message intact", async () => {
+    const { client } = stub(PAYMENT_REQUIRED_VERBATIM);
+    const result = await siteSpecGet(client, "kit-1");
+
+    expect(!result.ok && result.status).toBe(402);
+    expect(!result.ok && result.error.message).toBe(
+      PAYMENT_REQUIRED_VERBATIM.error.message
+    );
+    expect(!result.ok && result.error.field).toBeUndefined();
+  });
+});

@@ -162,25 +162,29 @@ export type SelectDirectionOutcome =
   | { ok: false; reason: "write-failed"; detail: unknown };
 
 /**
- * La base a-t-elle refusé cette écriture faute de paiement ?
+ * La base a-t-elle refusé cette écriture faute de PAIEMENT ?
  *
- * Deux formes, parce que la barrière peut se poser de deux façons et qu'on ne
- * veut pas d'un 500 selon laquelle a été choisie :
+ * ⚠ ZÉRO LIGNE N'EST PAS UN REFUS DE PAIEMENT, et le confondre était un vrai
+ * défaut. Les deux causes sont distinctes, et mesurées :
  *
- *   - une EXCEPTION nommée — un trigger qui lève `payment_required` ;
- *   - AUCUNE LIGNE RENDUE — une policy RLS qui filtre la ligne au lieu de
- *     lever. PostgREST ne signale alors rien : l'`UPDATE` touche zéro ligne et
- *     `error` est nul.
+ *   - propriétaire NON PAYANT  → exception nommée, SQLSTATE 42501, message
+ *     « payment_required: … », zéro ligne écrite ;
+ *   - NON-PROPRIÉTAIRE          → aucune exception, zéro ligne touchée, parce
+ *     que la RLS filtre la ligne AVANT que le trigger ne s'exécute ;
+ *   - propriétaire payant       → une ligne.
  *
- * Le second cas est ambigu en théorie (la ligne pourrait avoir disparu entre
- * les deux requêtes) mais pas en pratique : `selectDirection` vient de la lire
- * et de vérifier l'id de direction. Un « zéro ligne » ici veut dire qu'on nous
- * a refusé l'écriture, et le pire scénario si on se trompe est qu'on propose un
- * checkout au lieu d'une erreur — ce qui reste la meilleure des deux erreurs.
+ * Les mapper tous les deux sur `payment_required` envoyait un inconnu sur un
+ * écran de paiement pour le kit de quelqu'un d'autre — le mauvais écran, et
+ * surtout une CONFIRMATION que ce kit existe. Zéro ligne se rend donc en 404,
+ * comme partout ailleurs dans ce dépôt : absent et « pas à vous » répondent la
+ * même chose.
+ *
+ * On ne se fie PAS au SQLSTATE seul : 42501 est `insufficient_privilege`, que
+ * la RLS emploie aussi. C'est le message qui nomme la cause.
  */
 function refusedForPayment(error: { message?: string; code?: string } | null): boolean {
-  const haystack = `${error?.code ?? ""} ${error?.message ?? ""}`;
-  return /payment_required|brand_kit_entitled/i.test(haystack);
+  if (!error) return false;
+  return /payment_required|brand_kit_entitled/i.test(error.message ?? "");
 }
 
 /**
@@ -227,10 +231,13 @@ export async function selectDirection(
     return { ok: false, reason: "payment-required" };
   }
   if (!error && !row) {
-    // Zéro ligne touchée sur un kit qu'on vient de lire : c'est un refus, pas
-    // une panne. Journalisé parce qu'un jour ce sera peut-être autre chose.
-    console.info("[brand-kit] écriture de direction refusée sans erreur", brandKitId);
-    return { ok: false, reason: "payment-required" };
+    /*
+     * Zéro ligne, aucune exception : la RLS a filtré la ligne avant le
+     * trigger. C'est un NON-PROPRIÉTAIRE — ou une ligne disparue entre la
+     * lecture et l'écriture. Dans les deux cas, 404 : proposer un paiement
+     * confirmerait à un inconnu que ce kit existe.
+     */
+    return { ok: false, reason: "not-found" };
   }
   if (error || !row) return { ok: false, reason: "write-failed", detail: error };
 

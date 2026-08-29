@@ -102,6 +102,39 @@ function callSites(): { file: string; fn: string; keys: string[] }[] {
   return sites;
 }
 
+/**
+ * Paramètres FACULTATIFS que ce dépôt doit malgré tout toujours envoyer.
+ *
+ * `grant_plan_allowance` a `p_grant_key text DEFAULT NULL`, donc la forme à
+ * deux arguments compile et s'exécute. Elle n'est PAS idempotente contre la
+ * forme à trois : sa clé de repli est l'id de session de checkout, une chaîne
+ * différente d'un id d'event. Mélanger les deux formes octroie DEUX FOIS.
+ *
+ * Le test des paramètres requis ne peut pas l'attraper — le paramètre est
+ * facultatif pour la base, obligatoire pour nous. D'où cette liste.
+ */
+const ALWAYS_PASS: Record<string, { arg: string; why: string }> = {
+  grant_plan_allowance: {
+    arg: "p_grant_key",
+    why:
+      "La forme à deux arguments retombe sur l'id de session de checkout, qui " +
+      "n'est pas l'id d'event : mélanger les deux formes octroie deux fois.",
+  },
+};
+
+/**
+ * Déclarations écrites À LA MAIN, d'après une description et non d'après la
+ * base. Chacune est une supposition tant qu'elle n'est pas régénérée.
+ *
+ * La liste n'est pas décorative : elle a déjà eu tort deux fois
+ * (`p_stripe_event_id` au lieu de `p_grant_key`, `status`/`reason` au lieu de
+ * `new_status`/`event_type`). Elle doit RÉTRÉCIR à chaque régénération, et un
+ * test échoue si elle grandit sans qu'on le décide.
+ */
+const UNCONFIRMED = [
+  "record_purchase_status_event",
+] as const;
+
 const DECLARED = declaredArgs();
 const SITES = callSites();
 
@@ -120,6 +153,32 @@ describe("l'extraction elle-même", () => {
   it("trouve les appels", () => {
     expect(SITES.length).toBeGreaterThanOrEqual(5);
     expect(SITES.map((site) => site.fn)).toContain("grant_plan_allowance");
+  });
+});
+
+describe("les paramètres facultatifs qu'on doit quand même envoyer", () => {
+  it.each(Object.entries(ALWAYS_PASS))("%s", (fn, rule) => {
+    const sites = SITES.filter((site) => site.fn === fn);
+    expect(sites.length, `Aucun appel à ${fn} trouvé.`).toBeGreaterThan(0);
+
+    for (const site of sites) {
+      expect(
+        site.keys.includes(rule.arg),
+        `${site.file} appelle ${fn} sans \`${rule.arg}\`.\n${rule.why}`
+      ).toBe(true);
+    }
+  });
+});
+
+describe("ce qui reste supposé", () => {
+  it("la liste des déclarations non confirmées ne grandit pas toute seule", () => {
+    // Elle a déjà eu tort deux fois. Elle doit rétrécir à chaque régénération
+    // des types, jamais s'allonger sans décision.
+    expect([...UNCONFIRMED]).toEqual(["record_purchase_status_event"]);
+  });
+
+  it("chacune est bien déclarée, faute de quoi la liste ment", () => {
+    for (const fn of UNCONFIRMED) expect(DECLARED.has(fn)).toBe(true);
   });
 });
 
@@ -284,20 +343,39 @@ const WRITES = writeSites();
 describe("l'extraction des colonnes", () => {
   it("lit les tables déclarées", () => {
     expect(COLUMNS.size).toBeGreaterThan(5);
+    /*
+     * Les VRAIES colonnes, corrigées d'après la table. Deux de mes
+     * suppositions étaient fausses : `status` n'existe pas — c'est
+     * `new_status` — et `reason` n'existe pas du tout, `event_type` porte le
+     * type Stripe brut.
+     */
     expect([...(COLUMNS.get("purchase_status_events") ?? [])].sort()).toEqual([
+      "amount_cents",
       "created_at",
+      "event_type",
       "id",
+      "new_status",
+      "occurred_at",
       "previous_status",
       "purchase_id",
-      "reason",
-      "status",
       "stripe_event_id",
     ]);
   });
 
   it("trouve les écritures", () => {
     expect(WRITES.length).toBeGreaterThanOrEqual(5);
-    expect(WRITES.map((site) => site.table)).toContain("purchase_status_events");
+  });
+
+  it("PERSONNE n'écrit `purchase_status_events` à la main", () => {
+    /*
+     * `record_purchase_status_event` remplit `previous_status` depuis la ligne
+     * et fait avancer `purchases.status` dans la même transaction. Un insert
+     * direct ferait diverger le journal de ce qu'il raconte, et rouvrirait la
+     * fenêtre où l'une des deux écritures réussit sans l'autre.
+     */
+    expect(
+      WRITES.filter((site) => site.table === "purchase_status_events")
+    ).toEqual([]);
   });
 });
 
