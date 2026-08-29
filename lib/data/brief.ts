@@ -57,6 +57,27 @@ export const briefDataSchema = z.object({
     .enum(["squarespace", "lovable", "framer", "webflow"])
     .optional(),
   existing_url: z.string().max(200).optional(),
+  /*
+   * Étape 1 — le nom de la PRATICIENNE, seul.
+   *
+   * ⚠ Distinct de `practitioner_line`, et les deux doivent le rester.
+   * `practitioner_line` est une chaîne COMPOSÉE (« Nora Whitfield, LCSW »)
+   * rendue sur la story `signature` ; le semeur du spec de site a besoin du
+   * nom NU pour `practice_details.practitioner_name`, et le backend a
+   * justement refusé de redécouper la ligne composée en morceaux — un nom qui
+   * contient une virgule, un titre en deux mots, un suffixe : ça ne se
+   * réanalyse pas.
+   *
+   * D'où une question à part, à l'étape 1, à côté du nom du cabinet. Le champ
+   * est FACULTATIF : c'est un brief, pas un formulaire d'ordre. Mais sans lui,
+   * la praticienne ne découvre le manque que dans l'éditeur de site, après
+   * sept écrans passés à parler de sa practice.
+   *
+   * Rien dans CE dépôt ne lit la clé : c'est le semeur, côté base, qui la
+   * reprend dans `practice_details.practitioner_name`. Le nom est donc calé
+   * sur le sien, exactement.
+   */
+  practitioner_name: z.string().max(80).optional(),
   /** Nom et titre du praticien, rendus sur la story `signature`. */
   practitioner_line: z.string().max(80).optional(),
   /** Le rappel « We draft in plain, board-safe language » n'est montré qu'une fois. */

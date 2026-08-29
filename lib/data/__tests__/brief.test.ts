@@ -88,3 +88,37 @@ describe("parseBriefData", () => {
     });
   });
 });
+
+/*
+ * Le nom de la praticienne — étape 1, facultatif, et DISTINCT de la ligne
+ * composée rendue sur la story `signature`.
+ */
+describe("practitioner_name", () => {
+  it("est accepté dans la part libre du brief", () => {
+    expect(parseBriefData({ practitioner_name: "Nora Whitfield" })).toEqual({
+      practitioner_name: "Nora Whitfield",
+    });
+  });
+
+  it("reste facultatif — un brief sans lui est valide", () => {
+    expect(parseBriefData({})).toEqual({});
+  });
+
+  it("ne se confond pas avec `practitioner_line`", () => {
+    // La ligne est COMPOSÉE ; le nom est nu. Le backend a refusé de redécouper
+    // la première en morceaux, et il a eu raison : un nom qui porte une
+    // virgule ou un titre en deux mots ne se réanalyse pas.
+    const data = parseBriefData({
+      practitioner_name: "Nora Whitfield",
+      practitioner_line: "Nora Whitfield, LCSW",
+    });
+    expect(data.practitioner_name).toBe("Nora Whitfield");
+    expect(data.practitioner_line).toBe("Nora Whitfield, LCSW");
+  });
+
+  it("un nom trop long ne casse pas la réouverture du brief", () => {
+    // `parseBriefData` retombe sur `{}` plutôt que de jeter : une donnée libre
+    // corrompue ne doit pas empêcher de rouvrir son brief.
+    expect(parseBriefData({ practitioner_name: "x".repeat(200) })).toEqual({});
+  });
+});

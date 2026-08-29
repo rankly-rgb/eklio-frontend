@@ -83,6 +83,35 @@ export function PracticeStep({ draft, catalog, update }: StepBodyProps) {
         autoFocus
       />
 
+      {/*
+        Le nom de la praticienne, à part du nom du cabinet.
+        Facultatif — c'est un brief, pas un formulaire d'ordre — mais posé ICI
+        plutôt que découvert plus tard : un site qui annonce une pratique sous
+        licence sans nommer la licenciée se répare mal après coup, et le
+        demander à l'écran 1 coûte une ligne quand le demander dans l'éditeur
+        de site arrive après sept écrans.
+
+        Il ne remplace pas `practitioner_line`, qui est une chaîne COMPOSÉE
+        (« Nora Whitfield, LCSW ») pour la story `signature`. Le semeur du spec
+        de site a besoin du nom NU.
+      */}
+      <TextField
+        id="practitioner-name"
+        label="Your name, as it should appear on your site"
+        hint="Optional. Leave it out and your site will name the practice only."
+        value={draft.data.practitioner_name ?? ""}
+        onChange={(event) =>
+          update({
+            data: {
+              ...draft.data,
+              practitioner_name: event.target.value || undefined,
+            },
+          })
+        }
+        placeholder="Nora Whitfield"
+        maxLength={80}
+      />
+
       <div className="flex flex-col gap-3">
         <span className="text-ui font-medium text-ink">License type</span>
         <ChipGroup
