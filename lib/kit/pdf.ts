@@ -323,3 +323,79 @@ export function renderBrandKitPdf(kit: BrandKit): Uint8Array {
 
   return assemble(pages.filter((entry) => !entry.isEmpty).map((entry) => entry.build()));
 }
+
+/*
+ * ── La feuille d'installation, en PDF ────────────────────────────────────
+ *
+ * L'éditeur de site propose « Download as PDF ». La source est le `md` que
+ * renvoie `site_output_get(…, 'md')` : c'est la MÊME sortie que celle qu'on
+ * copie, dans un autre format. Rien n'est recomposé ici — le §8 du contrat est
+ * explicite, la sortie dérivée ne se réécrit pas côté client.
+ *
+ * On réutilise le `PageBuilder` ci-dessus plutôt que d'ajouter un moteur : le
+ * markdown que la base émet est du texte, des titres, des listes et des
+ * citations. Le rendu ci-dessous couvre exactement ça, et laisse passer le
+ * reste en paragraphe — un markdown inconnu se lit encore, il ne disparaît pas.
+ */
+export function renderMarkdownPdf(title: string, markdown: string): Uint8Array {
+  const pages: PageBuilder[] = [];
+  let page = new PageBuilder();
+  pages.push(page);
+
+  const ensure = (needed: number) => {
+    if (page.remaining < needed) {
+      page = new PageBuilder();
+      pages.push(page);
+    }
+  };
+
+  page.text(title, { font: "title", size: 22, leading: 28 });
+  page.rule();
+  page.space(8);
+
+  for (const raw of markdown.split("\n")) {
+    const line = raw.trimEnd();
+    ensure(60);
+
+    if (line.trim() === "") {
+      page.space(8);
+      continue;
+    }
+    if (/^#{1,6}\s/.test(line)) {
+      const depth = line.match(/^#+/)![0].length;
+      const text = line.replace(/^#+\s*/, "");
+      ensure(48);
+      page.space(6);
+      page.text(text, {
+        font: "title",
+        size: depth === 1 ? 18 : depth === 2 ? 15 : 13,
+        leading: depth === 1 ? 24 : 20,
+      });
+      continue;
+    }
+    if (/^(-{3,}|\*{3,})$/.test(line.trim())) {
+      page.rule();
+      continue;
+    }
+    if (/^>\s?/.test(line)) {
+      page.text(line.replace(/^>\s?/, ""), {
+        font: "mono",
+        size: 9,
+        leading: 14,
+        gray: 0.45,
+      });
+      continue;
+    }
+    if (/^\s*([-*+]|\d+\.)\s/.test(line)) {
+      page.text(line.replace(/^\s*[-*+]\s/, "- "), {
+        font: "body",
+        size: 10.5,
+        leading: 15,
+      });
+      continue;
+    }
+    page.text(line, { font: "body", size: 10.5, leading: 15 });
+  }
+
+  return assemble(pages.filter((entry) => !entry.isEmpty).map((entry) => entry.build()));
+}

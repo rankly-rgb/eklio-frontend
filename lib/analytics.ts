@@ -25,6 +25,20 @@ export type AnalyticsEvent =
   | "direction_chosen"
   | "site_prompt_copied"
   | "pdf_downloaded"
+  /* ── L'éditeur de site ────────────────────────────────────────────────
+   * Tous émis DEPUIS LE SERVEUR, comme le reste : les route handlers de
+   * `/api/brand-kits/[id]/site-*` et la page de l'éditeur. Aucun d'eux ne
+   * porte de texte libre — un `area`, une cible, un `kind`, jamais une
+   * ligne de copy.
+   */
+  | "site_editor_opened"
+  | "site_spec_edited"
+  | "contrast_fix_applied"
+  | "builder_target_changed"
+  | "site_output_copied"
+  | "setup_sheet_downloaded"
+  | "extra_instructions_used"
+  | "site_spec_reset"
   | "checklist_item_completed"
   | "unlock_opened"
   | "email_sent";

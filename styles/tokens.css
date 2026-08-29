@@ -40,6 +40,25 @@
   /* argile : jauge, bordures sélectionnées, pastilles de coche, un CTA/écran */
   --accent: #b4653f;
 
+  /*
+   * ── Trois tokens ajoutés pour l'éditeur de site ─────────────────────────
+   * Aucune des huit références ne montre cet écran : il a un rail de contrôle
+   * qui doit se détacher de la maquette, une bannière de péremption qui doit
+   * être impossible à manquer, et un rapport de contraste qui doit pouvoir
+   * dire « échec » en couleur. Les trois valeurs restent dans la famille
+   * (blanc chaud, encre, argile) et sont mesurées, pas choisies à l'œil —
+   * cf. `lib/brand/__tests__/contrast.test.ts`.
+   */
+  /* rail de contrôle — entre --bg et --card, pour poser le rail sans le
+     confondre avec une carte */
+  --surface-2: #faf7f2;
+  /* bandeau de péremption au-dessus de la sortie — argile délavée, --ink y
+     mesure 13.23:1 */
+  --accent-soft: #f6e7df;
+  /* paires de contraste en échec — 8.06:1 sur --bg, 7.40:1 sur --card, donc
+     lisible en texte courant, contrairement à --accent */
+  --danger: #8c2f1e;
+
   /* Anneau de focus — accent à 40 %. */
   --focus-ring: rgba(180, 101, 63, 0.4);
 
@@ -151,4 +170,7 @@
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
   --color-accent: var(--accent);
+  --color-surface-2: var(--surface-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
 }

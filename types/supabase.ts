@@ -948,6 +948,44 @@ export type Database = {
         Args: { p_brand_kit_id: string }
         Returns: number
       }
+      /* ------------------------------------------------------------------
+       * AJOUT MANUEL — les huit entrées de l'éditeur de site (§1 du
+       * FRONTEND_CONTRACT). Elles sont arrivées en base après la dernière
+       * génération de ce fichier ; sans elles, `supabase.rpc("site_spec_get")`
+       * ne compile pas. À la prochaine régénération, ce bloc disparaît de
+       * lui-même — il ne fait que déclarer ce que la base expose déjà.
+       *
+       * Toutes renvoient du `Json` : six d'entre elles la MÊME enveloppe
+       * (`SiteSpecEnvelope`), `site_output_get` la sortie seule,
+       * `site_catalog` le catalogue. Le resserrement de type se fait dans
+       * `lib/site/rpc.ts`, pas ici : ce fichier suit la base.
+       * ---------------------------------------------------------------- */
+      site_catalog: { Args: Record<PropertyKey, never>; Returns: Json }
+      site_output_get: {
+        Args: { p_brand_kit_id: string; p_format?: string; p_target: string }
+        Returns: Json
+      }
+      site_output_mark_copied: {
+        Args: { p_brand_kit_id: string }
+        Returns: Json
+      }
+      site_spec_fix_contrast: {
+        Args: { p_brand_kit_id: string; p_pair_id: string }
+        Returns: Json
+      }
+      site_spec_get: { Args: { p_brand_kit_id: string }; Returns: Json }
+      site_spec_patch: {
+        Args: { p_brand_kit_id: string; p_patch: Json }
+        Returns: Json
+      }
+      site_spec_reset: {
+        Args: { p_brand_kit_id: string; p_scope: string }
+        Returns: Json
+      }
+      site_spec_set_target: {
+        Args: { p_brand_kit_id: string; p_target: string }
+        Returns: Json
+      }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }
         Returns: string
