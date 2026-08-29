@@ -169,8 +169,21 @@ export function Mockup({
         face de la couleur qu'on est en train de bouger. `--header-h` la place
         sous l'en-tête de l'application, pas dessous.
       */}
-      <div className="sticky top-[calc(var(--header-h)+16px)] max-[1100px]:static">
+      <div className="relative sticky top-[calc(var(--header-h)+16px)] max-[1100px]:static">
         {frame}
+        {/*
+          En mobile, la maquette elle-même est le bouton : c'est le geste
+          qu'on fait devant une image trop petite. Au-dessus de 1100px elle
+          n'est pas là — le lien « Full screen » suffit, et une surface
+          cliquable posée sur du texte éditable rendrait l'édition en place
+          impossible.
+        */}
+        <button
+          type="button"
+          aria-label="Open the mockup full screen"
+          onClick={() => setFullScreen(true)}
+          className="absolute inset-0 hidden max-[1100px]:block"
+        />
       </div>
 
       <p className="mt-3 text-helper leading-prose text-ink-2">

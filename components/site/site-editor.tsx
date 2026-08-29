@@ -70,6 +70,16 @@ export function SiteEditor({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [undo, redo]);
 
+  /* Échap ferme la feuille mobile, comme toute surface modale de l'app. */
+  useEffect(() => {
+    if (!sheetOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSheetOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [sheetOpen]);
+
   const practice =
     editor.envelope.preview.practice_name ?? "Your practice";
 
@@ -122,14 +132,36 @@ export function SiteEditor({
       {/* ── Rail + maquette ─────────────────────────────────────────────── */}
       <div className="mt-7 flex items-start gap-8 max-[1100px]:flex-col max-[1100px]:gap-6">
         {/*
-          En dessous de 1100px, la maquette passe DEVANT le rail — `order`
-          plutôt qu'un second arbre : un seul DOM, donc un seul ordre de
-          tabulation, et rien à tenir en double.
+          UN SEUL `<ControlRail>`, à un seul endroit du DOM. Sous 1100px, ce
+          même élément DEVIENT la feuille par le bas — c'est du CSS, pas un
+          second arbre. Deux instances donneraient deux fois les mêmes `id` de
+          champ, deux fois le même ordre de tabulation, et deux états qui
+          finiraient par diverger.
+
+          `hidden` est appliqué par `max-[1100px]:data-[open=false]:hidden` :
+          il ne s'applique donc QUE sous 1100px, et jamais au rail de bureau.
         */}
         <aside
+          id="site-controls"
           aria-label="Site controls"
-          className="w-[360px] flex-none rounded-card border border-line bg-surface-2 max-[1100px]:hidden"
+          data-open={sheetOpen}
+          className="w-[360px] flex-none rounded-card border border-line bg-surface-2 max-[1100px]:fixed max-[1100px]:inset-x-0 max-[1100px]:bottom-0 max-[1100px]:z-50 max-[1100px]:max-h-[85vh] max-[1100px]:w-full max-[1100px]:overflow-auto max-[1100px]:rounded-b-none max-[1100px]:border-x-0 max-[1100px]:border-b-0 max-[1100px]:data-[open=false]:hidden"
         >
+          {/* L'en-tête de la feuille — sous 1100px seulement. */}
+          <div className="sticky top-0 z-10 hidden items-center gap-4 border-b border-line bg-surface-2 px-6 py-3 max-[1100px]:flex">
+            <span className="flex-1 font-display text-subsection font-medium text-ink">
+              Controls
+            </span>
+            <SaveState saving={editor.saving} />
+            <Button
+              variant="secondary"
+              className="px-5"
+              onClick={() => setSheetOpen(false)}
+            >
+              Done
+            </Button>
+          </div>
+
           <ControlRail
             editor={editor}
             catalog={catalog}
@@ -138,44 +170,39 @@ export function SiteEditor({
           />
         </aside>
 
-        <div className="min-w-0 flex-1 max-[1100px]:order-first max-[1100px]:w-full">
+        <div className="min-w-0 flex-1 max-[1100px]:w-full">
           <Mockup editor={editor} catalog={catalog} />
-        </div>
-
-        {/* Contrôles en feuille par le bas — sous 1100px seulement. */}
-        <div className="hidden w-full max-[1100px]:block">
-          <Button
-            variant="secondary"
-            className="w-full"
-            aria-expanded={sheetOpen}
-            aria-controls="site-controls-sheet"
-            onClick={() => setSheetOpen((open) => !open)}
-          >
-            {sheetOpen ? "Hide controls" : "Edit colors, pages and copy"}
-          </Button>
-          <div
-            id="site-controls-sheet"
-            hidden={!sheetOpen}
-            className="mt-4 rounded-card border border-line bg-surface-2"
-          >
-            <ControlRail
-            editor={editor}
-            catalog={catalog}
-            pairings={pairings}
-            direction={direction}
-          />
-          </div>
         </div>
       </div>
 
       {/* ── Sortie ──────────────────────────────────────────────────────── */}
-      <div className="mt-10">
+      <div className="mt-10 max-[1100px]:mb-16">
         <OutputPanel
           editor={editor}
           catalog={catalog}
           brandKitId={brandKitId}
         />
       </div>
+      {/*
+        ── L'ouverture de la feuille ──────────────────────────────────────
+        Une barre fixe en bas, sous 1100px seulement, et jamais en même temps
+        que la feuille : deux surfaces fixes empilées se recouvrent.
+      */}
+      <div
+        data-open={sheetOpen}
+        className="fixed inset-x-0 bottom-0 z-40 hidden border-t border-line bg-bg px-[var(--gutter-sm)] py-3 max-[1100px]:block max-[1100px]:data-[open=true]:hidden"
+      >
+        <Button
+          variant="secondary"
+          className="w-full"
+          aria-expanded={sheetOpen}
+          aria-controls="site-controls"
+          onClick={() => setSheetOpen(true)}
+        >
+          Edit colors, pages and copy
+        </Button>
+      </div>
+
     </main>
   );
 }

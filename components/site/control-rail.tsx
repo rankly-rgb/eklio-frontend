@@ -7,6 +7,8 @@ import { PagesSection } from "@/components/site/pages-section";
 import { CopySection } from "@/components/site/copy-section";
 import { DetailsSection } from "@/components/site/details-section";
 import { InstructionsSection } from "@/components/site/instructions-section";
+import { ResetSection } from "@/components/site/reset-section";
+import { RailError } from "@/components/site/rail-error";
 import type { SiteEditorState } from "@/components/site/use-site-editor";
 import type { Direction } from "@/lib/brand/shapes";
 import type { SiteCatalog } from "@/lib/site/types";
@@ -35,6 +37,7 @@ export function ControlRail({
 }) {
   return (
     <div className="flex flex-col">
+      <RailError error={editor.error} onDismiss={editor.dismissError} />
       <ColorSection editor={editor} />
       <ContrastSection editor={editor} />
       <TypographySection editor={editor} pairings={pairings} />
@@ -42,6 +45,7 @@ export function ControlRail({
       <CopySection editor={editor} catalog={catalog} direction={direction} />
       <DetailsSection editor={editor} catalog={catalog} direction={direction} />
       <InstructionsSection editor={editor} catalog={catalog} />
+      <ResetSection editor={editor} />
     </div>
   );
 }

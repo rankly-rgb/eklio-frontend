@@ -91,7 +91,8 @@ app/                  routes (App Router) : pages, layouts, route handlers
   dev/ui, dev/preview galeries de contrôle visuel (non liées, sans données)
   app/                espace connecté, protégé par proxy.ts
     briefs/[id]       le brief en 7 étapes + son récapitulatif
-    brand-kits/[id]   le kit ; `/reveal` porte génération puis révélation
+    brand-kits/[id]   le kit ; `/reveal` génération puis révélation ;
+                      `/site` l'éditeur de site (maquette + instructions)
     content/          le mois entier
     checkout/         choix du tier, add-on, retours succès / annulation
   api/                LA surface HTTP de l'interface (cf. §7 du cahier des charges)
@@ -99,7 +100,7 @@ app/                  routes (App Router) : pages, layouts, route handlers
 components/
   ui/                 primitives (Button, MonoLabel, Progress7, glyphes…)
   preview/            <BrandPreview> et les quatre cartes de marque
-  brief/ reveal/ kit/ home/   un dossier par écran
+  brief/ reveal/ kit/ home/ site/   un dossier par écran
 lib/
   brand/              formes, couleurs dérivées, échantillon
   catalog/            lecture du catalogue en base (ton, palettes, paires…)
@@ -107,6 +108,8 @@ lib/
   generation/         pipeline, sélection déterministe, validation, job
   ethics/             socle déontologique + Ethics Guard
   email/              transport, état d'envoi, gabarits
+  site/               l'éditeur de site : enveloppe, couleurs, contraste,
+                      pages, édition en place, sortie (cf. FRONTEND_CONTRACT)
   billing/, stripe/, kit/, api/
 types/supabase.ts     types générés depuis le schéma Supabase US (voir eklio-backend)
 proxy.ts              ex-"middleware" (renommé en Next.js 16) : session + garde /app
