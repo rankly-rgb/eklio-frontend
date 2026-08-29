@@ -10,6 +10,7 @@ import { Mockup } from "@/components/site/mockup";
 import { OutputPanel } from "@/components/site/output-panel";
 import type { Direction } from "@/lib/brand/shapes";
 import type { SiteCatalog, SiteSpecEnvelope } from "@/lib/site/types";
+import type { TypePairing } from "@/lib/catalog/types";
 
 /*
  * L'éditeur de site — la coquille.
@@ -34,11 +35,14 @@ export function SiteEditor({
   brandKitId,
   initial,
   catalog,
+  pairings,
   direction,
 }: {
   brandKitId: string;
   initial: SiteSpecEnvelope;
   catalog: SiteCatalog;
+  /** Les paires typographiques du catalogue du brief — la même table. */
+  pairings: TypePairing[];
   /** La direction retenue — lue seulement pour les originaux de `seed_clamped`. */
   direction: Direction;
 }) {
@@ -126,7 +130,12 @@ export function SiteEditor({
           aria-label="Site controls"
           className="w-[360px] flex-none rounded-card border border-line bg-surface-2 max-[1100px]:hidden"
         >
-          <ControlRail editor={editor} catalog={catalog} direction={direction} />
+          <ControlRail
+            editor={editor}
+            catalog={catalog}
+            pairings={pairings}
+            direction={direction}
+          />
         </aside>
 
         <div className="min-w-0 flex-1 max-[1100px]:order-first max-[1100px]:w-full">
@@ -149,7 +158,12 @@ export function SiteEditor({
             hidden={!sheetOpen}
             className="mt-4 rounded-card border border-line bg-surface-2"
           >
-            <ControlRail editor={editor} catalog={catalog} direction={direction} />
+            <ControlRail
+            editor={editor}
+            catalog={catalog}
+            pairings={pairings}
+            direction={direction}
+          />
           </div>
         </div>
       </div>

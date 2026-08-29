@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import { siteSpecGet } from "@/lib/site/rpc";
 import { readSiteCatalog } from "@/lib/site/catalog";
+import { readCatalog } from "@/lib/catalog/read";
 import { SiteEditor } from "@/components/site/site-editor";
 import { track } from "@/lib/analytics";
 
@@ -40,9 +41,17 @@ export default async function SiteEditorPage({
   // le choix se fait, plutôt que d'afficher un éditeur vide.
   if (!kit.selectedDirection) redirect(`/app/brand-kits/${id}/reveal`);
 
-  const [envelope, catalog] = await Promise.all([
+  /*
+   * Deux catalogues, et c'est voulu : `site_catalog()` porte les types de
+   * section, les constructeurs et les bornes de l'éditeur ; `type_pairings`
+   * vit dans le catalogue du brief, qui est la même table que celle où la
+   * pipeline a pris la paire de la direction. Les dupliquer donnerait deux
+   * listes de paires typographiques.
+   */
+  const [envelope, catalog, briefCatalog] = await Promise.all([
     siteSpecGet(supabase, id),
     readSiteCatalog(supabase),
+    readCatalog(supabase),
   ]);
 
   if (!envelope.ok) {
@@ -57,6 +66,7 @@ export default async function SiteEditorPage({
       brandKitId={id}
       initial={envelope.data}
       catalog={catalog}
+      pairings={briefCatalog.typePairings}
       direction={kit.selectedDirection}
     />
   );
