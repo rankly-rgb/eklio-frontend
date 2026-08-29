@@ -114,6 +114,7 @@ lib/
 types/supabase.ts     types générés depuis le schéma Supabase US (voir eklio-backend)
 proxy.ts              ex-"middleware" (renommé en Next.js 16) : session + garde /app
 DELIVERY.md           écarts au contrat visuel, demandes de schéma, décisions
+VERIFY-PAYMENT-PATH.md  la passe manuelle du chemin de paiement, en mode test
 ```
 
 ## Typographies

@@ -135,12 +135,21 @@ export async function POST(
   if (error || !kit) return serverError("POST /api/briefs/generate", error);
 
   /*
-   * LE CRÉDIT, AVANT L'APPEL MODÈLE.
+   * LE CRÉDIT, APRÈS LA LIGNE DE KIT ET AVANT L'APPEL MODÈLE.
    *
-   * Atomique, donc c'est lui qui tranche entre deux requêtes concurrentes :
-   * la seconde reçoit `false` et repart au checkout. Le job vient d'être posé
-   * en `running` — on le remet en échec avant de refuser, sinon l'écran
-   * d'attente tournerait sur une génération qui n'a jamais démarré.
+   * ⚠ ORDRE LOAD-BEARING, et il ne se voit pas en lisant l'appel.
+   * `consume_generation_credit` résout le projet À TRAVERS le kit : sans ligne
+   * `brand_kits`, elle rend `false`. Appelée avant l'insert ci-dessus, elle
+   * refuserait TOUTE génération, payante comprise, et le referait en silence —
+   * l'utilisatrice lirait « allocation épuisée » sur un compte tout neuf. La
+   * ligne est donc créée d'abord (l'insert plus haut est le SEUL du dépôt), et
+   * `kit.id` sort de la ligne que PostgREST a rendue, donc committée.
+   *
+   * Atomique, donc c'est aussi elle qui tranche entre deux requêtes
+   * concurrentes : la seconde reçoit `false` et repart au checkout. Le job
+   * vient d'être posé en `running` — on le remet en échec avant de refuser,
+   * sinon l'écran d'attente tournerait sur une génération qui n'a jamais
+   * démarré.
    */
   const { data: credited, error: creditError } = await supabase.rpc(
     "consume_generation_credit",

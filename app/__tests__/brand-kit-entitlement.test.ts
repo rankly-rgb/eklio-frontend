@@ -176,3 +176,64 @@ describe("les pages du kit sont gardées", () => {
     expect(source).not.toContain("/app/checkout");
   });
 });
+
+/*
+ * ── L'ORDRE DANS LA ROUTE DE GÉNÉRATION ──────────────────────────────────
+ *
+ * `consume_generation_credit` résout le projet À TRAVERS le kit : sans ligne
+ * `brand_kits`, elle rend `false`. Appelée avant la création de la ligne, elle
+ * refuserait TOUTE génération — payante comprise — et le ferait en SILENCE :
+ * l'utilisatrice lirait « allocation épuisée » sur un compte tout neuf, et
+ * rien dans les logs ne ressemblerait à une panne.
+ *
+ * L'ordre est correct aujourd'hui. Ce test existe parce que rien, en lisant
+ * l'appel, ne dit qu'il dépend de ce qui le précède — c'est une précondition
+ * de la fonction en base, invisible d'ici.
+ */
+describe("la ligne de kit précède le crédit", () => {
+  const GENERATE = join(ROOT, "app/api/briefs/[id]/generate/route.ts");
+
+  it("l'insert de `brand_kits` vient avant `consume_generation_credit`", () => {
+    const source = code(GENERATE);
+    const insert = source.indexOf("project_id: projectId,");
+    const credit = source.indexOf("consume_generation_credit");
+
+    expect(insert).toBeGreaterThan(-1);
+    expect(credit).toBeGreaterThan(-1);
+    expect(
+      insert < credit,
+      "Le crédit est consommé avant que la ligne `brand_kits` n'existe.\n" +
+        "`consume_generation_credit` rendrait `false` pour tout le monde, et\n" +
+        "la refus se lirait « allocation épuisée » plutôt que comme une panne."
+    ).toBe(true);
+  });
+
+  it("le kit passé au crédit sort d'une ligne rendue par la base", () => {
+    // `kit.id`, pas `existing?.id` ni un id composé : la ligne est donc
+    // committée et visible quand la fonction la relit.
+    expect(code(GENERATE)).toContain("p_brand_kit_id: kit.id");
+  });
+
+  it("rien d'autre dans le dépôt ne crée de `brand_kits`", () => {
+    // Si la pipeline créait le kit à partir du résultat, l'ordre serait
+    // inversé sans que cette route change d'une ligne.
+    const inserts: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name === "node_modules" || entry.name === ".next") continue;
+          walk(full);
+        } else if (/\.tsx?$/.test(entry.name) && !full.includes("__tests__")) {
+          const source = code(full);
+          if (/from\("brand_kits"\)[\s\S]{0,80}?\.insert\(/.test(source)) {
+            inserts.push(full.slice(ROOT.length + 1).replace(/\\/g, "/"));
+          }
+        }
+      }
+    };
+    for (const dir of ["lib", "app", "components"]) walk(join(ROOT, dir));
+
+    expect(inserts).toEqual(["app/api/briefs/[id]/generate/route.ts"]);
+  });
+});

@@ -155,3 +155,170 @@ describe("chaque appel correspond à sa déclaration", () => {
     }
   );
 });
+
+/* ────────────────────────────────────────────────────────────────────────
+ * LES COLONNES, pour la même raison exactement.
+ *
+ * `purchase_status_events` a été déclaré à la main dans `types/supabase.ts`
+ * — `purchase_id`, `status`, `previous_status`, `stripe_event_id`, `reason` —
+ * d'après la description de la table, pas d'après la table. C'est la même
+ * classe d'erreur que `p_grant_key` : un nom faux passe la compilation et
+ * échoue à l'écriture, en production, sur le chemin du paiement.
+ *
+ * ⚠ CE QUE CE TEST FAIT, ET CE QU'IL NE FAIT PAS. Tant que ces types sont
+ * écrits à la main, il compare mes appels à mes propres suppositions, et il
+ * passe. Sa valeur arrive à la RÉGÉNÉRATION : le jour où `types/supabase.ts`
+ * est refait depuis la base, toute colonne inventée devient rouge, ici, avec
+ * le fichier et le nom. C'est le seul instant où la divergence est visible
+ * d'ici, et c'est celui-là qu'on instrumente.
+ *
+ * Les `.select()` ne sont PAS couverts : leurs chaînes portent des jointures
+ * (`*, projects!inner(user_id, name)`) qu'on ne parserait pas honnêtement. Le
+ * risque y est aussi moindre — un select sur une colonne absente échoue tout
+ * de suite et bruyamment, là où un insert peut écrire à côté.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Les colonnes acceptées en écriture, par table (`Insert` ∪ `Update`).
+ *
+ * Balayage LIGNE À LIGNE, et pas par expression régulière sur des tranches :
+ * le fichier généré imbrique `Row`, `Insert`, `Update` et `Relationships` à
+ * des profondeurs fixes, et l'indentation est un repère bien plus solide
+ * qu'un appariement d'accolades sur 1 200 lignes.
+ */
+function declaredColumns(): Map<string, Set<string>> {
+  const types = readFileSync(join(ROOT, "types/supabase.ts"), "utf8");
+  const lines = types
+    .slice(types.indexOf("    Tables: {"), types.indexOf("    Functions: {"))
+    .split("\n");
+
+  const found = new Map<string, Set<string>>();
+  let table: string | null = null;
+  let section: string | null = null;
+
+  for (const line of lines) {
+    const isTable = /^ {6}(\w+): \{$/.exec(line);
+    if (isTable) {
+      table = isTable[1];
+      section = null;
+      continue;
+    }
+    const isSection = /^ {8}(\w+): [{[]/.exec(line);
+    if (isSection) {
+      section = isSection[1];
+      continue;
+    }
+    if (!table || (section !== "Insert" && section !== "Update")) continue;
+
+    const column = /^ {10}(\w+)\??:/.exec(line);
+    if (!column) continue;
+
+    const set = found.get(table) ?? new Set<string>();
+    set.add(column[1]);
+    found.set(table, set);
+  }
+  return found;
+}
+
+/** Tous les `.from("t").insert|update|upsert({ … })`, avec les colonnes écrites. */
+function writeSites(): { file: string; table: string; columns: string[] }[] {
+  const sites: { file: string; table: string; columns: string[] }[] = [];
+
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === "node_modules" || entry.name === ".next") continue;
+        walk(full);
+        continue;
+      }
+      if (!/\.tsx?$/.test(entry.name) || full.includes("__tests__")) continue;
+
+      const source = readFileSync(full, "utf8");
+      for (const match of source.matchAll(
+        /\.from\(\s*"(\w+)"\s*\)\s*\n?\s*\.(insert|update|upsert)\(\s*\{/g
+      )) {
+        const open = (match.index ?? 0) + match[0].length - 1;
+        let depth = 0;
+        let close = open;
+        for (let i = open; i < source.length; i += 1) {
+          if (source[i] === "{") depth += 1;
+          else if (source[i] === "}") {
+            depth -= 1;
+            if (depth === 0) {
+              close = i;
+              break;
+            }
+          }
+        }
+
+        /*
+         * Uniquement les clés de PREMIER niveau de l'objet : un jsonb
+         * imbriqué (`content`, `directions`) porte des clés qui ne sont pas
+         * des colonnes. On les repère par leur indentation relative.
+         */
+        const body = source.slice(open + 1, close);
+        const indents = [...body.matchAll(/^( +)\w+:/gm)].map(
+          (line) => line[1].length
+        );
+        const top = indents.length > 0 ? Math.min(...indents) : 0;
+        const columns = [...body.matchAll(/^( +)(\w+):/gm)]
+          .filter((line) => line[1].length === top)
+          .map((line) => line[2]);
+
+        sites.push({
+          file: full.slice(ROOT.length + 1).replace(/\\/g, "/"),
+          table: match[1],
+          columns,
+        });
+      }
+    }
+  };
+  for (const dir of ["lib", "app", "components"]) walk(join(ROOT, dir));
+  return sites;
+}
+
+const COLUMNS = declaredColumns();
+const WRITES = writeSites();
+
+describe("l'extraction des colonnes", () => {
+  it("lit les tables déclarées", () => {
+    expect(COLUMNS.size).toBeGreaterThan(5);
+    expect([...(COLUMNS.get("purchase_status_events") ?? [])].sort()).toEqual([
+      "created_at",
+      "id",
+      "previous_status",
+      "purchase_id",
+      "reason",
+      "status",
+      "stripe_event_id",
+    ]);
+  });
+
+  it("trouve les écritures", () => {
+    expect(WRITES.length).toBeGreaterThanOrEqual(5);
+    expect(WRITES.map((site) => site.table)).toContain("purchase_status_events");
+  });
+});
+
+describe("chaque écriture ne nomme que des colonnes déclarées", () => {
+  it.each(WRITES.map((site) => [`${site.file} → ${site.table}`, site] as const))(
+    "%s",
+    (_label, site) => {
+      const declared = COLUMNS.get(site.table);
+      expect(
+        declared,
+        `La table ${site.table} n'est pas déclarée dans types/supabase.ts.`
+      ).toBeDefined();
+
+      for (const column of site.columns) {
+        expect(
+          declared!.has(column),
+          `${site.file} écrit \`${column}\` dans ${site.table}, qui ne la déclare pas.\n` +
+            "Si les types viennent d'être régénérés, c'est la base qui a raison :\n" +
+            "la colonne a été supposée, et l'écriture échouera en production."
+        ).toBe(true);
+      }
+    }
+  );
+});
