@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
+import { forReveal } from "@/lib/brand/shapes";
 import { readJob, statusOf } from "@/lib/generation/job";
 import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { GenerationScreen } from "@/components/reveal/generation-screen";
@@ -62,7 +63,14 @@ export default async function RevealPage({
     <RevealView
       brandKitId={id}
       projectId={kit.projectId}
-      directions={kit.directions}
+      /*
+       * `about_excerpt` est RETIRÉ ici, et pas dans le composant : les props
+       * d'un composant client sont sérialisées dans la charge utile React, donc
+       * tout ce qui descend part sur le fil, dessiné ou non. La révélation est
+       * gratuite par choix ; ce paragraphe-là ne l'était pas — il n'apparaît sur
+       * aucune carte.
+       */
+      directions={kit.directions.map(forReveal)}
       practiceName={kit.practiceName}
       paid={tier !== null}
       regenerationsLeft={left}

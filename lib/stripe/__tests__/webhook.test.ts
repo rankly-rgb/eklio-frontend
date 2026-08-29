@@ -151,9 +151,11 @@ function subscriptionEvent(
 }
 
 describe("périmètre des events traités", () => {
-  it("ne traite que les cinq events du modèle économique", () => {
+  it("ne traite que les sept events du modèle économique", () => {
     expect([...HANDLED_EVENT_TYPES]).toEqual([
       "checkout.session.completed",
+      "checkout.session.async_payment_succeeded",
+      "checkout.session.async_payment_failed",
       "customer.subscription.created",
       "customer.subscription.updated",
       "customer.subscription.deleted",
@@ -561,5 +563,97 @@ describe("résolution de l'utilisateur sur un event d'abonnement", () => {
 
     expect(outcome.status).toBe("processed");
     expect(recorded.subscriptions[0].userId).toBe(USER);
+  });
+});
+
+/*
+ * ── LE PAIEMENT DIFFÉRÉ ──────────────────────────────────────────────────
+ *
+ * Un prélèvement bancaire complète la session AVANT que l'argent n'arrive.
+ * L'achat est écrit `pending`, qui n'accorde rien, et c'est le second event
+ * qui l'achève. Sans lui — c'était le cas — la praticienne payait et n'était
+ * jamais débloquée : un paiement encaissé sans contrepartie, sans erreur nulle
+ * part.
+ */
+describe("checkout.session.async_payment_succeeded", () => {
+  it("fait passer l'achat de `pending` à `paid`", async () => {
+    const seen = new Set<string>();
+    const { ports, recorded } = makePorts({}, seen);
+
+    // 1. La session se complète, l'argent n'est pas là.
+    await processStripeEvent(
+      ports,
+      checkoutEvent({ payment_status: "unpaid" }, "evt_async_1")
+    );
+    expect(recorded.purchases[0].status).toBe("pending");
+    expect(recorded.purchases[0].paidAt).toBeNull();
+
+    // 2. La banque confirme.
+    const settled = checkoutEvent({ payment_status: "paid" }, "evt_async_2");
+    (settled as { type: string }).type = "checkout.session.async_payment_succeeded";
+    const outcome = await processStripeEvent(ports, settled);
+
+    expect(outcome.status).toBe("processed");
+    expect(recorded.purchases[1].status).toBe("paid");
+    expect(recorded.purchases[1].paidAt).not.toBeNull();
+    // Même session de checkout : l'upsert met la ligne à jour, il n'en crée
+    // pas une seconde.
+    expect(recorded.purchases[1].checkoutSessionId).toBe(
+      recorded.purchases[0].checkoutSessionId
+    );
+  });
+
+  it("est un event à part entière, pas un rejeu", async () => {
+    const seen = new Set<string>();
+    const { ports } = makePorts({}, seen);
+    await processStripeEvent(ports, checkoutEvent({}, "evt_c"));
+
+    const settled = checkoutEvent({}, "evt_async_ok");
+    (settled as { type: string }).type = "checkout.session.async_payment_succeeded";
+    expect((await processStripeEvent(ports, settled)).status).toBe("processed");
+  });
+});
+
+describe("checkout.session.async_payment_failed", () => {
+  it("écrit `failed` sans regarder `payment_status`", async () => {
+    // Stripe n'a aucune raison d'avoir mis la session à jour : c'est le TYPE
+    // de l'event qui fait foi.
+    const { ports, recorded } = makePorts();
+    const event = checkoutEvent({ payment_status: "paid" }, "evt_async_ko");
+    (event as { type: string }).type = "checkout.session.async_payment_failed";
+
+    const outcome = await processStripeEvent(ports, event);
+
+    expect(outcome.status).toBe("processed");
+    expect(recorded.purchases[0].status).toBe("failed");
+    expect(recorded.purchases[0].paidAt).toBeNull();
+  });
+
+  it("ne va pas relire un abonnement qui n'a pas été activé", async () => {
+    const fetchSubscription = vi.fn().mockResolvedValue(null);
+    const { ports, recorded } = makePorts({ fetchSubscription });
+    const event = checkoutEvent(
+      { subscription: "sub_test_1" },
+      "evt_async_ko_sub"
+    );
+    (event as { type: string }).type = "checkout.session.async_payment_failed";
+
+    await processStripeEvent(ports, event);
+
+    expect(fetchSubscription).not.toHaveBeenCalled();
+    expect(recorded.subscriptions).toEqual([]);
+  });
+
+  it("garde la ligne plutôt que de la supprimer", async () => {
+    // Elle porte la trace d'une tentative que la praticienne a bien faite, et
+    // qu'elle peut vouloir comprendre.
+    const { ports, recorded } = makePorts();
+    const event = checkoutEvent({}, "evt_async_ko_2");
+    (event as { type: string }).type = "checkout.session.async_payment_failed";
+
+    await processStripeEvent(ports, event);
+
+    expect(recorded.purchases).toHaveLength(1);
+    expect(recorded.purchases[0].tier).toBe("practice");
   });
 });

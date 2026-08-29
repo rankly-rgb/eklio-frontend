@@ -4,7 +4,11 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import { Button } from "@/components/ui/button";
 import { BrandPreview } from "@/components/preview/brand-preview";
 import { useBrandFont } from "@/components/preview/use-brand-font";
-import { PALETTE_ROLES, previewModelFromDirection, type Direction } from "@/lib/brand/shapes";
+import {
+  PALETTE_ROLES,
+  previewModelFromDirection,
+  type RevealDirection,
+} from "@/lib/brand/shapes";
 
 /*
  * Une carte de direction (Écran 4).
@@ -26,7 +30,7 @@ export function DirectionCard({
   onChoose,
   pending,
 }: {
-  direction: Direction;
+  direction: RevealDirection;
   practiceName: string | null;
   index: number;
   onChoose: () => void;

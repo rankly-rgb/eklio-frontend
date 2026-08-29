@@ -22,6 +22,21 @@ import type { SubscriptionStatus } from "@/types/supabase";
 
 export const HANDLED_EVENT_TYPES = [
   "checkout.session.completed",
+  /*
+   * ⚠ LES DEUX EVENTS DU PAIEMENT DIFFÉRÉ, et ils n'étaient pas là.
+   *
+   * `checkout.session.completed` arrive avec `payment_status: "unpaid"` sur un
+   * moyen de paiement asynchrone (prélèvement bancaire, virement) : la session
+   * est complétée, l'argent n'est pas encore arrivé. On écrit alors l'achat en
+   * `pending`, qui n'accorde aucun droit.
+   *
+   * Ce qui manquait, c'est le SECOND event. Sans lui, la praticienne payait et
+   * n'était JAMAIS débloquée : sa ligne `purchases` restait `pending` pour
+   * toujours, et rien dans le produit ne la faisait bouger. Un paiement
+   * encaissé sans contrepartie, silencieux, sans erreur nulle part.
+   */
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
@@ -42,7 +57,12 @@ export type PurchaseRow = {
   paymentIntentId: string | null;
   amountCents: number;
   currency: string;
-  status: "pending" | "paid";
+  /*
+   * `failed` : le paiement différé a été refusé par la banque. La ligne reste,
+   * avec son statut — la supprimer ferait disparaître la trace d'une tentative
+   * que la praticienne a bien faite, et qu'elle peut vouloir comprendre.
+   */
+  status: "pending" | "paid" | "failed";
   paidAt: string | null;
 };
 
@@ -199,12 +219,22 @@ async function resolveUserId(
   return ports.userIdForCustomer(customerId);
 }
 
-async function handleCheckoutCompleted(
+/**
+ * Les trois events de session de checkout, sur un seul chemin.
+ *
+ * Ils portent le MÊME objet `Checkout.Session` et demandent la même résolution
+ * d'utilisateur ; seul le statut qu'ils écrivent change. Les séparer en trois
+ * handlers ferait trois copies de la résolution, et c'est elle qui décide à
+ * quel compte un paiement se rattache.
+ */
+async function handleCheckoutSession(
   ports: WebhookPorts,
-  session: Stripe.Checkout.Session
+  session: Stripe.Checkout.Session,
+  type:
+    | "checkout.session.completed"
+    | "checkout.session.async_payment_succeeded"
+    | "checkout.session.async_payment_failed"
 ): Promise<WebhookOutcome> {
-  const type = "checkout.session.completed";
-
   const metadata = parseCheckoutMetadata(
     session.metadata as Record<string, string> | null
   );
@@ -235,11 +265,19 @@ async function handleCheckoutCompleted(
    * `payment_status` peut être `unpaid` sur un moyen de paiement asynchrone :
    * la session est complétée, l'argent n'est pas encore là. On enregistre alors
    * l'achat en `pending`, ce qui n'accorde aucun droit (le gating exige
-   * `paid`), plutôt que de le perdre.
+   * `paid`), plutôt que de le perdre — et
+   * `checkout.session.async_payment_succeeded` vient l'achever.
+   *
+   * L'échec du paiement différé écrit `failed` sans regarder
+   * `payment_status` : Stripe n'a pas de raison de l'avoir mis à jour sur la
+   * session, et c'est le TYPE de l'event qui fait foi ici.
    */
+  const failed = type === "checkout.session.async_payment_failed";
   const paid =
-    session.payment_status === "paid" ||
-    session.payment_status === "no_payment_required";
+    !failed &&
+    (session.payment_status === "paid" ||
+      session.payment_status === "no_payment_required");
+  const status = failed ? "failed" : paid ? "paid" : "pending";
 
   /*
    * Le montant vient du CATALOGUE, pas de `amount_total` : quand l'add-on est
@@ -254,7 +292,7 @@ async function handleCheckoutCompleted(
     paymentIntentId: idOf(session.payment_intent),
     amountCents: KIT_PLANS[metadata.tier].amountCents,
     currency: session.currency ?? CURRENCY,
-    status: paid ? "paid" : "pending",
+    status,
     paidAt: paid ? new Date().toISOString() : null,
   });
 
@@ -262,8 +300,11 @@ async function handleCheckoutCompleted(
    * L'add-on a été gardé : la session porte un abonnement. On le RELIT chez
    * Stripe plutôt que de se fier au champ de la session, qui n'est qu'une
    * référence — statut et fin de période n'y sont pas.
+   *
+   * Rien à relire quand le paiement a échoué : Stripe n'aura pas activé
+   * l'abonnement, et un `customer.subscription.*` viendra le dire lui-même.
    */
-  const subscriptionId = idOf(session.subscription);
+  const subscriptionId = failed ? null : idOf(session.subscription);
   if (subscriptionId) {
     const subscription = await ports.fetchSubscription(subscriptionId);
     if (subscription) {
@@ -367,9 +408,12 @@ export async function processStripeEvent(
   try {
     switch (event.type) {
       case "checkout.session.completed":
-        return await handleCheckoutCompleted(
+      case "checkout.session.async_payment_succeeded":
+      case "checkout.session.async_payment_failed":
+        return await handleCheckoutSession(
           ports,
-          event.data.object as Stripe.Checkout.Session
+          event.data.object as Stripe.Checkout.Session,
+          event.type
         );
       case "customer.subscription.created":
       case "customer.subscription.updated":

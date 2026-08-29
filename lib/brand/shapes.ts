@@ -153,6 +153,44 @@ export const directionSchema = z.object({
 });
 export type Direction = z.infer<typeof directionSchema>;
 
+/*
+ * ── La direction telle qu'elle part À L'ÉCRAN DE RÉVÉLATION ─────────────
+ *
+ * Une direction PRIVÉE de son `about_excerpt`.
+ *
+ * La révélation est gratuite, délibérément : trois directions complètes sont
+ * l'argument de vente. Mais `about_excerpt` n'y est jamais DESSINÉ — la carte
+ * rend le nom, la justification, la maquette, la palette, la paire
+ * typographique et les mots-clés, et le paragraphe « About » n'apparaît
+ * nulle part. Il partait quand même, sérialisé dans la charge utile React
+ * avec le reste des props.
+ *
+ * Autrement dit : la charge utile était un SUR-ensemble de ce que l'écran
+ * montre. Le reste est offert exprès ; celui-là ne l'était pas.
+ */
+export type RevealDirection = Omit<Direction, "about_excerpt">;
+
+/** Retire de la direction ce que la révélation ne dessine pas. */
+export function forReveal(direction: Direction): RevealDirection {
+  // Construit la copie clé par clé plutôt que par déstructuration : une
+  // variable jetée pour son effet de bord se fait supprimer par le prochain
+  // qui passe, et le champ repartirait sur le fil sans que rien ne le dise.
+  const revealed: RevealDirection = {
+    id: direction.id,
+    name: direction.name,
+    rationale: direction.rationale,
+    palette: direction.palette,
+    hero: direction.hero,
+    typography: direction.typography,
+    tone_keywords: direction.tone_keywords,
+  };
+  if (direction.rendering) revealed.rendering = direction.rendering;
+  if (direction.recommended !== undefined) {
+    revealed.recommended = direction.recommended;
+  }
+  return revealed;
+}
+
 /** La direction recommandée, ou la première à défaut. */
 export function recommendedDirection(directions: Direction[]): Direction | null {
   return directions.find((entry) => entry.recommended) ?? directions[0] ?? null;
@@ -282,9 +320,13 @@ export type PreviewModel = z.infer<typeof previewModelSchema>;
 /**
  * Modèle de prévisualisation dérivé d'une DIRECTION, pour rendre la même
  * maquette sur l'écran de révélation et sur le kit de marque.
+ *
+ * `about_excerpt` est FACULTATIF ici : l'écran de révélation passe une
+ * `RevealDirection`, qui ne le porte pas, et la maquette de carte ne le rend
+ * pas non plus (elle pose des lignes de placeholder à sa place).
  */
 export function previewModelFromDirection(
-  direction: Direction,
+  direction: RevealDirection & Partial<Pick<Direction, "about_excerpt">>,
   practiceName: string | null
 ): PreviewModel {
   return {
@@ -296,7 +338,7 @@ export function previewModelFromDirection(
       google_fonts_url: direction.typography.google_fonts_url,
     },
     hero: direction.hero,
-    about_excerpt: direction.about_excerpt,
+    about_excerpt: direction.about_excerpt ?? "",
     specialties: [],
   };
 }

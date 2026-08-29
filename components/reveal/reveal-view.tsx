@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Button } from "@/components/ui/button";
 import { DirectionCard } from "@/components/reveal/direction-card";
-import type { Direction } from "@/lib/brand/shapes";
+import type { RevealDirection } from "@/lib/brand/shapes";
 
 /*
  * La révélation (Écran 4).
@@ -28,7 +28,7 @@ export function RevealView({
 }: {
   brandKitId: string;
   projectId: string;
-  directions: Direction[];
+  directions: RevealDirection[];
   practiceName: string | null;
   paid: boolean;
   regenerationsLeft: number | null;
@@ -48,7 +48,7 @@ export function RevealView({
     router.prefetch(`/app/brand-kits/${brandKitId}`);
   }, [router, brandKitId]);
 
-  async function choose(direction: Direction) {
+  async function choose(direction: RevealDirection) {
     setError(null);
 
     if (!paid) {
