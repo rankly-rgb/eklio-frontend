@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { ActTwoStatic } from "@/components/reveal/ceremony/act-two";
+import { RevealCeremony } from "@/components/reveal/ceremony/reveal-ceremony";
 import {
   SAMPLE_DIRECTIONS,
   SAMPLE_PRACTICE_NAME,
+  SAMPLE_PRACTITIONER_LINE,
   SAMPLE_PREVIEW,
+  SAMPLE_SOCIAL_TEMPLATES,
+  SAMPLE_VOICE_GUIDE,
 } from "@/lib/brand/sample";
-import type { RevealPayloadDirection } from "@/lib/brand/shapes";
+import type { RevealPayload } from "@/lib/brand/shapes";
 
 /*
  * Galerie de développement pour la cérémonie de révélation — même raison
@@ -16,9 +18,9 @@ import type { RevealPayloadDirection } from "@/lib/brand/shapes";
  * garde de session de `/app` ; ce n'est pas un raccourci autour d'elle, c'est
  * la seule façon de la contrôler visuellement hors ligne.
  *
- * Le résumé de contraste est un doublure : `brand_kit_direction_contrast`
+ * Le résumé de contraste est une doublure : `brand_kit_direction_contrast`
  * (eklio-backend) le calcule réellement, cette page ne fait que lui donner
- * une forme valide pour que <ActTwoStatic> puisse s'en servir plus tard.
+ * une forme valide.
  */
 
 const SAMPLE_CONTRAST = {
@@ -31,40 +33,44 @@ const SAMPLE_CONTRAST = {
       ratio: 13.31,
       level: "AAA" as const,
     },
+    {
+      pair_id: "cta_label_on_primary",
+      label: "Button label on your primary color",
+      fg: "#10100F",
+      bg: "#B4674A",
+      ratio: 4.51,
+      level: "AA" as const,
+    },
   ],
   worst_ratio: 4.51,
   passes_aa: true,
 };
 
-export default function DevCeremonyPage() {
-  const [index, setIndex] = useState(1);
-  const direction: RevealPayloadDirection = {
-    ...SAMPLE_DIRECTIONS[index],
+const SAMPLE_PAYLOAD: RevealPayload = {
+  brand_kit_id: "sample-kit",
+  practice: {
+    name: SAMPLE_PRACTICE_NAME,
+    city: "Portland",
+    state: "OR",
+    specialties: SAMPLE_PREVIEW.specialties,
+  },
+  practitioner_line: SAMPLE_PRACTITIONER_LINE,
+  voice_guide: SAMPLE_VOICE_GUIDE,
+  social_templates: SAMPLE_SOCIAL_TEMPLATES,
+  directions: SAMPLE_DIRECTIONS.map((direction) => ({
+    ...direction,
     contrast: SAMPLE_CONTRAST,
     ambiance_url: null,
-  };
+  })),
+};
 
+export default function DevCeremonyPage() {
   return (
-    <>
-      <div className="fixed top-3 left-3 z-[60] flex gap-2">
-        {SAMPLE_DIRECTIONS.map((entry, i) => (
-          <button
-            key={entry.id}
-            type="button"
-            onClick={() => setIndex(i)}
-            className="rounded-pill border border-line bg-bg px-3 py-1 text-mono-sm font-mono uppercase text-ink-2"
-          >
-            {entry.name}
-          </button>
-        ))}
-      </div>
-      <ActTwoStatic
-        direction={direction}
-        practiceName={SAMPLE_PRACTICE_NAME}
-        specialties={SAMPLE_PREVIEW.specialties}
-        index={index}
-        total={SAMPLE_DIRECTIONS.length}
-      />
-    </>
+    <RevealCeremony
+      brandKitId="sample-kit"
+      projectId="sample-project"
+      payload={SAMPLE_PAYLOAD}
+      paid={false}
+    />
   );
 }

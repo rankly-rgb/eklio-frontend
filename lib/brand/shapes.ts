@@ -377,6 +377,7 @@ export type RevealPractice = z.infer<typeof revealPracticeSchema>;
 export const revealPayloadSchema = z.object({
   brand_kit_id: z.string(),
   practice: revealPracticeSchema,
+  practitioner_line: z.string().nullable(),
   voice_guide: voiceGuideSchema.nullable(),
   social_templates: socialTemplatesSchema.nullable(),
   directions: z.array(revealDirectionSchema).length(3),

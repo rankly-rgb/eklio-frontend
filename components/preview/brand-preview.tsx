@@ -37,7 +37,7 @@ import {
  * d'où des valeurs littérales — chacune annotée de sa référence.
  */
 
-type SiteSize = "panel" | "card" | "full" | "hero";
+type SiteSize = "panel" | "card" | "full" | "hero" | "phone";
 
 type SiteProps = {
   model: PreviewModel;
@@ -65,11 +65,33 @@ type ThumbnailProps = {
   className?: string;
 };
 
-export type BrandPreviewProps = SiteProps | SocialProps | ThumbnailProps;
+/** Composants, pas des images (§2) : carte de visite de la cascade de l'Acte 2. */
+type BusinessCardProps = {
+  model: PreviewModel;
+  variant: "business-card";
+  practitionerLine?: string | null;
+  className?: string;
+};
+
+/** Coin de papier à en-tête — nom de la practice et filet primaire, rien d'inventé. */
+type LetterheadProps = {
+  model: PreviewModel;
+  variant: "letterhead";
+  className?: string;
+};
+
+export type BrandPreviewProps =
+  | SiteProps
+  | SocialProps
+  | ThumbnailProps
+  | BusinessCardProps
+  | LetterheadProps;
 
 export function BrandPreview(props: BrandPreviewProps) {
   if (props.variant === "social") return <SocialTile {...props} />;
   if (props.variant === "thumbnail") return <Thumbnail {...props} />;
+  if (props.variant === "business-card") return <BusinessCard {...props} />;
+  if (props.variant === "letterhead") return <Letterhead {...props} />;
   return <SitePreview {...props} />;
 }
 
@@ -139,6 +161,71 @@ function SitePreview({ model, size, rendering, className = "" }: SiteProps) {
   const ready = useBrandFont(model.tokens.google_fonts_url);
   const nav = rendering ?? defaultRendering(model.tokens);
   const practice = model.practice_name ?? "Your practice";
+
+  if (size === "phone") {
+    return (
+      <TokenRoot model={model} hairlineAlpha={HAIRLINE_ALPHA.full} className={className}>
+        <div
+          className="overflow-hidden border-[6px] border-ink bg-surface"
+          style={{ width: 172, height: 344, borderRadius: "var(--radius-device)" }}
+        >
+          <div className="flex h-full flex-col p-4" style={{ background: "var(--p-light)" }}>
+            <FontFade ready={ready} className="flex-none">
+              <span
+                className="whitespace-nowrap"
+                style={{
+                  fontFamily: "var(--p-heading)",
+                  fontWeight: 600,
+                  fontSize: 11,
+                  color: "var(--p-primary)",
+                }}
+              >
+                {practice}
+              </span>
+            </FontFade>
+
+            <FontFade ready={ready} className="mt-7 flex-none">
+              <div
+                className="text-pretty"
+                style={{
+                  fontFamily: "var(--p-heading)",
+                  fontWeight: 500,
+                  fontSize: 17,
+                  lineHeight: 1.15,
+                  letterSpacing: "-0.01em",
+                  color: "var(--p-ink)",
+                }}
+              >
+                {model.hero.headline}
+              </div>
+            </FontFade>
+
+            <div
+              className="mt-2 flex-none"
+              style={{ fontFamily: "var(--p-body)", fontSize: 9, lineHeight: 1.5, color: "var(--p-ink-soft)" }}
+            >
+              {model.hero.subhead}
+            </div>
+
+            <div
+              className="mt-3 inline-flex flex-none items-center self-start rounded-pill"
+              style={{
+                height: 22,
+                paddingInline: 12,
+                background: "var(--p-primary)",
+                color: "var(--p-on-primary)",
+                fontFamily: "var(--p-body)",
+                fontWeight: 700,
+                fontSize: 9,
+              }}
+            >
+              {model.hero.cta_label}
+            </div>
+          </div>
+        </div>
+      </TokenRoot>
+    );
+  }
 
   if (size === "hero") {
     return (
@@ -390,6 +477,20 @@ function SitePreview({ model, size, rendering, className = "" }: SiteProps) {
   );
 }
 
+/*
+ * ⚠ DÉFAUT NOMMÉ ET CORRIGÉ ICI (pas différé) : cette barre débordait à 390px
+ * — les trois liens du milieu forçaient une largeur que la practice+CTA
+ * n'avaient plus la place de partager. C'est l'écran de conversion que la
+ * plupart des praticiennes ouvriront en premier sur téléphone ; un défaut
+ * visuel dessus n'est pas un détail à reporter avec le variant téléphone de
+ * l'étape 4, il fallait le corriger dans CE composant partagé.
+ *
+ * Deux mesures, orthogonales à `size` : les trois liens disparaissent sous
+ * `max-md` (768px) plutôt que de se compresser en illisible, et le nom de la
+ * practice comme le remplissage horizontal passent par `clamp()` — un vrai
+ * viewport étroit, pas juste `size==="panel"`, qui reste sa propre géométrie
+ * déjà approuvée sur les huit références.
+ */
 function SiteNavbar({
   practice,
   ctaLabel,
@@ -406,20 +507,21 @@ function SiteNavbar({
     <div
       className="flex items-center"
       style={{
-        gap: isPanel ? 10 : 28,
-        padding: isPanel ? "16px" : "20px 36px",
+        gap: isPanel ? 10 : 20,
+        padding: isPanel ? "16px" : "20px clamp(16px, 5vw, 36px)",
         borderBottom: isPanel ? undefined : "1px solid var(--p-rule)",
       }}
     >
-      <FontFade ready={ready} className="flex-none">
+      <FontFade ready={ready} className="min-w-0 flex-none">
         <span
-          className="whitespace-nowrap"
+          className="block truncate"
           style={{
             fontFamily: "var(--p-heading)",
             fontWeight: 600,
-            fontSize: isPanel ? 13 : 19,
+            fontSize: isPanel ? 13 : "clamp(15px, 4vw, 19px)",
             letterSpacing: "-0.01em",
             color: "var(--p-primary)",
+            maxWidth: isPanel ? undefined : "clamp(120px, 40vw, 320px)",
           }}
         >
           {practice}
@@ -429,7 +531,7 @@ function SiteNavbar({
       <div className="flex-1" />
 
       <div
-        className="flex flex-none items-center whitespace-nowrap"
+        className={`flex flex-none items-center whitespace-nowrap ${isPanel ? "" : "max-md:hidden"}`}
         style={{
           gap: isPanel ? 8 : 22,
           fontFamily: "var(--p-body)",
@@ -446,7 +548,7 @@ function SiteNavbar({
         className="flex flex-none items-center whitespace-nowrap rounded-pill"
         style={{
           height: isPanel ? 22 : 32,
-          paddingInline: isPanel ? 9 : 16,
+          paddingInline: isPanel ? 9 : "clamp(12px, 3vw, 16px)",
           background: "var(--p-primary)",
           color: "var(--p-on-primary)",
           fontFamily: "var(--p-body)",
@@ -635,6 +737,76 @@ function SiteFooter({ practice }: { practice: string }) {
     >
       {practice.toUpperCase()}
     </div>
+  );
+}
+
+/* ── Carte de visite et papier à en-tête (cascade de l'Acte 2) ──────────── */
+
+function BusinessCard({ model, practitionerLine, className = "" }: BusinessCardProps) {
+  const ready = useBrandFont(model.tokens.google_fonts_url);
+  const practice = model.practice_name ?? "Your practice";
+  return (
+    <TokenRoot
+      model={model}
+      className={`box-border flex aspect-[7/4] w-[230px] flex-col justify-between rounded-preview border border-line bg-bg p-5 shadow-preview ${className}`}
+    >
+      <FontFade ready={ready}>
+        <span
+          style={{
+            fontFamily: "var(--p-heading)",
+            fontWeight: 600,
+            fontSize: 16,
+            letterSpacing: "-0.01em",
+            color: "var(--p-ink)",
+          }}
+        >
+          {practice}
+        </span>
+      </FontFade>
+      <div>
+        <div className="h-px w-8" style={{ background: "var(--p-primary)" }} />
+        {practitionerLine ? (
+          <FontFade ready={ready} className="mt-2 block">
+            <span
+              style={{
+                fontFamily: "var(--p-body)",
+                fontSize: 11,
+                color: "var(--p-ink-soft)",
+              }}
+            >
+              {practitionerLine}
+            </span>
+          </FontFade>
+        ) : null}
+      </div>
+    </TokenRoot>
+  );
+}
+
+function Letterhead({ model, className = "" }: LetterheadProps) {
+  const ready = useBrandFont(model.tokens.google_fonts_url);
+  const practice = model.practice_name ?? "Your practice";
+  return (
+    <TokenRoot
+      model={model}
+      className={`box-border w-[190px] rounded-preview border border-line bg-bg p-5 shadow-preview ${className}`}
+    >
+      <FontFade ready={ready}>
+        <span
+          className="uppercase"
+          style={{
+            fontFamily: "var(--p-heading)",
+            fontWeight: 600,
+            fontSize: 13,
+            letterSpacing: "0.04em",
+            color: "var(--p-primary)",
+          }}
+        >
+          {practice}
+        </span>
+      </FontFade>
+      <div className="mt-2.5 h-px w-full" style={{ background: "var(--p-rule)" }} />
+    </TokenRoot>
   );
 }
 

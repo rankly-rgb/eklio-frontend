@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { loadRevealPayload } from "@/lib/data/reveal";
-import { SAMPLE_DIRECTIONS, SAMPLE_PRACTICE_NAME } from "@/lib/brand/sample";
+import {
+  SAMPLE_DIRECTIONS,
+  SAMPLE_PRACTICE_NAME,
+  SAMPLE_PRACTITIONER_LINE,
+} from "@/lib/brand/sample";
 import { SAMPLE_VOICE_GUIDE, SAMPLE_SOCIAL_TEMPLATES } from "@/lib/brand/sample";
 
 /*
@@ -38,6 +42,7 @@ function samplePayload() {
       state: "OR",
       specialties: ["Anxiety", "Burnout", "Life transitions"],
     },
+    practitioner_line: SAMPLE_PRACTITIONER_LINE,
     voice_guide: SAMPLE_VOICE_GUIDE,
     social_templates: SAMPLE_SOCIAL_TEMPLATES,
     directions: SAMPLE_DIRECTIONS.map((direction) => ({

@@ -3,22 +3,21 @@ import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import { loadRevealPayload } from "@/lib/data/reveal";
 import { readJob, statusOf } from "@/lib/generation/job";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { GenerationScreen } from "@/components/reveal/generation-screen";
-import { ActTwoStatic } from "@/components/reveal/ceremony/act-two";
+import { RevealCeremony } from "@/components/reveal/ceremony/reveal-ceremony";
 
 /*
  * Génération (Écran 3) puis révélation — la même route, deux états.
  *
- * ⚠ EN CHANTIER (plan de livraison, étape 3/7). Cette route rendait jusqu'ici
- * `<RevealView>` — l'écran à trois colonnes (Écran 4). Elle rend désormais
- * `<ActTwoStatic>`, la coquille de la cérémonie plein écran, mais seulement sa
- * scène statique pour une direction : ni cascade, ni couche de preuve, ni
- * zone de décision, ni navigation entre les trois directions — voir le
- * commentaire de tête d'`act-two.tsx`. Conséquence directe : **le choix d'une
- * direction est temporairement inatteignable depuis cette route** tant que
- * l'étape 4 n'a pas posé la zone de décision. `<RevealView>` et
- * `<DirectionCard>` ne sont pas supprimés — ils redeviendront la vue
- * « Compare » (§ Acte 3, étape 6) — mais rien ne les importe plus d'ici.
+ * ⚠ EN CHANTIER (plan de livraison, étape 4/7). `<RevealCeremony>` gère
+ * désormais les trois directions, la navigation, la zone de décision (le
+ * VRAI chemin de sélection — `lib/reveal/use-select-direction.ts`) et la
+ * couche de preuve. Reste hors de cette étape : l'Acte 1 (nom, transition) et
+ * l'Acte 3 « Compare » — `<RevealView>`/`<DirectionCard>` ne sont toujours
+ * pas supprimés, rien ne les importe encore. Voir aussi `act-two.tsx` :
+ * l'arrangement de la cascade n'est PAS vérifié contre
+ * `reveal-ref-1-ceremony.png`, ce fichier n'ayant pas atteint la session.
  *
  * `maxDuration` : cette page n'appelle pas le modèle (la génération vit dans
  * `POST /api/briefs/[id]/generate`, qui porte son propre plafond), mais elle
@@ -61,18 +60,18 @@ export default async function RevealPage({
    * incohérence entre les deux lectures, pas un cas d'usage normal — d'où le
    * 404 plutôt qu'un état d'erreur dédié.
    */
-  const outcome = await loadRevealPayload(supabase, id);
+  const [outcome, tier] = await Promise.all([
+    loadRevealPayload(supabase, id),
+    resolveEntitledTier(supabase, kit.projectId),
+  ]);
   if (!outcome.ok) notFound();
 
-  const shown = outcome.payload.directions[0];
-
   return (
-    <ActTwoStatic
-      direction={shown}
-      practiceName={outcome.payload.practice.name}
-      specialties={outcome.payload.practice.specialties}
-      index={0}
-      total={outcome.payload.directions.length}
+    <RevealCeremony
+      brandKitId={id}
+      projectId={kit.projectId}
+      payload={outcome.payload}
+      paid={tier !== null}
     />
   );
 }
