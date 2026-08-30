@@ -89,6 +89,20 @@ export function previewCssVariables(
   } as React.CSSProperties;
 }
 
+/**
+ * Le bloc d'ambiance avant qu'une image OpenAI ne soit prête — ou pour
+ * toujours, si la fonctionnalité est coupée. Fonction déterministe de la
+ * palette, jamais un aplat gris : un dégradé diagonal du primaire vers le
+ * foncé, les deux mêmes jetons dont le prompt d'ambiance (eklio-backend) part
+ * pour teinter la photo, afin que le bloc ne se lise jamais comme un
+ * espace réservé sans rapport avec la marque.
+ */
+export function ambianceGradient(
+  tokens: Pick<PreviewTokens, "primary" | "dark">
+): string {
+  return `linear-gradient(135deg, ${tokens.primary} 0%, ${tokens.dark} 100%)`;
+}
+
 /*
  * Mots de fin de raison sociale qu'un praticien ne met pas dans son domaine.
  * L'Écran 1 rend `elmandember.com` pour « Elm & Ember Counseling » : le

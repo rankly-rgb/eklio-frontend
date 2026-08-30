@@ -6,6 +6,7 @@ import { PlaceholderLines } from "@/components/ui/placeholder-lines";
 import { useBrandFont } from "@/components/preview/use-brand-font";
 import {
   HAIRLINE_ALPHA,
+  ambianceGradient,
   domainFor,
   previewCssVariables,
 } from "@/lib/brand/derive";
@@ -36,7 +37,7 @@ import {
  * d'où des valeurs littérales — chacune annotée de sa référence.
  */
 
-type SiteSize = "panel" | "card" | "full";
+type SiteSize = "panel" | "card" | "full" | "hero";
 
 type SiteProps = {
   model: PreviewModel;
@@ -130,7 +131,7 @@ function FontFade({
  */
 function headlineSize(headline: string, size: SiteSize): number {
   if (size === "card") return 27;
-  if (size === "full") return 42;
+  if (size === "full" || size === "hero") return 42;
   return headline.length > 30 ? 27 : 34;
 }
 
@@ -138,6 +139,104 @@ function SitePreview({ model, size, rendering, className = "" }: SiteProps) {
   const ready = useBrandFont(model.tokens.google_fonts_url);
   const nav = rendering ?? defaultRendering(model.tokens);
   const practice = model.practice_name ?? "Your practice";
+
+  if (size === "hero") {
+    return (
+      <TokenRoot
+        model={model}
+        hairlineAlpha={HAIRLINE_ALPHA.full}
+        className={className}
+      >
+        <BrowserFrame size="full" domain={domainFor(model.practice_name)}>
+          <div style={{ background: "var(--p-light)" }}>
+            <SiteNavbar
+              practice={practice}
+              ctaLabel={model.hero.cta_label}
+              ready={ready}
+              size="full"
+            />
+
+            <div className="flex items-start gap-8 p-[32px_40px] max-lg:flex-col">
+              <div className="min-w-0 flex-1">
+                {model.hero.overline ? (
+                  <div
+                    className="font-mono uppercase"
+                    style={{
+                      fontSize: 11,
+                      letterSpacing: "var(--tracking-mono-18)",
+                      color: "var(--p-secondary)",
+                    }}
+                  >
+                    {model.hero.overline}
+                  </div>
+                ) : null}
+
+                <FontFade ready={ready}>
+                  <div
+                    className="text-pretty"
+                    style={{
+                      fontFamily: "var(--p-heading)",
+                      fontWeight: 500,
+                      fontSize: headlineSize(model.hero.headline, size),
+                      lineHeight: 1.06,
+                      letterSpacing: "-0.02em",
+                      color: "var(--p-ink)",
+                      marginTop: 18,
+                      minHeight: 88,
+                    }}
+                  >
+                    {model.hero.headline}
+                  </div>
+                </FontFade>
+
+                <div
+                  className="mt-3"
+                  style={{
+                    fontFamily: "var(--p-body)",
+                    fontSize: 16,
+                    lineHeight: 1.6,
+                    color: "var(--p-ink-soft)",
+                    maxWidth: 420,
+                  }}
+                >
+                  {model.hero.subhead}
+                </div>
+
+                <div
+                  className="mt-[22px] inline-flex items-center rounded-pill"
+                  style={{
+                    fontFamily: "var(--p-body)",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    height: 44,
+                    paddingInline: 24,
+                    background: "var(--p-primary)",
+                    color: "var(--p-on-primary)",
+                  }}
+                >
+                  {model.hero.cta_label}
+                </div>
+              </div>
+
+              {/*
+                Bloc d'ambiance — dégradé déterministe (§ ambianceGradient) tant
+                qu'aucune image OpenAI n'est prête, ou pour toujours si la
+                fonctionnalité est coupée. Jamais un gris : le fondu croisé vers
+                la vraie photo, quand elle arrive, se fait sur ce même bloc.
+              */}
+              <div
+                className="aspect-[4/3] w-full flex-none rounded-preview max-lg:w-full lg:w-[42%]"
+                style={{ background: ambianceGradient(model.tokens) }}
+              />
+            </div>
+
+            <SpecialtiesBand specialties={model.specialties} />
+            <SiteFooter practice={practice} />
+          </div>
+        </BrowserFrame>
+      </TokenRoot>
+    );
+  }
 
   if (size === "card") {
     return (
@@ -482,6 +581,59 @@ function AboutBlock({ model, size }: { model: PreviewModel; size: SiteSize }) {
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/*
+ * Bande « what I work with », trois colonnes — une par spécialité RÉELLE
+ * (`practice.specialties`, `brand_kit_reveal_get`). Rien n'est inventé : pas
+ * de descriptif d'une phrase, qui n'existe nulle part avant qu'un site spec
+ * ne soit généré. Une case vide plutôt qu'une troisième spécialité fabriquée,
+ * si elle n'en a choisi que deux.
+ */
+function SpecialtiesBand({ specialties }: { specialties: string[] }) {
+  if (specialties.length === 0) return null;
+  return (
+    <div
+      className="grid grid-cols-3 gap-6 p-[28px_40px] max-lg:grid-cols-1"
+      style={{ borderTop: "1px solid var(--p-rule)" }}
+    >
+      {specialties.map((label) => (
+        <div key={label}>
+          <div className="h-[3px] w-6" style={{ background: "var(--p-primary)" }} />
+          <div
+            className="mt-2.5"
+            style={{
+              fontFamily: "var(--p-heading)",
+              fontWeight: 500,
+              fontSize: 15,
+              color: "var(--p-ink)",
+            }}
+          >
+            {label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Pied de page sombre — nom de la practice seul, en capitales sur `--p-dark`. */
+function SiteFooter({ practice }: { practice: string }) {
+  return (
+    <div
+      className="p-[20px_40px]"
+      style={{
+        background: "var(--p-dark)",
+        fontFamily: "var(--p-heading)",
+        fontWeight: 600,
+        fontSize: 13,
+        letterSpacing: "0.02em",
+        color: "var(--p-paper)",
+      }}
+    >
+      {practice.toUpperCase()}
     </div>
   );
 }

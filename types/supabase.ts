@@ -158,6 +158,80 @@ export type Database = {
         }
         Relationships: []
       }
+      direction_asset_daily_spend: {
+        Row: {
+          actual_cents: number
+          reserved_cents: number
+          spend_date: string
+        }
+        Insert: {
+          actual_cents?: number
+          reserved_cents?: number
+          spend_date?: string
+        }
+        Update: {
+          actual_cents?: number
+          reserved_cents?: number
+          spend_date?: string
+        }
+        Relationships: []
+      }
+      direction_assets: {
+        Row: {
+          brand_kit_id: string
+          claimed_at: string | null
+          cost_cents: number | null
+          created_at: string
+          direction_index: number
+          id: string
+          kind: string
+          palette_hash: string | null
+          reserved_cents: number | null
+          status: string
+          storage_path: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          brand_kit_id: string
+          claimed_at?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          direction_index: number
+          id?: string
+          kind?: string
+          palette_hash?: string | null
+          reserved_cents?: number | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          brand_kit_id?: string
+          claimed_at?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          direction_index?: number
+          id?: string
+          kind?: string
+          palette_hash?: string | null
+          reserved_cents?: number | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direction_assets_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       directions: {
         Row: {
           body_font: string
@@ -1264,6 +1338,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      brand_kit_direction_contrast: { Args: { p_direction: Json }; Returns: Json }
+      brand_kit_direction_palette_hash: {
+        Args: { p_palette: Json }
+        Returns: string
+      }
       brand_kit_directions_contrasted: { Args: { p: Json }; Returns: boolean }
       brand_kit_directions_rendering_valid: {
         Args: { p: Json }
@@ -1276,6 +1355,7 @@ export type Database = {
       brand_kit_hero_valid: { Args: { p: Json }; Returns: boolean }
       brand_kit_is_owned: { Args: { p_brand_kit_id: string }; Returns: boolean }
       brand_kit_palette_valid: { Args: { p: Json }; Returns: boolean }
+      brand_kit_reveal_get: { Args: { p_brand_kit_id: string }; Returns: Json }
       brand_kit_select_direction: {
         Args: { p_brand_kit_id: string; p_direction_id: string }
         Returns: Json
@@ -1305,6 +1385,31 @@ export type Database = {
       consume_generation_credit: {
         Args: { p_brand_kit_id: string }
         Returns: boolean
+      }
+      direction_assets_claim: {
+        Args: {
+          p_brand_kit_id: string
+          p_cost_estimate_cents: number
+          p_daily_cap_cents: number
+          p_direction_index: number
+          p_palette_hash: string
+          p_reclaim_after?: unknown
+        }
+        Returns: Json
+      }
+      direction_assets_mark_failed: {
+        Args: { p_asset_id: string; p_claim_token: string }
+        Returns: Json
+      }
+      direction_assets_mark_ready: {
+        Args: {
+          p_asset_id: string
+          p_claim_token: string
+          p_cost_cents: number
+          p_storage_path: string
+          p_url: string
+        }
+        Returns: Json
       }
       direction_limits: { Args: never; Returns: Json }
       ensure_month_skeleton: {

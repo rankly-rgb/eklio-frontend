@@ -1,14 +1,24 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
-import { forReveal } from "@/lib/brand/shapes";
+import { loadRevealPayload } from "@/lib/data/reveal";
 import { readJob, statusOf } from "@/lib/generation/job";
-import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { GenerationScreen } from "@/components/reveal/generation-screen";
-import { RevealView } from "@/components/reveal/reveal-view";
+import { ActTwoStatic } from "@/components/reveal/ceremony/act-two";
 
 /*
- * Génération (Écran 3) puis révélation (Écran 4) — la même route, deux états.
+ * Génération (Écran 3) puis révélation — la même route, deux états.
+ *
+ * ⚠ EN CHANTIER (plan de livraison, étape 3/7). Cette route rendait jusqu'ici
+ * `<RevealView>` — l'écran à trois colonnes (Écran 4). Elle rend désormais
+ * `<ActTwoStatic>`, la coquille de la cérémonie plein écran, mais seulement sa
+ * scène statique pour une direction : ni cascade, ni couche de preuve, ni
+ * zone de décision, ni navigation entre les trois directions — voir le
+ * commentaire de tête d'`act-two.tsx`. Conséquence directe : **le choix d'une
+ * direction est temporairement inatteignable depuis cette route** tant que
+ * l'étape 4 n'a pas posé la zone de décision. `<RevealView>` et
+ * `<DirectionCard>` ne sont pas supprimés — ils redeviendront la vue
+ * « Compare » (§ Acte 3, étape 6) — mais rien ne les importe plus d'ici.
  *
  * `maxDuration` : cette page n'appelle pas le modèle (la génération vit dans
  * `POST /api/briefs/[id]/generate`, qui porte son propre plafond), mais elle
@@ -43,46 +53,26 @@ export default async function RevealPage({
     );
   }
 
-  const [tier, credits] = await Promise.all([
-    resolveEntitledTier(supabase, kit.projectId),
-    supabase
-      .from("generation_credits")
-      .select("regenerations_used, plans(regenerations_limit)")
-      .eq("project_id", kit.projectId)
-      .maybeSingle(),
-  ]);
-
   /*
-   * L'allocation vient désormais du plan accordé (`plans.regenerations_limit`,
-   * via `generation_credits.plan_tier`) et non plus d'une colonne propre à
-   * `generation_credits` — cette dernière a été retirée au profit d'une seule
-   * source d'allocation (voir eklio-backend, migration
-   * `plans_and_granted_allowance`). Un projet jamais crédité n'a pas de ligne :
-   * `left` reste `null`, pas zéro.
+   * `loadRevealPayload` appelle `brand_kit_reveal_get` (eklio-backend) plutôt
+   * que de relire `kit.directions` : c'est la seule source du résumé de
+   * contraste réel et de `ambiance_url` par direction. L'appartenance a déjà
+   * été confirmée par `loadBrandKit` ci-dessus ; un échec ici serait donc une
+   * incohérence entre les deux lectures, pas un cas d'usage normal — d'où le
+   * 404 plutôt qu'un état d'erreur dédié.
    */
-  const left = credits.data
-    ? Math.max(
-        0,
-        (credits.data.plans?.regenerations_limit ?? 0) -
-          credits.data.regenerations_used
-      )
-    : null;
+  const outcome = await loadRevealPayload(supabase, id);
+  if (!outcome.ok) notFound();
+
+  const shown = outcome.payload.directions[0];
 
   return (
-    <RevealView
-      brandKitId={id}
-      projectId={kit.projectId}
-      /*
-       * `about_excerpt` est RETIRÉ ici, et pas dans le composant : les props
-       * d'un composant client sont sérialisées dans la charge utile React, donc
-       * tout ce qui descend part sur le fil, dessiné ou non. La révélation est
-       * gratuite par choix ; ce paragraphe-là ne l'était pas — il n'apparaît sur
-       * aucune carte.
-       */
-      directions={kit.directions.map(forReveal)}
-      practiceName={kit.practiceName}
-      paid={tier !== null}
-      regenerationsLeft={left}
+    <ActTwoStatic
+      direction={shown}
+      practiceName={outcome.payload.practice.name}
+      specialties={outcome.payload.practice.specialties}
+      index={0}
+      total={outcome.payload.directions.length}
     />
   );
 }
