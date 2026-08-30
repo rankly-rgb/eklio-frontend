@@ -1,24 +1,3 @@
-/*
- * Types du schéma Supabase — GÉNÉRÉ, ne pas éditer à la main au-dessus de
- * l'addendum en bas de fichier.
- *
- * Source : projet US `eklio-backend-us` (ref fobgdsupyfslxbswfuay, us-east-1),
- * dont le schéma est porté par le repo `eklio-backend` (source de vérité).
- *
- * Régénérer avec :
- *   npx --yes supabase@latest gen types typescript \
- *     --project-id fobgdsupyfslxbswfuay > types/supabase.ts
- * puis réappliquer l'addendum en fin de fichier.
- *
- * `--yes` n'est PAS décoratif. Sans lui, npx pose sa question d'installation
- * sur la sortie STANDARD, et la redirection l'écrit dans le fichier :
- *   Need to install the following packages:
- *   supabase@2.116.0
- *   Ok to proceed? (y) export type Json =
- * Le fichier ne compile alors plus dès sa première ligne, et `tsc` comme
- * `eslint` s'arrêtent là — c'est arrivé, et ça a cassé la branche.
- */
-
 export type Json =
   | string
   | number
@@ -31,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -112,6 +91,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      builder_targets: {
+        Row: {
+          accepts_prompt: boolean | null
+          active: boolean
+          color_panel: string | null
+          docs_url: string | null
+          font_panel: string | null
+          id: string
+          label: string
+          output_kind: string
+          section_panel: string | null
+          sort_order: number
+          template_hint: string | null
+        }
+        Insert: {
+          accepts_prompt?: boolean | null
+          active?: boolean
+          color_panel?: string | null
+          docs_url?: string | null
+          font_panel?: string | null
+          id: string
+          label: string
+          output_kind: string
+          section_panel?: string | null
+          sort_order: number
+          template_hint?: string | null
+        }
+        Update: {
+          accepts_prompt?: boolean | null
+          active?: boolean
+          color_panel?: string | null
+          docs_url?: string | null
+          font_panel?: string | null
+          id?: string
+          label?: string
+          output_kind?: string
+          section_panel?: string | null
+          sort_order?: number
+          template_hint?: string | null
+        }
+        Relationships: []
       }
       client_persona_cards: {
         Row: {
@@ -242,37 +263,41 @@ export type Database = {
         Row: {
           created_at: string
           directions_generated: number
-          directions_limit: number
           has_paid: boolean
           id: string
+          plan_tier: string
           project_id: string
-          regenerations_limit: number
           regenerations_used: number
           updated_at: string
         }
         Insert: {
           created_at?: string
           directions_generated?: number
-          directions_limit?: number
           has_paid?: boolean
           id?: string
+          plan_tier?: string
           project_id: string
-          regenerations_limit?: number
           regenerations_used?: number
           updated_at?: string
         }
         Update: {
           created_at?: string
           directions_generated?: number
-          directions_limit?: number
           has_paid?: boolean
           id?: string
+          plan_tier?: string
           project_id?: string
-          regenerations_limit?: number
           regenerations_used?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "generation_credits_plan_tier_fkey"
+            columns: ["plan_tier"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["tier"]
+          },
           {
             foreignKeyName: "generation_credits_project_id_fkey"
             columns: ["project_id"]
@@ -425,7 +450,10 @@ export type Database = {
       }
       palette_families: {
         Row: {
+          accent_hex: string
+          accent_text_hex: string
           active: boolean
+          cta_ink_hex: string
           dark_hex: string
           id: string
           label: string
@@ -433,12 +461,17 @@ export type Database = {
           paper_hex: string
           preview_tokens: Json
           primary_hex: string
+          primary_text_hex: string
           secondary_hex: string
+          secondary_text_hex: string
           sort_order: number
           swatches: string[]
         }
         Insert: {
+          accent_hex?: string
+          accent_text_hex?: string
           active?: boolean
+          cta_ink_hex?: string
           dark_hex: string
           id: string
           label: string
@@ -446,12 +479,17 @@ export type Database = {
           paper_hex: string
           preview_tokens: Json
           primary_hex: string
+          primary_text_hex?: string
           secondary_hex: string
+          secondary_text_hex?: string
           sort_order: number
           swatches: string[]
         }
         Update: {
+          accent_hex?: string
+          accent_text_hex?: string
           active?: boolean
+          cta_ink_hex?: string
           dark_hex?: string
           id?: string
           label?: string
@@ -459,9 +497,83 @@ export type Database = {
           paper_hex?: string
           preview_tokens?: Json
           primary_hex?: string
+          primary_text_hex?: string
           secondary_hex?: string
+          secondary_text_hex?: string
           sort_order?: number
           swatches?: string[]
+        }
+        Relationships: []
+      }
+      plan_grants: {
+        Row: {
+          grant_key: string
+          granted_at: string
+          id: string
+          project_id: string
+          tier: string
+        }
+        Insert: {
+          grant_key: string
+          granted_at?: string
+          id?: string
+          project_id: string
+          tier: string
+        }
+        Update: {
+          grant_key?: string
+          granted_at?: string
+          id?: string
+          project_id?: string
+          tier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_grants_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_grants_tier_fkey"
+            columns: ["tier"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["tier"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          created_at: string
+          directions_limit: number
+          label: string
+          price_cents: number
+          regenerations_limit: number
+          sort_order: number
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          directions_limit: number
+          label: string
+          price_cents: number
+          regenerations_limit: number
+          sort_order: number
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          directions_limit?: number
+          label?: string
+          price_cents?: number
+          regenerations_limit?: number
+          sort_order?: number
+          tier?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -539,6 +651,7 @@ export type Database = {
       }
       project_briefs: {
         Row: {
+          builder_target_id: string | null
           city: string | null
           client_persona_ids: string[]
           completed_steps: number[]
@@ -560,6 +673,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          builder_target_id?: string | null
           city?: string | null
           client_persona_ids?: string[]
           completed_steps?: number[]
@@ -581,6 +695,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          builder_target_id?: string | null
           city?: string | null
           client_persona_ids?: string[]
           completed_steps?: number[]
@@ -602,6 +717,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_briefs_builder_target_id_fkey"
+            columns: ["builder_target_id"]
+            isOneToOne: false
+            referencedRelation: "builder_targets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_briefs_license_type_id_fkey"
             columns: ["license_type_id"]
@@ -680,20 +802,6 @@ export type Database = {
           },
         ]
       }
-      /*
-       * AJOUT MANUEL — le journal APPEND-ONLY des changements de statut.
-       *
-       * ⚠ COLONNES CORRIGÉES d'après la table réelle. Mes suppositions étaient
-       * fausses deux fois : `status` n'existe pas — c'est `new_status` — et
-       * `reason` n'existe pas du tout : `event_type` porte le type Stripe brut.
-       * Exactement la classe d'erreur de `p_grant_key`, et pour la même raison
-       * (une déclaration écrite d'après une description, pas d'après la base).
-       *
-       * ⚠ NE PAS ÉCRIRE DANS CETTE TABLE DIRECTEMENT. `record_purchase_status_event`
-       * remplit `previous_status` depuis la ligne et fait avancer
-       * `purchases.status` : un insert à la main ferait diverger le journal de
-       * ce qu'il est censé raconter.
-       */
       purchase_status_events: {
         Row: {
           amount_cents: number | null
@@ -712,7 +820,7 @@ export type Database = {
           event_type: string
           id?: string
           new_status: string
-          occurred_at?: string
+          occurred_at: string
           previous_status?: string | null
           purchase_id: string
           stripe_event_id: string
@@ -728,7 +836,15 @@ export type Database = {
           purchase_id?: string
           stripe_event_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "purchase_status_events_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchases: {
         Row: {
@@ -790,6 +906,42 @@ export type Database = {
           },
         ]
       }
+      section_types: {
+        Row: {
+          active: boolean
+          allowed_pages: string[]
+          default_enabled: boolean
+          description: string
+          fields: Json
+          id: string
+          label: string
+          sort_order: number
+          source: string
+        }
+        Insert: {
+          active?: boolean
+          allowed_pages: string[]
+          default_enabled: boolean
+          description: string
+          fields: Json
+          id: string
+          label: string
+          sort_order: number
+          source?: string
+        }
+        Update: {
+          active?: boolean
+          allowed_pages?: string[]
+          default_enabled?: boolean
+          description?: string
+          fields?: Json
+          id?: string
+          label?: string
+          sort_order?: number
+          source?: string
+        }
+        Relationships: []
+      }
       site_goals: {
         Row: {
           active: boolean
@@ -813,6 +965,159 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      site_output_templates: {
+        Row: {
+          active: boolean
+          body: string
+          id: string
+          key: string
+          sort_order: number
+          target: string | null
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          id: string
+          key: string
+          sort_order?: number
+          target?: string | null
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          id?: string
+          key?: string
+          sort_order?: number
+          target?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_output_templates_target_fkey"
+            columns: ["target"]
+            isOneToOne: false
+            referencedRelation: "builder_targets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_specs: {
+        Row: {
+          about_excerpt: string
+          accent_hex: string
+          accent_text_hex: string
+          body_font: string
+          brand_kit_id: string
+          change_marks: Json
+          created_at: string
+          cta_ink_hex: string
+          dark_neutral_hex: string
+          extra_instructions: string | null
+          google_fonts_url: string
+          heading_font: string
+          hero: Json
+          id: string
+          last_copied_spec_version: number | null
+          light_neutral_hex: string
+          pages: Json
+          paper_hex: string
+          practice_details: Json
+          primary_hex: string
+          primary_text_hex: string
+          secondary_hex: string
+          secondary_text_hex: string
+          seed_clamped: Json | null
+          spec_version: number
+          target: string
+          type_pairing_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          about_excerpt?: string
+          accent_hex: string
+          accent_text_hex: string
+          body_font: string
+          brand_kit_id: string
+          change_marks?: Json
+          created_at?: string
+          cta_ink_hex: string
+          dark_neutral_hex: string
+          extra_instructions?: string | null
+          google_fonts_url: string
+          heading_font: string
+          hero: Json
+          id?: string
+          last_copied_spec_version?: number | null
+          light_neutral_hex: string
+          pages: Json
+          paper_hex: string
+          practice_details?: Json
+          primary_hex: string
+          primary_text_hex: string
+          secondary_hex: string
+          secondary_text_hex: string
+          seed_clamped?: Json | null
+          spec_version?: number
+          target?: string
+          type_pairing_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          about_excerpt?: string
+          accent_hex?: string
+          accent_text_hex?: string
+          body_font?: string
+          brand_kit_id?: string
+          change_marks?: Json
+          created_at?: string
+          cta_ink_hex?: string
+          dark_neutral_hex?: string
+          extra_instructions?: string | null
+          google_fonts_url?: string
+          heading_font?: string
+          hero?: Json
+          id?: string
+          last_copied_spec_version?: number | null
+          light_neutral_hex?: string
+          pages?: Json
+          paper_hex?: string
+          practice_details?: Json
+          primary_hex?: string
+          primary_text_hex?: string
+          secondary_hex?: string
+          secondary_text_hex?: string
+          seed_clamped?: Json | null
+          spec_version?: number
+          target?: string
+          type_pairing_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_specs_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: true
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_specs_type_pairing_id_fkey"
+            columns: ["type_pairing_id"]
+            isOneToOne: false
+            referencedRelation: "type_pairings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_specs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       specialties: {
         Row: {
@@ -965,9 +1270,16 @@ export type Database = {
         Returns: boolean
       }
       brand_kit_directions_shape_valid: { Args: { p: Json }; Returns: boolean }
+      brand_kit_entitled: { Args: { p_brand_kit_id: string }; Returns: boolean }
+      brand_kit_entitling_statuses: { Args: never; Returns: string[] }
       brand_kit_ethics_check_valid: { Args: { p: Json }; Returns: boolean }
       brand_kit_hero_valid: { Args: { p: Json }; Returns: boolean }
+      brand_kit_is_owned: { Args: { p_brand_kit_id: string }; Returns: boolean }
       brand_kit_palette_valid: { Args: { p: Json }; Returns: boolean }
+      brand_kit_select_direction: {
+        Args: { p_brand_kit_id: string; p_direction_id: string }
+        Returns: Json
+      }
       brand_kit_selection_valid: {
         Args: { p_directions: Json; p_selected: string }
         Returns: boolean
@@ -990,118 +1302,232 @@ export type Database = {
         Args: { p_brand_kit_id: string }
         Returns: undefined
       }
-      /*
-       * AJOUT MANUEL — la SEULE façon d'écrire dans `purchase_status_events`.
-       *
-       * Elle remplit `previous_status` depuis la ligne et fait avancer
-       * `purchases.status` : les deux écritures sont indissociables côté base,
-       * ce qui est exactement ce que notre port cherchait à garantir à la main.
-       *
-       * ⚠ NOMS DE PARAMÈTRES NON VÉRIFIÉS — la signature n'a pas été fournie,
-       * et cette base-ci ne porte pas encore la fonction (cf. le test
-       * `unconfirmed-declarations`). C'est la dernière supposition du dépôt, et
-       * elle tombera à la première régénération des types.
-       */
+      consume_generation_credit: {
+        Args: { p_brand_kit_id: string }
+        Returns: boolean
+      }
+      direction_limits: { Args: never; Returns: Json }
+      ensure_month_skeleton: {
+        Args: { p_month: string; p_user_id: string }
+        Returns: number
+      }
+      grant_plan_allowance: {
+        Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
+        Returns: boolean
+      }
+      purchase_status_before: {
+        Args: { p_purchase_id: string; p_status: string }
+        Returns: string
+      }
       record_purchase_status_event: {
         Args: {
           p_amount_cents?: number
           p_event_type: string
           p_new_status: string
+          p_occurred_at?: string
           p_purchase_id: string
           p_stripe_event_id: string
         }
-        Returns: undefined
-      }
-      /*
-       * AJOUT MANUEL — la question du droit, posée à la base.
-       *
-       * Le kit est-il déverrouillé pour l'appelante ? La réponse vit EN BASE
-       * et ne se recompose pas ici : une seconde copie de cette phrase
-       * finirait par diverger de la première, et c'est la copie la plus
-       * permissive qui gagnerait.
-       */
-      brand_kit_entitled: {
-        Args: { p_brand_kit_id: string }
         Returns: boolean
       }
-      /*
-       * AJOUT MANUEL — l'allocation du palier acheté.
-       *
-       * `service_role` uniquement, et idempotente sur `p_grant_key`.
-       *
-       * ⚠ LE TROISIÈME PARAMÈTRE S'APPELLE `p_grant_key`, PAS
-       * `p_stripe_event_id`. Il a une valeur par défaut côté base — le dernier
-       * achat du projet à ce palier — et on la REMPLACE par l'id de l'event
-       * Stripe, qui est la clé de notre propre mode de défaillance : si le
-       * handler jette APRÈS l'appel, `forgetEvent` désarme l'idempotence et
-       * Stripe rejoue le MÊME event. C'est là, et seulement là, qu'un second
-       * octroi pourrait passer ; la même clé l'arrête.
-       *
-       * Un nom de paramètre erroné n'échoue pas discrètement : PostgREST ne
-       * trouve aucune surcharge, la route jette, `forgetEvent` désarme, et
-       * Stripe rejoue à l'infini — un achat enregistré dont l'allocation
-       * n'arrive jamais.
-       */
-      grant_plan_allowance: {
-        Args: { p_project_id: string; p_tier: string; p_grant_key?: string }
-        Returns: undefined
-      }
-      /*
-       * AJOUT MANUEL — le compteur de générations, atomique.
-       *
-       * Consomme une unité et renvoie `false` quand l'allocation est épuisée.
-       * L'atomicité est TOUT l'intérêt : lire un compteur puis décider laisse
-       * deux POST concurrents lire le même nombre et passer tous les deux.
-       */
-      consume_generation_credit: {
-        Args: { p_brand_kit_id: string }
-        Returns: boolean
-      }
-      ensure_month_skeleton: {
-        Args: { p_month: string; p_user_id: string }
-        Returns: number
-      }
+      section_type_fields_valid: { Args: { p: Json }; Returns: boolean }
       seed_launch_checklist: {
         Args: { p_brand_kit_id: string }
         Returns: number
       }
-      /* ------------------------------------------------------------------
-       * AJOUT MANUEL — les huit entrées de l'éditeur de site (§1 du
-       * FRONTEND_CONTRACT). Elles sont arrivées en base après la dernière
-       * génération de ce fichier ; sans elles, `supabase.rpc("site_spec_get")`
-       * ne compile pas. À la prochaine régénération, ce bloc disparaît de
-       * lui-même — il ne fait que déclarer ce que la base expose déjà.
-       *
-       * Toutes renvoient du `Json` : six d'entre elles la MÊME enveloppe
-       * (`SiteSpecEnvelope`), `site_output_get` la sortie seule,
-       * `site_catalog` le catalogue. Le resserrement de type se fait dans
-       * `lib/site/rpc.ts`, pas ici : ce fichier suit la base.
-       * ---------------------------------------------------------------- */
-      site_catalog: { Args: Record<PropertyKey, never>; Returns: Json }
+      seed_site_spec: { Args: { p_brand_kit_id: string }; Returns: number }
+      site_catalog: { Args: never; Returns: Json }
+      site_output_catalog_version: { Args: never; Returns: string }
+      site_output_fill: {
+        Args: { p_template: string; p_vars: Json }
+        Returns: string
+      }
+      site_output_fragments: { Args: { p_target: string }; Returns: Json }
       site_output_get: {
-        Args: { p_brand_kit_id: string; p_format?: string; p_target: string }
+        Args: { p_brand_kit_id: string; p_format?: string; p_target?: string }
         Returns: Json
       }
       site_output_mark_copied: {
         Args: { p_brand_kit_id: string }
         Returns: Json
       }
+      site_output_step_title_count: {
+        Args: { p_title: string }
+        Returns: number
+      }
+      site_spec_accent_try: {
+        Args: {
+          p_check_distance: boolean
+          p_deg: number
+          p_light_neutral: string
+          p_primary: string
+          p_secondary: string
+        }
+        Returns: string
+      }
+      site_spec_clamp_note: {
+        Args: { p_key: string; p_max: number; p_original: string }
+        Returns: Json
+      }
+      site_spec_constraint_lines: {
+        Args: { p_frag: Json; p_spec: Json }
+        Returns: string[]
+      }
+      site_spec_contrast: { Args: { p_spec: Json }; Returns: Json }
+      site_spec_contrast_level: { Args: { p_ratio: number }; Returns: string }
+      site_spec_contrast_ratio: {
+        Args: { p_bg: string; p_fg: string }
+        Returns: number
+      }
+      site_spec_copy_blocks: { Args: { p_spec: Json }; Returns: Json }
+      site_spec_credential_line: {
+        Args: { p_details: Json; p_frag: Json }
+        Returns: string
+      }
+      site_spec_cta_ink: {
+        Args: { p_dark_neutral_hex: string; p_primary_hex: string }
+        Returns: string
+      }
+      site_spec_cta_target_url_valid: { Args: { p: Json }; Returns: boolean }
+      site_spec_curated_accent: { Args: { p_palette: Json }; Returns: string }
+      site_spec_default_pages: {
+        Args: { p_personas: string[]; p_specialties: string[] }
+        Returns: Json
+      }
+      site_spec_default_target: {
+        Args: { p_brand_kit_id: string }
+        Returns: string
+      }
+      site_spec_delta_e: { Args: { p_a: string; p_b: string }; Returns: number }
+      site_spec_derive_accent: {
+        Args: {
+          p_light_neutral: string
+          p_primary: string
+          p_secondary: string
+        }
+        Returns: string
+      }
+      site_spec_diff: { Args: { p_spec: Json }; Returns: Json }
+      site_spec_entitlement_error: {
+        Args: { p_brand_kit_id: string }
+        Returns: Json
+      }
+      site_spec_envelope: { Args: { p_row: Json }; Returns: Json }
+      site_spec_error: {
+        Args: { p_code: string; p_field?: string; p_message: string }
+        Returns: Json
+      }
+      site_spec_first_overlong_field: {
+        Args: { p_pages: Json }
+        Returns: string
+      }
       site_spec_fix_contrast: {
         Args: { p_brand_kit_id: string; p_pair_id: string }
         Returns: Json
       }
       site_spec_get: { Args: { p_brand_kit_id: string }; Returns: Json }
+      site_spec_hero_lengths_valid: { Args: { p: Json }; Returns: boolean }
+      site_spec_hero_valid: { Args: { p: Json }; Returns: boolean }
+      site_spec_hex_to_hsl: { Args: { p_hex: string }; Returns: number[] }
+      site_spec_hsl_to_hex: {
+        Args: { p_h: number; p_l: number; p_s: number }
+        Returns: string
+      }
+      site_spec_hue_tolerance: {
+        Args: { p_saturation: number }
+        Returns: number
+      }
+      site_spec_identity_lines: {
+        Args: { p_frag: Json; p_spec: Json }
+        Returns: string
+      }
+      site_spec_lab: { Args: { p_hex: string }; Returns: number[] }
+      site_spec_limits: { Args: never; Returns: Json }
+      site_spec_output: {
+        Args: { p_spec: Json; p_target?: string }
+        Returns: Json
+      }
+      site_spec_output_prompt: {
+        Args: { p_spec: Json; p_target: string }
+        Returns: Json
+      }
+      site_spec_output_render: {
+        Args: { p_markdown: boolean; p_output: Json; p_spec: string }
+        Returns: string
+      }
+      site_spec_output_setup_sheet: {
+        Args: { p_spec: Json; p_target: string }
+        Returns: Json
+      }
+      site_spec_page_keys: { Args: never; Returns: string[] }
+      site_spec_pages_copy: { Args: { p_pages: Json }; Returns: Json }
+      site_spec_pages_lengths_valid: { Args: { p: Json }; Returns: boolean }
+      site_spec_pages_skeleton: { Args: { p_pages: Json }; Returns: Json }
+      site_spec_pages_valid: { Args: { p: Json }; Returns: boolean }
+      site_spec_palette_role: {
+        Args: { p_palette: Json; p_role: string }
+        Returns: string
+      }
       site_spec_patch: {
         Args: { p_brand_kit_id: string; p_patch: Json }
         Returns: Json
       }
+      site_spec_patchable_keys: { Args: never; Returns: string[] }
+      site_spec_practice_detail_keys: { Args: never; Returns: string[] }
+      site_spec_practice_details_valid: { Args: { p: Json }; Returns: boolean }
+      site_spec_preview_model: { Args: { p_spec: Json }; Returns: Json }
+      site_spec_relative_luminance: { Args: { p_hex: string }; Returns: number }
+      site_spec_render_field: {
+        Args: { p_field: Json; p_value: Json }
+        Returns: string
+      }
+      site_spec_render_field_or_null: {
+        Args: { p_field: Json; p_value: Json }
+        Returns: string
+      }
       site_spec_reset: {
-        Args: { p_brand_kit_id: string; p_scope: string }
+        Args: { p_brand_kit_id: string; p_scope?: string }
         Returns: Json
       }
+      site_spec_retired_clamp_keys: {
+        Args: { p_patch: Json }
+        Returns: string[]
+      }
+      site_spec_section_fields: {
+        Args: { p_section: Json; p_spec: Json }
+        Returns: Json
+      }
+      site_spec_section_types: { Args: never; Returns: string[] }
+      site_spec_seed_clamped_valid: { Args: { p: Json }; Returns: boolean }
+      site_spec_seed_values: { Args: { p_brand_kit_id: string }; Returns: Json }
       site_spec_set_target: {
         Args: { p_brand_kit_id: string; p_target: string }
         Returns: Json
+      }
+      site_spec_structure_lines: {
+        Args: { p_frag: Json; p_spec: Json }
+        Returns: string
+      }
+      site_spec_suggest_hex: {
+        Args: { p_fixed_hex: string; p_move_hex: string; p_target?: number }
+        Returns: string
+      }
+      site_spec_text_variant: {
+        Args: { p_brand_hex: string; p_paper_hex: string }
+        Returns: string
+      }
+      site_spec_token_lines: {
+        Args: { p_frag: Json; p_spec: Json }
+        Returns: string
+      }
+      site_spec_variant_of: {
+        Args: { p_role: string; p_spec: Json }
+        Returns: string
+      }
+      site_spec_voice_guide: { Args: { p_spec: Json }; Returns: Json }
+      site_spec_voice_lines: {
+        Args: { p_frag: Json; p_spec: Json }
+        Returns: string
       }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }

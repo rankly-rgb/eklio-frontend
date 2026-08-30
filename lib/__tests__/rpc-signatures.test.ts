@@ -143,10 +143,15 @@ describe("l'extraction elle-même", () => {
     // Sans cette garde, un parseur cassé rendrait tout le reste vacuously
     // true — sur exactement le sujet où un faux vert coûte le plus cher.
     expect(DECLARED.size).toBeGreaterThan(5);
+    // `supabase gen types` alphabétise les clés de `Args`, quel que soit
+    // l'ordre de déclaration en SQL (vérifié aussi sur
+    // `record_purchase_status_event`, dont l'ordre déclaré n'est pas
+    // alphabétique) — l'ordre attendu ici suit celui du générateur, pas celui
+    // de la signature SQL.
     expect(DECLARED.get("grant_plan_allowance")?.map((arg) => arg.name)).toEqual([
+      "p_grant_key",
       "p_project_id",
       "p_tier",
-      "p_grant_key",
     ]);
   });
 

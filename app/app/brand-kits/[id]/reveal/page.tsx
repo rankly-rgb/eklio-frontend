@@ -47,15 +47,24 @@ export default async function RevealPage({
     resolveEntitledTier(supabase, kit.projectId),
     supabase
       .from("generation_credits")
-      .select("regenerations_used, regenerations_limit")
+      .select("regenerations_used, plans(regenerations_limit)")
       .eq("project_id", kit.projectId)
       .maybeSingle(),
   ]);
 
+  /*
+   * L'allocation vient désormais du plan accordé (`plans.regenerations_limit`,
+   * via `generation_credits.plan_tier`) et non plus d'une colonne propre à
+   * `generation_credits` — cette dernière a été retirée au profit d'une seule
+   * source d'allocation (voir eklio-backend, migration
+   * `plans_and_granted_allowance`). Un projet jamais crédité n'a pas de ligne :
+   * `left` reste `null`, pas zéro.
+   */
   const left = credits.data
     ? Math.max(
         0,
-        credits.data.regenerations_limit - credits.data.regenerations_used
+        (credits.data.plans?.regenerations_limit ?? 0) -
+          credits.data.regenerations_used
       )
     : null;
 
