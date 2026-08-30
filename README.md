@@ -97,6 +97,46 @@ npm run lint     # ESLint
 4. Déployer. Le build (`next build`) est vérifié en local avant chaque push
    sur `claude/eklio-bootstrap-ukuxfu`.
 
+## Brand shots (image generation CLI)
+
+Self-contained CLI (`scripts/brand-shots/`) that calls OpenAI's Images API
+(`gpt-image-1`) to generate photoreal brand-ambiance stills for the marketing
+site and Instagram — stationery flat-lays, paper texture, warm light. Not for
+UI mockups: no real UI, no long copy.
+
+**Set the key.** Add to `.env.local` at the repo root (already gitignored,
+never committed):
+
+```
+OPENAI_API_KEY=sk-...your key...
+```
+
+**Run a preset:**
+
+```bash
+npm run brand-shots -- --shot flatlay
+npm run brand-shots -- --shot card-macro --count 2 --size 1024x1024
+npm run brand-shots -- --shot desk --quality medium
+npm run brand-shots -- --shot texture --quality low
+npm run brand-shots -- --shot swatch
+npm run brand-shots -- --prompt "your own art direction" --size 1024x1536
+```
+
+Presets: `flatlay`, `card-macro`, `desk`, `texture`, `swatch` — briefs live in
+`scripts/brand-shots/presets.json` alongside the master art direction that's
+prepended to every shot (editable without touching code). `--prompt "..."`
+generates a free prompt instead of a preset (still gets the master art
+direction prepended). Options: `--count` (1-4, default 1), `--size`
+(`1536x1024` default, `1024x1024`, `1024x1536`), `--quality`
+(`low`/`medium`/`high`, default `high`). Runs of more than 2 images print the
+estimated cost and ask for confirmation (`--yes` skips the prompt).
+
+**Output:** `brand-shots/<date>-<shot>-<n>.png` at the repo root (gitignored).
+
+**Cost:** printed after every run — gpt-image-1 is priced per image by size
+and quality (roughly $0.01–$0.02 low, $0.04–$0.06 medium, $0.17–$0.25 high);
+the CLI's estimate is approximate and OpenAI's pricing can change.
+
 ## Ce qui n'est PAS encore implémenté (stubs volontaires)
 
 - Génération IA réelle (guided flow, 3 directions, kit de marque) — `lib/ai/`
