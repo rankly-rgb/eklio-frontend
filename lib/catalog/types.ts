@@ -20,6 +20,10 @@ export type GainCard = Tables<"gain_cards">;
 export type PersonaCardData = Tables<"client_persona_cards">;
 export type TypePairing = Tables<"type_pairings">;
 export type EthicsRule = Tables<"ethics_rules">;
+export type SessionStyleCard = Tables<"session_style_cards">;
+export type NotAFitCard = Tables<"not_a_fit_cards">;
+export type ModalityCard = Tables<"modality_cards">;
+export type ModalityProminenceOption = Tables<"modality_prominence_options">;
 
 /**
  * Une famille chromatique. `preview_tokens` est un `Json` côté généré ; la
@@ -52,4 +56,14 @@ export type Catalog = {
   primaryActions: PrimaryAction[];
   siteGoals: SiteGoal[];
   ethicsRules: EthicsRule[];
+  /*
+   * "How you work" catalogs — same plain-table pattern as the eleven above
+   * (FRONTEND_CONTRACT.md §9.8). `banned_phrases` is NOT here and never will
+   * be: it is service-role only, reached exclusively through
+   * `usp_banned_phrases_check` (§9.11) — see `lib/generation/banned-phrases.ts`.
+   */
+  sessionStyleCards: SessionStyleCard[];
+  notAFitCards: NotAFitCard[];
+  modalityCards: ModalityCard[];
+  modalityProminenceOptions: ModalityProminenceOption[];
 };

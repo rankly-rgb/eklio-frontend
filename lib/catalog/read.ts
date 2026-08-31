@@ -76,6 +76,10 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     primaryActions,
     siteGoals,
     ethicsRules,
+    sessionStyleCards,
+    notAFitCards,
+    modalityCards,
+    modalityProminenceOptions,
   ] = await Promise.all([
     all(supabase.from("license_types").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("specialties").select("*").eq("active", true).order("sort_order")),
@@ -88,6 +92,12 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     all(supabase.from("primary_actions").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("site_goals").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("ethics_rules").select("*").eq("active", true).order("sort_order")),
+    all(supabase.from("session_style_cards").select("*").eq("active", true).order("sort_order")),
+    all(supabase.from("not_a_fit_cards").select("*").eq("active", true).order("sort_order")),
+    all(supabase.from("modality_cards").select("*").eq("active", true).order("sort_order")),
+    all(
+      supabase.from("modality_prominence_options").select("*").eq("active", true).order("sort_order")
+    ),
   ]);
 
   const responses = {
@@ -102,6 +112,10 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     primaryActions,
     siteGoals,
     ethicsRules,
+    sessionStyleCards,
+    notAFitCards,
+    modalityCards,
+    modalityProminenceOptions,
   };
 
   for (const [name, response] of Object.entries(responses)) {
@@ -132,5 +146,9 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     primaryActions: primaryActions.data ?? [],
     siteGoals: siteGoals.data ?? [],
     ethicsRules: ethicsRules.data ?? [],
+    sessionStyleCards: sessionStyleCards.data ?? [],
+    notAFitCards: notAFitCards.data ?? [],
+    modalityCards: modalityCards.data ?? [],
+    modalityProminenceOptions: modalityProminenceOptions.data ?? [],
   };
 }

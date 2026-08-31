@@ -732,19 +732,32 @@ export type Database = {
           data: Json
           gain_card_ids: string[]
           license_type_id: string | null
+          modality_ids: string[] | null
+          modality_prominence: string | null
+          not_a_fit_ids: string[] | null
+          not_a_fit_text: string | null
           palette_family_ids: string[]
           positioning: string | null
           practice_name: string | null
           primary_action_id: string | null
+          prior_career: string | null
+          prior_career_public: boolean
           problem_card_ids: string[]
           progress_step: number
           project_id: string
+          referral_quote: string | null
+          selected_usp_id: string | null
+          session_style_ids: string[] | null
           site_goal_ids: string[]
           specialty_ids: string[]
           state: string | null
           tone_card_id: string | null
+          tone_cards: Json | null
+          tone_cards_inputs_hash: string | null
           type_pairing_id: string | null
           updated_at: string
+          usp_options: Json | null
+          usp_statement: string | null
         }
         Insert: {
           builder_target_id?: string | null
@@ -754,19 +767,32 @@ export type Database = {
           data?: Json
           gain_card_ids?: string[]
           license_type_id?: string | null
+          modality_ids?: string[] | null
+          modality_prominence?: string | null
+          not_a_fit_ids?: string[] | null
+          not_a_fit_text?: string | null
           palette_family_ids?: string[]
           positioning?: string | null
           practice_name?: string | null
           primary_action_id?: string | null
+          prior_career?: string | null
+          prior_career_public?: boolean
           problem_card_ids?: string[]
           progress_step?: number
           project_id: string
+          referral_quote?: string | null
+          selected_usp_id?: string | null
+          session_style_ids?: string[] | null
           site_goal_ids?: string[]
           specialty_ids?: string[]
           state?: string | null
           tone_card_id?: string | null
+          tone_cards?: Json | null
+          tone_cards_inputs_hash?: string | null
           type_pairing_id?: string | null
           updated_at?: string
+          usp_options?: Json | null
+          usp_statement?: string | null
         }
         Update: {
           builder_target_id?: string | null
@@ -776,19 +802,32 @@ export type Database = {
           data?: Json
           gain_card_ids?: string[]
           license_type_id?: string | null
+          modality_ids?: string[] | null
+          modality_prominence?: string | null
+          not_a_fit_ids?: string[] | null
+          not_a_fit_text?: string | null
           palette_family_ids?: string[]
           positioning?: string | null
           practice_name?: string | null
           primary_action_id?: string | null
+          prior_career?: string | null
+          prior_career_public?: boolean
           problem_card_ids?: string[]
           progress_step?: number
           project_id?: string
+          referral_quote?: string | null
+          selected_usp_id?: string | null
+          session_style_ids?: string[] | null
           site_goal_ids?: string[]
           specialty_ids?: string[]
           state?: string | null
           tone_card_id?: string | null
+          tone_cards?: Json | null
+          tone_cards_inputs_hash?: string | null
           type_pairing_id?: string | null
           updated_at?: string
+          usp_options?: Json | null
+          usp_statement?: string | null
         }
         Relationships: [
           {
@@ -803,6 +842,13 @@ export type Database = {
             columns: ["license_type_id"]
             isOneToOne: false
             referencedRelation: "license_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_briefs_modality_prominence_fkey"
+            columns: ["modality_prominence"]
+            isOneToOne: false
+            referencedRelation: "modality_prominence_options"
             referencedColumns: ["id"]
           },
           {
@@ -834,6 +880,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      session_style_cards: {
+        Row: {
+          active: boolean
+          description: string
+          id: string
+          label: string
+          sort_order: number
+          voice_hints: string[]
+        }
+        Insert: {
+          active?: boolean
+          description: string
+          id: string
+          label: string
+          sort_order: number
+          voice_hints: string[]
+        }
+        Update: {
+          active?: boolean
+          description?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          voice_hints?: string[]
+        }
+        Relationships: []
+      }
+      not_a_fit_cards: {
+        Row: {
+          active: boolean
+          id: string
+          label: string
+          referral_note: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          id: string
+          label: string
+          referral_note: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          label?: string
+          referral_note?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      modality_cards: {
+        Row: {
+          active: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          full_name?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      modality_prominence_options: {
+        Row: {
+          active: boolean
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       projects: {
         Row: {
@@ -1636,6 +1778,19 @@ export type Database = {
       }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }
+        Returns: string
+      }
+      usp_banned_phrases_check: { Args: { p_text: string }; Returns: string[] }
+      usp_check_distinct: {
+        Args: {
+          p_exclude_brief?: string
+          p_scope_key: string
+          p_statement: string
+        }
+        Returns: Json
+      }
+      usp_fingerprint_confirm: {
+        Args: { p_brief_id: string; p_statement: string }
         Returns: string
       }
     }
