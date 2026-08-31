@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { generateUspOptions } from "@/lib/generation/usp-options";
+import { generateUspOptions, partialMessageFor } from "@/lib/generation/usp-options";
 import type { Catalog } from "@/lib/catalog/types";
 import type { BriefBundle } from "@/lib/data/brief";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -104,6 +104,41 @@ describe("generateUspOptions — ordre des portes", () => {
     const collisionStatements = rpc.mock.calls.map((call) => call[1]?.p_statement);
     expect(collisionStatements).not.toContain(raw[0].statement);
   });
+
+  it("ne laisse jamais conflicting_statement fuiter dans les motifs de refus (§9.10)", async () => {
+    const rpc = vi.fn(async () => ({
+      data: {
+        distinct: false,
+        best_similarity: 0.95,
+        conflicting_statement: "Another practice's real, confirmed positioning text.",
+      },
+      error: null,
+    }));
+    const admin = { rpc } as unknown as SupabaseClient<Database>;
+
+    const modelCall = vi.fn(async () => [
+      candidate("u1", "population", "Built for first responders who carry the job home with them."),
+      candidate("u2", "method", "EMDR anchors every session, steady and unhurried."),
+      candidate(
+        "u3",
+        "lived_experience",
+        "A reflective, grounded practice shaped by years in the field."
+      ),
+    ]);
+    const bannedPhrasesCheck = vi.fn(async () => []);
+
+    const result = await generateUspOptions(
+      bundle(),
+      catalog,
+      admin,
+      "trauma:or",
+      modelCall,
+      bannedPhrasesCheck
+    );
+
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("Another practice's real");
+  });
 });
 
 describe("generateUspOptions — reprise", () => {
@@ -170,5 +205,60 @@ describe("generateUspOptions — reprise", () => {
     expect(modelCall).toHaveBeenCalledTimes(1);
     expect(result.partial).toBe(false);
     expect(result.options).toHaveLength(3);
+  });
+
+  it("s'arrête à deux survivants plutôt que de compléter avec un candidat refusé", async () => {
+    // Deux angles atteignent la gate 4 ; le troisième collide à chaque
+    // tentative — jamais de "padding" avec un candidat qui a échoué une
+    // porte (§2.5).
+    const modelCall = vi.fn(async () => [
+      candidate("u1", "population", "Built for first responders who carry the job home with them."),
+      candidate("u2", "method", "EMDR anchors every session, steady and unhurried."),
+      candidate(
+        "u3",
+        "lived_experience",
+        "A reflective, grounded practice shaped by years in the field."
+      ),
+    ]);
+    const bannedPhrasesCheck = vi.fn(async () => []);
+    const rpc = vi.fn(
+      async (_fn: string, args: { p_statement: string }) => ({
+        data: {
+          distinct: args.p_statement.includes("reflective") ? false : true,
+          best_similarity: args.p_statement.includes("reflective") ? 0.95 : 0.1,
+          conflicting_statement: null,
+        },
+        error: null,
+      })
+    );
+    const admin = { rpc } as unknown as SupabaseClient<Database>;
+
+    const result = await generateUspOptions(
+      bundle(),
+      catalog,
+      admin,
+      "trauma:or",
+      modelCall,
+      bannedPhrasesCheck
+    );
+
+    expect(modelCall).toHaveBeenCalledTimes(2); // la reprise tente, mais le
+    // 3e angle collide encore.
+    expect(result.partial).toBe(true);
+    expect(result.options).toHaveLength(2);
+    expect(result.options.some((o) => o.angle === "lived_experience")).toBe(false);
+  });
+});
+
+describe("partialMessageFor", () => {
+  it("nomme le compte exact pour deux survivants (§2.5, texte au mot près)", () => {
+    expect(partialMessageFor(2)).toBe(
+      'We only found two that were truly yours. Try adding a line to "How you work" for a third.'
+    );
+  });
+
+  it("reste générique pour un ou zéro survivant", () => {
+    expect(partialMessageFor(1)).not.toMatch(/two/);
+    expect(partialMessageFor(0)).not.toMatch(/two/);
   });
 });

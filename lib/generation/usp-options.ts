@@ -371,3 +371,17 @@ export async function generateUspOptions(
 
   return { options, partial, discarded: allDiscarded, modelCalls };
 }
+
+/**
+ * La phrase qui accompagne un lot incomplet (§2.5 : « the screen shows two
+ * options with the line … »). Deux survivants ont leur propre phrase, exacte
+ * au mot près ; en dessous, une phrase générique — le cas que le spec ne
+ * nomme pas mais que le CHECK de la base (exactement 3 ou aucun) rend
+ * possible dès que la reprise, elle aussi, échoue à en garder deux.
+ */
+export function partialMessageFor(count: number): string {
+  if (count === 2) {
+    return 'We only found two that were truly yours. Try adding a line to "How you work" for a third.';
+  }
+  return "We couldn't find positioning options that were truly yours yet.";
+}

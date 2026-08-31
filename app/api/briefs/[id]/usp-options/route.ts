@@ -12,7 +12,7 @@ import { loadBrief, writeUspOptions } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
 import { createAdminClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/api/rate-limit";
-import { generateUspOptions } from "@/lib/generation/usp-options";
+import { generateUspOptions, partialMessageFor } from "@/lib/generation/usp-options";
 import { computeScopeKey } from "@/lib/generation/scope-key";
 import { uspOptionsSchema } from "@/lib/generation/how-you-work-shapes";
 
@@ -107,10 +107,7 @@ export async function POST(
         ok: true,
         options: result.options,
         partial: true,
-        message:
-          result.options.length === 2
-            ? 'We only found two that were truly yours. Try adding a line to "How you work" for a third.'
-            : "We couldn't find positioning options that were truly yours yet.",
+        message: partialMessageFor(result.options.length),
       });
     }
 
