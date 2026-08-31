@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ChipGroup } from "@/components/brief/chip-group";
 import { WriteForMe } from "@/components/brief/write-for-me";
 import {
@@ -10,6 +11,8 @@ import {
 } from "@/components/preview/cards";
 import { TextField, TextAreaField } from "@/components/ui/text-field";
 import { MonoLabel } from "@/components/ui/mono-label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { Catalog } from "@/lib/catalog/types";
 import type { PreviewModel } from "@/lib/brand/shapes";
 import type { StepDraft } from "@/lib/brief/flow";
@@ -313,22 +316,31 @@ export function ClientStep({ draft, catalog, update }: StepBodyProps) {
 
 /* ── 4. How you work (§2.1) ─────────────────────────────────────────────── */
 /*
- * COMMIT 11 pose ici les deux champs que `stepIssue("how_you_work")` exige
- * réellement : au moins une carte de style de séance, et vingt caractères de
- * citation de collègue. Les trois autres sous-questions (b. not-a-fit, c.
- * modalités + segmented control, d. carrière antérieure repliée) et « Help me
- * say it » arrivent au commit 12/13 (§2.1 en entier) — la question n'est pas
- * de savoir SI elles existent, mais dans quel commit, pour suivre l'ordre
- * demandé.
+ * Quatre questions sur un seul écran défilant, autosauvegardées comme les
+ * autres. « Help me say it » (sur les deux zones de texte b. et d.) arrive au
+ * commit suivant, avec le handler `/api/briefs/:id/rephrase` qu'il appelle —
+ * le bouton n'a pas de sens sans lui.
  */
 
 export function HowYouWorkStep({ draft, catalog, update }: StepBodyProps) {
+  const [priorCareerOpen, setPriorCareerOpen] = useState(
+    Boolean(draft.prior_career?.trim())
+  );
+
   const hints = draft.session_style_ids
     .flatMap(
       (id) =>
         catalog.sessionStyleCards.find((entry) => entry.id === id)?.voice_hints ?? []
     )
     .filter((hint, index, all) => all.indexOf(hint) === index);
+
+  function toggleNotAFit(id: string) {
+    const selected = draft.not_a_fit_ids;
+    const next = selected.includes(id)
+      ? selected.filter((entry) => entry !== id)
+      : [...selected, id];
+    update({ not_a_fit_ids: next.length > 3 ? next.slice(next.length - 3) : next });
+  }
 
   return (
     <div className="flex flex-col gap-10">
@@ -357,6 +369,89 @@ export function HowYouWorkStep({ draft, catalog, update }: StepBodyProps) {
 
       <section className="flex flex-col gap-4">
         <h3 className="font-display text-subsection font-medium text-ink">
+          Who are you not the right therapist for?
+        </h3>
+        <p className="text-helper leading-prose text-ink-2">
+          Naming who this isn&rsquo;t for is how the right people recognize
+          themselves.
+        </p>
+        <div className="flex flex-col gap-3">
+          {catalog.notAFitCards.map((card) => {
+            const selected = draft.not_a_fit_ids.includes(card.id);
+            return (
+              <div key={card.id} className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => toggleNotAFit(card.id)}
+                  className={`box-border flex h-[34px] w-fit items-center rounded-pill border px-4 text-left transition-colors duration-[var(--dur-select)] ${
+                    selected
+                      ? "border-accent bg-card text-ink"
+                      : "border-line text-ink-2 hover:text-ink"
+                  }`}
+                >
+                  <span className="text-ui">{card.label}</span>
+                </button>
+                {selected ? (
+                  <p className="pl-1 text-ui leading-body text-ink-2">
+                    {card.referral_note}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+        <MonoLabel tracking="14" tone="ink-3">
+          {`${draft.not_a_fit_ids.length} of 3`}
+        </MonoLabel>
+        <TextAreaField
+          id="not-a-fit-text"
+          label="Or say it your way"
+          rows={2}
+          value={draft.not_a_fit_text ?? ""}
+          onChange={(event) => update({ not_a_fit_text: event.target.value })}
+          maxLength={400}
+        />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h3 className="font-display text-subsection font-medium text-ink">
+          How you were trained, and how much you lead with it.
+        </h3>
+        <ChipGroup
+          legend="Modalities"
+          columns={2}
+          max={5}
+          options={catalog.modalityCards.map((entry) => ({
+            id: entry.id,
+            label: entry.label,
+            description: entry.full_name,
+          }))}
+          selected={draft.modality_ids}
+          onChange={(next) =>
+            // `ChipGroup` a déjà plafonné `next` à 5 (prop `max`) : pas besoin
+            // de le refaire ici.
+            update({
+              modality_ids: next,
+              modality_prominence: next.length > 0 ? draft.modality_prominence : null,
+            })
+          }
+        />
+        {draft.modality_ids.length > 0 ? (
+          <SegmentedControl
+            legend="How much you lead with your training"
+            options={catalog.modalityProminenceOptions.map((entry) => ({
+              id: entry.id,
+              label: entry.label,
+            }))}
+            value={draft.modality_prominence}
+            onChange={(next) => update({ modality_prominence: next })}
+          />
+        ) : null}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h3 className="font-display text-subsection font-medium text-ink">
           If a colleague referred someone to you, what would they say about you?
         </h3>
         <p className="text-helper leading-prose text-ink-2">
@@ -371,6 +466,39 @@ export function HowYouWorkStep({ draft, catalog, update }: StepBodyProps) {
           placeholder="e.g. She's direct, but you never feel judged."
           maxLength={400}
         />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        {priorCareerOpen ? (
+          <>
+            <TextField
+              id="prior-career"
+              label="What did you do before this work?"
+              value={draft.prior_career ?? ""}
+              onChange={(event) => update({ prior_career: event.target.value })}
+              maxLength={200}
+            />
+            <Checkbox
+              label="You can use this on my site"
+              checked={draft.prior_career_public}
+              onChange={(next) => update({ prior_career_public: next })}
+            />
+            {draft.prior_career?.trim() && !draft.prior_career_public ? (
+              <p className="text-ui leading-body text-ink-2">
+                We&rsquo;ll keep this to ourselves — it just helps us understand
+                your practice.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPriorCareerOpen(true)}
+            className="w-fit text-ui text-ink-2 underline decoration-line underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"
+          >
+            What did you do before this work?
+          </button>
+        )}
       </section>
     </div>
   );
