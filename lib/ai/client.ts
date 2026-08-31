@@ -1,7 +1,15 @@
+import "server-only";
+
+import Anthropic from "@anthropic-ai/sdk";
+
 /**
- * TODO: appels Claude (génération des directions créatives, kit de marque).
- * Toujours côté serveur (route handlers / server actions) — ANTHROPIC_API_KEY
- * ne doit jamais être exposée au client ni préfixée NEXT_PUBLIC_.
- * Pas encore implémenté dans cette session de bootstrap.
+ * Le client Claude. Strictement serveur : ANTHROPIC_API_KEY n'est jamais
+ * exposée au bundle client et n'est jamais préfixée NEXT_PUBLIC_.
  */
-export {};
+export function anthropic(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY manquante côté serveur.");
+  return new Anthropic({ apiKey });
+}
+
+export const GENERATION_MODEL = "claude-opus-5";
