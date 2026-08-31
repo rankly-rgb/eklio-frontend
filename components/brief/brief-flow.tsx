@@ -11,10 +11,10 @@ import { SaveStateLabel } from "@/components/brief/save-state";
 import { useBriefAutosave } from "@/components/brief/use-brief-autosave";
 import {
   ClientStep,
-  PaletteStep,
+  HowYouWorkStep,
+  LookStep,
   PositioningStep,
   PracticeStep,
-  TypographyStep,
   VoiceStep,
   WebsiteStep,
   type StepBodyProps,
@@ -48,9 +48,9 @@ const BODIES: Record<StepId, (props: StepBodyProps) => React.ReactElement> = {
   practice: PracticeStep,
   positioning: PositioningStep,
   client: ClientStep,
+  how_you_work: HowYouWorkStep,
   voice: VoiceStep,
-  palette: PaletteStep,
-  typography: TypographyStep,
+  look: LookStep,
   website: WebsiteStep,
 };
 
@@ -175,8 +175,9 @@ export function BriefFlow({
         <div
           onKeyDown={onKeyDown}
           className={`flex min-w-0 flex-1 flex-col ${
-            // L'Écran 1 (palette) respire à 44px, l'Écran 2 (ton) à 32px.
-            step.id === "palette" ? "pt-[44px]" : "pt-8"
+            // L'Écran « Look » (grilles palette + typographie) respire à 44px,
+            // les autres à 32px.
+            step.id === "look" ? "pt-[44px]" : "pt-8"
           } pl-[var(--gutter)] pr-14 max-md:px-[var(--gutter-sm)] max-lg:pb-[168px]`}
         >
           <div key={step.id} className="question-enter flex max-w-brief flex-col">
@@ -188,7 +189,7 @@ export function BriefFlow({
               {step.helper}
             </p>
 
-            <div className={step.id === "palette" ? "mt-9" : "mt-7"}>
+            <div className={step.id === "look" ? "mt-9" : "mt-7"}>
               <Body
                 projectId={projectId}
                 draft={draft}
@@ -209,7 +210,7 @@ export function BriefFlow({
 
             <div
               className={`flex items-center gap-4 ${
-                step.id === "palette" ? "mt-10" : "mt-8"
+                step.id === "look" ? "mt-10" : "mt-8"
               }`}
             >
               {stepNumber > 1 ? (

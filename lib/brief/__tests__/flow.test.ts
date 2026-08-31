@@ -24,11 +24,21 @@ function draft(overrides: Partial<StepDraft> = {}): StepDraft {
     problem_card_ids: [],
     gain_card_ids: [],
     client_persona_ids: [],
+    session_style_ids: [],
+    not_a_fit_ids: [],
+    not_a_fit_text: null,
+    modality_ids: [],
+    modality_prominence: null,
+    referral_quote: null,
+    prior_career: null,
+    prior_career_public: false,
     tone_card_id: null,
     palette_family_ids: [],
     type_pairing_id: null,
     primary_action_id: null,
     site_goal_ids: [],
+    usp_statement: null,
+    selected_usp_id: null,
     data: {},
     ...overrides,
   };
@@ -85,6 +95,38 @@ describe("stepIssue — les autres étapes", () => {
 
   it("l'étape 7 ne bloque jamais : elle porte « Skip for now »", () => {
     expect(stepIssue("website", draft())).toBeNull();
+  });
+
+  it("l'étape 4 (how_you_work) exige une carte de style de séance ET vingt caractères de citation", () => {
+    expect(stepIssue("how_you_work", draft())).toMatch(/session usually looks/);
+    expect(
+      stepIssue(
+        "how_you_work",
+        draft({ session_style_ids: ["reflective"], referral_quote: "too short" })
+      )
+    ).toMatch(/little more/);
+    expect(
+      stepIssue(
+        "how_you_work",
+        draft({
+          session_style_ids: ["reflective"],
+          referral_quote: "She's direct, but you never feel judged.",
+        })
+      )
+    ).toBeNull();
+  });
+
+  it("l'étape 6 (look, fusion palette + typography) exige les deux", () => {
+    expect(stepIssue("look", draft())).toMatch(/Pick at least one/);
+    expect(
+      stepIssue("look", draft({ palette_family_ids: ["sage"] }))
+    ).toMatch(/Pick a pairing/);
+    expect(
+      stepIssue(
+        "look",
+        draft({ palette_family_ids: ["sage"], type_pairing_id: "serif-sans" })
+      )
+    ).toBeNull();
   });
 });
 

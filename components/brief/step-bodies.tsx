@@ -311,7 +311,72 @@ export function ClientStep({ draft, catalog, update }: StepBodyProps) {
   );
 }
 
-/* ── 4. Voice & tone ────────────────────────────────────────────────────── */
+/* ── 4. How you work (§2.1) ─────────────────────────────────────────────── */
+/*
+ * COMMIT 11 pose ici les deux champs que `stepIssue("how_you_work")` exige
+ * réellement : au moins une carte de style de séance, et vingt caractères de
+ * citation de collègue. Les trois autres sous-questions (b. not-a-fit, c.
+ * modalités + segmented control, d. carrière antérieure repliée) et « Help me
+ * say it » arrivent au commit 12/13 (§2.1 en entier) — la question n'est pas
+ * de savoir SI elles existent, mais dans quel commit, pour suivre l'ordre
+ * demandé.
+ */
+
+export function HowYouWorkStep({ draft, catalog, update }: StepBodyProps) {
+  const hints = draft.session_style_ids
+    .flatMap(
+      (id) =>
+        catalog.sessionStyleCards.find((entry) => entry.id === id)?.voice_hints ?? []
+    )
+    .filter((hint, index, all) => all.indexOf(hint) === index);
+
+  return (
+    <div className="flex flex-col gap-10">
+      <section className="flex flex-col gap-4">
+        <h3 className="font-display text-subsection font-medium text-ink">
+          In session, what does the work usually look like?
+        </h3>
+        <ChipGroup
+          legend="Session style"
+          columns={2}
+          max={4}
+          options={catalog.sessionStyleCards.map((entry) => ({
+            id: entry.id,
+            label: entry.label,
+            description: entry.description,
+          }))}
+          selected={draft.session_style_ids}
+          onChange={(next) => update({ session_style_ids: next })}
+        />
+        {hints.length > 0 ? (
+          <MonoLabel tracking="14" tone="ink-3">
+            {`We're hearing: ${hints.join(" · ")}`}
+          </MonoLabel>
+        ) : null}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h3 className="font-display text-subsection font-medium text-ink">
+          If a colleague referred someone to you, what would they say about you?
+        </h3>
+        <p className="text-helper leading-prose text-ink-2">
+          Third person on purpose — it&rsquo;s easier than describing yourself.
+        </p>
+        <TextAreaField
+          id="referral-quote"
+          label="What a colleague would say"
+          rows={3}
+          value={draft.referral_quote ?? ""}
+          onChange={(event) => update({ referral_quote: event.target.value })}
+          placeholder="e.g. She's direct, but you never feel judged."
+          maxLength={400}
+        />
+      </section>
+    </div>
+  );
+}
+
+/* ── 5. Voice & tone ────────────────────────────────────────────────────── */
 
 export function VoiceStep({ draft, catalog, update }: StepBodyProps) {
   return (
@@ -330,10 +395,16 @@ export function VoiceStep({ draft, catalog, update }: StepBodyProps) {
   );
 }
 
-/* ── 5. Palette ─────────────────────────────────────────────────────────── */
+/* ── 6. Look (palette fusionnée à la typographie, §9.7/§2.3) ──────────────── */
 
-export function PaletteStep({ draft, catalog, preview, update }: StepBodyProps) {
-  function toggle(id: string) {
+export function LookStep({ draft, catalog, preview, update }: StepBodyProps) {
+  const practiceName =
+    draft.practice_name?.trim() || preview?.practice_name || "Your practice";
+  const sentence =
+    preview?.hero.subhead ??
+    "Therapy for high-performing adults who can't switch off.";
+
+  function togglePalette(id: string) {
     const selected = draft.palette_family_ids;
     if (selected.includes(id)) {
       update({ palette_family_ids: selected.filter((entry) => entry !== id) });
@@ -348,47 +419,37 @@ export function PaletteStep({ draft, catalog, preview, update }: StepBodyProps) 
   }
 
   return (
-    <div className="grid grid-cols-3 gap-6">
-      {catalog.paletteFamilies.map((family) => (
-        <PaletteCard
-          key={family.id}
-          family={family}
-          model={preview!}
-          selected={draft.palette_family_ids.includes(family.id)}
-          leading={draft.palette_family_ids[0] === family.id}
-          onSelect={() => toggle(family.id)}
-        />
-      ))}
-    </div>
-  );
-}
+    <div className="flex flex-col gap-10">
+      <div className="grid grid-cols-3 gap-6">
+        {catalog.paletteFamilies.map((family) => (
+          <PaletteCard
+            key={family.id}
+            family={family}
+            model={preview!}
+            selected={draft.palette_family_ids.includes(family.id)}
+            leading={draft.palette_family_ids[0] === family.id}
+            onSelect={() => togglePalette(family.id)}
+          />
+        ))}
+      </div>
 
-/* ── 6. Typography ──────────────────────────────────────────────────────── */
-
-export function TypographyStep({ draft, catalog, preview, update }: StepBodyProps) {
-  const practiceName =
-    draft.practice_name?.trim() || preview?.practice_name || "Your practice";
-  const sentence =
-    preview?.hero.subhead ??
-    "Therapy for high-performing adults who can't switch off.";
-
-  return (
-    <div className="grid grid-cols-3 gap-6">
-      {catalog.typePairings.map((pairing) => (
-        <TypePairingCard
-          key={pairing.id}
-          pairing={pairing}
-          practiceName={practiceName}
-          sentence={sentence}
-          selected={draft.type_pairing_id === pairing.id}
-          onSelect={() =>
-            update({
-              type_pairing_id:
-                draft.type_pairing_id === pairing.id ? null : pairing.id,
-            })
-          }
-        />
-      ))}
+      <div className="grid grid-cols-3 gap-6">
+        {catalog.typePairings.map((pairing) => (
+          <TypePairingCard
+            key={pairing.id}
+            pairing={pairing}
+            practiceName={practiceName}
+            sentence={sentence}
+            selected={draft.type_pairing_id === pairing.id}
+            onSelect={() =>
+              update({
+                type_pairing_id:
+                  draft.type_pairing_id === pairing.id ? null : pairing.id,
+              })
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }
