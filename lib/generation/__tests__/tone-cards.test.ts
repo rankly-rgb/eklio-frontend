@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  computeToneCardsInputsHash,
-  generateToneCards,
-  type RawToneCard,
-} from "@/lib/generation/tone-cards";
+import { generateToneCards, type RawToneCard } from "@/lib/generation/tone-cards";
 import type { Catalog } from "@/lib/catalog/types";
 import type { BriefBundle } from "@/lib/data/brief";
 
@@ -140,31 +136,5 @@ describe("generateToneCards", () => {
     );
 
     expect(result).toEqual({ ok: false, reason: "fallback" });
-  });
-});
-
-describe("computeToneCardsInputsHash", () => {
-  it("est stable pour les mêmes entrées", () => {
-    const a = computeToneCardsInputsHash(bundle().brief);
-    const b = computeToneCardsInputsHash(bundle().brief);
-    expect(a).toBe(b);
-  });
-
-  it("ignore l'ordre des tableaux", () => {
-    const a = computeToneCardsInputsHash(
-      bundle({ session_style_ids: ["reflective", "direct"] }).brief
-    );
-    const b = computeToneCardsInputsHash(
-      bundle({ session_style_ids: ["direct", "reflective"] }).brief
-    );
-    expect(a).toBe(b);
-  });
-
-  it("change quand une réponse de l'étape 4 change", () => {
-    const a = computeToneCardsInputsHash(bundle().brief);
-    const b = computeToneCardsInputsHash(
-      bundle({ referral_quote: "Something else entirely." }).brief
-    );
-    expect(a).not.toBe(b);
   });
 });

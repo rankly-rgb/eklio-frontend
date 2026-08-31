@@ -6,7 +6,8 @@ import {
 } from "@/lib/api/handler";
 import { loadBrief, writeToneCards } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
-import { computeToneCardsInputsHash, generateToneCards } from "@/lib/generation/tone-cards";
+import { generateToneCards } from "@/lib/generation/tone-cards";
+import { computeHowYouWorkInputsHash } from "@/lib/generation/how-you-work-hash";
 import { toneCardsSchema } from "@/lib/generation/how-you-work-shapes";
 
 /*
@@ -33,7 +34,7 @@ export async function POST(
   if (!bundle) return notFound();
 
   const catalog = await readCatalog(auth.session.supabase);
-  const currentHash = computeToneCardsInputsHash(bundle.brief);
+  const currentHash = computeHowYouWorkInputsHash(bundle.brief);
 
   const existing = toneCardsSchema.safeParse(bundle.brief.tone_cards);
   if (existing.success && bundle.brief.tone_cards_inputs_hash === currentHash) {

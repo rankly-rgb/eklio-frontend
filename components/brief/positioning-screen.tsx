@@ -59,7 +59,11 @@ export function PositioningScreen({
   const { build, pending: building, error: buildError } = useBuildBrand(projectId);
 
   useEffect(() => {
-    if (initialOptions !== null) return;
+    // TOUJOURS appelée, même quand `initialOptions` existe déjà (correction
+    // demandée) : le serveur seul sait si l'étape 4 a changé depuis (§9.7,
+    // même doctrine que `tone_cards_inputs_hash`), donc c'est lui qui décide
+    // s'il y a une vraie régénération à faire. `initialOptions` évite
+    // seulement le clignotement du squelette sur les visites répétées.
     let cancelled = false;
 
     async function run() {
@@ -72,15 +76,31 @@ export function PositioningScreen({
           | null;
         if (cancelled) return;
         if (response.ok && body?.options) {
-          setOptions(body.options);
+          const freshOptions = body.options;
+          setOptions(freshOptions);
           setPartialMessage(body.partial ? (body.message ?? null) : null);
-        } else {
+          // Un rafraîchissement en arrière-plan a remplacé le lot (l'étape 4
+          // a changé) : une sélection qui référence un id qui n'existe plus
+          // dans le nouveau lot ne veut plus rien dire.
+          setSelectedId((current) => {
+            const stillThere =
+              current !== null && freshOptions.some((option) => option.id === current);
+            return stillThere ? current : null;
+          });
+          if (!freshOptions.some((option) => option.id === selectedId)) {
+            setStatement("");
+            setCollision(null);
+          }
+        } else if (initialOptions === null) {
           setPartialMessage(
             "We couldn't find positioning options that were truly yours just now."
           );
         }
+        // Sinon : ce qui était déjà affiché reste affiché — une vérification
+        // de fraîcheur en arrière-plan qui échoue n'est pas une raison de
+        // l'interrompre.
       } catch {
-        if (!cancelled) {
+        if (!cancelled && initialOptions === null) {
           setPartialMessage(
             "We couldn't find positioning options that were truly yours just now."
           );

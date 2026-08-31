@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient, GENERATION_MODEL } from "@/lib/ai/client";
 import { checkBannedPhrases } from "@/lib/generation/banned-phrases";
@@ -151,35 +150,4 @@ export async function generateToneCards(
   }
 
   return { ok: false, reason: "fallback" };
-}
-
-/**
- * Empreinte des entrées de l'étape 4 (§2.2) : « editing step 4 invalidates
- * it ». Ni les étapes 1-3 ni la voix choisie n'y entrent — seule l'étape 4
- * déclenche une régénération, c'est la règle du contrat.
- */
-export function computeToneCardsInputsHash(
-  brief: Pick<
-    BriefBundle["brief"],
-    | "session_style_ids"
-    | "not_a_fit_ids"
-    | "not_a_fit_text"
-    | "modality_ids"
-    | "modality_prominence"
-    | "referral_quote"
-    | "prior_career"
-    | "prior_career_public"
-  >
-): string {
-  const canonical = JSON.stringify({
-    session_style_ids: [...(brief.session_style_ids ?? [])].sort(),
-    not_a_fit_ids: [...(brief.not_a_fit_ids ?? [])].sort(),
-    not_a_fit_text: brief.not_a_fit_text ?? "",
-    modality_ids: [...(brief.modality_ids ?? [])].sort(),
-    modality_prominence: brief.modality_prominence ?? "",
-    referral_quote: brief.referral_quote ?? "",
-    prior_career: brief.prior_career ?? "",
-    prior_career_public: brief.prior_career_public,
-  });
-  return createHash("sha256").update(canonical).digest("hex");
 }

@@ -9,12 +9,12 @@ import {
   type UspOption,
 } from "@/lib/generation/how-you-work-shapes";
 import {
-  INTRA_BATCH_SIMILARITY_THRESHOLD,
   jaccardSimilarity,
   passesSpecificity,
   specificityOverlap,
   tokenSet,
 } from "@/lib/generation/usp-specificity";
+import { fetchUspGuardrails, type UspGuardrails } from "@/lib/generation/usp-guardrails";
 import { track } from "@/lib/analytics";
 import type { Catalog } from "@/lib/catalog/types";
 import type { BriefBundle } from "@/lib/data/brief";
@@ -140,7 +140,11 @@ async function callUspOptionsModel(
 
 /* ── Le contexte de spécificité (gate 2) ───────────────────────────────── */
 
-function buildContentTokens(bundle: BriefBundle, catalog: Catalog): Set<string> {
+function buildContentTokens(
+  bundle: BriefBundle,
+  catalog: Catalog,
+  stopwords: Set<string>
+): Set<string> {
   const { brief, data } = bundle;
   const labels = (ids: string[], source: { id: string; label: string }[]) =>
     ids
@@ -165,7 +169,7 @@ function buildContentTokens(bundle: BriefBundle, catalog: Catalog): Set<string> 
     .filter((value): value is string => Boolean(value))
     .join(" ");
 
-  return tokenSet(text);
+  return tokenSet(text, stopwords);
 }
 
 /* ── Les quatre portes ──────────────────────────────────────────────────── */
@@ -173,6 +177,7 @@ function buildContentTokens(bundle: BriefBundle, catalog: Catalog): Set<string> 
 type GateInput = {
   candidates: RawUspCandidate[];
   contentTokens: Set<string>;
+  guardrails: UspGuardrails;
   admin: SupabaseClient<Database>;
   scopeKey: string;
   excludeBriefId: string;
@@ -182,8 +187,16 @@ type GateInput = {
 async function runGates(
   input: GateInput
 ): Promise<{ survivors: (UspOption & { bestSimilarity: number })[]; discarded: DiscardedCandidate[] }> {
-  const { candidates, contentTokens, admin, scopeKey, excludeBriefId, bannedPhrasesCheck } =
-    input;
+  const {
+    candidates,
+    contentTokens,
+    guardrails,
+    admin,
+    scopeKey,
+    excludeBriefId,
+    bannedPhrasesCheck,
+  } = input;
+  const { stopwords, similarityThreshold } = guardrails;
   const discarded: DiscardedCandidate[] = [];
 
   // Gate 1 — banned phrases.
@@ -210,7 +223,7 @@ async function runGates(
   // Gate 2 — specificity: must share a content token with what she wrote.
   const afterSpecificity: RawUspCandidate[] = [];
   for (const candidate of afterBanned) {
-    if (passesSpecificity(candidate.statement, contentTokens)) {
+    if (passesSpecificity(candidate.statement, contentTokens, stopwords)) {
       afterSpecificity.push(candidate);
     } else {
       discarded.push({
@@ -234,8 +247,8 @@ async function runGates(
   for (const [angle, group] of byAngle) {
     const ranked = [...group].sort(
       (a, b) =>
-        specificityOverlap(b.statement, contentTokens) -
-        specificityOverlap(a.statement, contentTokens)
+        specificityOverlap(b.statement, contentTokens, stopwords) -
+        specificityOverlap(a.statement, contentTokens, stopwords)
     );
     const [winner, ...losers] = ranked;
     perAngle.push(winner);
@@ -251,14 +264,17 @@ async function runGates(
 
   perAngle = perAngle.sort(
     (a, b) =>
-      specificityOverlap(b.statement, contentTokens) - specificityOverlap(a.statement, contentTokens)
+      specificityOverlap(b.statement, contentTokens, stopwords) -
+      specificityOverlap(a.statement, contentTokens, stopwords)
   );
   const afterDistance: RawUspCandidate[] = [];
   for (const candidate of perAngle) {
     const tooSimilar = afterDistance.some(
       (kept) =>
-        jaccardSimilarity(tokenSet(candidate.statement), tokenSet(kept.statement)) >=
-        INTRA_BATCH_SIMILARITY_THRESHOLD
+        jaccardSimilarity(
+          tokenSet(candidate.statement, stopwords),
+          tokenSet(kept.statement, stopwords)
+        ) >= similarityThreshold
     );
     if (tooSimilar) {
       discarded.push({
@@ -315,10 +331,15 @@ export async function generateUspOptions(
     prompt: string,
     avoid: { statement: string; reason: string }[]
   ) => Promise<RawUspCandidate[]> = callUspOptionsModel,
-  bannedPhrasesCheck: (text: string) => Promise<string[]> = checkBannedPhrases
+  bannedPhrasesCheck: (text: string) => Promise<string[]> = checkBannedPhrases,
+  fetchGuardrails: (admin: SupabaseClient<Database>) => Promise<UspGuardrails> = fetchUspGuardrails
 ): Promise<UspOptionsResult> {
   const prompt = buildHowYouWorkContext(bundle, catalog);
-  const contentTokens = buildContentTokens(bundle, catalog);
+  // Une fois PAR REQUÊTE, jamais mis en cache entre requêtes (correction
+  // demandée) : les deux appels de la reprise réutilisent la même valeur,
+  // fixée au début de CETTE génération.
+  const guardrails = await fetchGuardrails(admin);
+  const contentTokens = buildContentTokens(bundle, catalog, guardrails.stopwords);
 
   const byAngle = new Map<UspAngle, UspOption & { bestSimilarity: number }>();
   const allDiscarded: DiscardedCandidate[] = [];
@@ -331,6 +352,7 @@ export async function generateUspOptions(
     const { survivors, discarded } = await runGates({
       candidates: raw,
       contentTokens,
+      guardrails,
       admin,
       scopeKey,
       excludeBriefId: bundle.project.id,

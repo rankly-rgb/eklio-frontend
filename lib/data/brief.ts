@@ -107,6 +107,18 @@ export const briefDataSchema = z.object({
    * rate limit de la route (20/heure) ; ce compteur est la règle produit.
    */
   usp_regenerate_count: z.number().int().min(0).optional(),
+  /*
+   * Empreinte des réponses de l'étape 4 au moment où `usp_options` a été
+   * écrit pour la dernière fois — `lib/generation/how-you-work-hash.ts`,
+   * MÊME fonction que `tone_cards_inputs_hash` (correction demandée :
+   * l'invalidation sur édition de l'étape 4 doit valoir pour les options USP
+   * aussi, pas seulement pour les cartes de ton).
+   *
+   * ÉCART SIGNALÉ : `tone_cards_inputs_hash` a sa PROPRE colonne
+   * (§9.2 du contrat) ; il n'existe pas d'équivalent pour `usp_options`. Vit
+   * ici, dans la part libre, même précédent que le reste de ce bloc.
+   */
+  usp_options_inputs_hash: z.string().optional(),
 });
 export type BriefData = z.infer<typeof briefDataSchema>;
 
@@ -367,7 +379,8 @@ export async function writeToneCards(
 export async function writeUspOptions(
   supabase: Client,
   projectId: string,
-  uspOptions: BriefRow["usp_options"]
+  uspOptions: BriefRow["usp_options"],
+  data: BriefData
 ): Promise<{ ok: true } | { ok: false; detail: unknown }> {
   const { error } = await supabase
     .from("project_briefs")
@@ -375,8 +388,29 @@ export async function writeUspOptions(
       usp_options: uspOptions,
       selected_usp_id: null,
       usp_statement: null,
+      data,
       updated_at: new Date().toISOString(),
     })
+    .eq("project_id", projectId);
+
+  if (error) return { ok: false, detail: error };
+  return { ok: true };
+}
+
+/**
+ * Écrit UNIQUEMENT la part libre — utilisé quand un lot incomplet (§9.5, pas
+ * d'écriture de `usp_options` possible) doit quand même faire avancer
+ * `usp_regenerate_count` : l'utilisation d'une reprise se compte même quand
+ * elle échoue à produire trois survivants.
+ */
+export async function writeBriefData(
+  supabase: Client,
+  projectId: string,
+  data: BriefData
+): Promise<{ ok: true } | { ok: false; detail: unknown }> {
+  const { error } = await supabase
+    .from("project_briefs")
+    .update({ data, updated_at: new Date().toISOString() })
     .eq("project_id", projectId);
 
   if (error) return { ok: false, detail: error };

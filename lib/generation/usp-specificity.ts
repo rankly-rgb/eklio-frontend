@@ -1,31 +1,19 @@
 /*
  * Gate 2 (spécificité) et gate 3 (distance inter-candidats) — §2.5.
  *
- * « Tokenize … stopwords removed, stems compared. » Ni `usp_stopwords` ni le
- * calcul de similarité de `usp_check_distinct` ne sont lisibles côté client
- * (contrat §9.8/§9.11, `service_role` uniquement) : cette liste et cette
- * mesure sont donc PROPRES au frontend, pas une copie de ce que fait la
- * base. C'est délibérément plus grossier qu'un vrai stemmer — suffisant pour
- * ce que ce gate doit refuser : une déclaration qui n'ancre RIEN dans le
- * brief.
+ * CORRECTION : `usp_stopwords` et `app_settings.usp_similarity_threshold`
+ * sont désormais lus DIRECTEMENT depuis la base (`lib/generation/usp-guardrails.ts`,
+ * clé service-role) plutôt que dupliqués ici. Deux définitions de « mot
+ * vide », ou un seuil qui dérive de celui de la base, sont exactement la
+ * divergence déjà corrigée pour `banned_phrases` — pas quelque chose à
+ * réintroduire pour ce gate-ci. Ni `stopwords` ni `threshold` n'ont donc de
+ * valeur par défaut codée ici : ce module ne fait QUE la mesure, la base
+ * reste l'unique source des deux réglages.
+ *
+ * Le stemmer reste, lui, une approximation PROPRE au frontend — la base n'en
+ * a pas (`usp_stopwords` est une liste de mots, pas de racines) : « stems
+ * compared » (§2.5) n'a de toute façon pas d'équivalent à lire côté base.
  */
-
-const STOPWORDS = new Set([
-  "a", "about", "after", "again", "all", "also", "an", "and", "any", "are",
-  "as", "at", "be", "because", "been", "before", "being", "between", "both",
-  "but", "by", "can", "could", "did", "do", "does", "doing", "down", "during",
-  "each", "few", "for", "from", "further", "had", "has", "have", "having",
-  "he", "her", "here", "hers", "herself", "him", "himself", "his", "how",
-  "i", "if", "in", "into", "is", "it", "its", "itself", "just", "me",
-  "more", "most", "my", "myself", "no", "nor", "not", "now", "of", "off",
-  "on", "once", "only", "or", "other", "our", "ours", "ourselves", "out",
-  "over", "own", "same", "she", "should", "so", "some", "such", "than",
-  "that", "the", "their", "theirs", "them", "themselves", "then", "there",
-  "these", "they", "this", "those", "through", "to", "too", "under", "until",
-  "up", "very", "was", "we", "were", "what", "when", "where", "which",
-  "while", "who", "whom", "why", "will", "with", "you", "your", "yours",
-  "yourself", "yourselves",
-]);
 
 /** Racine grossière : suffixes anglais les plus fréquents, dans cet ordre. */
 function stem(word: string): string {
@@ -37,15 +25,15 @@ function stem(word: string): string {
   return word;
 }
 
-/** Minuscule, sans ponctuation, sans mot vide, réduit à des racines. */
-export function tokenize(text: string): string[] {
+/** Minuscule, sans ponctuation, sans mot vide (liste de la BASE), réduit à des racines. */
+export function tokenize(text: string, stopwords: Set<string>): string[] {
   return (text.toLowerCase().match(/[a-z']+/g) ?? [])
-    .filter((word) => word.length > 2 && !STOPWORDS.has(word))
+    .filter((word) => word.length > 2 && !stopwords.has(word))
     .map(stem);
 }
 
-export function tokenSet(text: string): Set<string> {
-  return new Set(tokenize(text));
+export function tokenSet(text: string, stopwords: Set<string>): Set<string> {
+  return new Set(tokenize(text, stopwords));
 }
 
 /** Jaccard sur les racines — la même mesure sert la gate 2 et la gate 3. */
@@ -63,9 +51,10 @@ export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
  */
 export function passesSpecificity(
   statement: string,
-  contentTokens: Set<string>
+  contentTokens: Set<string>,
+  stopwords: Set<string>
 ): boolean {
-  const statementTokens = tokenSet(statement);
+  const statementTokens = tokenSet(statement, stopwords);
   for (const token of statementTokens) {
     if (contentTokens.has(token)) return true;
   }
@@ -74,17 +63,8 @@ export function passesSpecificity(
 
 export function specificityOverlap(
   statement: string,
-  contentTokens: Set<string>
+  contentTokens: Set<string>,
+  stopwords: Set<string>
 ): number {
-  return jaccardSimilarity(tokenSet(statement), contentTokens);
+  return jaccardSimilarity(tokenSet(statement, stopwords), contentTokens);
 }
-
-/*
- * Seuil INTRA-LOT, propre au frontend — distinct de
- * `app_settings.usp_similarity_threshold`, qui gouverne `usp_check_distinct`
- * (gate 4, comparaison entre practices) et que ce module ne peut de toute
- * façon pas lire. Comparer six phrases entre elles est un problème plus
- * facile qu'une base entière de statements confirmés ; un seuil plus haut
- * ici est donc un choix, pas un oubli.
- */
-export const INTRA_BATCH_SIMILARITY_THRESHOLD = 0.5;

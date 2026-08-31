@@ -1475,6 +1475,40 @@ export type Database = {
         }
         Relationships: []
       }
+      /*
+       * `app_settings` et `usp_stopwords` — JAMAIS lues par `authenticated`
+       * (RLS activée, zéro policy, privilèges révoqués à `anon`/`authenticated`,
+       * migration `20260831101000_usp_guardrail_tables.sql`). `service_role`
+       * les lit directement (il ignore RLS) : c'est le SEUL rôle qui les
+       * atteint, et seulement depuis `lib/generation/usp-guardrails.ts`.
+       */
+      app_settings: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      usp_stopwords: {
+        Row: {
+          word: string
+        }
+        Insert: {
+          word: string
+        }
+        Update: {
+          word?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
