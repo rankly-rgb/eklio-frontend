@@ -82,6 +82,19 @@ export const briefDataSchema = z.object({
   practitioner_line: z.string().max(80).optional(),
   /** Le rappel « We draft in plain, board-safe language » n'est montré qu'une fois. */
   suggestion_notice_seen: z.boolean().optional(),
+  /*
+   * Étape 5 — la carte de ton GÉNÉRÉE choisie, quand il y en a une.
+   *
+   * ÉCART SIGNALÉ : `project_briefs.tone_card_id` référence uniquement le
+   * catalogue statique `tone_cards` (clé étrangère). Une carte générée par
+   * `/api/briefs/:id/tone-cards` vit dans `project_briefs.tone_cards`
+   * (jsonb, six éléments, §9.4 du contrat) et n'a pas de ligne de catalogue à
+   * référencer — la colonne existante ne peut donc pas la pointer. Elle vit
+   * ici, dans la part libre du brief, en suivant exactement le précédent de
+   * `stage` ci-dessus. `tone_card_id` reste `null` tant qu'une carte générée
+   * est sélectionnée ; les deux sont mutuellement exclusifs côté lecture.
+   */
+  selected_tone_card_id: z.string().optional(),
 });
 export type BriefData = z.infer<typeof briefDataSchema>;
 
@@ -115,6 +128,23 @@ export const briefPatchSchema = z
     type_pairing_id: z.string().nullable(),
     primary_action_id: z.string().nullable(),
     site_goal_ids: z.array(z.string()),
+    /*
+     * Étape 4 — « How you work » (contrat §9.2). `usp_options`, `usp_statement`
+     * (post-génération), `tone_cards` et `tone_cards_inputs_hash` NE SONT PAS
+     * ici : ce sont les générateurs serveur qui les écrivent, avec la clé
+     * service-role, jamais un correctif client direct.
+     */
+    session_style_ids: z.array(z.string()).max(4).nullable(),
+    not_a_fit_ids: z.array(z.string()).max(3).nullable(),
+    not_a_fit_text: z.string().max(400).nullable(),
+    modality_ids: z.array(z.string()).max(5).nullable(),
+    modality_prominence: z.string().nullable(),
+    referral_quote: z.string().max(400).nullable(),
+    prior_career: z.string().max(200).nullable(),
+    prior_career_public: z.boolean(),
+    /* Le texte choisi APRÈS édition — c'est lui que la génération consomme, pas `selected_usp_id`. */
+    usp_statement: z.string().max(200).nullable(),
+    selected_usp_id: z.string().nullable(),
     progress_step: z.number().int().min(1).max(7),
     completed_steps: z.array(z.number().int().min(1).max(7)),
     data: briefDataSchema,
@@ -135,6 +165,10 @@ const ID_SOURCES = {
   type_pairing_id: (c: Catalog) => c.typePairings,
   primary_action_id: (c: Catalog) => c.primaryActions,
   site_goal_ids: (c: Catalog) => c.siteGoals,
+  session_style_ids: (c: Catalog) => c.sessionStyleCards,
+  not_a_fit_ids: (c: Catalog) => c.notAFitCards,
+  modality_ids: (c: Catalog) => c.modalityCards,
+  modality_prominence: (c: Catalog) => c.modalityProminenceOptions,
 } as const;
 
 /**
