@@ -43,7 +43,18 @@ export type AnalyticsEvent =
   | "site_spec_reset"
   | "checklist_item_completed"
   | "unlock_opened"
-  | "email_sent";
+  | "email_sent"
+  /* ── Positionnement USP (§2.5) ────────────────────────────────────────
+   * `usp_gate_rejected` porte le nom de la porte et l'id du candidat —
+   * jamais le texte, qui EST la donnée libre que ce fichier interdit
+   * d'en-tête.
+   */
+  | "usp_options_generated"
+  | "usp_gate_rejected"
+  | "usp_selected"
+  | "usp_edited"
+  | "usp_collision_warned"
+  | "usp_collision_kept";
 
 /** Valeurs admises : rien qui puisse porter du texte libre d'utilisateur. */
 export type AnalyticsProperties = Record<

@@ -95,6 +95,18 @@ export const briefDataSchema = z.object({
    * est sélectionnée ; les deux sont mutuellement exclusifs côté lecture.
    */
   selected_tone_card_id: z.string().optional(),
+  /*
+   * Écran de positionnement — combien de fois « Write me three more » a été
+   * utilisé sur CE brief.
+   *
+   * ÉCART SIGNALÉ : §2.4 plafonne ce bouton à deux usages par brief, mais le
+   * contrat ne porte aucune colonne dédiée pour ce compteur (contrairement à
+   * `usp_fingerprints`, qui n'existe que pour la confirmation finale). Suit
+   * le même précédent que `stage`/`selected_tone_card_id` : vit dans la part
+   * libre, personne d'autre ne le lit. Le plafond réel de sécurité reste le
+   * rate limit de la route (20/heure) ; ce compteur est la règle produit.
+   */
+  usp_regenerate_count: z.number().int().min(0).optional(),
 });
 export type BriefData = z.infer<typeof briefDataSchema>;
 
@@ -337,6 +349,32 @@ export async function writeToneCards(
     .update({
       tone_cards: toneCards,
       tone_cards_inputs_hash: inputsHash,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("project_id", projectId);
+
+  if (error) return { ok: false, detail: error };
+  return { ok: true };
+}
+
+/**
+ * Écrit les options USP GÉNÉRÉES (§2.5). `selected_usp_id` et `usp_statement`
+ * sont remis à `null` dans le MÊME appel : un choix précédent référence des
+ * ids d'un lot désormais remplacé, et le trigger
+ * `project_briefs_validate_selected_usp_id` exige que `selected_usp_id`
+ * corresponde à un id présent dans `usp_options` quand il n'est pas `null`.
+ */
+export async function writeUspOptions(
+  supabase: Client,
+  projectId: string,
+  uspOptions: BriefRow["usp_options"]
+): Promise<{ ok: true } | { ok: false; detail: unknown }> {
+  const { error } = await supabase
+    .from("project_briefs")
+    .update({
+      usp_options: uspOptions,
+      selected_usp_id: null,
+      usp_statement: null,
       updated_at: new Date().toISOString(),
     })
     .eq("project_id", projectId);
