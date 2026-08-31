@@ -1,4 +1,4 @@
-import { Inter, IBM_Plex_Mono, Fraunces } from "next/font/google";
+import { Karla, IBM_Plex_Mono, Fraunces } from "next/font/google";
 
 /**
  * TODO(design): Recoleta Bold est une police commerciale (non disponible sur
@@ -24,9 +24,12 @@ export const display = Fraunces({
   display: "swap",
 });
 
-export const sans = Inter({
+// Karla est la police de corps des huit maquettes validées. Le bootstrap
+// avait posé Inter, qui n'apparaît dans aucune d'elles.
+export const sans = Karla({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600"],
+  variable: "--font-karla",
   display: "swap",
 });
 
