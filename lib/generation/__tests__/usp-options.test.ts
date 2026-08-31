@@ -49,7 +49,7 @@ function bundle(): BriefBundle {
       referral_quote: "She works with first responders carrying trauma from the job.",
       prior_career: null,
       prior_career_public: false,
-    } as BriefBundle["brief"],
+    } as unknown as BriefBundle["brief"],
   };
 }
 
@@ -79,7 +79,9 @@ function fakeAdmin(distinct: boolean): SupabaseClient<Database> {
 
 describe("generateUspOptions — ordre des portes", () => {
   it("un candidat banni est refusé à la gate 1 et n'atteint jamais la RPC de collision", async () => {
-    const rpc = vi.fn(async () => ({
+    const rpc = vi.fn<
+      (fn: string, args: { p_statement: string }) => Promise<{ data: unknown; error: null }>
+    >(async () => ({
       data: { distinct: true, best_similarity: 0.1, conflicting_statement: null },
       error: null,
     }));

@@ -6,7 +6,6 @@ import { readCatalog } from "@/lib/catalog/read";
 import { summarize, isAnswered } from "@/lib/brief/summary";
 import type { StepDraft } from "@/lib/brief/flow";
 import { BrandPreview } from "@/components/preview/brand-preview";
-import { BuildBrandButton } from "@/components/brief/build-brand-button";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -118,7 +117,14 @@ export default async function ReviewPage({
           </dl>
 
           <div className="flex flex-col gap-4 border-t border-line pt-6">
-            <BuildBrandButton projectId={id} />
+            {/*
+              L'écran de positionnement (§2.4) s'intercale ICI, entre le
+              récapitulatif et la génération — pas une huitième étape, la
+              jauge y reste à 7 sur 7.
+            */}
+            <ButtonLink href={`/app/briefs/${id}/positioning`} className="self-start">
+              Continue
+            </ButtonLink>
             <ButtonLink
               href={`/app/briefs/${id}`}
               variant="tertiary"

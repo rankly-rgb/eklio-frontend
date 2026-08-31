@@ -11,8 +11,12 @@ import { readOffer } from "@/lib/api/offer";
  * La route rend un id de job TOUT DE SUITE et laisse la pipeline tourner
  * derrière (`after()`), donc ce bouton n'attend jamais une minute : il obtient
  * son id, navigue, et l'écran de génération prend le relais en sondant.
+ *
+ * `useBuildBrand` existe séparément du bouton pour que l'écran de
+ * positionnement (§2.4, entre le récapitulatif et la génération) puisse
+ * enchaîner sur LA MÊME logique après `usp-confirm`, sans la dupliquer.
  */
-export function BuildBrandButton({ projectId }: { projectId: string }) {
+export function useBuildBrand(projectId: string) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +58,12 @@ export function BuildBrandButton({ projectId }: { projectId: string }) {
       setPending(false);
     }
   }
+
+  return { build, pending, error };
+}
+
+export function BuildBrandButton({ projectId }: { projectId: string }) {
+  const { build, pending, error } = useBuildBrand(projectId);
 
   return (
     <div className="flex flex-col gap-3">

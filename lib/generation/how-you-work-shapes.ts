@@ -85,3 +85,23 @@ export const EVIDENCE_LABELS: Record<string, string> = {
   session_style_ids: "how sessions work",
   prior_career: "her background",
 };
+
+/**
+ * `evidence` → étiquette humaine, pour la ligne « Built from: … » de l'écran
+ * de positionnement (§2.4/§9.9). `modality_ids` a besoin du CATALOGUE — le
+ * contrat demande le nom réel de la modalité (« EMDR »), pas une phrase
+ * générique — donc résolu ici plutôt que dans `EVIDENCE_LABELS`.
+ */
+export function resolveEvidenceLabel(
+  field: string,
+  modalityIds: string[],
+  modalityCards: { id: string; label: string }[]
+): string {
+  if (field === "modality_ids") {
+    const labels = modalityIds
+      .map((id) => modalityCards.find((entry) => entry.id === id)?.label)
+      .filter((label): label is string => Boolean(label));
+    return labels.length > 0 ? labels.join(", ") : "her training";
+  }
+  return EVIDENCE_LABELS[field] ?? field;
+}
