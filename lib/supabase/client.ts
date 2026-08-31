@@ -1,5 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
-import type { Database } from "@/types/database";
+import type { Database } from "@/types/supabase";
 
 /**
  * Client Supabase pour les Client Components. Utilise la clé anon (publique) :
