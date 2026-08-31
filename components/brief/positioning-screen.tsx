@@ -180,7 +180,7 @@ export function PositioningScreen({
 
   async function confirm(keepMine: boolean) {
     if (!selectedId || statement.trim().length === 0) {
-      setConfirmError("Pick one of the three, then confirm it.");
+      setConfirmError("Pick one of the options, then confirm it.");
       return;
     }
     setConfirming(true);
@@ -236,7 +236,7 @@ export function PositioningScreen({
     } else if (confirmedElsewhere) {
       await build();
     } else {
-      setConfirmError("Pick one of the three, then confirm it.");
+      setConfirmError("Pick one of the options, then confirm it.");
     }
   }
 

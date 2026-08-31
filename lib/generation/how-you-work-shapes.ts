@@ -41,9 +41,9 @@ export type ToneCards = z.infer<typeof toneCardsSchema>;
 
 /* ── `usp_options` (§9.5) ───────────────────────────────────────────────── */
 /*
- * `project_briefs_usp_options_valid` : exactement 3 éléments, les cinq clés
- * toutes présentes, `statement` ≤ 200, `rationale` ≤ 240, `evidence` un
- * tableau de chaînes, et les trois `angle` DISTINCTS.
+ * `project_briefs_usp_options_valid` : 2 ou 3 éléments (jamais 1, jamais 0),
+ * les cinq clés toutes présentes, `statement` ≤ 200, `rationale` ≤ 240,
+ * `evidence` un tableau de chaînes, et les `angle` DISTINCTS entre eux.
  */
 
 export const USP_ANGLES = ["population", "method", "lived_experience"] as const;
@@ -61,10 +61,11 @@ export type UspOption = z.infer<typeof uspOptionSchema>;
 
 export const uspOptionsSchema = z
   .array(uspOptionSchema)
-  .length(3)
+  .min(2)
+  .max(3)
   .refine(
-    (list) => new Set(list.map((option) => option.angle)).size === 3,
-    "The three USP options carry distinct angles"
+    (list) => new Set(list.map((option) => option.angle)).size === list.length,
+    "The USP options carry distinct angles"
   );
 export type UspOptions = z.infer<typeof uspOptionsSchema>;
 
