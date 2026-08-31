@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChipGroup } from "@/components/brief/chip-group";
 import { WriteForMe } from "@/components/brief/write-for-me";
+import { HelpMeSayIt } from "@/components/brief/help-me-say-it";
 import {
   PaletteCard,
   PersonaCard,
@@ -322,7 +323,12 @@ export function ClientStep({ draft, catalog, update }: StepBodyProps) {
  * le bouton n'a pas de sens sans lui.
  */
 
-export function HowYouWorkStep({ draft, catalog, update }: StepBodyProps) {
+export function HowYouWorkStep({
+  projectId,
+  draft,
+  catalog,
+  update,
+}: StepBodyProps) {
   const [priorCareerOpen, setPriorCareerOpen] = useState(
     Boolean(draft.prior_career?.trim())
   );
@@ -412,6 +418,12 @@ export function HowYouWorkStep({ draft, catalog, update }: StepBodyProps) {
           onChange={(event) => update({ not_a_fit_text: event.target.value })}
           maxLength={400}
         />
+        <HelpMeSayIt
+          projectId={projectId}
+          field="not_a_fit_text"
+          text={draft.not_a_fit_text ?? ""}
+          onRewrite={(text) => update({ not_a_fit_text: text })}
+        />
       </section>
 
       <section className="flex flex-col gap-4">
@@ -465,6 +477,12 @@ export function HowYouWorkStep({ draft, catalog, update }: StepBodyProps) {
           onChange={(event) => update({ referral_quote: event.target.value })}
           placeholder="e.g. She's direct, but you never feel judged."
           maxLength={400}
+        />
+        <HelpMeSayIt
+          projectId={projectId}
+          field="referral_quote"
+          text={draft.referral_quote ?? ""}
+          onRewrite={(text) => update({ referral_quote: text })}
         />
       </section>
 
