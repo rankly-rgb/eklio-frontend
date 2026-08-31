@@ -4,6 +4,7 @@ import { loadBrief, readPreview } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
 import { STEP_COUNT, resumeStep, type StepDraft } from "@/lib/brief/flow";
 import { BriefFlow } from "@/components/brief/brief-flow";
+import { toneCardsSchema } from "@/lib/generation/how-you-work-shapes";
 
 /**
  * `?step=3` — posé par les liens « Edit » du récapitulatif.
@@ -80,6 +81,12 @@ export default async function BriefPage({
     data: bundle.data,
   };
 
+  // `tone_cards` est un `Json` côté généré ; une forme qui ne correspond plus
+  // au CHECK de la base (une écriture antérieure au lot, ou un désaccord de
+  // schéma) retombe sur `null` — le catalogue statique, jamais une carte
+  // à moitié conforme.
+  const initialToneCards = toneCardsSchema.safeParse(bundle.brief.tone_cards);
+
   return (
     <main className="route-enter flex min-h-0 flex-1 flex-col">
       <BriefFlow
@@ -89,6 +96,7 @@ export default async function BriefPage({
         initialStep={seedStep(query.step, bundle.brief)}
         initialCompleted={bundle.brief.completed_steps}
         initialPreview={preview}
+        initialToneCards={initialToneCards.success ? initialToneCards.data : null}
       />
     </main>
   );

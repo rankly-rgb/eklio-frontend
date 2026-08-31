@@ -435,6 +435,23 @@ function SitePreview({ model, size, rendering, className = "" }: SiteProps) {
               </div>
             </FontFade>
 
+            {model.hero.headline_is_sample ? (
+              // §2.2 : le titre vient d'une carte de ton, pas encore d'une
+              // direction réelle — même style mono que l'overline au-dessus,
+              // en ink-soft pour rester secondaire.
+              <div
+                className="font-mono uppercase"
+                style={{
+                  fontSize: isPanel ? 9 : 10,
+                  letterSpacing: "var(--tracking-mono-14)",
+                  color: "var(--p-ink-soft)",
+                  marginTop: 6,
+                }}
+              >
+                sample
+              </div>
+            ) : null}
+
             <div
               className="mt-3"
               style={{

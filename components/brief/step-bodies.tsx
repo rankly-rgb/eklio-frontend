@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChipGroup } from "@/components/brief/chip-group";
 import { WriteForMe } from "@/components/brief/write-for-me";
 import { HelpMeSayIt } from "@/components/brief/help-me-say-it";
@@ -14,9 +14,11 @@ import { TextField, TextAreaField } from "@/components/ui/text-field";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Catalog } from "@/lib/catalog/types";
 import type { PreviewModel } from "@/lib/brand/shapes";
 import type { StepDraft } from "@/lib/brief/flow";
+import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
 
 /*
  * Le corps de chacune des sept étapes. Toutes reçoivent le même contrat :
@@ -33,6 +35,13 @@ export type StepBodyProps = {
   catalog: Catalog;
   preview: PreviewModel | null;
   update: (patch: Partial<StepDraft>) => void;
+  /*
+   * Les six cartes GÉNÉRÉES (§2.2), portées par `BriefFlow` plutôt que par
+   * `VoiceStep` : `applyOptimistic()` en a besoin pour le rail, qui vit hors
+   * de l'étape 5.
+   */
+  toneCards: ToneCards | null;
+  setToneCards: (cards: ToneCards | null) => void;
 };
 
 /*
@@ -522,21 +531,144 @@ export function HowYouWorkStep({
   );
 }
 
-/* ── 5. Voice & tone ────────────────────────────────────────────────────── */
+/* ── 5. Voice & tone (§2.2) ─────────────────────────────────────────────── */
 
-export function VoiceStep({ draft, catalog, update }: StepBodyProps) {
+const TONE_CARDS_FALLBACK_MESSAGE =
+  "These are our standard openings — we couldn't write custom ones just now.";
+
+export function VoiceStep({
+  projectId,
+  draft,
+  catalog,
+  update,
+  toneCards,
+  setToneCards,
+}: StepBodyProps) {
+  const [loading, setLoading] = useState(toneCards === null);
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
+
+  /*
+   * Appelée à CHAQUE entrée sur cette étape : la route est idempotente
+   * (§2.2) — si `tone_cards_inputs_hash` n'a pas bougé, le serveur renvoie ce
+   * qui existe déjà sans rappeler le modèle. Partir de `toneCards` (porté par
+   * `BriefFlow`) évite le clignotement du squelette sur les visites
+   * répétées : on montre ce qu'on a déjà pendant que l'appel confirme (ou
+   * corrige) en arrière-plan.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    async function run() {
+      try {
+        const response = await fetch(`/api/briefs/${projectId}/tone-cards`, {
+          method: "POST",
+        });
+        const body = (await response.json().catch(() => null)) as
+          | {
+              ok?: boolean;
+              tone_cards?: ToneCards;
+              fallback?: boolean;
+              message?: string;
+            }
+          | null;
+        if (cancelled) return;
+
+        if (response.ok && body?.tone_cards) {
+          setToneCards(body.tone_cards);
+          setFallbackMessage(null);
+        } else if (response.ok && body?.fallback) {
+          setToneCards(null);
+          setFallbackMessage(body.message ?? TONE_CARDS_FALLBACK_MESSAGE);
+        } else {
+          setFallbackMessage(TONE_CARDS_FALLBACK_MESSAGE);
+        }
+      } catch {
+        if (!cancelled) setFallbackMessage(TONE_CARDS_FALLBACK_MESSAGE);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // Un seul appel par entrée sur l'étape : `projectId` seul en dépendance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  function selectGenerated(id: string) {
+    update({
+      tone_card_id: null,
+      data: {
+        ...draft.data,
+        selected_tone_card_id:
+          draft.data.selected_tone_card_id === id ? undefined : id,
+      },
+    });
+  }
+
+  function selectStatic(id: string) {
+    update({
+      tone_card_id: draft.tone_card_id === id ? null : id,
+      data: { ...draft.data, selected_tone_card_id: undefined },
+    });
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4">
+        <MonoLabel tracking="14" tone="ink-3">
+          Writing six openings in your voice…
+        </MonoLabel>
+        <div className="grid grid-cols-2 gap-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-[124px]" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (toneCards) {
+    const selectedId = draft.data.selected_tone_card_id ?? null;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-4">
+          {toneCards.map((tone) => (
+            <ToneCard
+              key={tone.id}
+              tone={tone}
+              selected={selectedId === tone.id}
+              onSelect={() => selectGenerated(tone.id)}
+            />
+          ))}
+        </div>
+        {selectedId ? (
+          <p className="text-helper leading-prose text-ink-2">
+            We&rsquo;re keeping the voice, not the sentence. Your real headline
+            comes with your directions.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-4">
-      {catalog.toneCards.map((tone) => (
-        <ToneCard
-          key={tone.id}
-          tone={tone}
-          selected={draft.tone_card_id === tone.id}
-          onSelect={() =>
-            update({ tone_card_id: draft.tone_card_id === tone.id ? null : tone.id })
-          }
-        />
-      ))}
+    <div className="flex flex-col gap-4">
+      {fallbackMessage ? (
+        <p className="text-helper leading-prose text-ink-2">{fallbackMessage}</p>
+      ) : null}
+      <div className="grid grid-cols-2 gap-4">
+        {catalog.toneCards.map((tone) => (
+          <ToneCard
+            key={tone.id}
+            tone={tone}
+            selected={draft.tone_card_id === tone.id}
+            onSelect={() => selectStatic(tone.id)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

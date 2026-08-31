@@ -311,6 +311,14 @@ export const previewModelSchema = z.object({
     headline: z.string(),
     subhead: z.string(),
     cta_label: z.string(),
+    /*
+     * Posé côté CLIENT uniquement (`applyOptimistic`, jamais `brief_preview()`)
+     * quand `headline` vient d'une carte de ton — statique ou générée — plutôt
+     * que d'une direction réelle. §2.2 : `<BrandPreview />` rend alors un petit
+     * badge « sample » tant qu'aucune direction n'est choisie. Une direction
+     * réelle ne pose jamais ce champ.
+     */
+    headline_is_sample: z.boolean().optional(),
   }),
   about_excerpt: z.string(),
   specialties: z.array(z.string()),

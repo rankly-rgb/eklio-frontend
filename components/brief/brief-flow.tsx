@@ -30,6 +30,7 @@ import {
 } from "@/lib/brief/flow";
 import type { Catalog } from "@/lib/catalog/types";
 import type { PreviewModel } from "@/lib/brand/shapes";
+import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
 
 /*
  * Le brief — une question par écran, sur une seule route.
@@ -61,6 +62,7 @@ export function BriefFlow({
   initialStep,
   initialCompleted,
   initialPreview,
+  initialToneCards,
 }: {
   projectId: string;
   catalog: Catalog;
@@ -68,6 +70,7 @@ export function BriefFlow({
   initialStep: number;
   initialCompleted: number[];
   initialPreview: PreviewModel | null;
+  initialToneCards: ToneCards | null;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<StepDraft>(initialDraft);
@@ -75,6 +78,7 @@ export function BriefFlow({
   const [completed, setCompleted] = useState<number[]>(initialCompleted);
   const [issue, setIssue] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [toneCards, setToneCards] = useState<ToneCards | null>(initialToneCards);
 
   const autosave = useBriefAutosave(projectId, initialPreview);
   const step = STEPS[stepNumber - 1];
@@ -83,13 +87,15 @@ export function BriefFlow({
    * Le rail montre le modèle du serveur repeint par les choix déjà faits :
    * la couleur arrive au clic, pas 600 ms plus tard. La réponse du PATCH
    * remplace ensuite le modèle — `brief_preview()` reste l'autorité.
+   * `toneCards` (§2.2) vit ICI, pas dans `VoiceStep` : le rail en a besoin
+   * lui aussi, et il rend hors de l'étape 5.
    */
   const preview = useMemo(
     () =>
       autosave.preview
-        ? applyOptimistic(autosave.preview, draft, catalog)
+        ? applyOptimistic(autosave.preview, draft, catalog, toneCards)
         : null,
-    [autosave.preview, draft, catalog]
+    [autosave.preview, draft, catalog, toneCards]
   );
 
   const update = useCallback(
@@ -196,6 +202,8 @@ export function BriefFlow({
                 catalog={catalog}
                 preview={preview}
                 update={update}
+                toneCards={toneCards}
+                setToneCards={setToneCards}
               />
             </div>
 

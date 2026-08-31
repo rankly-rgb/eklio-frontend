@@ -319,3 +319,28 @@ export async function patchBrief(
 
   return { ok: true, brief, data: parseBriefData(brief.data), preview };
 }
+
+/**
+ * Écrit les six cartes de ton GÉNÉRÉES et leur empreinte d'entrées (§2.2).
+ * Distinct de `patchBrief` à dessein : ces deux colonnes ne sont JAMAIS dans
+ * `briefPatchSchema` — seul le générateur serveur les écrit, jamais un
+ * correctif client direct.
+ */
+export async function writeToneCards(
+  supabase: Client,
+  projectId: string,
+  toneCards: BriefRow["tone_cards"],
+  inputsHash: string
+): Promise<{ ok: true } | { ok: false; detail: unknown }> {
+  const { error } = await supabase
+    .from("project_briefs")
+    .update({
+      tone_cards: toneCards,
+      tone_cards_inputs_hash: inputsHash,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("project_id", projectId);
+
+  if (error) return { ok: false, detail: error };
+  return { ok: true };
+}
