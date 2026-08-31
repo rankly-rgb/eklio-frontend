@@ -25,7 +25,8 @@ const ANGLE_OVERLINE: Record<UspAngle, string> = {
 
 const REGENERATE_LIMIT = 2;
 const STATEMENT_MAX = 200;
-const GENERIC_ERROR = "Something didn't go through on our side. Your answers are saved.";
+const GENERIC_ERROR =
+  "Something didn't go through on our side. Your answers are saved.";
 
 type Alternative = { id: string; statement: string };
 
@@ -49,14 +50,37 @@ export function PositioningScreen({
   const [options, setOptions] = useState<UspOption[] | null>(initialOptions);
   const [loading, setLoading] = useState(initialOptions === null);
   const [partialMessage, setPartialMessage] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialSelectedId,
+  );
   const [statement, setStatement] = useState(initialStatement ?? "");
-  const [regenerateCount, setRegenerateCount] = useState(initialRegenerateCount);
+  const [regenerateCount, setRegenerateCount] = useState(
+    initialRegenerateCount,
+  );
   const [regenerating, setRegenerating] = useState(false);
-  const [collision, setCollision] = useState<{ alternatives: Alternative[] } | null>(null);
+  const [collision, setCollision] = useState<{
+    alternatives: Alternative[];
+  } | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const { build, pending: building, error: buildError } = useBuildBrand(projectId);
+  const [newOptionsDismissed, setNewOptionsDismissed] = useState(false);
+  const {
+    build,
+    pending: building,
+    error: buildError,
+  } = useBuildBrand(projectId);
+
+  /*
+   * Un choix CONFIRMÉ (§9.2 : `usp_statement` survit à toute régénération,
+   * jamais `selected_usp_id` seul) dont l'id ne se retrouve plus dans le lot
+   * affiché — une régénération a eu lieu depuis qu'elle a confirmé. Le
+   * rendu la montre dans son propre bloc, jamais silencieusement.
+   */
+  const confirmedElsewhere =
+    selectedId !== null &&
+    statement.trim().length > 0 &&
+    options !== null &&
+    !options.some((option) => option.id === selectedId);
 
   useEffect(() => {
     // TOUJOURS appelée, même quand `initialOptions` existe déjà (correction
@@ -71,29 +95,23 @@ export function PositioningScreen({
         const response = await fetch(`/api/briefs/${projectId}/usp-options`, {
           method: "POST",
         });
-        const body = (await response.json().catch(() => null)) as
-          | { ok?: boolean; options?: UspOption[]; partial?: boolean; message?: string }
-          | null;
+        const body = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          options?: UspOption[];
+          partial?: boolean;
+          message?: string;
+        } | null;
         if (cancelled) return;
         if (response.ok && body?.options) {
-          const freshOptions = body.options;
-          setOptions(freshOptions);
+          setOptions(body.options);
           setPartialMessage(body.partial ? (body.message ?? null) : null);
-          // Un rafraîchissement en arrière-plan a remplacé le lot (l'étape 4
-          // a changé) : une sélection qui référence un id qui n'existe plus
-          // dans le nouveau lot ne veut plus rien dire.
-          setSelectedId((current) => {
-            const stillThere =
-              current !== null && freshOptions.some((option) => option.id === current);
-            return stillThere ? current : null;
-          });
-          if (!freshOptions.some((option) => option.id === selectedId)) {
-            setStatement("");
-            setCollision(null);
-          }
+          // `selectedId`/`statement` NE BOUGENT PAS ici (correction demandée) :
+          // régénérer le lot remplace des CANDIDATS, jamais sa décision déjà
+          // confirmée. Si son id confirmé n'est plus dans le lot rafraîchi,
+          // le rendu ci-dessous le montre dans son propre bloc, séparément.
         } else if (initialOptions === null) {
           setPartialMessage(
-            "We couldn't find positioning options that were truly yours just now."
+            "We couldn't find positioning options that were truly yours just now.",
           );
         }
         // Sinon : ce qui était déjà affiché reste affiché — une vérification
@@ -102,7 +120,7 @@ export function PositioningScreen({
       } catch {
         if (!cancelled && initialOptions === null) {
           setPartialMessage(
-            "We couldn't find positioning options that were truly yours just now."
+            "We couldn't find positioning options that were truly yours just now.",
           );
         }
       } finally {
@@ -135,23 +153,23 @@ export function PositioningScreen({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ regenerate: true }),
       });
-      const body = (await response.json().catch(() => null)) as
-        | {
-            ok?: boolean;
-            options?: UspOption[];
-            partial?: boolean;
-            message?: string;
-            error?: string;
-          }
-        | null;
+      const body = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        options?: UspOption[];
+        partial?: boolean;
+        message?: string;
+        error?: string;
+      } | null;
       if (!response.ok || !body?.options) {
-        setConfirmError(body?.error ?? "We couldn't write three more just now.");
+        setConfirmError(
+          body?.error ?? "We couldn't write three more just now.",
+        );
         return;
       }
       setOptions(body.options);
       setPartialMessage(body.partial ? (body.message ?? null) : null);
-      setSelectedId(null);
-      setStatement("");
+      // Idem : « Write me three more » remplace les candidats, jamais une
+      // décision déjà confirmée. Voir le bloc « currently in use » ci-dessous.
       setRegenerateCount((count) => count + 1);
     } catch {
       setConfirmError("We couldn't write three more just now.");
@@ -177,9 +195,12 @@ export function PositioningScreen({
           keepMine,
         }),
       });
-      const body = (await response.json().catch(() => null)) as
-        | { ok?: boolean; collision?: boolean; alternatives?: Alternative[]; error?: string }
-        | null;
+      const body = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        collision?: boolean;
+        alternatives?: Alternative[];
+        error?: string;
+      } | null;
 
       if (!response.ok || !body?.ok) {
         setConfirmError(body?.error ?? GENERIC_ERROR);
@@ -198,7 +219,26 @@ export function PositioningScreen({
     }
   }
 
-  const selectedOption = options?.find((entry) => entry.id === selectedId) ?? null;
+  const selectedOption =
+    options?.find((entry) => entry.id === selectedId) ?? null;
+
+  /*
+   * Rien de nouveau à confirmer : elle a déjà confirmé, la régénération ne
+   * l'a pas touchée, et elle a dit qu'elle la garde (ou n'a simplement pas
+   * touché aux nouvelles cartes). Passer directement à la génération —
+   * rappeler `usp-confirm` échouerait de toute façon : son `selected_usp_id`
+   * ne référence plus le lot actuel, et le handler validerait contre CE
+   * lot-là (§9.2).
+   */
+  async function proceed() {
+    if (selectedOption) {
+      await confirm(false);
+    } else if (confirmedElsewhere) {
+      await build();
+    } else {
+      setConfirmError("Pick one of the three, then confirm it.");
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -210,38 +250,68 @@ export function PositioningScreen({
         </div>
       ) : (
         <>
+          {confirmedElsewhere ? (
+            <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
+              <MonoLabel tracking="14" tone="ink-3">
+                This is the positioning you&rsquo;re using now.
+              </MonoLabel>
+              <p className="text-pretty font-display text-tone font-medium leading-card text-ink">
+                {statement}
+              </p>
+              {!newOptionsDismissed ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => setNewOptionsDismissed(true)}
+                  className="self-start"
+                >
+                  Keep it
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
           {partialMessage ? (
             <p className="border-l border-accent pl-3 text-helper leading-prose text-ink-2">
               {partialMessage}
             </p>
           ) : null}
 
-          <div className="flex flex-col gap-4">
-            {(options ?? []).map((option) => (
-              <SelectableCard
-                key={option.id}
-                selected={selectedId === option.id}
-                onSelect={() => select(option)}
-                discOffset="18px"
-                className="flex flex-col gap-3 bg-card"
-              >
-                <MonoLabel tracking="14" tone="ink-2">
-                  {ANGLE_OVERLINE[option.angle]}
-                </MonoLabel>
-                <p className="text-pretty font-display text-tone font-medium leading-card text-ink">
-                  {option.statement}
-                </p>
-                <p className="text-ui leading-body text-ink-2">{option.rationale}</p>
-                {option.evidence.length > 0 ? (
-                  <MonoLabel tracking="10" tone="ink-3">
-                    {`Built from: ${option.evidence
-                      .map((field) => resolveEvidenceLabel(field, modalityIds, catalog.modalityCards))
-                      .join(" · ")}`}
+          {confirmedElsewhere && newOptionsDismissed ? null : (
+            <div className="flex flex-col gap-4">
+              {(options ?? []).map((option) => (
+                <SelectableCard
+                  key={option.id}
+                  selected={selectedId === option.id}
+                  onSelect={() => select(option)}
+                  discOffset="18px"
+                  className="flex flex-col gap-3 bg-card"
+                >
+                  <MonoLabel tracking="14" tone="ink-2">
+                    {ANGLE_OVERLINE[option.angle]}
                   </MonoLabel>
-                ) : null}
-              </SelectableCard>
-            ))}
-          </div>
+                  <p className="text-pretty font-display text-tone font-medium leading-card text-ink">
+                    {option.statement}
+                  </p>
+                  <p className="text-ui leading-body text-ink-2">
+                    {option.rationale}
+                  </p>
+                  {option.evidence.length > 0 ? (
+                    <MonoLabel tracking="10" tone="ink-3">
+                      {`Built from: ${option.evidence
+                        .map((field) =>
+                          resolveEvidenceLabel(
+                            field,
+                            modalityIds,
+                            catalog.modalityCards,
+                          ),
+                        )
+                        .join(" · ")}`}
+                    </MonoLabel>
+                  ) : null}
+                </SelectableCard>
+              ))}
+            </div>
+          )}
 
           <Button
             variant="tertiary"
@@ -261,7 +331,9 @@ export function PositioningScreen({
                 label="Your positioning statement"
                 rows={3}
                 value={statement}
-                onChange={(event) => setStatement(event.target.value.slice(0, STATEMENT_MAX))}
+                onChange={(event) =>
+                  setStatement(event.target.value.slice(0, STATEMENT_MAX))
+                }
                 maxLength={STATEMENT_MAX}
               />
               <span aria-live="polite" className="text-helper text-ink-3">
@@ -273,8 +345,8 @@ export function PositioningScreen({
           {collision ? (
             <div className="flex flex-col gap-3 border-l border-accent pl-3">
               <p className="text-helper leading-prose text-ink">
-                That&rsquo;s close to how another practice in your state describes
-                itself. You can keep it, or try one of these.
+                That&rsquo;s close to how another practice in your state
+                describes itself. You can keep it, or try one of these.
               </p>
               <div className="flex flex-wrap gap-2">
                 {collision.alternatives.map((alt) => (
@@ -282,7 +354,9 @@ export function PositioningScreen({
                     key={alt.id}
                     type="button"
                     onClick={() => {
-                      const option = options?.find((entry) => entry.id === alt.id);
+                      const option = options?.find(
+                        (entry) => entry.id === alt.id,
+                      );
                       if (option) select(option);
                     }}
                     className="rounded-pill border border-line px-4 py-2 text-left text-ui text-ink-2 hover:border-accent hover:text-ink"
@@ -302,8 +376,12 @@ export function PositioningScreen({
             </div>
           ) : (
             <Button
-              onClick={() => void confirm(false)}
-              disabled={!selectedOption || confirming || building}
+              onClick={() => void proceed()}
+              disabled={
+                (!selectedOption && !confirmedElsewhere) ||
+                confirming ||
+                building
+              }
               className="self-start"
             >
               {confirming || building ? "Confirming…" : "Continue"}

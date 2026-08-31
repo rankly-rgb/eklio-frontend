@@ -376,6 +376,20 @@ export async function writeToneCards(
  * `project_briefs_validate_selected_usp_id` exige que `selected_usp_id`
  * corresponde à un id présent dans `usp_options` quand il n'est pas `null`.
  */
+/**
+ * ⚠ NE remet PAS `selected_usp_id`/`usp_statement` à `null` (correction
+ * demandée) : régénérer remplace des CANDIDATS, jamais sa décision déjà
+ * confirmée. `usp_statement` est du texte libre — l'omettre du payload le
+ * laisse tel quel, sans risque.
+ *
+ * `selected_usp_id`, lui, dépend du trigger `project_briefs_validate_selected_usp_id`
+ * (§9.2 du contrat) : s'il revalide `NEW.selected_usp_id` contre
+ * `NEW.usp_options` sur CHAQUE update de la ligne (et pas seulement quand
+ * `selected_usp_id` change), cet appel échouera dès qu'un id confirmé
+ * existant ne se retrouve pas dans le lot régénéré — puisque ce module ne
+ * peut pas lire la définition du trigger depuis le frontend, c'est un risque
+ * à vérifier côté migration, pas une garantie que ce module peut donner.
+ */
 export async function writeUspOptions(
   supabase: Client,
   projectId: string,
@@ -386,8 +400,6 @@ export async function writeUspOptions(
     .from("project_briefs")
     .update({
       usp_options: uspOptions,
-      selected_usp_id: null,
-      usp_statement: null,
       data,
       updated_at: new Date().toISOString(),
     })
