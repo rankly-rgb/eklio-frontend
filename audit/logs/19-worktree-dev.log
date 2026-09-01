@@ -1,0 +1,81 @@
+=== Worktree /tmp/eklio-audit-db8c43b, meme commit db8c43b, npm ci neuf, `next dev -p 3055` ===
+=== NOTE 1 : DEUX lancements ont ete faits sur le port 3055. Le PREMIER a demarre et a
+===          servi les requetes (curl -> HTTP 500, cf. plus bas) ; le SECOND, lance
+===          ensuite, a trouve le port pris et a imprime le EADDRINUSE ci-dessous.
+===          Ce fichier melange les deux sorties.
+=== NOTE 2 : les 500 viennent de l'absence de .env.local dans le worktree (les secrets
+===          n'y ont deliberement pas ete copies), PAS du code. Le serveur, lui, a bien
+===          demarre : c'est le point que cette experience etablit.
+=== NOTE 3 : le bloc Supabase se repete a l'identique une fois par requete ; tronque ici.
+⨯ Failed to start server
+Error: listen EADDRINUSE: address already in use :::3055
+    at <unknown> (Error: listen EADDRINUSE: address already in use :::3055)
+    at new Promise (<anonymous>) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3055
+}
+
+⨯ Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at updateSession (lib/supabase/middleware.ts:13:38)
+    at proxy (proxy.ts:5:23)
+  11 |   let response = NextResponse.next({ request });
+  12 |
+> 13 |   const supabase = createServerClient(
+     |                                      ^
+  14 |     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  15 |     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  16 |     {
+⨯ Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at updateSession (lib/supabase/middleware.ts:13:38)
+    at proxy (proxy.ts:5:23)
+  11 |   let response = NextResponse.next({ request });
+  12 |
+> 13 |   const supabase = createServerClient(
+     |                                      ^
+  14 |     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  15 |     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  16 |     {
+⨯ Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at updateSession (lib/supabase/middleware.ts:13:38)
+    at proxy (proxy.ts:5:23)
+  11 |   let response = NextResponse.next({ request });
+  12 |
+> 13 |   const supabase = createServerClient(
+     |                                      ^
+  14 |     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  15 |     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  16 |     {
+⨯ Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at updateSession (lib/supabase/middleware.ts:13:38)
+    at proxy (proxy.ts:5:23)
+  11 |   let response = NextResponse.next({ request });
+  12 |
+> 13 |   const supabase = createServerClient(
+     |                                      ^
+  14 |     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  
+=== [TRUNCATED — remaining lines are byte-identical repeats of the same proxy.ts:5 / lib/supabase/middleware.ts:13 error] ===
+total lines: 611

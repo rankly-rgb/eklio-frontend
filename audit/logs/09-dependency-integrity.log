@@ -1,0 +1,141 @@
+=== lockfile history ===
+35d75de chore(types): regenerer types/supabase.ts depuis l'US (tables billing)
+4830609 feat(ethics): socle de conformite deontologique ACA/APA (Lot 0)
+7f8d98d Lot 2 : génération des 3 directions créatives via Claude
+2fdb52b Design system fond blanc : nouveaux tokens, focus visible, polices recentrées
+c1dfe31 Bootstrap Eklio frontend: Next.js scaffold, design tokens, Supabase auth, landing page
+
+=== package.json history ===
+35d75de chore(types): regenerer types/supabase.ts depuis l'US (tables billing)
+4830609 feat(ethics): socle de conformite deontologique ACA/APA (Lot 0)
+7f8d98d Lot 2 : génération des 3 directions créatives via Claude
+2fdb52b Design system fond blanc : nouveaux tokens, focus visible, polices recentrées
+c1dfe31 Bootstrap Eklio frontend: Next.js scaffold, design tokens, Supabase auth, landing page
+
+=== lockfile vs package.json drift (npm ls --package-lock-only) ===
+eklio-frontend@0.1.0 /workspaces/eklio-frontend
+├── @anthropic-ai/sdk@0.117.1
+├── @supabase/ssr@0.12.4
+├── @supabase/supabase-js@2.112.2
+├── @tailwindcss/postcss@4.3.3
+├── @types/node@20.19.43
+├── @types/react-dom@19.2.4
+├── @types/react@19.2.18
+├── eslint-config-next@16.3.0
+├── eslint@9.39.5
+├── next@16.3.0
+├── react-dom@19.2.8
+├── react@19.2.8
+├── stripe@22.5.0
+├── tailwindcss@4.3.3
+├── typescript@5.9.3
+├── vitest@4.1.11
+└── zod@4.4.3
+
+
+=== ALL bare module specifiers imported in app/ components/ lib/ types/ ===
+@/app/app/checkout/actions
+@/components/app/app-header
+@/components/auth-form
+@/components/auth-shell
+@/components/billing/checkout-form
+@/components/billing/confirmation-poll
+@/components/brief/brief-flow
+@/components/brief/build-brand-button
+@/components/brief/chip-group
+@/components/brief/preview-rail
+@/components/brief/preview-sheet
+@/components/brief/save-state
+@/components/brief/start-brief-button
+@/components/brief/step-bodies
+@/components/brief/use-brief-autosave
+@/components/brief/write-for-me
+@/components/ethics-disclaimer
+@/components/home/checklist-card
+@/components/home/content-grid
+@/components/home/home-view
+@/components/home/monthly-presence-modal
+@/components/kit/brand-kit-view
+@/components/kit/copy-site-prompt
+@/components/kit/palette-section
+@/components/kit/site-prompt-block
+@/components/preview/brand-preview
+@/components/preview/cards
+@/components/preview/use-brand-font
+@/components/reveal/direction-card
+@/components/reveal/generation-screen
+@/components/reveal/reveal-view
+@/components/ui/browser-frame
+@/components/ui/button
+@/components/ui/checkbox
+@/components/ui/glyphs
+@/components/ui/mono-label
+@/components/ui/placeholder-lines
+@/components/ui/progress7
+@/components/ui/section-header
+@/components/ui/selectable-card
+@/components/ui/skeleton
+@/components/ui/text-field
+@/components/ui/toast
+@/lib/actions/auth
+@/lib/ai/client
+@/lib/analytics
+@/lib/api/cron
+@/lib/api/handler
+@/lib/app/header-context
+@/lib/auth/next-url
+@/lib/billing/entitlements
+@/lib/billing/plans
+@/lib/brand/color
+@/lib/brand/derive
+@/lib/brand/sample
+@/lib/brand/shapes
+@/lib/brief/flow
+@/lib/brief/optimistic
+@/lib/brief/summary
+@/lib/catalog/read
+@/lib/catalog/types
+@/lib/data/brand-kit
+@/lib/data/brief
+@/lib/data/calendar
+@/lib/data/checklist
+@/lib/data/home
+@/lib/email/palette
+@/lib/email/state
+@/lib/email/templates
+@/lib/email/transport
+@/lib/ethics/disclaimer
+@/lib/ethics/enforce
+@/lib/ethics/guard
+@/lib/ethics/rules
+@/lib/fonts
+@/lib/generation/brief-context
+@/lib/generation/job
+@/lib/generation/model
+@/lib/generation/monthly
+@/lib/generation/pipeline
+@/lib/generation/select
+@/lib/generation/validate
+@/lib/kit/pdf
+@/lib/kit/site-prompt
+@/lib/kit/tiers
+@/lib/stripe/checkout
+@/lib/stripe/client
+@/lib/stripe/metadata
+@/lib/stripe/webhook
+@/lib/stripe/webhook-store
+@/lib/supabase/middleware
+@/lib/supabase/server
+@/types/supabase
+@anthropic-ai/sdk
+@supabase/ssr
+@supabase/supabase-js
+next
+node:crypto
+node:fs
+node:path
+node:url
+react
+stripe
+vitest
+zod

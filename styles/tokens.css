@@ -1,0 +1,180 @@
+/*
+ * Eklio — design tokens. SEULE source des couleurs, rayons, ombres, échelles
+ * typographiques et constantes de gabarit de l'application.
+ *
+ * Chaque valeur est relevée telle quelle dans `design/reference/*.dc.html`,
+ * qui est le contrat visuel. Ne rien ajouter ici qui ne vienne pas d'un de ces
+ * huit écrans, et ne coder aucune de ces valeurs en dur ailleurs.
+ *
+ * Règle qui gouverne l'ensemble : le chrome de l'app est blanc chaud, encre et
+ * argile ; la marque de l'utilisateur est la seule chose saturée à l'écran.
+ * Les couleurs de marque n'ont donc PAS de token ici — elles arrivent en
+ * données et sont posées en propriétés custom `--p-*` sur <BrandPreview>.
+ *
+ * Deux blocs, pour une raison mécanique :
+ *   :root   — tokens dont le nom N'EST PAS un espace de nom Tailwind v4
+ *             (`--bg`, `--ink`, `--gutter`…). Ils sont remontés en utilitaires
+ *             par le `@theme inline` plus bas.
+ *   @theme  — tokens dont le nom EST déjà un espace de nom Tailwind
+ *             (`--radius-*`, `--text-*`, `--font-*`…). Les déclarer ici les
+ *             émet dans `:root` ET crée l'utilitaire : les redéclarer au-dessus
+ *             ferait une référence circulaire.
+ */
+
+:root {
+  /* ── Surfaces et encre ────────────────────────────────────────────────── */
+  /* fond de page, bord à bord */
+  --bg: #fdfcfa;
+  /* cadres de prévisualisation uniquement */
+  --surface: #ffffff;
+  /* cartes sélectionnables, carte de nudge, avatar, barre de chrome */
+  --card: #f6f2ea;
+  /* texte principal, remplissage du bouton primaire */
+  --ink: #26211c;
+  /* texte secondaire, nav inactive, libellés mono */
+  --ink-2: #6f675e;
+  /* lignes de placeholder, texte barré, méta verrouillée */
+  --ink-3: #a79e93;
+  /* tous les filets, 1px, toujours */
+  --line: #ebe6e0;
+  /* argile : jauge, bordures sélectionnées, pastilles de coche, un CTA/écran */
+  --accent: #b4653f;
+
+  /*
+   * ── Trois tokens ajoutés pour l'éditeur de site ─────────────────────────
+   * Aucune des huit références ne montre cet écran : il a un rail de contrôle
+   * qui doit se détacher de la maquette, une bannière de péremption qui doit
+   * être impossible à manquer, et un rapport de contraste qui doit pouvoir
+   * dire « échec » en couleur. Les trois valeurs restent dans la famille
+   * (blanc chaud, encre, argile) et sont mesurées, pas choisies à l'œil —
+   * cf. `lib/brand/__tests__/contrast.test.ts`.
+   */
+  /* rail de contrôle — entre --bg et --card, pour poser le rail sans le
+     confondre avec une carte */
+  --surface-2: #faf7f2;
+  /* bandeau de péremption au-dessus de la sortie — argile délavée, --ink y
+     mesure 13.23:1 */
+  --accent-soft: #f6e7df;
+  /* paires de contraste en échec — 8.06:1 sur --bg, 7.40:1 sur --card, donc
+     lisible en texte courant, contrairement à --accent */
+  --danger: #8c2f1e;
+  /* compteur de caractères à 90 % de la limite — ambre foncée, 5.77:1 sur
+     --bg et 5.30:1 sur --card : un avertissement doit se LIRE */
+  --warning: #8a5a12;
+
+  /* Anneau de focus — accent à 40 %. */
+  --focus-ring: rgba(180, 101, 63, 0.4);
+
+  /* ── Gabarit ──────────────────────────────────────────────────────────── */
+  --gutter: 48px;
+  --gutter-sm: 24px;
+  --header-h: 72px;
+
+  /* ── Mouvement ────────────────────────────────────────────────────────── */
+  --dur-route: 200ms;
+  --dur-question: 200ms;
+  --dur-token: 500ms;
+  --dur-font: 200ms;
+  --dur-select: 150ms;
+  --stagger-reveal: 120ms;
+  --ease-token: ease-in-out;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@theme {
+  /* ── Familles ─────────────────────────────────────────────────────────── */
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-karla), system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
+
+  /*
+   * L'unique ombre de l'application — carte de prévisualisation du brief,
+   * et rien d'autre.
+   */
+  --shadow-preview: 0 24px 60px rgba(38, 33, 28, 0.05);
+
+  /* ── Rayons ───────────────────────────────────────────────────────────── */
+  /* cartes et panneaux */
+  --radius-card: 14px;
+  /* maquettes de prévisualisation et tuiles de contenu */
+  --radius-preview: 8px;
+  /* tuiles sociales */
+  --radius-social: 6px;
+  /* cases à cocher */
+  --radius-check: 3px;
+  /* pastilles et points */
+  --radius-pill: 999px;
+  /* cadre du téléphone */
+  --radius-device: 40px;
+
+  /* ── Échelle typographique (mesurée sur les références) ───────────────── */
+  --text-wordmark: 23px;
+  --text-h1: 34px;
+  --text-question: 40px;
+  --text-reveal: 40px;
+  --text-generation: 46px;
+  --text-section: 20px;
+  --text-subsection: 18px;
+  --text-card-title: 22px;
+  --text-card-title-sm: 21px;
+  --text-tone: 25px;
+  --text-body: 16px;
+  --text-ui: 14px;
+  --text-helper: 15px;
+  --text-stage: 17px;
+  --text-meta: 13px;
+  --text-mono: 11px;
+  --text-mono-sm: 10px;
+  /* mobile : la question et le titre de page descendent à 28px */
+  --text-question-sm: 28px;
+
+  --leading-tight: 1.1;
+  --leading-title: 1.12;
+  --leading-card: 1.2;
+  --leading-body: 1.45;
+  --leading-prose: 1.6;
+
+  --tracking-wordmark: -0.01em;
+  --tracking-h1: -0.02em;
+  --tracking-question: -0.015em;
+  --tracking-card-title: -0.01em;
+  /* mono : les graduations relevées sur les références, jamais d'autre */
+  /* 0.08em : initiales de l'avatar (en-tête des Écrans 1, 2, 5, 6, 7) */
+  --tracking-mono-08: 0.08em;
+  --tracking-mono-10: 0.1em;
+  --tracking-mono-12: 0.12em;
+  --tracking-mono-14: 0.14em;
+  --tracking-mono-16: 0.16em;
+  --tracking-mono-18: 0.18em;
+  --tracking-mono-hex: 0.04em;
+  --tracking-mono-url: 0.06em;
+
+  /* ── Largeurs de gabarit ──────────────────────────────────────────────── */
+  --container-brief: 640px;
+  --container-rail: 420px;
+  --container-site-mock: 900px;
+  --container-reveal-grid: 1312px;
+  --container-presence-card: 380px;
+  --container-device: 390px;
+  --container-voice: 1000px;
+}
+
+/*
+ * Remontée des tokens `:root` en utilitaires Tailwind. `inline` fait écrire la
+ * valeur résolue dans l'utilitaire, ce qui évite d'émettre une seconde copie
+ * des variables ci-dessus.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-surface-2: var(--surface-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+}

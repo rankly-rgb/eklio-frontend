@@ -1,0 +1,243 @@
+=== node_modules/next/dist/build/lockfile.js ===
+     1	"use strict";
+     2	Object.defineProperty(exports, "__esModule", {
+     3	    value: true
+     4	});
+     5	0 && (module.exports = {
+     6	    Lockfile: null,
+     7	    parseDevServerInfo: null,
+     8	    readLockfileContent: null
+     9	});
+    10	function _export(target, all) {
+    11	    for(var name in all)Object.defineProperty(target, name, {
+    12	        enumerable: true,
+    13	        get: all[name]
+    14	    });
+    15	}
+    16	_export(exports, {
+    17	    Lockfile: function() {
+    18	        return Lockfile;
+    19	    },
+    20	    parseDevServerInfo: function() {
+    21	        return parseDevServerInfo;
+    22	    },
+    23	    readLockfileContent: function() {
+    24	        return readLockfileContent;
+    25	    }
+    26	});
+    27	const _fs = /*#__PURE__*/ _interop_require_default(require("fs"));
+    28	const _path = /*#__PURE__*/ _interop_require_default(require("path"));
+    29	const _picocolors = require("../lib/picocolors");
+    30	const _log = /*#__PURE__*/ _interop_require_wildcard(require("./output/log"));
+    31	const _swc = require("./swc");
+    32	function _interop_require_default(obj) {
+    33	    return obj && obj.__esModule ? obj : {
+    34	        default: obj
+    35	    };
+    36	}
+    37	function _getRequireWildcardCache(nodeInterop) {
+    38	    if (typeof WeakMap !== "function") return null;
+    39	    var cacheBabelInterop = new WeakMap();
+    40	    var cacheNodeInterop = new WeakMap();
+    41	    return (_getRequireWildcardCache = function(nodeInterop) {
+    42	        return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
+    43	    })(nodeInterop);
+    44	}
+    45	function _interop_require_wildcard(obj, nodeInterop) {
+    46	    if (!nodeInterop && obj && obj.__esModule) {
+    47	        return obj;
+    48	    }
+    49	    if (obj === null || typeof obj !== "object" && typeof obj !== "function") {
+    50	        return {
+    51	            default: obj
+    52	        };
+    53	    }
+    54	    var cache = _getRequireWildcardCache(nodeInterop);
+    55	    if (cache && cache.has(obj)) {
+    56	        return cache.get(obj);
+    57	    }
+    58	    var newObj = {
+    59	        __proto__: null
+    60	    };
+    61	    var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
+    62	    for(var key in obj){
+    63	        if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
+    64	            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
+    65	            if (desc && (desc.get || desc.set)) {
+    66	                Object.defineProperty(newObj, key, desc);
+    67	            } else {
+    68	                newObj[key] = obj[key];
+    69	            }
+    70	        }
+    71	    }
+    72	    newObj.default = obj;
+    73	    if (cache) {
+    74	        cache.set(obj, newObj);
+    75	    }
+    76	    return newObj;
+    77	}
+    78	const RETRY_DELAY_MS = 10;
+    79	const MAX_RETRY_MS = 1000;
+    80	function readLockfileContent(lockfilePath) {
+    81	    try {
+    82	        return _fs.default.readFileSync(lockfilePath, 'utf-8');
+    83	    } catch  {
+    84	        return undefined;
+    85	    }
+    86	}
+    87	function parseDevServerInfo(content) {
+    88	    try {
+    89	        return JSON.parse(content);
+    90	    } catch  {
+    91	        return undefined;
+    92	    }
+    93	}
+    94	class Lockfile {
+    95	    constructor(bindings, nativeLockfile){
+    96	        this.bindings = bindings;
+    97	        this.nativeLockfile = nativeLockfile;
+    98	    }
+    99	    /**
+   100	   * Attempts to create or acquire an exclusive lockfile on disk. Lockfiles are
+   101	   * best-effort, depending on the platform.
+   102	   *
+   103	   * - If we fail to acquire the lock, we return `undefined`.
+   104	   * - If we're on wasm, this always returns a dummy `Lockfile` object.
+   105	   *
+   106	   * @param path - Path to the lock file
+   107	   * @param unlockOnExit - Whether to unlock the file on process exit
+   108	   * @param content - Optional content to write to the lockfile (e.g., JSON with server info)
+   109	   */ static tryAcquire(path, unlockOnExit = true, content) {
+   110	        const bindings = (0, _swc.getBindingsSync)();
+   111	        if (bindings.isWasm) {
+   112	            _log.info(`Skipping creating a lockfile at ${(0, _picocolors.cyan)(path)} because we're using WASM bindings`);
+   113	            return new Lockfile(bindings, undefined);
+   114	        } else {
+   115	            let nativeLockfile;
+   116	            try {
+   117	                nativeLockfile = bindings.lockfileTryAcquireSync(path, content);
+   118	            } catch (e) {
+   119	                // this happens if there's an IO error (e.g. `ENOENT`), which is
+   120	                // different than if we just didn't acquire the lock
+   121	                throw Object.defineProperty(new Error('An IO error occurred while attempting to create and acquire the lockfile', {
+   122	                    cause: e
+   123	                }), "__NEXT_ERROR_CODE", {
+   124	                    value: "E859",
+   125	                    enumerable: false,
+   126	                    configurable: true
+   127	                });
+   128	            }
+   129	            if (nativeLockfile != null) {
+   130	                const jsLockfile = new Lockfile(bindings, nativeLockfile);
+   131	                if (unlockOnExit) {
+   132	                    const exitListener = ()=>{
+   133	                        // Best-Effort: If we don't do this, the operating system will
+   134	                        // release the lock for us. This gives an opportunity to delete the
+   135	                        // unlocked lockfile (which is not otherwise deleted on POSIX).
+   136	                        //
+   137	                        // This must be synchronous because `process.on('exit', ...)` is
+   138	                        // synchronous.
+   139	                        jsLockfile.unlockSync();
+   140	                    };
+   141	                    process.on('exit', exitListener);
+   142	                    jsLockfile.listener = exitListener;
+   143	                }
+   144	                return jsLockfile;
+   145	            } else {
+   146	                return undefined;
+   147	            }
+   148	        }
+   149	    }
+   150	    /**
+   151	   * Attempts to create or acquire a lockfile using `Lockfile.tryAcquire`. If
+   152	   * that returns `undefined`, indicating that another process or caller has the
+   153	   * lockfile, then this will output an error message and exit the process with
+   154	   * a non-zero exit code.
+   155	   *
+   156	   * This will retry a small number of times. This can be useful when running
+   157	   * processes in a loop, e.g. if cleanup isn't fully synchronous due to child
+   158	   * parent/processes.
+   159	   *
+   160	   * @param path - Path to the lock file
+   161	   * @param processName - Name of the process for error messages (e.g., 'next dev')
+   162	   * @param unlockOnExit - Whether to unlock the file on process exit
+   163	   * @param content - Optional content to write to the lockfile (e.g., JSON with server info)
+   164	   * @param projectDir - Optional project directory for enhanced error messages
+   165	   * @param relativeDistDir - Optional relative dist directory path (e.g., '.next/dev')
+   166	   */ static async acquireWithRetriesOrExit(path, processName, unlockOnExit = true, content, projectDir, relativeDistDir) {
+   167	        const startMs = Date.now();
+   168	        let lockfile;
+   169	        while(Date.now() - startMs < MAX_RETRY_MS){
+   170	            lockfile = Lockfile.tryAcquire(path, unlockOnExit, content);
+   171	            if (lockfile !== undefined) break;
+   172	            await new Promise((resolve)=>setTimeout(resolve, RETRY_DELAY_MS));
+   173	        }
+   174	        if (lockfile === undefined) {
+   175	            const isDev = processName === 'next dev';
+   176	            if (isDev) {
+   177	                // For dev server, try to read server info from the lockfile itself
+   178	                const lockfileContent = readLockfileContent(path);
+   179	                const serverInfo = lockfileContent ? parseDevServerInfo(lockfileContent) : undefined;
+   180	                if (serverInfo) {
+   181	                    _log.error(`Another ${(0, _picocolors.cyan)(processName)} server is already running.`);
+   182	                    console.error();
+   183	                    console.error(`- Local:        ${(0, _picocolors.cyan)(serverInfo.appUrl)}`);
+   184	                    console.error(`- PID:          ${serverInfo.pid}`);
+   185	                    if (projectDir) {
+   186	                        console.error(`- Dir:          ${projectDir}`);
+   187	                    }
+   188	                    if (relativeDistDir) {
+   189	                        console.error(`- Log:          ${_path.default.join(relativeDistDir, 'logs', 'next-development.log')}`);
+   190	                    }
+   191	                    console.error();
+   192	                    console.error(`You can access the existing server at ${(0, _picocolors.cyan)(serverInfo.appUrl)},`);
+   193	                    // Use platform-appropriate kill command
+   194	                    const killCommand = process.platform === 'win32' ? `taskkill /PID ${serverInfo.pid} /F` : `kill ${serverInfo.pid}`;
+   195	                    console.error(`or run ${(0, _picocolors.cyan)(killCommand)} to stop it and start a new one.`);
+   196	                } else {
+   197	                    // Fallback when we can't read server info from the lockfile
+   198	                    _log.error(`Another ${(0, _picocolors.cyan)(processName)} server is already running in this directory.`);
+   199	                    console.error(`Stop the other server before starting a new one.`);
+   200	                }
+   201	            } else {
+   202	                // For build, show that a build is in progress
+   203	                _log.error(`Another ${(0, _picocolors.cyan)(processName)} process is already running.`);
+   204	                console.error();
+   205	                console.error(`  This could be:`);
+   206	                console.error(`  - A ${(0, _picocolors.cyan)('next build')} still in progress`);
+   207	                console.error(`  - A previous build that didn't exit cleanly`);
+   208	                console.error();
+   209	                _log.info(`${(0, _picocolors.bold)('Suggestion:')} Wait for the build to complete.`);
+   210	            }
+   211	            process.exit(1);
+   212	        }
+   213	        return lockfile;
+   214	    }
+   215	    /**
+   216	   * Releases the lockfile and closes the file descriptor.
+   217	   *
+   218	   * If this is not called, the lock will be released by the operating system
+   219	   * when the file handle is closed during process exit.
+   220	   */ async unlock() {
+   221	        const { nativeLockfile, listener } = this;
+   222	        if (nativeLockfile !== undefined) {
+   223	            await this.bindings.lockfileUnlock(nativeLockfile);
+   224	        }
+   225	        if (listener !== undefined) {
+   226	            process.off('exit', listener);
+   227	        }
+   228	    }
+   229	    /**
+   230	   * A blocking version of `unlock`.
+   231	   */ unlockSync() {
+   232	        const { nativeLockfile, listener } = this;
+   233	        if (nativeLockfile !== undefined) {
+   234	            this.bindings.lockfileUnlockSync(nativeLockfile);
+   235	        }
+   236	        if (listener !== undefined) {
+   237	            process.off('exit', listener);
+   238	        }
+   239	    }
+   240	}
+   241	
+   242	//# sourceMappingURL=lockfile.js.map

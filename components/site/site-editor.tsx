@@ -1,0 +1,238 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { MonoLabel } from "@/components/ui/mono-label";
+import { Button } from "@/components/ui/button";
+import { useSiteEditor } from "@/components/site/use-site-editor";
+import { ControlRail } from "@/components/site/control-rail";
+import { Mockup } from "@/components/site/mockup";
+import { OutputPanel } from "@/components/site/output-panel";
+import type { Direction } from "@/lib/brand/shapes";
+import type { SiteCatalog, SiteSpecEnvelope } from "@/lib/site/types";
+import type { TypePairing } from "@/lib/catalog/types";
+
+/*
+ * L'éditeur de site — la coquille.
+ *
+ * GABARIT (§2 de la commande). Au-dessus de 1100px : rail de contrôle de
+ * 360px sur `--surface-2`, maquette qui prend le reste et reste COLLÉE au
+ * défilement, panneau de sortie pleine largeur en dessous. En dessous de
+ * 1100px : la maquette d'abord, tapable pour passer en plein écran, les
+ * contrôles dans une feuille par le bas, la sortie ensuite.
+ *
+ * 1100px, et pas un point d'arrêt du framework : c'est la largeur en dessous
+ * de laquelle 360 + 900 + gouttières ne tiennent plus côte à côte. Le gabarit
+ * décide du point de rupture, pas l'inverse.
+ *
+ * CE QUE L'ÉCRAN DIT DE LUI-MÊME. Eklio ne construit pas et n'héberge pas le
+ * site. C'est écrit en haut, en une phrase, et ce n'est pas décoratif : ça
+ * gouverne tout ce que la praticienne attend de la suite. Il n'y a donc, ici
+ * et nulle part dans cette fonctionnalité, ni publication, ni déploiement, ni
+ * partage.
+ */
+export function SiteEditor({
+  brandKitId,
+  initial,
+  catalog,
+  pairings,
+  direction,
+  checkoutHref,
+}: {
+  brandKitId: string;
+  initial: SiteSpecEnvelope;
+  catalog: SiteCatalog;
+  /** Les paires typographiques du catalogue du brief — la même table. */
+  pairings: TypePairing[];
+  /** La direction retenue — lue seulement pour les originaux de `seed_clamped`. */
+  direction: Direction;
+  /** Où mener si la base répond `payment_required` en cours d'édition. */
+  checkoutHref: string;
+}) {
+  const router = useRouter();
+
+  /*
+   * Le droit peut tomber PENDANT l'édition — un remboursement, un litige. La
+   * base refuse alors l'écriture, et on ouvre le checkout au lieu d'afficher
+   * un refus : c'est une offre, pas une porte fermée.
+   */
+  const onPaymentRequired = useCallback(() => {
+    router.push(checkoutHref);
+  }, [router, checkoutHref]);
+
+  const editor = useSiteEditor(brandKitId, initial, onPaymentRequired);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const { undo, redo, canUndo, canRedo } = editor;
+
+  /* Cmd/Ctrl+Z et Cmd/Ctrl+Shift+Z, partout sur l'écran. */
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      // Dans un champ de saisie, Cmd+Z appartient au champ : l'annulation de
+      // frappe est plus proche de ce qu'on vient de faire que celle du spec.
+      if (target?.isContentEditable || /^(INPUT|TEXTAREA)$/.test(target?.tagName ?? "")) {
+        return;
+      }
+      event.preventDefault();
+      if (event.shiftKey) redo();
+      else undo();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [undo, redo]);
+
+  /* Échap ferme la feuille mobile, comme toute surface modale de l'app. */
+  useEffect(() => {
+    if (!sheetOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSheetOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [sheetOpen]);
+
+  const practice =
+    editor.envelope.preview.practice_name ?? "Your practice";
+
+  return (
+    <main className="route-enter flex-1 px-[var(--gutter)] pb-24 pt-6 max-md:px-[var(--gutter-sm)]">
+      {/* ── En-tête ─────────────────────────────────────────────────────── */}
+      <div className="flex items-start gap-8 max-lg:flex-col max-lg:gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
+            Your site
+          </h1>
+          <p className="mt-2.5 max-w-[560px] text-helper leading-prose text-ink-2">
+            Edit the spec for {practice}, then copy the instructions below into
+            your website builder. Eklio doesn&rsquo;t build or host your
+            site &mdash; your builder does, and it stays yours.
+          </p>
+        </div>
+
+        <div className="flex flex-none items-center gap-3">
+          <SaveState saving={editor.saving} />
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="secondary"
+              onClick={undo}
+              disabled={!canUndo}
+              aria-keyshortcuts="Meta+Z Control+Z"
+              className="px-4"
+            >
+              Undo
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={redo}
+              disabled={!canRedo}
+              aria-keyshortcuts="Meta+Shift+Z Control+Shift+Z"
+              className="px-4"
+            >
+              Redo
+            </Button>
+          </div>
+          <Link
+            href={`/app/brand-kits/${brandKitId}`}
+            className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+          >
+            Back to kit
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Rail + maquette ─────────────────────────────────────────────── */}
+      <div className="mt-7 flex items-start gap-8 max-[1100px]:flex-col max-[1100px]:gap-6">
+        {/*
+          UN SEUL `<ControlRail>`, à un seul endroit du DOM. Sous 1100px, ce
+          même élément DEVIENT la feuille par le bas — c'est du CSS, pas un
+          second arbre. Deux instances donneraient deux fois les mêmes `id` de
+          champ, deux fois le même ordre de tabulation, et deux états qui
+          finiraient par diverger.
+
+          `hidden` est appliqué par `max-[1100px]:data-[open=false]:hidden` :
+          il ne s'applique donc QUE sous 1100px, et jamais au rail de bureau.
+        */}
+        <aside
+          id="site-controls"
+          aria-label="Site controls"
+          data-open={sheetOpen}
+          className="w-[360px] flex-none rounded-card border border-line bg-surface-2 max-[1100px]:fixed max-[1100px]:inset-x-0 max-[1100px]:bottom-0 max-[1100px]:z-50 max-[1100px]:max-h-[85vh] max-[1100px]:w-full max-[1100px]:overflow-auto max-[1100px]:rounded-b-none max-[1100px]:border-x-0 max-[1100px]:border-b-0 max-[1100px]:data-[open=false]:hidden"
+        >
+          {/* L'en-tête de la feuille — sous 1100px seulement. */}
+          <div className="sticky top-0 z-10 hidden items-center gap-4 border-b border-line bg-surface-2 px-6 py-3 max-[1100px]:flex">
+            <span className="flex-1 font-display text-subsection font-medium text-ink">
+              Controls
+            </span>
+            <SaveState saving={editor.saving} />
+            <Button
+              variant="secondary"
+              className="px-5"
+              onClick={() => setSheetOpen(false)}
+            >
+              Done
+            </Button>
+          </div>
+
+          <ControlRail
+            editor={editor}
+            catalog={catalog}
+            pairings={pairings}
+            direction={direction}
+          />
+        </aside>
+
+        <div className="min-w-0 flex-1 max-[1100px]:w-full">
+          <Mockup editor={editor} catalog={catalog} />
+        </div>
+      </div>
+
+      {/* ── Sortie ──────────────────────────────────────────────────────── */}
+      <div className="mt-10 max-[1100px]:mb-16">
+        <OutputPanel
+          editor={editor}
+          catalog={catalog}
+          brandKitId={brandKitId}
+        />
+      </div>
+      {/*
+        ── L'ouverture de la feuille ──────────────────────────────────────
+        Une barre fixe en bas, sous 1100px seulement, et jamais en même temps
+        que la feuille : deux surfaces fixes empilées se recouvrent.
+      */}
+      <div
+        data-open={sheetOpen}
+        className="fixed inset-x-0 bottom-0 z-40 hidden border-t border-line bg-bg px-[var(--gutter-sm)] py-3 max-[1100px]:block max-[1100px]:data-[open=true]:hidden"
+      >
+        <Button
+          variant="secondary"
+          className="w-full"
+          aria-expanded={sheetOpen}
+          aria-controls="site-controls"
+          onClick={() => setSheetOpen(true)}
+        >
+          Edit colors, pages and copy
+        </Button>
+      </div>
+
+    </main>
+  );
+}
+
+/**
+ * L'état de sauvegarde, en mono — le même vocabulaire que « SAVED » dans le
+ * brief. Il est en `aria-live` parce que c'est la seule confirmation qu'une
+ * édition est partie : sans lui, l'autosave est invisible.
+ */
+function SaveState({ saving }: { saving: boolean }) {
+  return (
+    <MonoLabel tracking="16" tone={saving ? "ink-3" : "ink-2"} className="whitespace-nowrap">
+      <span role="status" aria-live="polite">
+        {saving ? "Saving" : "Saved"}
+      </span>
+    </MonoLabel>
+  );
+}

@@ -1,37 +1,108 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
 /*
- * Design tokens — identité visuelle Eklio.
- * Palette et typos définies dans le brief produit, ne pas modifier sans validation design.
+ * Feuille de base. Elle ne définit AUCUNE valeur : tout vient de
+ * `styles/tokens.css`. Elle ne fait que poser les bases du document, l'anneau
+ * de focus et les quatre mouvements décrits au §3 du cahier des charges.
  */
-:root {
-  --color-cream: #f1ebdf;
-  --color-cream-light: #faf6ee;
-  --color-noir: #131313;
-  --color-gris-fonce: #2a2a2a;
-  --color-beige: #d8d2c4;
-
-  --background: var(--color-cream);
-  --foreground: var(--color-noir);
-}
-
-@theme inline {
-  --color-cream: var(--color-cream);
-  --color-cream-light: var(--color-cream-light);
-  --color-noir: var(--color-noir);
-  --color-gris-fonce: var(--color-gris-fonce);
-  --color-beige: var(--color-beige);
-
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-
-  --font-display: var(--font-recoleta);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-ibm-plex-mono);
-}
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--ink);
   font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--leading-prose);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Anneau de focus visible partout, argile à 40 %. Ne jamais le supprimer. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-check);
+}
+
+/*
+ * ── Mouvement (§3) ───────────────────────────────────────────────────────
+ * Quatre mouvements, pas un de plus. Les transitions de tokens de la
+ * prévisualisation et de sélection vivent sur les composants concernés, en
+ * `transition-*` Tailwind adossé aux durées ci-dessus.
+ */
+
+@keyframes eklio-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes eklio-pop {
+  from {
+    transform: scale(0.6);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Changement de route : fondu 200 ms + montée de 8px. */
+.route-enter {
+  animation: eklio-rise var(--dur-route) var(--ease-out) both;
+}
+
+/* Changement de question : fondu 200 ms + glissement de 8px. */
+.question-enter {
+  animation: eklio-rise var(--dur-question) var(--ease-out) both;
+}
+
+/*
+ * Les trois cartes de la révélation montent en séquence, 120 ms d'écart.
+ * L'index est passé en `--stagger-index` par le composant.
+ */
+.reveal-rise {
+  animation: eklio-rise var(--dur-route) var(--ease-out) both;
+  animation-delay: calc(var(--stagger-index, 0) * var(--stagger-reveal));
+}
+
+/* La pastille de coche entre en grandissant depuis 0.6, 150 ms. */
+.check-pop {
+  animation: eklio-pop var(--dur-select) var(--ease-out) both;
+}
+
+/*
+ * Les tokens de marque s'ANIMENT : un changement de palette dans le brief
+ * traverse la maquette en 500 ms au lieu de la remonter. Les propriétés
+ * custom ne s'animent pas d'elles-mêmes — ce sont les propriétés qui les
+ * CONSOMMENT qui portent la transition, d'où la descente sur tout le sous-arbre.
+ */
+.brand-preview,
+.brand-preview *:not(.brand-preview-static) {
+  transition:
+    background-color var(--dur-token) var(--ease-token),
+    border-color var(--dur-token) var(--ease-token),
+    color var(--dur-token) var(--ease-token),
+    fill var(--dur-token) var(--ease-token);
+}
+
+/*
+ * `prefers-reduced-motion` rend TOUT instantané — pas d'exception, pas de
+ * « réduit mais quand même animé ». Balaie aussi les transitions posées en
+ * utilitaires sur les composants.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,0 +1,11 @@
+/ -> 200
+/login -> 200
+/signup -> 200
+/pricing -> 200
+/app -> 307
+/dev/preview -> 200
+/dev/ui -> 200
+/nope -> 404
+=== api ===
+/api/catalog -> 401
+/api/home -> 401

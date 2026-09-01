@@ -1,0 +1,169 @@
+=== next.config.ts ===
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      // Derrière le proxy GitHub Codespaces, l'Origin (….app.github.dev) ne
+      // correspond pas au Host vu par le serveur dev (localhost) : sans ces
+      // origines de confiance, la protection CSRF des Server Actions rejette
+      // les formulaires avec « Invalid Server Actions request ».
+      allowedOrigins: ["localhost:3000", "*.app.github.dev"],
+    },
+  },
+};
+
+export default nextConfig;
+
+=== tsconfig.json ===
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+
+=== postcss.config.mjs ===
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+
+=== eslint.config.mjs ===
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+
+=== vitest.config.mts ===
+import { fileURLToPath } from "node:url";
+import { defineConfig } from "vitest/config";
+
+/*
+ * Configuration minimale : la couche testée (lib/ethics) est du TypeScript pur,
+ * sans JSX ni DOM — environnement Node, aucune dépendance de test supplémentaire.
+ * L'alias "@/" reproduit celui de tsconfig.json (paths) sans plugin dédié.
+ */
+export default defineConfig({
+  test: {
+    environment: "node",
+    include: ["**/__tests__/**/*.test.ts"],
+  },
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./", import.meta.url)),
+    },
+  },
+});
+
+=== proxy.ts ===
+import { type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
+
+export async function proxy(request: NextRequest) {
+  return updateSession(request);
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+
+=== instrumentation.ts ===
+/*
+ * Exécuté une fois au démarrage du serveur Next (voir la convention
+ * instrumentation.ts). On force la résolution DNS à privilégier l'IPv4 :
+ * certains environnements de dev (GitHub Codespaces notamment) n'ont pas
+ * d'IPv6 fonctionnelle, et fetch() de Node tente l'adresse IPv6 en premier —
+ * tous les appels vers Supabase échouent alors en « fetch failed ».
+ * Sans incidence en production : l'ordre ipv4first reste valide partout.
+ */
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const dns = await import("node:dns");
+    dns.setDefaultResultOrder("ipv4first");
+  }
+}
+
+=== vercel.json ===
+{
+  "crons": [
+    {
+      "path": "/api/cron/monthly",
+      "schedule": "0 5 1 * *"
+    },
+    {
+      "path": "/api/cron/nudges",
+      "schedule": "0 14 * * *"
+    }
+  ]
+}
+
+=== tailwind v3 leftovers ===
+(none if empty)
+
+=== tailwind v4 entry ===
+app/globals.css:1:@import "tailwindcss";
+
+=== css files ===
+-rw-rw-rw-  1 codespace codespace 3201 Aug 27 14:23 app/globals.css
+
+styles/:
+total 16
+drwxrwxrwx+  2 codespace codespace 4096 Aug 27 14:02 .
+drwxrwxrwx+ 13 codespace root      4096 Aug 29 10:01 ..
+-rw-rw-rw-   1 codespace codespace 6029 Aug 27 14:07 tokens.css
+
+=== pages dir present? ===
+no pages/ dir
+=== middleware.ts present? ===
+no middleware.ts
+=== root layouts ===
+./app/layout.tsx
+./app/app/layout.tsx

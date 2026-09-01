@@ -2,13 +2,29 @@
 
 import { useActionState } from "react";
 import type { AuthFormState } from "@/lib/actions/auth";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/ui/text-field";
+import { InlineError } from "@/components/ui/text-field";
 
 export function AuthForm({
   action,
   submitLabel,
+  passwordAutoComplete = "current-password",
+  next,
 }: {
   action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
   submitLabel: string;
+  passwordAutoComplete?: "current-password" | "new-password";
+  /**
+   * Destination demandée avant la connexion, telle que le proxy l'a posée.
+   *
+   * Elle voyage en champ caché plutôt qu'en `bind()` sur l'action : le
+   * formulaire est déjà un composant client partagé entre connexion et
+   * inscription, et un champ caché ne change rien à sa signature. La valeur
+   * n'est PAS fiable pour autant — elle vient de l'URL, et repasse donc par le
+   * contrôle anti-open-redirect côté serveur.
+   */
+  next?: string;
 }) {
   const [state, formAction, isPending] = useActionState<AuthFormState, FormData>(
     action,
@@ -16,40 +32,32 @@ export function AuthForm({
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 font-mono text-sm">
-        Email
-        <input
-          type="email"
-          name="email"
-          required
-          autoComplete="email"
-          className="rounded-md border border-noir/20 bg-cream-light px-3 py-2 text-base text-noir outline-none focus:border-noir"
-        />
-      </label>
-      <label className="flex flex-col gap-1 font-mono text-sm">
-        Mot de passe
-        <input
-          type="password"
-          name="password"
-          required
-          minLength={8}
-          autoComplete="current-password"
-          className="rounded-md border border-noir/20 bg-cream-light px-3 py-2 text-base text-noir outline-none focus:border-noir"
-        />
-      </label>
+    <form action={formAction} className="flex flex-col gap-5">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
 
-      {state?.error && (
-        <p className="font-mono text-sm text-red-700">{state.error}</p>
-      )}
+      <TextField
+        id="email"
+        name="email"
+        type="email"
+        label="Email"
+        required
+        autoComplete="email"
+      />
+      <TextField
+        id="password"
+        name="password"
+        type="password"
+        label="Password"
+        required
+        minLength={8}
+        autoComplete={passwordAutoComplete}
+      />
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="mt-2 rounded-full bg-noir px-6 py-3 font-mono text-sm text-cream-light hover:bg-gris-fonce transition-colors disabled:opacity-50"
-      >
-        {isPending ? "..." : submitLabel}
-      </button>
+      {state?.error ? <InlineError>{state.error}</InlineError> : null}
+
+      <Button type="submit" disabled={isPending} className="mt-1 self-start">
+        {isPending ? "One moment…" : submitLabel}
+      </Button>
     </form>
   );
 }

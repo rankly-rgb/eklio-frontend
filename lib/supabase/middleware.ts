@@ -41,7 +41,25 @@ export async function updateSession(request: NextRequest) {
 
   if (isProtected && !user) {
     const redirectUrl = new URL("/login", request.url);
-    redirectUrl.searchParams.set("next", request.nextUrl.pathname);
+    /*
+     * Le chemin ET sa query string.
+     *
+     * N'emporter que le `pathname` perdait tout ce qui portait l'INTENTION :
+     * `/app/checkout?plan=signature` revenait en `/app/checkout`, et le
+     * praticien se retrouvait sur le tier recommandé par défaut au lieu de
+     * celui qu'il venait de choisir — un Signature à $249 dégradé en Practice
+     * à $149, sans que rien ne le signale. La redirection marchait, l'achat
+     * non.
+     *
+     * `searchParams.set` encode la valeur, donc une query string qui
+     * contiendrait elle-même un `next` ne peut pas s'échapper du paramètre.
+     * Ce que le proxy écrit ici reste de toute façon repassé au contrôle
+     * anti-open-redirect à la connexion (`lib/auth/next-url.ts`).
+     */
+    redirectUrl.searchParams.set(
+      "next",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`
+    );
     return NextResponse.redirect(redirectUrl);
   }
 

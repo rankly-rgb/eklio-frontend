@@ -1,0 +1,20 @@
+=== files containing the refusal message ===
+
+=== files containing 'to stop it and start a new one' ===
+node_modules/next/dist/esm/build/lockfile.js
+node_modules/next/dist/esm/build/lockfile.js.map
+node_modules/next/dist/build/lockfile.js
+node_modules/next/dist/build/lockfile.js.map
+
+=== files containing 'You can access the existing server at' ===
+node_modules/next/dist/esm/build/lockfile.js
+node_modules/next/dist/esm/build/lockfile.js.map
+node_modules/next/dist/build/lockfile.js
+node_modules/next/dist/build/lockfile.js.map
+
+=== tryAcquire callers ===
+node_modules/next/dist/esm/build/lockfile.js
+node_modules/next/dist/esm/build/lockfile.js.map
+node_modules/next/dist/build/lockfile.js
+node_modules/next/dist/build/lockfile.js.map
+node_modules/next/dist/build/lockfile.d.ts

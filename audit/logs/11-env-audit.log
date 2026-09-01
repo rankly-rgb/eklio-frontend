@@ -1,0 +1,90 @@
+=== every process.env reference (file:line) ===
+lib/email/transport.ts:24:  return process.env.EMAIL_FROM ?? "Eklio <hello@eklio.com>";
+lib/email/transport.ts:28:  const key = process.env.RESEND_API_KEY;
+lib/supabase/middleware.ts:14:    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+lib/supabase/middleware.ts:15:    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+lib/actions/auth.ts:66:      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/auth/callback`,
+lib/email/templates.ts:108:  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+lib/email/state.ts:137:  const value = process.env.SUPABASE_SERVICE_ROLE_KEY;
+lib/email/state.ts:156:  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+lib/email/__tests__/state.test.ts:102:  const previous = process.env.SUPABASE_SERVICE_ROLE_KEY;
+lib/email/__tests__/state.test.ts:103:  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+lib/email/__tests__/state.test.ts:122:  process.env.SUPABASE_SERVICE_ROLE_KEY = previous;
+lib/stripe/client.ts:75:  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+lib/supabase/client.ts:10:    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+lib/supabase/client.ts:11:    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+lib/supabase/server.ts:13:    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+lib/supabase/server.ts:14:    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+lib/supabase/server.ts:42:    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+lib/supabase/server.ts:43:    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+instrumentation.ts:10:  if (process.env.NEXT_RUNTIME === "nodejs") {
+lib/api/cron.ts:15:  const secret = process.env.CRON_SECRET;
+
+=== distinct var names used in code ===
+CRON_SECRET
+EMAIL_FROM
+NEXT_PUBLIC_SITE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_RUNTIME
+RESEND_API_KEY
+SUPABASE_SERVICE_ROLE_KEY
+
+=== KEY NAMES present in .env.local (names only) ===
+ANTHROPIC_API_KEY
+NEXT_PUBLIC_SITE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+
+=== KEY NAMES in .env.example ===
+ANTHROPIC_API_KEY
+CRON_SECRET
+EMAIL_FROM
+NEXT_PUBLIC_SITE_URL
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_URL
+RESEND_API_KEY
+STRIPE_PRICE_MONTHLY_PRESENCE
+STRIPE_PRICE_PRACTICE
+STRIPE_PRICE_SIGNATURE
+STRIPE_PRICE_STARTER
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+SUPABASE_SERVICE_ROLE_KEY
+
+=== files marked "use client" ===
+app/dev/ui/page.tsx
+app/dev/preview/page.tsx
+components/auth-form.tsx
+app/app/error.tsx
+components/home/monthly-presence-modal.tsx
+components/kit/brand-kit-view.tsx
+components/kit/site-prompt-block.tsx
+components/reveal/generation-screen.tsx
+components/reveal/direction-card.tsx
+components/ui/toast.tsx
+components/brief/step-bodies.tsx
+components/brief/build-brand-button.tsx
+components/brief/chip-group.tsx
+components/brief/write-for-me.tsx
+components/brief/preview-sheet.tsx
+components/preview/cards.tsx
+components/app/app-header.tsx
+components/home/content-grid.tsx
+components/home/checklist-card.tsx
+components/kit/palette-section.tsx
+components/kit/copy-site-prompt.tsx
+components/billing/confirmation-poll.tsx
+components/billing/checkout-form.tsx
+components/reveal/reveal-view.tsx
+components/ui/checkbox.tsx
+components/ui/selectable-card.tsx
+components/brief/brief-flow.tsx
+components/brief/save-state.tsx
+components/brief/preview-rail.tsx
+components/brief/start-brief-button.tsx
+components/brief/use-brief-autosave.ts
+components/preview/use-brand-font.ts
+components/preview/brand-preview.tsx

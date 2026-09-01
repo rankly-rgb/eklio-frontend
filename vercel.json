@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/monthly",
+      "schedule": "0 5 1 * *"
+    },
+    {
+      "path": "/api/cron/nudges",
+      "schedule": "0 14 * * *"
+    }
+  ]
+}

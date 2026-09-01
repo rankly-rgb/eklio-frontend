@@ -1,0 +1,61 @@
+=== does any doc mention a site editor / editable site spec ===
+README.md:59:| `EMAIL_FROM` | Expéditeur affiché, sur un domaine **vérifié** chez Resend | idem — sinon tout part en spam ou est refusé |
+(end)
+
+=== last 5 commits, file lists ===
+--- db8c43b docs: variables d'e-mail et de cron dans le tableau du README (2026-08-27) ---
+ README.md | 3 +++
+ 1 file changed, 3 insertions(+)
+--- 162910c docs: README aligné sur l'arborescence et les typographies réelles (2026-08-27) ---
+ README.md | 97 +++++++++++++++++++++++++++++++++++++--------------------------
+ 1 file changed, 57 insertions(+), 40 deletions(-)
+--- fc8763d lot 10 — mobile, états vides et d'erreur, analytics, accessibilité (2026-08-27) ---
+ app/api/unsubscribe/route.ts                 |  11 +-
+ app/app/brand-kits/[id]/loading.tsx          |  31 +++++
+ app/app/briefs/[id]/loading.tsx              |  39 ++++++
+ app/app/content/page.tsx                     |   2 +-
+ app/app/error.tsx                            |  42 +++++++
+ app/app/loading.tsx                          |  18 +++
+ app/pricing/page.tsx                         |   2 +-
+ components/billing/checkout-form.tsx         |   2 +-
+ components/brief/brief-flow.tsx              |  10 +-
+ components/brief/build-brand-button.tsx      |   2 +-
+ components/brief/preview-sheet.tsx           |  58 +++++++++
+ components/brief/save-state.tsx              |   4 +-
+ components/brief/start-brief-button.tsx      |   2 +-
+ components/brief/write-for-me.tsx            |   2 +-
+ components/home/checklist-card.tsx           |   2 +-
+ components/home/home-view.tsx                |   4 +-
+ components/reveal/direction-card.tsx         |  13 +-
+ components/reveal/reveal-view.tsx            |  19 ++-
+ components/ui/mono-label.tsx                 |   7 ++
+ components/ui/text-field.tsx                 |  28 ++++-
+ lib/analytics.ts                             |  44 +++++++
+ lib/brand/__tests__/contrast.test.ts         | 101 ++++++++++++++++
+ lib/email/palette.ts                         |  26 ++++
+ lib/email/templates.ts                       |  10 +-
+ 35 files changed, 662 insertions(+), 31 deletions(-)
+--- 0f8a908 lot 9 — run mensuel et e-mails transactionnels (2026-08-27) ---
+ .env.example                      |  17 +++
+ app/api/cron/monthly/route.ts     | 283 ++++++++++++++++++++++++++++++++++++++
+ app/api/cron/nudges/route.ts      | 164 ++++++++++++++++++++++
+ app/api/unsubscribe/route.ts      |  59 ++++++++
+ lib/api/cron.ts                   |  28 ++++
+ lib/email/__tests__/state.test.ts | 123 +++++++++++++++++
+ lib/email/state.ts                | 158 +++++++++++++++++++++
+ lib/email/templates.ts            | 212 ++++++++++++++++++++++++++++
+ lib/email/transport.ts            |  64 +++++++++
+ lib/generation/monthly.ts         | 209 ++++++++++++++++++++++++++++
+ vercel.json                       |  12 ++
+ 11 files changed, 1329 insertions(+)
+--- 23d5c10 lot 8 — accueil, checklist, calendrier, fenêtre de déverrouillage (2026-08-27) ---
+ app/app/content/page.tsx                   |  63 ++++++++
+ app/app/page.tsx                           |  36 ++---
+ components/home/checklist-card.tsx         |  87 +++++++++++
+ components/home/content-grid.tsx           | 239 +++++++++++++++++++++++++++++
+ components/home/home-view.tsx              | 164 ++++++++++++++++++++
+ components/home/monthly-presence-modal.tsx |  78 ++++++++++
+ components/ui/mono-label.tsx               |   4 +
+ lib/data/__tests__/calendar.test.ts        |  34 ++++
+ lib/data/__tests__/home.test.ts            |  24 +++
+ 9 files changed, 709 insertions(+), 20 deletions(-)

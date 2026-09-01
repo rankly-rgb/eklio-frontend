@@ -1,0 +1,14 @@
+
+> eklio-frontend@0.1.0 test
+> vitest run --run
+
+
+ RUN  v4.1.11 /workspaces/eklio-frontend
+
+
+ Test Files  20 passed (20)
+      Tests  243 passed (243)
+   Start at  10:02:32
+   Duration  3.97s (transform 381ms, setup 0ms, import 1.10s, tests 352ms, environment 2ms)
+
+EXIT_CODE=0
