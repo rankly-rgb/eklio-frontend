@@ -1554,6 +1554,9 @@ export type Database = {
         Args: { p_month: string; p_user_id: string }
         Returns: Json
       }
+      comp_access_active: { Args: never; Returns: boolean }
+      comp_grant_active: { Args: { p_user_id: string }; Returns: boolean }
+      comp_grant_credits: { Args: { p_user_id: string }; Returns: number }
       complete_choose_direction: {
         Args: { p_brand_kit_id: string }
         Returns: undefined

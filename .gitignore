@@ -40,6 +40,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# generated marketing images (brand-shots CLI)
+/brand-shots/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

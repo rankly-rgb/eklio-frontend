@@ -42,6 +42,7 @@ export function BrandKitView({
   siteBuilderLabel,
   entitled,
   monthlyCheckoutHref,
+  compAccess,
 }: {
   brandKitId: string;
   projectId: string;
@@ -54,6 +55,8 @@ export function BrandKitView({
   siteBuilderLabel: string | null;
   entitled: boolean;
   monthlyCheckoutHref: string;
+  /** Accès comp actif (base de données) — jamais un droit, un signal d'affichage. */
+  compAccess: boolean;
 }) {
   const model = previewModelFromDirection(direction, practiceName);
   const ready = useBrandFont(direction.typography.google_fonts_url);
@@ -66,9 +69,14 @@ export function BrandKitView({
           <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink">
             {practiceName ?? "Your brand"}
           </h1>
-          <MonoLabel tracking="16" className="mt-3 block">
-            {`${direction.name} · Selected`}
-          </MonoLabel>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <MonoLabel tracking="16">{`${direction.name} · Selected`}</MonoLabel>
+            {compAccess ? (
+              <span className="flex-none rounded-pill border border-accent px-3 py-1.5 font-mono text-mono uppercase tracking-mono-12 text-accent">
+                Comp access
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex flex-none items-center gap-4">
@@ -89,6 +97,12 @@ export function BrandKitView({
             className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
           >
             Switch direction
+          </Link>
+          <Link
+            href={`/app/briefs/${projectId}/review`}
+            className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+          >
+            Edit your brief
           </Link>
         </div>
       </div>
