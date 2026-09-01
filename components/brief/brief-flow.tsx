@@ -84,6 +84,17 @@ export function BriefFlow({
   const step = STEPS[stepNumber - 1];
 
   /*
+   * Réouverture d'une étape après un brief déjà entièrement complété : les
+   * sept étapes sont dans `completed` avant même que cet écran ne touche
+   * quoi que ce soit (`withCompletedStep` n'enlève jamais rien, donc ça ne
+   * redevient jamais faux une fois vrai). Dans ce cas, « Continue » doit
+   * enregistrer CETTE étape puis revenir directement au récapitulatif — pas
+   * remonter la cascade des questions suivantes, qu'elle a déjà toutes
+   * répondues lors du premier passage.
+   */
+  const revisiting = completed.length === STEP_COUNT;
+
+  /*
    * Le rail montre le modèle du serveur repeint par les choix déjà faits :
    * la couleur arrive au clic, pas 600 ms plus tard. La réponse du PATCH
    * remplace ensuite le modèle — `brief_preview()` reste l'autorité.
@@ -132,7 +143,7 @@ export function BriefFlow({
     setCompleted(nextCompleted);
     autosave.save({ completed_steps: nextCompleted });
 
-    if (stepNumber === STEP_COUNT) {
+    if (stepNumber === STEP_COUNT || revisiting) {
       setLeaving(true);
       await autosave.flush();
       router.push(`/app/briefs/${projectId}/review`);
@@ -227,7 +238,9 @@ export function BriefFlow({
                 </Button>
               ) : null}
               <Button onClick={() => void onContinue()} disabled={leaving}>
-                {stepNumber === STEP_COUNT ? "Review my brief" : "Continue"}
+                {stepNumber === STEP_COUNT || revisiting
+                  ? "Review my brief"
+                  : "Continue"}
               </Button>
               {step.optional ? (
                 <Button variant="tertiary" onClick={() => void onSkip()} className="ml-2">

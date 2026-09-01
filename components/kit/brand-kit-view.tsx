@@ -90,6 +90,12 @@ export function BrandKitView({
           >
             Switch direction
           </Link>
+          <Link
+            href={`/app/briefs/${projectId}/review`}
+            className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+          >
+            Edit your brief
+          </Link>
         </div>
       </div>
 
