@@ -71,13 +71,20 @@ export function HomeView({ home }: { home: HomeModel }) {
                   {direction?.name ?? "Not chosen yet"}
                 </MonoLabel>
               </div>
-              <ButtonLink
-                href={`/app/brand-kits/${kit.row.id}`}
-                variant="secondary"
-                className="flex-none"
-              >
-                Open brand kit
-              </ButtonLink>
+              <div className="flex flex-none items-center gap-4">
+                <ButtonLink
+                  href={`/app/brand-kits/${kit.row.id}`}
+                  variant="secondary"
+                >
+                  Open brand kit
+                </ButtonLink>
+                <Link
+                  href={`/app/briefs/${home.projectId}/review`}
+                  className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+                >
+                  Edit your brief
+                </Link>
+              </div>
             </div>
           </section>
         ) : (
