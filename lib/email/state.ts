@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import { siteUrl } from "@/lib/site-url";
 
 /*
  * L'état d'envoi par utilisateur — quand on lui a écrit, et s'il s'est
@@ -153,6 +154,5 @@ export function unsubscribeTokenValid(userId: string, token: string): boolean {
 }
 
 export function unsubscribeUrl(userId: string): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  return `${base}/api/unsubscribe?u=${userId}&t=${unsubscribeToken(userId)}`;
+  return `${siteUrl()}/api/unsubscribe?u=${userId}&t=${unsubscribeToken(userId)}`;
 }
