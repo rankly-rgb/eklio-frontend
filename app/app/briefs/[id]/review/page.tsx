@@ -6,7 +6,6 @@ import { readCatalog } from "@/lib/catalog/read";
 import { summarize, isAnswered } from "@/lib/brief/summary";
 import type { StepDraft } from "@/lib/brief/flow";
 import { BrandPreview } from "@/components/preview/brand-preview";
-import { BuildBrandButton } from "@/components/brief/build-brand-button";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -49,11 +48,21 @@ export default async function ReviewPage({
     problem_card_ids: bundle.brief.problem_card_ids,
     gain_card_ids: bundle.brief.gain_card_ids,
     client_persona_ids: bundle.brief.client_persona_ids,
+    session_style_ids: bundle.brief.session_style_ids ?? [],
+    not_a_fit_ids: bundle.brief.not_a_fit_ids ?? [],
+    not_a_fit_text: bundle.brief.not_a_fit_text,
+    modality_ids: bundle.brief.modality_ids ?? [],
+    modality_prominence: bundle.brief.modality_prominence,
+    referral_quote: bundle.brief.referral_quote,
+    prior_career: bundle.brief.prior_career,
+    prior_career_public: bundle.brief.prior_career_public,
     tone_card_id: bundle.brief.tone_card_id,
     palette_family_ids: bundle.brief.palette_family_ids,
     type_pairing_id: bundle.brief.type_pairing_id,
     primary_action_id: bundle.brief.primary_action_id,
     site_goal_ids: bundle.brief.site_goal_ids,
+    usp_statement: bundle.brief.usp_statement,
+    selected_usp_id: bundle.brief.selected_usp_id,
     data: bundle.data,
   };
 
@@ -108,7 +117,14 @@ export default async function ReviewPage({
           </dl>
 
           <div className="flex flex-col gap-4 border-t border-line pt-6">
-            <BuildBrandButton projectId={id} />
+            {/*
+              L'écran de positionnement (§2.4) s'intercale ICI, entre le
+              récapitulatif et la génération — pas une huitième étape, la
+              jauge y reste à 7 sur 7.
+            */}
+            <ButtonLink href={`/app/briefs/${id}/positioning`} className="self-start">
+              Continue
+            </ButtonLink>
             <ButtonLink
               href={`/app/briefs/${id}`}
               variant="tertiary"

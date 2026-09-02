@@ -311,11 +311,86 @@ export const previewModelSchema = z.object({
     headline: z.string(),
     subhead: z.string(),
     cta_label: z.string(),
+    /*
+     * Posé côté CLIENT uniquement (`applyOptimistic`, jamais `brief_preview()`)
+     * quand `headline` vient d'une carte de ton — statique ou générée — plutôt
+     * que d'une direction réelle. §2.2 : `<BrandPreview />` rend alors un petit
+     * badge « sample » tant qu'aucune direction n'est choisie. Une direction
+     * réelle ne pose jamais ce champ.
+     */
+    headline_is_sample: z.boolean().optional(),
   }),
   about_excerpt: z.string(),
   specialties: z.array(z.string()),
 });
 export type PreviewModel = z.infer<typeof previewModelSchema>;
+
+/* ── Résumé de contraste (brand_kit_reveal_get) ─────────────────────────── */
+/*
+ * `brand_kit_direction_contrast`, eklio-backend : les mêmes paires que
+ * `site_spec_contrast` (§3), calculées sur la palette BRUTE d'une direction
+ * plutôt que sur les colonnes dérivées d'un site_spec payé. Pas de
+ * `suggested_fix` : une direction non choisie ne se corrige pas, elle se
+ * choisit.
+ */
+
+export const CONTRAST_LEVELS = ["AAA", "AA", "AA_large", "fail"] as const;
+export type ContrastLevel = (typeof CONTRAST_LEVELS)[number];
+
+export const contrastPairSchema = z.object({
+  pair_id: z.string(),
+  label: z.string(),
+  fg: hex,
+  bg: hex,
+  ratio: z.number(),
+  level: z.enum(CONTRAST_LEVELS),
+});
+export type ContrastPair = z.infer<typeof contrastPairSchema>;
+
+export const contrastSummarySchema = z.object({
+  pairs: z.array(contrastPairSchema),
+  worst_ratio: z.number(),
+  passes_aa: z.boolean(),
+});
+export type ContrastSummary = z.infer<typeof contrastSummarySchema>;
+
+/* ── Charge utile de la révélation (brand_kit_reveal_get) ───────────────── */
+/*
+ * Un seul appel, eklio-backend : détails de la practice, guide de voix et
+ * modèles sociaux du KIT (partagés entre les trois directions, jamais
+ * dupliqués par direction), et les trois directions augmentées d'un résumé
+ * de contraste réel et d'une image d'ambiance.
+ *
+ * `ambiance_url` est `null` tant qu'aucune image n'est prête POUR LA PALETTE
+ * ACTUELLE de la direction — en attente, échouée, absente ou générée pour une
+ * palette qu'une régénération a remplacée sont le même `null`, à dessein : la
+ * révélation ne distingue jamais ces cas, elle pose le dégradé existant.
+ */
+
+export const revealDirectionSchema = directionSchema.extend({
+  contrast: contrastSummarySchema,
+  ambiance_url: z.string().nullable(),
+});
+export type RevealPayloadDirection = z.infer<typeof revealDirectionSchema>;
+
+export const revealPracticeSchema = z.object({
+  name: z.string().nullable(),
+  city: z.string().nullable(),
+  state: z.string().nullable(),
+  /** Real labels, her order, capped at three — never a fabricated one-liner. */
+  specialties: z.array(z.string()),
+});
+export type RevealPractice = z.infer<typeof revealPracticeSchema>;
+
+export const revealPayloadSchema = z.object({
+  brand_kit_id: z.string(),
+  practice: revealPracticeSchema,
+  practitioner_line: z.string().nullable(),
+  voice_guide: voiceGuideSchema.nullable(),
+  social_templates: socialTemplatesSchema.nullable(),
+  directions: z.array(revealDirectionSchema).length(3),
+});
+export type RevealPayload = z.infer<typeof revealPayloadSchema>;
 
 /**
  * Modèle de prévisualisation dérivé d'une DIRECTION, pour rendre la même
@@ -327,7 +402,8 @@ export type PreviewModel = z.infer<typeof previewModelSchema>;
  */
 export function previewModelFromDirection(
   direction: RevealDirection & Partial<Pick<Direction, "about_excerpt">>,
-  practiceName: string | null
+  practiceName: string | null,
+  specialties: string[] = []
 ): PreviewModel {
   return {
     practice_name: practiceName,
@@ -339,6 +415,6 @@ export function previewModelFromDirection(
     },
     hero: direction.hero,
     about_excerpt: direction.about_excerpt ?? "",
-    specialties: [],
+    specialties,
   };
 }

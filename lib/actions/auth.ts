@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signedInRedirectPath } from "@/lib/auth/next-url";
+import { siteUrl } from "@/lib/site-url";
 
 export type AuthFormState = { error: string } | null;
 
@@ -63,7 +64,7 @@ export async function signUp(
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/auth/callback`,
+      emailRedirectTo: `${siteUrl()}/auth/callback`,
     },
   });
 

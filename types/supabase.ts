@@ -158,6 +158,80 @@ export type Database = {
         }
         Relationships: []
       }
+      direction_asset_daily_spend: {
+        Row: {
+          actual_cents: number
+          reserved_cents: number
+          spend_date: string
+        }
+        Insert: {
+          actual_cents?: number
+          reserved_cents?: number
+          spend_date?: string
+        }
+        Update: {
+          actual_cents?: number
+          reserved_cents?: number
+          spend_date?: string
+        }
+        Relationships: []
+      }
+      direction_assets: {
+        Row: {
+          brand_kit_id: string
+          claimed_at: string | null
+          cost_cents: number | null
+          created_at: string
+          direction_index: number
+          id: string
+          kind: string
+          palette_hash: string | null
+          reserved_cents: number | null
+          status: string
+          storage_path: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          brand_kit_id: string
+          claimed_at?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          direction_index: number
+          id?: string
+          kind?: string
+          palette_hash?: string | null
+          reserved_cents?: number | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          brand_kit_id?: string
+          claimed_at?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          direction_index?: number
+          id?: string
+          kind?: string
+          palette_hash?: string | null
+          reserved_cents?: number | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direction_assets_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       directions: {
         Row: {
           body_font: string
@@ -658,19 +732,32 @@ export type Database = {
           data: Json
           gain_card_ids: string[]
           license_type_id: string | null
+          modality_ids: string[] | null
+          modality_prominence: string | null
+          not_a_fit_ids: string[] | null
+          not_a_fit_text: string | null
           palette_family_ids: string[]
           positioning: string | null
           practice_name: string | null
           primary_action_id: string | null
+          prior_career: string | null
+          prior_career_public: boolean
           problem_card_ids: string[]
           progress_step: number
           project_id: string
+          referral_quote: string | null
+          selected_usp_id: string | null
+          session_style_ids: string[] | null
           site_goal_ids: string[]
           specialty_ids: string[]
           state: string | null
           tone_card_id: string | null
+          tone_cards: Json | null
+          tone_cards_inputs_hash: string | null
           type_pairing_id: string | null
           updated_at: string
+          usp_options: Json | null
+          usp_statement: string | null
         }
         Insert: {
           builder_target_id?: string | null
@@ -680,19 +767,32 @@ export type Database = {
           data?: Json
           gain_card_ids?: string[]
           license_type_id?: string | null
+          modality_ids?: string[] | null
+          modality_prominence?: string | null
+          not_a_fit_ids?: string[] | null
+          not_a_fit_text?: string | null
           palette_family_ids?: string[]
           positioning?: string | null
           practice_name?: string | null
           primary_action_id?: string | null
+          prior_career?: string | null
+          prior_career_public?: boolean
           problem_card_ids?: string[]
           progress_step?: number
           project_id: string
+          referral_quote?: string | null
+          selected_usp_id?: string | null
+          session_style_ids?: string[] | null
           site_goal_ids?: string[]
           specialty_ids?: string[]
           state?: string | null
           tone_card_id?: string | null
+          tone_cards?: Json | null
+          tone_cards_inputs_hash?: string | null
           type_pairing_id?: string | null
           updated_at?: string
+          usp_options?: Json | null
+          usp_statement?: string | null
         }
         Update: {
           builder_target_id?: string | null
@@ -702,19 +802,32 @@ export type Database = {
           data?: Json
           gain_card_ids?: string[]
           license_type_id?: string | null
+          modality_ids?: string[] | null
+          modality_prominence?: string | null
+          not_a_fit_ids?: string[] | null
+          not_a_fit_text?: string | null
           palette_family_ids?: string[]
           positioning?: string | null
           practice_name?: string | null
           primary_action_id?: string | null
+          prior_career?: string | null
+          prior_career_public?: boolean
           problem_card_ids?: string[]
           progress_step?: number
           project_id?: string
+          referral_quote?: string | null
+          selected_usp_id?: string | null
+          session_style_ids?: string[] | null
           site_goal_ids?: string[]
           specialty_ids?: string[]
           state?: string | null
           tone_card_id?: string | null
+          tone_cards?: Json | null
+          tone_cards_inputs_hash?: string | null
           type_pairing_id?: string | null
           updated_at?: string
+          usp_options?: Json | null
+          usp_statement?: string | null
         }
         Relationships: [
           {
@@ -729,6 +842,13 @@ export type Database = {
             columns: ["license_type_id"]
             isOneToOne: false
             referencedRelation: "license_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_briefs_modality_prominence_fkey"
+            columns: ["modality_prominence"]
+            isOneToOne: false
+            referencedRelation: "modality_prominence_options"
             referencedColumns: ["id"]
           },
           {
@@ -760,6 +880,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      session_style_cards: {
+        Row: {
+          active: boolean
+          description: string
+          id: string
+          label: string
+          sort_order: number
+          voice_hints: string[]
+        }
+        Insert: {
+          active?: boolean
+          description: string
+          id: string
+          label: string
+          sort_order: number
+          voice_hints: string[]
+        }
+        Update: {
+          active?: boolean
+          description?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          voice_hints?: string[]
+        }
+        Relationships: []
+      }
+      not_a_fit_cards: {
+        Row: {
+          active: boolean
+          id: string
+          label: string
+          referral_note: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          id: string
+          label: string
+          referral_note: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          label?: string
+          referral_note?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      modality_cards: {
+        Row: {
+          active: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          full_name?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      modality_prominence_options: {
+        Row: {
+          active: boolean
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       projects: {
         Row: {
@@ -1259,11 +1475,50 @@ export type Database = {
         }
         Relationships: []
       }
+      /*
+       * `app_settings` et `usp_stopwords` — JAMAIS lues par `authenticated`
+       * (RLS activée, zéro policy, privilèges révoqués à `anon`/`authenticated`,
+       * migration `20260831101000_usp_guardrail_tables.sql`). `service_role`
+       * les lit directement (il ignore RLS) : c'est le SEUL rôle qui les
+       * atteint, et seulement depuis `lib/generation/usp-guardrails.ts`.
+       */
+      app_settings: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      usp_stopwords: {
+        Row: {
+          word: string
+        }
+        Insert: {
+          word: string
+        }
+        Update: {
+          word?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      brand_kit_direction_contrast: { Args: { p_direction: Json }; Returns: Json }
+      brand_kit_direction_palette_hash: {
+        Args: { p_palette: Json }
+        Returns: string
+      }
       brand_kit_directions_contrasted: { Args: { p: Json }; Returns: boolean }
       brand_kit_directions_rendering_valid: {
         Args: { p: Json }
@@ -1276,6 +1531,7 @@ export type Database = {
       brand_kit_hero_valid: { Args: { p: Json }; Returns: boolean }
       brand_kit_is_owned: { Args: { p_brand_kit_id: string }; Returns: boolean }
       brand_kit_palette_valid: { Args: { p: Json }; Returns: boolean }
+      brand_kit_reveal_get: { Args: { p_brand_kit_id: string }; Returns: Json }
       brand_kit_select_direction: {
         Args: { p_brand_kit_id: string; p_direction_id: string }
         Returns: Json
@@ -1298,6 +1554,9 @@ export type Database = {
         Args: { p_month: string; p_user_id: string }
         Returns: Json
       }
+      comp_access_active: { Args: never; Returns: boolean }
+      comp_grant_active: { Args: { p_user_id: string }; Returns: boolean }
+      comp_grant_credits: { Args: { p_user_id: string }; Returns: number }
       complete_choose_direction: {
         Args: { p_brand_kit_id: string }
         Returns: undefined
@@ -1305,6 +1564,31 @@ export type Database = {
       consume_generation_credit: {
         Args: { p_brand_kit_id: string }
         Returns: boolean
+      }
+      direction_assets_claim: {
+        Args: {
+          p_brand_kit_id: string
+          p_cost_estimate_cents: number
+          p_daily_cap_cents: number
+          p_direction_index: number
+          p_palette_hash: string
+          p_reclaim_after?: unknown
+        }
+        Returns: Json
+      }
+      direction_assets_mark_failed: {
+        Args: { p_asset_id: string; p_claim_token: string }
+        Returns: Json
+      }
+      direction_assets_mark_ready: {
+        Args: {
+          p_asset_id: string
+          p_claim_token: string
+          p_cost_cents: number
+          p_storage_path: string
+          p_url: string
+        }
+        Returns: Json
       }
       direction_limits: { Args: never; Returns: Json }
       ensure_month_skeleton: {
@@ -1531,6 +1815,19 @@ export type Database = {
       }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }
+        Returns: string
+      }
+      usp_banned_phrases_check: { Args: { p_text: string }; Returns: string[] }
+      usp_check_distinct: {
+        Args: {
+          p_exclude_brief?: string
+          p_scope_key: string
+          p_statement: string
+        }
+        Returns: Json
+      }
+      usp_fingerprint_confirm: {
+        Args: { p_brief_id: string; p_statement: string }
         Returns: string
       }
     }

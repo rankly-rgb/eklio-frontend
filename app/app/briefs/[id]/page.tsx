@@ -4,6 +4,7 @@ import { loadBrief, readPreview } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
 import { STEP_COUNT, resumeStep, type StepDraft } from "@/lib/brief/flow";
 import { BriefFlow } from "@/components/brief/brief-flow";
+import { toneCardsSchema } from "@/lib/generation/how-you-work-shapes";
 
 /**
  * `?step=3` — posé par les liens « Edit » du récapitulatif.
@@ -62,13 +63,29 @@ export default async function BriefPage({
     problem_card_ids: bundle.brief.problem_card_ids,
     gain_card_ids: bundle.brief.gain_card_ids,
     client_persona_ids: bundle.brief.client_persona_ids,
+    session_style_ids: bundle.brief.session_style_ids ?? [],
+    not_a_fit_ids: bundle.brief.not_a_fit_ids ?? [],
+    not_a_fit_text: bundle.brief.not_a_fit_text,
+    modality_ids: bundle.brief.modality_ids ?? [],
+    modality_prominence: bundle.brief.modality_prominence,
+    referral_quote: bundle.brief.referral_quote,
+    prior_career: bundle.brief.prior_career,
+    prior_career_public: bundle.brief.prior_career_public,
     tone_card_id: bundle.brief.tone_card_id,
     palette_family_ids: bundle.brief.palette_family_ids,
     type_pairing_id: bundle.brief.type_pairing_id,
     primary_action_id: bundle.brief.primary_action_id,
     site_goal_ids: bundle.brief.site_goal_ids,
+    usp_statement: bundle.brief.usp_statement,
+    selected_usp_id: bundle.brief.selected_usp_id,
     data: bundle.data,
   };
+
+  // `tone_cards` est un `Json` côté généré ; une forme qui ne correspond plus
+  // au CHECK de la base (une écriture antérieure au lot, ou un désaccord de
+  // schéma) retombe sur `null` — le catalogue statique, jamais une carte
+  // à moitié conforme.
+  const initialToneCards = toneCardsSchema.safeParse(bundle.brief.tone_cards);
 
   return (
     <main className="route-enter flex min-h-0 flex-1 flex-col">
@@ -79,6 +96,7 @@ export default async function BriefPage({
         initialStep={seedStep(query.step, bundle.brief)}
         initialCompleted={bundle.brief.completed_steps}
         initialPreview={preview}
+        initialToneCards={initialToneCards.success ? initialToneCards.data : null}
       />
     </main>
   );

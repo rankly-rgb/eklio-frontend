@@ -147,12 +147,18 @@ export function TypePairingCard({
 
 /* ── Ton (Écran 2) ──────────────────────────────────────────────────────── */
 
+/*
+ * `tone` accepte soit une carte du catalogue statique (`TonePreset`), soit
+ * une carte GÉNÉRÉE (`ToneCard`, `lib/generation/how-you-work-shapes.ts`,
+ * §2.2) : les deux portent `id`/`sample_hero`/`keywords`, seuls champs rendus
+ * ici. Une seule carte, jamais deux composants pour la même chose.
+ */
 export function ToneCard({
   tone,
   selected,
   onSelect,
 }: {
-  tone: TonePreset;
+  tone: Pick<TonePreset, "id" | "sample_hero" | "keywords">;
   selected: boolean;
   onSelect: () => void;
 }) {

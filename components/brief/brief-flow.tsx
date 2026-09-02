@@ -11,10 +11,10 @@ import { SaveStateLabel } from "@/components/brief/save-state";
 import { useBriefAutosave } from "@/components/brief/use-brief-autosave";
 import {
   ClientStep,
-  PaletteStep,
+  HowYouWorkStep,
+  LookStep,
   PositioningStep,
   PracticeStep,
-  TypographyStep,
   VoiceStep,
   WebsiteStep,
   type StepBodyProps,
@@ -30,6 +30,7 @@ import {
 } from "@/lib/brief/flow";
 import type { Catalog } from "@/lib/catalog/types";
 import type { PreviewModel } from "@/lib/brand/shapes";
+import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
 
 /*
  * Le brief — une question par écran, sur une seule route.
@@ -48,9 +49,9 @@ const BODIES: Record<StepId, (props: StepBodyProps) => React.ReactElement> = {
   practice: PracticeStep,
   positioning: PositioningStep,
   client: ClientStep,
+  how_you_work: HowYouWorkStep,
   voice: VoiceStep,
-  palette: PaletteStep,
-  typography: TypographyStep,
+  look: LookStep,
   website: WebsiteStep,
 };
 
@@ -61,6 +62,7 @@ export function BriefFlow({
   initialStep,
   initialCompleted,
   initialPreview,
+  initialToneCards,
 }: {
   projectId: string;
   catalog: Catalog;
@@ -68,6 +70,7 @@ export function BriefFlow({
   initialStep: number;
   initialCompleted: number[];
   initialPreview: PreviewModel | null;
+  initialToneCards: ToneCards | null;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<StepDraft>(initialDraft);
@@ -75,21 +78,35 @@ export function BriefFlow({
   const [completed, setCompleted] = useState<number[]>(initialCompleted);
   const [issue, setIssue] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [toneCards, setToneCards] = useState<ToneCards | null>(initialToneCards);
 
   const autosave = useBriefAutosave(projectId, initialPreview);
   const step = STEPS[stepNumber - 1];
 
   /*
+   * Réouverture d'une étape après un brief déjà entièrement complété : les
+   * sept étapes sont dans `completed` avant même que cet écran ne touche
+   * quoi que ce soit (`withCompletedStep` n'enlève jamais rien, donc ça ne
+   * redevient jamais faux une fois vrai). Dans ce cas, « Continue » doit
+   * enregistrer CETTE étape puis revenir directement au récapitulatif — pas
+   * remonter la cascade des questions suivantes, qu'elle a déjà toutes
+   * répondues lors du premier passage.
+   */
+  const revisiting = completed.length === STEP_COUNT;
+
+  /*
    * Le rail montre le modèle du serveur repeint par les choix déjà faits :
    * la couleur arrive au clic, pas 600 ms plus tard. La réponse du PATCH
    * remplace ensuite le modèle — `brief_preview()` reste l'autorité.
+   * `toneCards` (§2.2) vit ICI, pas dans `VoiceStep` : le rail en a besoin
+   * lui aussi, et il rend hors de l'étape 5.
    */
   const preview = useMemo(
     () =>
       autosave.preview
-        ? applyOptimistic(autosave.preview, draft, catalog)
+        ? applyOptimistic(autosave.preview, draft, catalog, toneCards)
         : null,
-    [autosave.preview, draft, catalog]
+    [autosave.preview, draft, catalog, toneCards]
   );
 
   const update = useCallback(
@@ -126,7 +143,7 @@ export function BriefFlow({
     setCompleted(nextCompleted);
     autosave.save({ completed_steps: nextCompleted });
 
-    if (stepNumber === STEP_COUNT) {
+    if (stepNumber === STEP_COUNT || revisiting) {
       setLeaving(true);
       await autosave.flush();
       router.push(`/app/briefs/${projectId}/review`);
@@ -175,8 +192,9 @@ export function BriefFlow({
         <div
           onKeyDown={onKeyDown}
           className={`flex min-w-0 flex-1 flex-col ${
-            // L'Écran 1 (palette) respire à 44px, l'Écran 2 (ton) à 32px.
-            step.id === "palette" ? "pt-[44px]" : "pt-8"
+            // L'Écran « Look » (grilles palette + typographie) respire à 44px,
+            // les autres à 32px.
+            step.id === "look" ? "pt-[44px]" : "pt-8"
           } pl-[var(--gutter)] pr-14 max-md:px-[var(--gutter-sm)] max-lg:pb-[168px]`}
         >
           <div key={step.id} className="question-enter flex max-w-brief flex-col">
@@ -188,13 +206,15 @@ export function BriefFlow({
               {step.helper}
             </p>
 
-            <div className={step.id === "palette" ? "mt-9" : "mt-7"}>
+            <div className={step.id === "look" ? "mt-9" : "mt-7"}>
               <Body
                 projectId={projectId}
                 draft={draft}
                 catalog={catalog}
                 preview={preview}
                 update={update}
+                toneCards={toneCards}
+                setToneCards={setToneCards}
               />
             </div>
 
@@ -209,7 +229,7 @@ export function BriefFlow({
 
             <div
               className={`flex items-center gap-4 ${
-                step.id === "palette" ? "mt-10" : "mt-8"
+                step.id === "look" ? "mt-10" : "mt-8"
               }`}
             >
               {stepNumber > 1 ? (
@@ -218,7 +238,9 @@ export function BriefFlow({
                 </Button>
               ) : null}
               <Button onClick={() => void onContinue()} disabled={leaving}>
-                {stepNumber === STEP_COUNT ? "Review my brief" : "Continue"}
+                {stepNumber === STEP_COUNT || revisiting
+                  ? "Review my brief"
+                  : "Continue"}
               </Button>
               {step.optional ? (
                 <Button variant="tertiary" onClick={() => void onSkip()} className="ml-2">

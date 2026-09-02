@@ -12,13 +12,19 @@ import type { BriefRow } from "@/lib/data/brief";
 
 export const STEP_COUNT = 7;
 
+/*
+ * Ordre depuis le renumérotage (FRONTEND_CONTRACT.md §9.7) : practice,
+ * positioning, client INCHANGÉS — puis how_you_work (NOUVEAU, 4), voice
+ * (était 4, devient 5), look (fusion de palette + typography, était 5 et 6,
+ * devient 6), website INCHANGÉ à 7.
+ */
 export type StepId =
   | "practice"
   | "positioning"
   | "client"
+  | "how_you_work"
   | "voice"
-  | "palette"
-  | "typography"
+  | "look"
   | "website";
 
 export type StepDef = {
@@ -60,8 +66,17 @@ export const STEPS: StepDef[] = [
     optional: false,
   },
   {
-    id: "voice",
+    id: "how_you_work",
     number: 4,
+    eyebrow: "How you work",
+    question: "How you work.",
+    helper:
+      "These are clinical questions, not marketing ones. Answer them the way you'd answer a colleague.",
+    optional: false,
+  },
+  {
+    id: "voice",
+    number: 5,
     eyebrow: "Voice & tone",
     question: "Which of these sounds like you?",
     helper:
@@ -69,20 +84,12 @@ export const STEPS: StepDef[] = [
     optional: false,
   },
   {
-    id: "palette",
-    number: 5,
-    eyebrow: "Palette",
+    id: "look",
+    number: 6,
+    eyebrow: "Look",
     question: "Which of these feels like your practice?",
     helper:
       "Sage and dusty blue are the directory default. Standing apart is allowed.",
-    optional: false,
-  },
-  {
-    id: "typography",
-    number: 6,
-    eyebrow: "Typography",
-    question: "Which pairing reads like your practice?",
-    helper: "Your name is set in the heading face, your pages in the body face.",
     optional: false,
   },
   {
@@ -131,11 +138,25 @@ export type StepDraft = {
   problem_card_ids: string[];
   gain_card_ids: string[];
   client_persona_ids: string[];
+  /* Étape 4 — « How you work » (contrat §9.2). */
+  session_style_ids: string[];
+  not_a_fit_ids: string[];
+  not_a_fit_text: string | null;
+  modality_ids: string[];
+  modality_prominence: string | null;
+  referral_quote: string | null;
+  prior_career: string | null;
+  prior_career_public: boolean;
   tone_card_id: string | null;
   palette_family_ids: string[];
   type_pairing_id: string | null;
   primary_action_id: string | null;
   site_goal_ids: string[];
+  /* Écran de positionnement — pas une étape du brief, mais son texte édité vit
+     sur la même ligne que le reste. `usp_options` (généré) n'est PAS ici :
+     lui seul se lit directement sur `brief.usp_options`, jamais patché. */
+  usp_statement: string | null;
+  selected_usp_id: string | null;
   data: BriefData;
 };
 
@@ -178,15 +199,29 @@ export function stepIssue(step: StepId, draft: StepDraft): string | null {
       }
       return null;
 
+    /*
+     * La seule étape à deux conditions distinctes (§2.1) : au moins une carte
+     * de style de séance, ET vingt caractères ou plus de citation de
+     * collègue. Tout le reste de l'étape est facultatif.
+     */
+    case "how_you_work": {
+      if (draft.session_style_ids.length === 0) {
+        return "Choose at least one — how session usually looks.";
+      }
+      if ((draft.referral_quote ?? "").trim().length < 20) {
+        return "Say a little more about what a colleague would say — twenty characters or more.";
+      }
+      return null;
+    }
+
     case "voice":
       return draft.tone_card_id ? null : "Pick the one that sounds most like you.";
 
-    case "palette":
-      return draft.palette_family_ids.length > 0
-        ? null
-        : "Pick at least one. Your first pick leads the preview.";
-
-    case "typography":
+    /* Fusion de l'ancien « palette » et de l'ancien « typography » (§9.7). */
+    case "look":
+      if (draft.palette_family_ids.length === 0) {
+        return "Pick at least one. Your first pick leads the preview.";
+      }
       return draft.type_pairing_id ? null : "Pick a pairing.";
 
     case "website":

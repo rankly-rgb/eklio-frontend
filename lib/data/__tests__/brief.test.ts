@@ -3,8 +3,12 @@ import {
   briefPatchSchema,
   findUnknownCatalogId,
   parseBriefData,
+  writeBriefData,
+  writeUspOptions,
 } from "@/lib/data/brief";
 import type { Catalog } from "@/lib/catalog/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 
 /*
  * Les ids de catalogue sont des CLÉS ÉTRANGÈRES en pratique (§0.5) :
@@ -120,5 +124,53 @@ describe("practitioner_name", () => {
     // `parseBriefData` retombe sur `{}` plutôt que de jeter : une donnée libre
     // corrompue ne doit pas empêcher de rouvrir son brief.
     expect(parseBriefData({ practitioner_name: "x".repeat(200) })).toEqual({});
+  });
+});
+
+/*
+ * Un choix CONFIRMÉ (`selected_usp_id`/`usp_statement`) doit survivre à toute
+ * régénération de `usp_options` (correction demandée) : régénérer remplace
+ * des CANDIDATS, jamais sa décision déjà confirmée.
+ */
+function fakeSupabase() {
+  const updates: Record<string, unknown>[] = [];
+  const client = {
+    from: () => ({
+      update: (payload: Record<string, unknown>) => {
+        updates.push(payload);
+        return { eq: () => Promise.resolve({ error: null }) };
+      },
+    }),
+  } as unknown as SupabaseClient<Database>;
+  return { client, updates };
+}
+
+describe("writeUspOptions — un cycle de régénération complet", () => {
+  it("n'écrit jamais selected_usp_id ni usp_statement — une régénération réussie ne les touche pas", async () => {
+    const { client, updates } = fakeSupabase();
+    const result = await writeUspOptions(client, "brief-1", [], {
+      usp_options_inputs_hash: "abc",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).not.toHaveProperty("selected_usp_id");
+    expect(updates[0]).not.toHaveProperty("usp_statement");
+  });
+
+  it("writeBriefData (le chemin d'une régénération PARTIELLE) n'écrit que la part libre", async () => {
+    // Le chemin partiel (§9.5 : le CHECK n'accepte pas un lot incomplet)
+    // n'appelle jamais `writeUspOptions` du tout -- seulement `writeBriefData`
+    // pour le compteur de reprises. Ce test documente que CE chemin-là ne
+    // peut structurellement pas toucher `usp_options`/`selected_usp_id`/
+    // `usp_statement`, même en théorie.
+    const { client, updates } = fakeSupabase();
+    const result = await writeBriefData(client, "brief-1", {
+      usp_regenerate_count: 1,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(updates).toHaveLength(1);
+    expect(Object.keys(updates[0]).sort()).toEqual(["data", "updated_at"]);
   });
 });

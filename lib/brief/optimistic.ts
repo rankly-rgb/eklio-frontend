@@ -1,6 +1,7 @@
 import type { Catalog } from "@/lib/catalog/types";
 import type { PreviewModel } from "@/lib/brand/shapes";
 import type { StepDraft } from "@/lib/brief/flow";
+import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
 
 /*
  * Prévisualisation OPTIMISTE.
@@ -18,7 +19,8 @@ import type { StepDraft } from "@/lib/brief/flow";
 export function applyOptimistic(
   base: PreviewModel,
   draft: StepDraft,
-  catalog: Catalog
+  catalog: Catalog,
+  generatedToneCards: ToneCards | null = null
 ): PreviewModel {
   const next: PreviewModel = {
     ...base,
@@ -50,9 +52,26 @@ export function applyOptimistic(
     }
   }
 
-  if (draft.tone_card_id) {
+  /*
+   * Une carte GÉNÉRÉE (`data.selected_tone_card_id`) prime sur la carte du
+   * catalogue statique : les deux sont mutuellement exclusives (§9.2 du
+   * contrat n'a pas de colonne pour la première, voir `briefDataSchema`).
+   * Dans les deux cas, `headline_is_sample` : §2.2, tant qu'aucune direction
+   * réelle n'est choisie, ce titre reste un échantillon, pas la marque.
+   */
+  const selectedGeneratedCard = draft.data.selected_tone_card_id
+    ? generatedToneCards?.find((card) => card.id === draft.data.selected_tone_card_id)
+    : null;
+
+  if (selectedGeneratedCard) {
+    next.hero.headline = selectedGeneratedCard.sample_hero;
+    next.hero.headline_is_sample = true;
+  } else if (draft.tone_card_id) {
     const tone = catalog.toneCards.find((entry) => entry.id === draft.tone_card_id);
-    if (tone) next.hero.headline = tone.sample_hero;
+    if (tone) {
+      next.hero.headline = tone.sample_hero;
+      next.hero.headline_is_sample = true;
+    }
   }
 
   if (draft.primary_action_id) {

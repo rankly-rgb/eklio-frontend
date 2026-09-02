@@ -82,6 +82,43 @@ export const briefDataSchema = z.object({
   practitioner_line: z.string().max(80).optional(),
   /** Le rappel « We draft in plain, board-safe language » n'est montré qu'une fois. */
   suggestion_notice_seen: z.boolean().optional(),
+  /*
+   * Étape 5 — la carte de ton GÉNÉRÉE choisie, quand il y en a une.
+   *
+   * ÉCART SIGNALÉ : `project_briefs.tone_card_id` référence uniquement le
+   * catalogue statique `tone_cards` (clé étrangère). Une carte générée par
+   * `/api/briefs/:id/tone-cards` vit dans `project_briefs.tone_cards`
+   * (jsonb, six éléments, §9.4 du contrat) et n'a pas de ligne de catalogue à
+   * référencer — la colonne existante ne peut donc pas la pointer. Elle vit
+   * ici, dans la part libre du brief, en suivant exactement le précédent de
+   * `stage` ci-dessus. `tone_card_id` reste `null` tant qu'une carte générée
+   * est sélectionnée ; les deux sont mutuellement exclusifs côté lecture.
+   */
+  selected_tone_card_id: z.string().optional(),
+  /*
+   * Écran de positionnement — combien de fois « Write me three more » a été
+   * utilisé sur CE brief.
+   *
+   * ÉCART SIGNALÉ : §2.4 plafonne ce bouton à deux usages par brief, mais le
+   * contrat ne porte aucune colonne dédiée pour ce compteur (contrairement à
+   * `usp_fingerprints`, qui n'existe que pour la confirmation finale). Suit
+   * le même précédent que `stage`/`selected_tone_card_id` : vit dans la part
+   * libre, personne d'autre ne le lit. Le plafond réel de sécurité reste le
+   * rate limit de la route (20/heure) ; ce compteur est la règle produit.
+   */
+  usp_regenerate_count: z.number().int().min(0).optional(),
+  /*
+   * Empreinte des réponses de l'étape 4 au moment où `usp_options` a été
+   * écrit pour la dernière fois — `lib/generation/how-you-work-hash.ts`,
+   * MÊME fonction que `tone_cards_inputs_hash` (correction demandée :
+   * l'invalidation sur édition de l'étape 4 doit valoir pour les options USP
+   * aussi, pas seulement pour les cartes de ton).
+   *
+   * ÉCART SIGNALÉ : `tone_cards_inputs_hash` a sa PROPRE colonne
+   * (§9.2 du contrat) ; il n'existe pas d'équivalent pour `usp_options`. Vit
+   * ici, dans la part libre, même précédent que le reste de ce bloc.
+   */
+  usp_options_inputs_hash: z.string().optional(),
 });
 export type BriefData = z.infer<typeof briefDataSchema>;
 
@@ -115,6 +152,23 @@ export const briefPatchSchema = z
     type_pairing_id: z.string().nullable(),
     primary_action_id: z.string().nullable(),
     site_goal_ids: z.array(z.string()),
+    /*
+     * Étape 4 — « How you work » (contrat §9.2). `usp_options`, `usp_statement`
+     * (post-génération), `tone_cards` et `tone_cards_inputs_hash` NE SONT PAS
+     * ici : ce sont les générateurs serveur qui les écrivent, avec la clé
+     * service-role, jamais un correctif client direct.
+     */
+    session_style_ids: z.array(z.string()).max(4).nullable(),
+    not_a_fit_ids: z.array(z.string()).max(3).nullable(),
+    not_a_fit_text: z.string().max(400).nullable(),
+    modality_ids: z.array(z.string()).max(5).nullable(),
+    modality_prominence: z.string().nullable(),
+    referral_quote: z.string().max(400).nullable(),
+    prior_career: z.string().max(200).nullable(),
+    prior_career_public: z.boolean(),
+    /* Le texte choisi APRÈS édition — c'est lui que la génération consomme, pas `selected_usp_id`. */
+    usp_statement: z.string().max(200).nullable(),
+    selected_usp_id: z.string().nullable(),
     progress_step: z.number().int().min(1).max(7),
     completed_steps: z.array(z.number().int().min(1).max(7)),
     data: briefDataSchema,
@@ -135,6 +189,10 @@ const ID_SOURCES = {
   type_pairing_id: (c: Catalog) => c.typePairings,
   primary_action_id: (c: Catalog) => c.primaryActions,
   site_goal_ids: (c: Catalog) => c.siteGoals,
+  session_style_ids: (c: Catalog) => c.sessionStyleCards,
+  not_a_fit_ids: (c: Catalog) => c.notAFitCards,
+  modality_ids: (c: Catalog) => c.modalityCards,
+  modality_prominence: (c: Catalog) => c.modalityProminenceOptions,
 } as const;
 
 /**
@@ -284,4 +342,89 @@ export async function patchBrief(
   const preview = await readPreview(supabase, projectId);
 
   return { ok: true, brief, data: parseBriefData(brief.data), preview };
+}
+
+/**
+ * Écrit les six cartes de ton GÉNÉRÉES et leur empreinte d'entrées (§2.2).
+ * Distinct de `patchBrief` à dessein : ces deux colonnes ne sont JAMAIS dans
+ * `briefPatchSchema` — seul le générateur serveur les écrit, jamais un
+ * correctif client direct.
+ */
+export async function writeToneCards(
+  supabase: Client,
+  projectId: string,
+  toneCards: BriefRow["tone_cards"],
+  inputsHash: string
+): Promise<{ ok: true } | { ok: false; detail: unknown }> {
+  const { error } = await supabase
+    .from("project_briefs")
+    .update({
+      tone_cards: toneCards,
+      tone_cards_inputs_hash: inputsHash,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("project_id", projectId);
+
+  if (error) return { ok: false, detail: error };
+  return { ok: true };
+}
+
+/**
+ * Écrit les options USP GÉNÉRÉES (§2.5). `selected_usp_id` et `usp_statement`
+ * sont remis à `null` dans le MÊME appel : un choix précédent référence des
+ * ids d'un lot désormais remplacé, et le trigger
+ * `project_briefs_validate_selected_usp_id` exige que `selected_usp_id`
+ * corresponde à un id présent dans `usp_options` quand il n'est pas `null`.
+ */
+/**
+ * ⚠ NE remet PAS `selected_usp_id`/`usp_statement` à `null` (correction
+ * demandée) : régénérer remplace des CANDIDATS, jamais sa décision déjà
+ * confirmée. `usp_statement` est du texte libre — l'omettre du payload le
+ * laisse tel quel, sans risque.
+ *
+ * `selected_usp_id`, lui, dépend du trigger `project_briefs_validate_selected_usp_id`
+ * (§9.2 du contrat) : s'il revalide `NEW.selected_usp_id` contre
+ * `NEW.usp_options` sur CHAQUE update de la ligne (et pas seulement quand
+ * `selected_usp_id` change), cet appel échouera dès qu'un id confirmé
+ * existant ne se retrouve pas dans le lot régénéré — puisque ce module ne
+ * peut pas lire la définition du trigger depuis le frontend, c'est un risque
+ * à vérifier côté migration, pas une garantie que ce module peut donner.
+ */
+export async function writeUspOptions(
+  supabase: Client,
+  projectId: string,
+  uspOptions: BriefRow["usp_options"],
+  data: BriefData
+): Promise<{ ok: true } | { ok: false; detail: unknown }> {
+  const { error } = await supabase
+    .from("project_briefs")
+    .update({
+      usp_options: uspOptions,
+      data,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("project_id", projectId);
+
+  if (error) return { ok: false, detail: error };
+  return { ok: true };
+}
+
+/**
+ * Écrit UNIQUEMENT la part libre — utilisé quand un lot incomplet (§9.5, pas
+ * d'écriture de `usp_options` possible) doit quand même faire avancer
+ * `usp_regenerate_count` : l'utilisation d'une reprise se compte même quand
+ * elle échoue à produire trois survivants.
+ */
+export async function writeBriefData(
+  supabase: Client,
+  projectId: string,
+  data: BriefData
+): Promise<{ ok: true } | { ok: false; detail: unknown }> {
+  const { error } = await supabase
+    .from("project_briefs")
+    .update({ data, updated_at: new Date().toISOString() })
+    .eq("project_id", projectId);
+
+  if (error) return { ok: false, detail: error };
+  return { ok: true };
 }

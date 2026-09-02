@@ -1,6 +1,7 @@
 import type { OutgoingEmail } from "@/lib/email/transport";
 import { unsubscribeUrl } from "@/lib/email/state";
 import { EMAIL_COLORS } from "@/lib/email/palette";
+import { siteUrl } from "@/lib/site-url";
 
 /*
  * Les trois e-mails transactionnels (§7).
@@ -102,10 +103,6 @@ function build(input: {
     html: layout(input),
     text: plain(input),
   };
-}
-
-function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
 /**

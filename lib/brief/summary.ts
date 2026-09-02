@@ -90,6 +90,21 @@ export function summarize(
         ?.label
     : null;
 
+  /*
+   * ÉTAPE 4 — « How you work ». La carte de ton GÉNÉRÉE (`brief.tone_cards`,
+   * sélectionnée via `data.selected_tone_card_id`) n'entre pas dans ce
+   * récapitulatif : elle arrive au commit 14, avec le reste du câblage des
+   * cartes générées.
+   */
+  const howYouWork = [
+    ...labelsOf(draft.session_style_ids, catalog.sessionStyleCards),
+    ...labelsOf(draft.not_a_fit_ids, catalog.notAFitCards),
+    firstNonEmpty(draft.not_a_fit_text),
+    ...labelsOf(draft.modality_ids, catalog.modalityCards),
+    firstNonEmpty(draft.referral_quote),
+    draft.prior_career_public ? firstNonEmpty(draft.prior_career) : null,
+  ].filter((line): line is string => Boolean(line));
+
   const sections: SummarySection[] = [
     { id: "practice" as const, lines: practice },
     { id: "positioning" as const, lines: positioning },
@@ -97,17 +112,17 @@ export function summarize(
       id: "client" as const,
       lines: labelsOf(draft.client_persona_ids, catalog.personaCards),
     },
+    { id: "how_you_work" as const, lines: howYouWork },
     {
       id: "voice" as const,
       lines: tone ? [tone.sample_hero, tone.keywords.join(" · ")] : [],
     },
     {
-      id: "palette" as const,
-      lines: labelsOf(draft.palette_family_ids, catalog.paletteFamilies),
-    },
-    {
-      id: "typography" as const,
-      lines: pairing ? [`${pairing.heading_font} · ${pairing.body_font}`] : [],
+      id: "look" as const,
+      lines: [
+        ...labelsOf(draft.palette_family_ids, catalog.paletteFamilies),
+        pairing ? `${pairing.heading_font} · ${pairing.body_font}` : null,
+      ].filter((line): line is string => Boolean(line)),
     },
     {
       id: "website" as const,
