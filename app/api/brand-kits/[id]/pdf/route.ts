@@ -10,6 +10,7 @@ import { loadBrandKit } from "@/lib/data/brand-kit";
 import { siteSpecGet } from "@/lib/site/rpc";
 import { readSiteCatalog } from "@/lib/site/catalog";
 import { builderOf } from "@/lib/site/output";
+import { readCatalog } from "@/lib/catalog/read";
 import { renderBrandGuidePdf, type BrandGuideData } from "@/lib/kit/pdf/brand-guide";
 import { track } from "@/lib/analytics";
 
@@ -65,9 +66,10 @@ export async function GET(
 
   if (!kit.selectedDirection) return notFound();
 
-  const [siteSpec, siteCatalog] = await Promise.all([
+  const [siteSpec, siteCatalog, catalog] = await Promise.all([
     siteSpecGet(supabase, id),
     readSiteCatalog(supabase).catch(() => null),
+    readCatalog(supabase).catch(() => null),
   ]);
   if (!siteSpec.ok) {
     return NextResponse.json(
@@ -84,6 +86,17 @@ export async function GET(
   const siteBuilderLabel =
     siteCatalog ? builderOf(siteCatalog.builder_targets, siteSpec.data.spec.target).label : null;
 
+  // The SAME `ethics_rules` rows the generation pipeline's own Ethics Guard
+  // reads (`lib/ethics/guard.ts`'s `rulesBlock`) — never a second, hand-
+  // written copy of this content. Already sorted by `sort_order` at the
+  // query (`readCatalog`'s own `.order("sort_order")`).
+  const ethicsRules = (catalog?.ethicsRules ?? []).map((rule) => ({
+    id: rule.id,
+    label: rule.short_label,
+    description: rule.description,
+    exampleForbidden: rule.example_forbidden,
+  }));
+
   const data: BrandGuideData = {
     practiceName,
     monogram,
@@ -96,6 +109,7 @@ export async function GET(
     sitePages: siteSpec.data.spec.pages,
     siteBuilderLabel,
     practitionerLine: kit.row.practitioner_line,
+    ethicsRules,
   };
 
   let pdf: Uint8Array;

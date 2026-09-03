@@ -8,7 +8,6 @@ import {
 } from "@/lib/kit/pdf/layout";
 import { getCachedFontBuffer } from "@/lib/kit/render/font-cache";
 import { isBelowAa, pairReading } from "@/lib/site/contrast";
-import { ETHICS_RULE_DEFINITIONS } from "@/lib/ethics/rule-definitions";
 import { ETHICS_DISCLAIMER_TEXT } from "@/lib/ethics/disclaimer";
 import {
   renderStatementOrQuestionPost,
@@ -48,6 +47,13 @@ export type BrandGuideTokens = {
   body_font: string;
 };
 
+export type BrandGuideEthicsRule = {
+  id: string;
+  label: string;
+  description: string;
+  exampleForbidden: string;
+};
+
 export type BrandGuideData = {
   practiceName: string;
   monogram: string;
@@ -60,6 +66,15 @@ export type BrandGuideData = {
   sitePages: SpecPage[];
   siteBuilderLabel: string | null;
   practitionerLine: string | null;
+  /**
+   * The REAL six rows of `ethics_rules` (the same table the generation
+   * pipeline's own Ethics Guard reads — `lib/ethics/guard.ts`'s
+   * `rulesBlock()`), sorted by `sort_order`. Never a second, hand-written
+   * copy of this content: that's exactly the "badge tooltip and enforcement
+   * path diverge" failure `guard.ts`'s own header warns against — this page
+   * is a third reader of the same source, not a fourth set of rules.
+   */
+  ethicsRules: BrandGuideEthicsRule[];
 };
 
 const PAGE_TITLES = [
@@ -364,10 +379,15 @@ function buildEthicsGuard(doc: BrandGuideDoc, data: BrandGuideData, p: Palette):
   );
   flow.advance(10);
 
-  for (const rule of ETHICS_RULE_DEFINITIONS) {
+  if (data.ethicsRules.length === 0) {
+    flow.text("Your ethics rules weren't available when this guide was generated.", p.body, 11, p.dark!);
+    return;
+  }
+
+  for (const rule of data.ethicsRules) {
     flow.text(rule.label, p.heading, 13, p.dark!, { leading: 18 });
-    flow.text(rule.why, p.body, 10, p.dark!, { leading: 14, x: MARGIN + 4 });
-    flow.text(rule.example, p.body, 10, p.dark!, { leading: 14, x: MARGIN + 4 });
+    flow.text(rule.description, p.body, 10, p.dark!, { leading: 14, x: MARGIN + 4 });
+    flow.text(`Never: "${rule.exampleForbidden}"`, p.body, 10, p.dark!, { leading: 14, x: MARGIN + 4 });
     flow.advance(8);
   }
 }

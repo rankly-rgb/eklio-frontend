@@ -605,3 +605,33 @@ same authenticated session this whole session has never had access to) — the r
 shape from the version that DID work end-to-end before this lot (same auth/entitlement/response pattern),
 so this is a lower-risk gap than most, but it is still a real one: only the PDF BYTES themselves have been
 proven correct, not the HTTP round trip serving them in production.
+
+---
+
+## Correction — the brand guide PDF's "Ethics Guard" page used invented rule content
+
+While starting Lot 7, discovered (the hard way — see DECISIONS.md for the full account of the mistake that
+led here) that a real, already-shipped Ethics Guard already exists in this repo, with its own six rule ids
+and content sourced from the `ethics_rules` database table. The "Ethics Guard" page built earlier in this
+session for Lot 5's PDF used a different, invented six-rule set that doesn't match it.
+
+**Fixed.** `BrandGuideData.ethicsRules` now carries the real rows (`{id, label, description,
+exampleForbidden}`, mapped from `readCatalog(supabase).ethicsRules` — `short_label`/`description`/
+`example_forbidden`, the exact same fields `lib/ethics/guard.ts`'s own `rulesBlock()` reads for prompt
+injection). The PDF route fetches the real catalog alongside the site spec it already loads. Deleted
+`lib/ethics/rule-definitions.ts` (the invented content) entirely — no reader of the Ethics Guard page
+should ever again get its content from anywhere but the database.
+
+**Verified, and how.** `tsc`/`eslint`/full `vitest` suite (929/929) clean, `next build` succeeds. Re-ran
+the same real-fixture render used for Lot 5's original verification with realistic `ethicsRules` data
+(the actual seeded rows, confirmed via a research pass against the real migration in eklio-backend, not
+guessed). `pdfinfo` confirms still 14 pages. Rasterized and looked at the Ethics Guard page again — clean,
+correctly spaced, now showing "No timeframes," "No proven claims," "No client voice," "No inflated
+credentials," "No scarcity," "No diagnosis of the reader" — the real six, with their real descriptions and
+real forbidden examples. `pdftotext` over the whole document confirms none of the old invented rule names
+("outcome guarantee," "superlative," "unsourced") appear anywhere.
+
+**What's still open, going into Lot 7 proper.** The real `checkEthics`/`lib/ethics/guard.ts` system is
+understood now, not yet extended. Lot 7's actual remaining work: make the BOARD-SAFE COPY chip clickable
+(reading `brand_kits.ethics_check.flagged`, the real persisted verdict), and build the new "Check your own
+words" textarea calling `checkEthics` directly on text the practitioner writes herself — see DECISIONS.md.

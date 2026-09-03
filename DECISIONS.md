@@ -412,3 +412,46 @@ type-checked, text-extractable PDF can still be visually broken, and this sessio
 bar ("open the rendered file and look at it") caught something the automated checks structurally cannot.
 Worth a line so the pattern — render everything with a real tool, then ALSO look at the raster output, not
 just the extracted text — carries into whatever visual output comes after this lot.
+
+---
+
+### 2026-09-03 — a real mistake: overwrote pre-existing, shipped ethics files without reading them first
+
+**What happened.** Starting Lot 7, I used the Write tool to create `lib/ethics/rules.ts` and
+`lib/ethics/__tests__/rules.test.ts` — WITHOUT first checking whether either path already existed. Both
+did: a mature, already-shipped, three-level Ethics Guard (`ETHICS_SYSTEM_RULES` prompt injection,
+`checkEthics`/`FORBIDDEN_PATTERNS` deterministic scanning, `enforceEthics` targeted-rewrite-and-persist,
+`lib/ethics/guard.ts`, plus a ~240-line test suite covering both real violations and hand-picked false
+positives) from an earlier chantier on this same branch's history. My `Write` call silently replaced 403
+lines of that with a smaller, parallel implementation using a DIFFERENT six rule ids
+(`outcome_guarantee`/`testimonial`/`scarcity`/`superlative_credential`/`clinical_claim`/
+`unsourced_statistic`) than the real, database-backed ones (`timeframe`/`proven`/`client_voice`/
+`credential`/`scarcity`/`diagnosis`). Running the test suite immediately surfaced it — `guard.ts` broke
+with `checkEthics is not a function` — which is what caught this before it went any further.
+
+**What I did about it.** `git checkout -- lib/ethics/rules.ts lib/ethics/__tests__/rules.test.ts`
+immediately, restoring both to their committed state. Confirmed the full local test suite (930/930 at the
+time) passing again. Then read the restored files in full, and `lib/ethics/guard.ts`, before deciding
+anything else — the mistake was proceeding without reading first; the fix was not to repeat that.
+
+**What this meant for Lot 5, already committed.** The brand guide PDF's "Ethics Guard" page (built earlier
+in this same session, before this mistake) used a now-deleted `lib/ethics/rule-definitions.ts` — invented
+content matching the WRONG six rule ids, since it was written without knowing the real system existed
+either. Fixed as its own follow-up: `BrandGuideData` now takes real `ethicsRules` from `readCatalog(...)
+.ethicsRules` (the exact same `ethics_rules` table rows `guard.ts`'s own `rulesBlock()` reads for prompts —
+confirmed the real seeded content directly from the migration, not assumed), never a hand-written second
+copy. Re-rendered and re-verified (poppler tools, page rasterized and read) after the fix.
+
+**What Lot 7 actually is, now that the real system is understood.** Not a new scanning engine — one
+already exists, is already wired into generation, and is well-tested. `checkEthics(text)` is the function
+this session should build the two new UI surfaces on top of (the BOARD-SAFE COPY chip becoming clickable,
+reading the real `brand_kits.ethics_check.flagged` data; a new "Check your own words" textarea calling
+`checkEthics` directly on text SHE writes, distinct from the existing pipeline's AI-generated-copy gate).
+No new rule taxonomy, no new file at `lib/ethics/rules.ts` — that name is taken, correctly, by something
+better than what this session almost replaced it with.
+
+**Why this is recorded in full, not summarized away.** The user's own rule for this session is honesty
+about what was and wasn't done, mistakes included — restoring the files quickly is not the same as the
+mistake not mattering. A `git status`/`ls`/`Read` before a `Write` to any path not already known to be new
+would have caught this before it happened; that check is now something to do explicitly before creating
+any file in an area of the codebase not already explored this session.
