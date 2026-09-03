@@ -70,6 +70,10 @@ export type AssetFingerprintInput = {
   socialTemplates: unknown;
   /** Lot 4.4 (business cards, the signature social tile): read by name only, never parsed here. */
   practitionerLine: string | null;
+  /** Lot 4.4 (email signature): PracticeDetails' optional-by-presence fields, hashed as a whole. */
+  practiceDetails: unknown;
+  /** Lot 4.4 (email signature): the site spec's hero CTA target. */
+  bookingUrl: string | null;
 };
 
 /** Deterministic: same input, same output, regardless of key insertion order. */

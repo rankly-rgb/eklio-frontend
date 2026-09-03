@@ -275,3 +275,53 @@ bottom-left zone sized at 1.6× the cover's own height (a conservative estimate 
 overlay is roughly square and about that tall) — content sits right-of-centre instead. Better to under-use
 the canvas than ship a file where the practice name is guaranteed to be hidden behind the practitioner's
 own photo on the platform it's for.
+
+---
+
+### 2026-09-03 — email signature content: `practice_details` first, `practitioner_line` as fallback
+
+**Question.** The brief wants "name, licence label and number, practice name..., city and state, booking
+link" on the email signature. `license_number` doesn't exist on `project_briefs` (confirmed earlier,
+`asset-fingerprint.ts`'s own comment) — but it DOES exist, optionally, on the site editor's
+`practice_details` (`lib/site/types.ts`'s `PracticeDetails`), gated behind "condition of presence" (a
+control is offered only once the backend actually exposes the key, per that type's own comment).
+
+**Chosen.** Read `practice_details` when present (gives the richer name/license-label/license-number/city/
+state breakdown); fall back to the already-composed `practitioner_line` (name + credential as one string)
+plus the practice name alone when it isn't. Never fabricate a license number that isn't there — the field
+is simply omitted from that line, exactly like every other optional field here.
+
+**Booking link.** `spec.hero.cta_target_url` — the exact URL the site's own "Book a consult" button already
+points to, not a new field invented for this asset.
+
+---
+
+### 2026-09-03 — `brand_kit_zip`: hand-built ZIP, STORED entries only, verified with the real `unzip`
+
+**Question.** No zip library exists in this repo's dependencies. Hand-roll the format (matching the
+existing PDF/ASE precedent) or add a dependency?
+
+**Chosen.** Hand-built, `lib/kit/render/zip.ts` — same reasoning as PDF/ASE: the format is small, stable,
+and well-documented, and every file going into it is already either compressed (every PNG) or small text,
+so a dependency buys little. STORED entries only (no DEFLATE): avoids the one real correctness risk a
+hand-rolled compressor would carry (getting the compressed stream's framing subtly wrong) for a cost of a
+few kilobytes on the small text files — a PNG re-compressed a second time saves almost nothing anyway.
+Fully spec-compliant, not a shortcut: STORED is part of the ZIP format itself.
+
+**Verified independently, not just self-checked.** Built a test archive and ran it through the system
+`unzip -l`/`unzip -t` (a real, independent implementation, not this session's own code) — confirmed correct
+listing and "No errors detected in compressed data" on every entry, including a binary PNG. This caught a
+real bug on the first pass: the DOS date field was computed one year off (1981 instead of the 1980 epoch,
+a bit-shift error) — fixed and re-verified. Then ran the actual `brand_kit_zip` registry entry end to end
+(all 34 other keys + README.txt, 552KB, 35 files) through the same `unzip` check.
+
+**README structure.** Flat (no per-group subfolders) — one README.txt at the archive root describing every
+file by key and where it goes, written once (not duplicated per asset_catalog group), since the zip always
+bundles the full catalogue regardless of tier: the paywall gates the ROUTE, not which files a paid kit's
+zip contains.
+
+**A kit missing one input still ships a zip.** `brand_kit_zip`'s loop catches and logs a per-renderer
+failure (e.g. a kit with no `practiceDetails` yet still renders `email_signature_html` from the
+`practitioner_line` fallback and never actually fails, but the pattern exists for any renderer that
+legitimately can't produce output) rather than failing the whole download — one missing file is a better
+failure than none of them.

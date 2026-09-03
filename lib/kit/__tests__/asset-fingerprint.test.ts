@@ -20,6 +20,8 @@ const BASE: AssetFingerprintInput = {
   hero: { overline: "LCSW · PORTLAND, OR", headline: "A calmer place to start." },
   socialTemplates: null,
   practitionerLine: "Nora Whitfield, LCSW",
+  practiceDetails: { practitionerName: "Nora Whitfield", licenseLabel: "LCSW" },
+  bookingUrl: "https://example.com/book",
 };
 
 describe("computeAssetFingerprint", () => {
@@ -38,6 +40,8 @@ describe("computeAssetFingerprint", () => {
       hero: BASE.hero,
       socialTemplates: BASE.socialTemplates,
       practitionerLine: BASE.practitionerLine,
+      practiceDetails: BASE.practiceDetails,
+      bookingUrl: BASE.bookingUrl,
       tokens: {
         heading_font: BASE.tokens.heading_font,
         body_font: BASE.tokens.body_font,
@@ -114,5 +118,21 @@ describe("computeAssetFingerprint", () => {
     const nullLine = computeAssetFingerprint({ ...BASE, practitionerLine: null });
     const withLine = computeAssetFingerprint(BASE);
     expect(nullLine).not.toBe(withLine);
+  });
+
+  it("changes when practiceDetails changes", () => {
+    const changed = { ...BASE, practiceDetails: { practitionerName: "Someone Else" } };
+    expect(computeAssetFingerprint(changed)).not.toBe(computeAssetFingerprint(BASE));
+  });
+
+  it("changes when bookingUrl changes", () => {
+    const changed = { ...BASE, bookingUrl: "https://example.com/elsewhere" };
+    expect(computeAssetFingerprint(changed)).not.toBe(computeAssetFingerprint(BASE));
+  });
+
+  it("distinguishes a null bookingUrl from a present one", () => {
+    const nullUrl = computeAssetFingerprint({ ...BASE, bookingUrl: null });
+    const withUrl = computeAssetFingerprint(BASE);
+    expect(nullUrl).not.toBe(withUrl);
   });
 });

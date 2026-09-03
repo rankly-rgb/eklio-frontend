@@ -20,3 +20,18 @@ built around. One line each: what, where, why it matters.
   warming script (`scripts/warm-font-cache.ts`) that pre-fills the bucket for every font in the six type
   pairings turns this from a runtime dependency into a build-time one — run it after any change to those
   pairings, and see its own comment for what running it does and does not cover.
+
+- `site_setup_md`'s asset-cache fingerprint doesn't cover everything its content actually depends on. The
+  asset content-cache (`asset-fingerprint.ts`) hashes tokens/practiceName/hero/socialTemplates/
+  practitionerLine/practiceDetails/bookingUrl — every field some OTHER renderer reads. `site_setup_md`'s
+  actual content comes from `site_output_get(..., 'md')`, which is derived from the FULL site spec (every
+  page, every section's copy, the builder target) — a much wider surface than what's practical to hash
+  field-by-field. Hashing the fetched md string's own content isn't an option either: the fingerprint has
+  to be computable BEFORE fetching, to decide whether a fetch/render is even needed. Net effect: if
+  someone edits site copy that isn't one of the hashed fields (e.g. a page's body text) without touching
+  their palette, fonts, hero, or practice details, `site_setup_md`'s cached download can serve a stale copy
+  until the next change that DOES touch a hashed field. Not destructive, not money, not security — a stale
+  instructions file, at worst. Flagged rather than silently shipped as if solved; a real fix would mean
+  widening the fingerprint to the site spec's own version/etag (`SiteSpecEnvelope.etag` already exists for
+  exactly this kind of staleness check) rather than the current field-by-field list, which is a real design
+  change to the caching scheme this session isn't making unilaterally.

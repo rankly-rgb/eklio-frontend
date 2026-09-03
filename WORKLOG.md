@@ -402,3 +402,63 @@ groups). No new kind, no new RLS — reference data under the existing policy.
 images' actual behaviour once uploaded to real LinkedIn/Facebook profiles (the avatar-clearance zone is
 sized from documented/observed platform overlay geometry, not confirmed against a live upload — no browser
 automation against those platforms is possible from this sandbox).
+
+---
+
+## Lot 4.4 (finished) — email signature, site_setup_md, brand_kit_zip
+
+This closes out the full remaining Lot 4.4 catalogue from POST_PURCHASE_BRIEF.md — every identity/web/
+color/social/print/document asset it named is now built.
+
+**What was built.**
+- `lib/kit/render/email-signature.ts` — `renderEmailSignatureHtml` (table-based, every style inline, no
+  flexbox/grid/external stylesheet/webfont — the things that actually survive Gmail's and Outlook's
+  stripped HTML rendering; heading font offered only alongside a real Georgia/Times fallback stack) and
+  `renderEmailSignaturePng` (the same content through satori/resvg, real Google Font, as a fallback image).
+  Content: `practice_details` (name/license label+number/city/state) when the backend exposes it,
+  `practitioner_line` as fallback, `spec.hero.cta_target_url` for the booking link — see DECISIONS.md.
+- `lib/kit/render/zip.ts` — a hand-built ZIP writer (STORED entries, no DEFLATE — see DECISIONS.md for why),
+  `buildZip(entries) -> Buffer`.
+- `site_setup_md` registry entry — wraps the existing `site_output_get(..., 'md')` output (nothing new
+  composed; the brief calls this "the existing derived output, listed so the manifest is complete").
+- `brand_kit_zip` registry entry — iterates every OTHER key in `RENDERERS`, calls each, catches and logs a
+  per-renderer failure without failing the whole zip, adds a hand-written README.txt (in her voice, one file
+  per key/group, flat structure — see DECISIONS.md), zips the result.
+- `RenderContext` extended with `practiceDetails`, `bookingUrl`, `siteSetupMd`; the asset route fetches
+  `practiceDetails`/`bookingUrl` for every request (cheap, already-loaded `siteSpec` data, no extra RPC) and
+  `siteSetupMd` only for `site_setup_md`/`brand_kit_zip` (the one extra RPC call, `siteOutputGet`, gated to
+  the two keys that actually need it). `AssetFingerprintInput` extended with `practiceDetails`/`bookingUrl`
+  (hashed, since email-signature renderers now read them) — `site_setup_md`'s OWN content is NOT fully
+  covered by the fingerprint; see FINDINGS.md for the honest gap and why it isn't fixed here.
+- Backend: one migration widens `kind` to add `md` (needed for `site_setup_md`) and inserts all four
+  document-group catalog rows.
+
+**Verified, and how.**
+- Backend: `scripts/local-verify.sh`, 50/50 tests passing (including a probe that the widened kind
+  constraint still rejects an unlisted value). Dry-run + apply against the live project, ledger corrected to
+  `20260903250000`.
+- Frontend: `tsc --noEmit` clean, full `vitest` suite 916/916 passing. `renderEmailSignatureHtml`'s actual
+  markup inspected directly (correct nesting, correct inline styles, correct conditional omission of the
+  booking-link row when absent) — NOT rendered through a real browser (no Playwright install in this repo;
+  adding one wasn't in scope for a rendering task). `renderEmailSignaturePng` inspected visually — correct
+  layout, real font, real content. The ZIP writer got the strongest verification of anything built this
+  session: a real, independent tool (`unzip -l`/`unzip -t`, not this session's own code) confirmed a test
+  archive's listing and integrity, catching and letting me fix a real bug (the DOS date field one year off).
+  Then ran the ACTUAL `brand_kit_zip` registry entry end to end — all 34 other renderers plus README.txt,
+  552KB, 35 files, `unzip -t` reporting no errors — and read the extracted README.txt back to confirm its
+  content is accurate and correctly formatted.
+
+**Not verified:** live Storage/route round trip (same gap as every asset this session); the email signature
+HTML has not been pasted into a real Gmail or Outlook compose window (no such environment reachable from
+this sandbox) — verification here is markup review against known-safe email-HTML patterns, not a live
+client test.
+
+---
+
+## Lot 4.4 — COMPLETE
+
+Every asset in POST_PURCHASE_BRIEF.md's Lot 4.4 catalogue now has a backend `asset_catalog` row and a
+frontend renderer wired into the registry: 5 identity wordmark treatments (+2 from before this session),
+4 monogram assets, 5 web/icon assets, 3 color exports, 7 social assets, 2 business card sides, 4 document
+assets — 34 renderable keys total, all locally verified, all committed and pushed. Moving to Lot 3
+(workspace UI) next, per the delivery order.

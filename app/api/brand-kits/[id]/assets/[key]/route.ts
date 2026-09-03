@@ -7,7 +7,7 @@ import {
   purchaseWasReversed,
 } from "@/lib/billing/entitlements";
 import { loadBrandKit } from "@/lib/data/brand-kit";
-import { siteSpecGet } from "@/lib/site/rpc";
+import { siteSpecGet, siteOutputGet } from "@/lib/site/rpc";
 import { computeAssetFingerprint } from "@/lib/kit/asset-fingerprint";
 import {
   getBrandAssetManifest,
@@ -98,6 +98,17 @@ export async function POST(
   }
   const tokens = siteSpec.data.preview.tokens;
 
+  const practiceDetails = siteSpec.data.spec.practice_details
+    ? {
+        practitionerName: siteSpec.data.spec.practice_details.practitioner_name ?? null,
+        licenseLabel: siteSpec.data.spec.practice_details.license_label ?? null,
+        licenseNumber: siteSpec.data.spec.practice_details.license_number ?? null,
+        city: siteSpec.data.spec.practice_details.city ?? null,
+        state: siteSpec.data.spec.practice_details.state ?? null,
+      }
+    : null;
+  const bookingUrl = siteSpec.data.spec.hero.cta_target_url || null;
+
   const fingerprint = computeAssetFingerprint({
     tokens: {
       primary: tokens.primary,
@@ -117,6 +128,8 @@ export async function POST(
     hero: kit.selectedDirection.hero,
     socialTemplates: kit.socialTemplates,
     practitionerLine: kit.row.practitioner_line,
+    practiceDetails,
+    bookingUrl,
   });
 
   const manifest = await getBrandAssetManifest(supabase, id, fingerprint);
@@ -136,6 +149,17 @@ export async function POST(
     return NextResponse.json({ url: signed.data.signedUrl });
   }
 
+  // Only site_setup_md and the zip that bundles it need the derived `md`
+  // output — an extra RPC call every other asset request has no reason to
+  // pay for. A fetch failure here degrades to null rather than failing the
+  // whole request: brand_kit_zip still ships everything else it has (see
+  // its renderer), and site_setup_md alone throws a clear error below.
+  let siteSetupMd: string | null = null;
+  if (key === "site_setup_md" || key === "brand_kit_zip") {
+    const output = await siteOutputGet(supabase, id, siteSpec.data.spec.target, "md");
+    siteSetupMd = output.ok && typeof output.data === "string" ? output.data : null;
+  }
+
   let rendered;
   try {
     rendered = await renderer({
@@ -145,6 +169,9 @@ export async function POST(
       hero: kit.selectedDirection.hero,
       socialTemplates: kit.socialTemplates,
       practitionerLine: kit.row.practitioner_line,
+      practiceDetails,
+      bookingUrl,
+      siteSetupMd,
     });
   } catch (err) {
     return serverError("assets:render", err);
