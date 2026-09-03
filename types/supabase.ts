@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      anon_surface_baseline: {
+        Row: {
+          object_kind: string
+          object_name: string
+          recorded_at: string
+        }
+        Insert: {
+          object_kind: string
+          object_name: string
+          recorded_at?: string
+        }
+        Update: {
+          object_kind?: string
+          object_name?: string
+          recorded_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           key: string
@@ -1757,6 +1775,10 @@ export type Database = {
     }
     Functions: {
       accept_org_invite: { Args: { p_token: string }; Returns: string }
+      apply_charter_to_project: {
+        Args: { p_organization_id: string; p_project_id: string }
+        Returns: undefined
+      }
       assert_tenancy_invariants: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1875,6 +1897,10 @@ export type Database = {
         Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
         Returns: boolean
       }
+      import_brand_identity: {
+        Args: { p_payload: Json; p_project_id: string }
+        Returns: undefined
+      }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
       preview_org_invite: {
@@ -1891,6 +1917,7 @@ export type Database = {
         Args: { p_purchase_id: string; p_status: string }
         Returns: string
       }
+      random_token_hex: { Args: { p_bytes: number }; Returns: string }
       record_purchase_status_event: {
         Args: {
           p_amount_cents?: number
@@ -1909,6 +1936,11 @@ export type Database = {
         Returns: number
       }
       seed_site_spec: { Args: { p_brand_kit_id: string }; Returns: number }
+      set_field_sources: {
+        Args: { p_site_spec_id: string; p_sources: Json }
+        Returns: undefined
+      }
+      sha256_hex: { Args: { p_text: string }; Returns: string }
       show_limit: { Args: Record<PropertyKey, never>; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       site_catalog: { Args: Record<PropertyKey, never>; Returns: Json }
