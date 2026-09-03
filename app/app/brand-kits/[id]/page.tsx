@@ -1,12 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
-import {
-  getSubscription,
-  isBrandKitEntitled,
-  isEntitledToMonthlyPresence,
-  purchaseWasReversed,
-} from "@/lib/billing/entitlements";
+import { isBrandKitEntitled, purchaseWasReversed } from "@/lib/billing/entitlements";
 import { BrandKitView } from "@/components/kit/brand-kit-view";
 import { siteSpecGet } from "@/lib/site/rpc";
 import { readSiteCatalog } from "@/lib/site/catalog";
@@ -57,8 +52,7 @@ export default async function BrandKitPage({
    * semé rend la carte sans nom de constructeur, ce qui est vrai. Faire échouer
    * le kit entier pour un libellé serait disproportionné.
    */
-  const [subscription, siteSpec, siteCatalog] = await Promise.all([
-    getSubscription(supabase, user.id),
+  const [siteSpec, siteCatalog] = await Promise.all([
     siteSpecGet(supabase, id),
     readSiteCatalog(supabase).catch(() => null),
   ]);
@@ -86,15 +80,10 @@ export default async function BrandKitPage({
       projectId={kit.projectId}
       practiceName={kit.practiceName}
       direction={kit.selectedDirection}
-      socialTemplates={kit.socialTemplates}
       voiceGuide={kit.voiceGuide}
-      practitionerLine={kit.row.practitioner_line}
       siteBuilderLabel={siteBuilderLabel}
       canvasTokens={canvasTokens}
       canvasContrast={canvasContrast}
-      // Une seule règle d'accès dans toute l'application (§7).
-      entitled={isEntitledToMonthlyPresence(subscription)}
-      monthlyCheckoutHref={`/app/checkout?project=${kit.projectId}`}
     />
   );
 }

@@ -56,7 +56,7 @@ export type AssetManifestEntry = {
   group: string;
   label: string;
   description: string;
-  kind: "svg" | "png";
+  kind: "svg" | "png" | "json" | "css" | "ase" | "html" | "zip" | "md";
   width: number | null;
   height: number | null;
   min_tier: string;

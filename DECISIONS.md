@@ -325,3 +325,44 @@ failure (e.g. a kit with no `practiceDetails` yet still renders `email_signature
 `practitioner_line` fallback and never actually fails, but the pattern exists for any renderer that
 legitimately can't produce output) rather than failing the whole download — one missing file is a better
 failure than none of them.
+
+---
+
+### 2026-09-03 — Lot 3: "Your site" needed no `<BrandCanvas>` change
+
+**Question.** The brief says extend the `<BrandCanvas>` treatment to "Identity, Your site and Your words,
+which Lot 1 did not reach." Identity and Your words genuinely had no saturated-in-her-colors treatment
+before this lot. Your site already renders `<BrandPreview size="full">`, which manages its OWN
+`--p-*` custom properties internally (`lib/brand/derive.ts`'s `previewCssVariables`) — a full takeover of
+her fonts and colors, just not through the literal `<BrandCanvas>` component (which uses `--brand-*`,
+scoped for the paid-space-wide canvas use case `canvas-tokens.ts`'s own header describes).
+
+**Chosen.** Left "Your site" as it already was — full saturation via `<BrandPreview>`, no wrapping
+`<BrandCanvas>` added. The brief's phrase is "the BrandCanvas TREATMENT" (the visual language: her colors
+and fonts fully in control of a framed surface), not literally the component; `<BrandPreview>` already
+delivers that, and predates this lot doing so. Two competing token systems (`--p-*` AND `--brand-*`) on the
+same DOM subtree would be the kind of accidental complexity the two-prefix design was built specifically to
+avoid (see `canvas-tokens.ts`'s header: "so the two never collide on a page that renders both").
+
+---
+
+### 2026-09-03 — Lot 3: no scroll-spy on the section nav; no per-request Playwright dependency
+
+**Question.** The brief's sticky rail navigation implies a natural next step — highlighting the section
+currently in view as someone scrolls (an IntersectionObserver-driven "active" state). And the whole
+workspace redesign genuinely warrants a real rendered check, not just `tsc`/`next build`.
+
+**Chosen.** Plain anchor links, no active-section tracking. No React testing-library/Playwright dependency
+added to verify visually — the environment notes an existing pre-installed Chromium for this sandbox, but
+this REPO has no Playwright package installed, and this session has no live Supabase credentials to drive
+an authenticated page load past `/login` even if it did (this page requires an authenticated, entitled,
+selected-direction kit — not reachable without secrets this session doesn't have).
+
+**Why not build either anyway.** Scroll-spy logic I can't watch scroll is a coin flip on correctness — a
+wrong "active" state is worse than an honest plain-link nav that unambiguously works. Adding a Playwright
+devDependency and a fixture-authenticated flow to visually drive this ONE page is a nontrivial new piece of
+test infrastructure this repo has never had (confirmed: zero `.test.tsx`/testing-library usage anywhere) —
+disproportionate to add unilaterally for one lot's visual check when the existing, accepted verification
+bar for UI in this session (per the very first DECISIONS.md entry) is `tsc`/`eslint`/`next build`/`vitest`
+plus honest disclosure of what a real browser would still need to confirm. This joins that same disclosed
+list rather than pretending to close it.

@@ -30,7 +30,7 @@ import type { SocialTemplate } from "@/lib/brand/shapes";
  */
 
 const POST_SIZE = 1080;
-const STORY_WIDTH = 1080;
+// The story canvas is the same width as a square post, just taller.
 const STORY_HEIGHT = 1920;
 
 export type SocialTokens = {

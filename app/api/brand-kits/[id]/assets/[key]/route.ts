@@ -7,8 +7,8 @@ import {
   purchaseWasReversed,
 } from "@/lib/billing/entitlements";
 import { loadBrandKit } from "@/lib/data/brand-kit";
-import { siteSpecGet, siteOutputGet } from "@/lib/site/rpc";
-import { computeAssetFingerprint } from "@/lib/kit/asset-fingerprint";
+import { siteOutputGet } from "@/lib/site/rpc";
+import { loadAssetContext } from "@/lib/kit/asset-context";
 import {
   getBrandAssetManifest,
   recordBrandAsset,
@@ -87,50 +87,15 @@ export async function POST(
   const renderer = getRenderer(key);
   if (!renderer) return notFound();
 
-  if (!kit.selectedDirection) return notFound();
-
-  const siteSpec = await siteSpecGet(supabase, id);
-  if (!siteSpec.ok) {
+  const assetContext = await loadAssetContext(supabase, kit);
+  if (!assetContext.ok) {
+    if (assetContext.reason === "no-direction") return notFound();
     return NextResponse.json(
       { error: "Your palette is still being set up. Try again in a moment." },
       { status: 409 }
     );
   }
-  const tokens = siteSpec.data.preview.tokens;
-
-  const practiceDetails = siteSpec.data.spec.practice_details
-    ? {
-        practitionerName: siteSpec.data.spec.practice_details.practitioner_name ?? null,
-        licenseLabel: siteSpec.data.spec.practice_details.license_label ?? null,
-        licenseNumber: siteSpec.data.spec.practice_details.license_number ?? null,
-        city: siteSpec.data.spec.practice_details.city ?? null,
-        state: siteSpec.data.spec.practice_details.state ?? null,
-      }
-    : null;
-  const bookingUrl = siteSpec.data.spec.hero.cta_target_url || null;
-
-  const fingerprint = computeAssetFingerprint({
-    tokens: {
-      primary: tokens.primary,
-      secondary: tokens.secondary,
-      accent: tokens.accent,
-      paper: tokens.paper,
-      light_neutral: tokens.light_neutral,
-      dark_neutral: tokens.dark_neutral,
-      primary_text: tokens.primary_text,
-      secondary_text: tokens.secondary_text,
-      accent_text: tokens.accent_text,
-      cta_ink: tokens.cta_ink,
-      heading_font: tokens.heading_font,
-      body_font: tokens.body_font,
-    },
-    practiceName: kit.practiceName,
-    hero: kit.selectedDirection.hero,
-    socialTemplates: kit.socialTemplates,
-    practitionerLine: kit.row.practitioner_line,
-    practiceDetails,
-    bookingUrl,
-  });
+  const { ctx: renderCtx, fingerprint } = assetContext;
 
   const manifest = await getBrandAssetManifest(supabase, id, fingerprint);
   if (!manifest.ok) {
@@ -156,23 +121,13 @@ export async function POST(
   // its renderer), and site_setup_md alone throws a clear error below.
   let siteSetupMd: string | null = null;
   if (key === "site_setup_md" || key === "brand_kit_zip") {
-    const output = await siteOutputGet(supabase, id, siteSpec.data.spec.target, "md");
+    const output = await siteOutputGet(supabase, id, assetContext.target, "md");
     siteSetupMd = output.ok && typeof output.data === "string" ? output.data : null;
   }
 
   let rendered;
   try {
-    rendered = await renderer({
-      tokens,
-      practiceName: kit.practiceName,
-      googleFontsUrl: kit.selectedDirection.typography.google_fonts_url,
-      hero: kit.selectedDirection.hero,
-      socialTemplates: kit.socialTemplates,
-      practitionerLine: kit.row.practitioner_line,
-      practiceDetails,
-      bookingUrl,
-      siteSetupMd,
-    });
+    rendered = await renderer({ ...renderCtx, siteSetupMd });
   } catch (err) {
     return serverError("assets:render", err);
   }

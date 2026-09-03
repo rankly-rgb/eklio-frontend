@@ -220,3 +220,34 @@ the "slow cold start" one.
 Stop and report exactly what you saw — the status code, the full response body, and which of the two
 failure shapes above it matches — rather than retrying or working around it. A resvg failure changes how
 the rest of Lot 4.4's assets get built; better to know now than after twenty-five of them.
+
+---
+
+## Part 7 — Lot 3's workspace UI (added once Lot 4.4's full catalogue and Lot 3 both landed)
+
+None of this has been seen rendered in a real browser — this sandbox has no live credentials to drive an
+authenticated page load, and this repo has no Playwright/testing-library setup (checked before building
+Lot 3, not skipped). Verification so far is `tsc`/`eslint`/`next build`/`vitest` plus hand-traced data flow
+— real, but not the same as a human looking at it. This part is what to actually look at.
+
+1. Open a paid, direction-selected kit at `/app/brand-kits/<id>`. **Write down:** do all six section
+   headings appear in order — Identity, Colors, Type, Your site, Your words, Your assets?
+2. **The rail nav.** On desktop width, is the left rail visible and does it stay in place while you scroll
+   the page (`position: sticky`)? Click each link — does the page jump to the right section? On a narrow
+   (mobile) viewport, does the same nav become a horizontally-scrollable row instead of a sidebar?
+3. **Colors — the labelled canvas.** Does the small page mockup show a header band, a heading, a button, a
+   link, a small accent mark, and body copy, each with a small tag naming its color role, positioned near
+   it? Do the tags stay legible (not overlapping text, not cut off) at both desktop and mobile widths?
+4. **Colors — the Fix button.** Find a pair below AA (or use a kit with one). Click **Fix**. **Write down:**
+   does the button show "Fixing…", then does the swatch/ratio for THAT pair (and any others sharing the
+   same token) visibly update without a page reload? Does the DevTools Network tab show a call to
+   `site_spec_fix_contrast` returning 200?
+5. **Your assets.** Does the list load (a brief "Loading your assets…" then real groups: Identity, Web,
+   Color, Social, Print, Document)? Click **Download** on any one item — does a new tab open with the
+   actual file? Click **Download everything** — does a `.zip` download, and does it actually contain files
+   when opened?
+6. **Type.** Does the specimen show real copy from the selected direction (not placeholder text) at three
+   visibly different sizes?
+
+If anything here is wrong, it's more useful to know exactly what broke (a screenshot, the failing
+network request, the console error) than to describe it from memory — same standard as Parts 1–6.

@@ -4,33 +4,40 @@ import Link from "next/link";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { SectionHeader } from "@/components/ui/section-header";
 import { ButtonLink } from "@/components/ui/button";
-import { BrandPreview } from "@/components/preview/brand-preview";
-import { BrandCanvas } from "@/components/kit/brand-canvas";
-import { useBrandFont } from "@/components/preview/use-brand-font";
-import { SiteCard } from "@/components/kit/site-card";
-import { PaletteSection } from "@/components/kit/palette-section";
 import { EthicsDisclaimer } from "@/components/ethics-disclaimer";
-import { previewModelFromDirection, type Direction, type SocialTemplates, type VoiceGuide } from "@/lib/brand/shapes";
-import { MONTHLY_PRESENCE, formatUsd } from "@/lib/billing/plans";
+import { WorkspaceNav } from "@/components/kit/workspace-nav";
+import { IdentitySection } from "@/components/kit/identity-section";
+import { ColorsSection } from "@/components/kit/colors-section";
+import { TypeSection } from "@/components/kit/type-section";
+import { WordsSection } from "@/components/kit/words-section";
+import { AssetsSection } from "@/components/kit/assets-section";
+import { SiteCard } from "@/components/kit/site-card";
+import { BrandPreview } from "@/components/preview/brand-preview";
+import { previewModelFromDirection, type Direction, type VoiceGuide } from "@/lib/brand/shapes";
 import type { ContrastReport, SitePreviewTokens } from "@/lib/site/types";
 
 /*
- * Le kit de marque — Écrans 5 et 6, une seule page qui défile.
+ * Le kit de marque — le workspace du lot 3 : six sections navigables (une
+ * seule page qui défile toujours, mais avec un rail de navigation), chacune
+ * appliqué / spécifié / actionnable.
  *
- * ÉCART SIGNALÉ : le §2 veut « au plus un bouton primary ou accent par
- * écran ». Cette page en porte deux — « Edit your site » (primary, Écran 5, à
- * la place de l'ancien « Copy site prompt ») et « Add Monthly Presence »
- * (accent, Écran 6). Les deux références les montrent ainsi, chacune sur son
- * écran, et le §5 demande explicitement que les deux écrans n'en fassent
- * qu'un. Les références l'emportent ; on ne perd pas l'un des deux boutons
- * pour tenir un compte.
+ * ── Ce qui a changé au lot 3 ─────────────────────────────────────────────
  *
- * ── Ce qui a changé au lot 11 ────────────────────────────────────────────
+ * « This month, in your brand » a disparu de cette page — ce contenu vit sur
+ * la page Content, et n'a jamais eu sa place ici (le lot le dit
+ * explicitement). Ce qui partait avec elle : `socialTemplates`,
+ * `practitionerLine`, `entitled`, `monthlyCheckoutHref` — plus utilisés nulle
+ * part sur cette page, retirés plutôt que gardés morts.
  *
- * La section « Site prompt » composait le prompt DANS CE DÉPÔT et l'affichait
- * en bloc. La base est désormais la source unique de la sortie : la section
- * est remplacée par une carte qui mène à l'éditeur de site, où le texte à
- * coller vit à côté de la maquette qui le produit.
+ * « Voice & tone » devient « Your words » : même contenu, désormais posé dans
+ * un `<BrandCanvas>` (`components/kit/words-section.tsx`) — l'écart que le
+ * lot 1 avait laissé.
+ *
+ * « Palette » devient « Colors » : la section existante était déjà proche de
+ * ce que demande le lot, mais gagne un mockup en applied/labelled
+ * (`components/kit/colors-section.tsx`) et l'action Fix, en direct.
+ *
+ * « Identity » et « Your assets » sont entièrement nouvelles.
  */
 
 export function BrandKitView({
@@ -38,12 +45,8 @@ export function BrandKitView({
   projectId,
   practiceName,
   direction,
-  socialTemplates,
   voiceGuide,
-  practitionerLine,
   siteBuilderLabel,
-  entitled,
-  monthlyCheckoutHref,
   canvasTokens,
   canvasContrast,
 }: {
@@ -51,20 +54,15 @@ export function BrandKitView({
   projectId: string;
   practiceName: string | null;
   direction: Direction;
-  socialTemplates: SocialTemplates | null;
   voiceGuide: VoiceGuide | null;
-  practitionerLine: string | null;
   /** Le constructeur retenu dans le spec de site, ou `null` s'il n'existe pas. */
   siteBuilderLabel: string | null;
-  entitled: boolean;
-  monthlyCheckoutHref: string;
   /** Les six rôles + quatre variantes (§3), ou `null` si le spec n'est pas encore semé. */
   canvasTokens: SitePreviewTokens | null;
   /** Les sept paires de contraste (§4), ou `null` dans le même cas. */
   canvasContrast: ContrastReport | null;
 }) {
   const model = previewModelFromDirection(direction, practiceName);
-  const ready = useBrandFont(direction.typography.google_fonts_url);
 
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-6 max-md:px-[var(--gutter-sm)]">
@@ -80,13 +78,6 @@ export function BrandKitView({
         </div>
 
         <div className="flex flex-none items-center gap-4">
-          {/*
-           * L'exception voulue par le lot 1 : sa couleur primaire, sur
-           * EXACTEMENT un élément de niveau app par écran — le bouton
-           * d'action primaire. `cta_ink` pour le libellé, jamais un blanc
-           * supposé. Un style en ligne, pas une classe : c'est un élément
-           * précis, pas une surface réutilisable.
-           */}
           <ButtonLink
             href={`/app/brand-kits/${brandKitId}/site`}
             variant="primary"
@@ -120,200 +111,70 @@ export function BrandKitView({
         </div>
       </div>
 
-      {/* ── Your site ───────────────────────────────────────────────────── */}
-      <section className="mt-6 flex flex-col gap-6">
-        <SectionHeader title="Your site" />
-        <div className="w-site-mock max-w-full">
-          {/*
-           * Cadre canvas — filet, rayon, ombre intérieure discrète — SANS
-           * injecter de jetons `--brand-*` : <BrandPreview> gère déjà les
-           * siens (`--p-*`) en interne, et le lot 3 dit d'en garder la
-           * substance inchangée. C'est le même langage visuel que
-           * `.brand-canvas`, appliqué en classes plutôt qu'en composant.
-           */}
-          <div className="overflow-hidden rounded-card border border-line shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]">
-            <BrandPreview
-              model={model}
-              size="full"
-              rendering={direction.rendering}
+      {/* ── Le workspace : rail + sections ──────────────────────────────── */}
+      <div className="mt-10 flex items-start gap-12 max-lg:flex-col max-lg:gap-8">
+        <WorkspaceNav />
+
+        {/*
+         * Each section already carries its own top margin/rule/padding
+         * (`mt-12 … border-b … pb-12`) — a self-contained spacing rhythm,
+         * not a fallback for a flex `gap` this div doesn't declare (it's
+         * a plain block; `min-w-0`/`flex-1` size it as a flex ITEM of the
+         * row above, which is the only flex context that matters here).
+         */}
+        <div className="min-w-0 flex-1 [&>section]:scroll-mt-8">
+          <section id="kit-identity" className="flex flex-col gap-5 border-b border-line pb-12">
+            <SectionHeader title="Identity" id="kit-identity-heading" />
+            <IdentitySection brandKitId={brandKitId} practiceName={practiceName} tokens={canvasTokens} />
+          </section>
+
+          <section id="kit-colors" className="mt-12 flex flex-col gap-5 border-b border-line pb-12">
+            <SectionHeader title="Colors" id="kit-colors-heading" />
+            <ColorsSection
+              brandKitId={brandKitId}
+              initialTokens={canvasTokens}
+              initialContrast={canvasContrast}
             />
-          </div>
-          <p className="mt-3 text-helper leading-prose text-ink-2">
-            {/* La maquette du kit montre la marque appliquée à une page
-                d'accueil. Les quatre pages, elles, s'éditent dans l'éditeur de
-                site, où la maquette suit chaque changement. */}
-            This is your brand on a page. Your pages, copy and builder
-            instructions live in the site editor.
-          </p>
-        </div>
+          </section>
 
-        <SiteCard
-          brandKitId={brandKitId}
-          model={model}
-          builderLabel={siteBuilderLabel}
-        />
-      </section>
+          <section id="kit-type" className="mt-12 flex flex-col gap-5 border-b border-line pb-12">
+            <SectionHeader title="Type" id="kit-type-heading" />
+            <TypeSection direction={direction} tokens={canvasTokens} />
+          </section>
 
-      {/* ── Palette ─────────────────────────────────────────────────────── */}
-      <section className="mt-8 flex flex-col gap-5">
-        <SectionHeader title="Palette" />
-        <PaletteSection tokens={canvasTokens} contrast={canvasContrast} />
-      </section>
-
-      {/* ── Typography ──────────────────────────────────────────────────── */}
-      <section className="mt-8 flex flex-col gap-5">
-        <SectionHeader title="Typography" />
-        {canvasTokens ? (
-          <BrandCanvas
-            tokens={canvasTokens}
-            className="flex flex-col gap-3 p-6 transition-opacity duration-[var(--dur-font)]"
-            style={{ opacity: ready ? 1 : 0 }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--brand-heading)",
-                fontWeight: 500,
-                fontSize: 42,
-                lineHeight: 1.06,
-                letterSpacing: "-0.025em",
-                color: "var(--brand-dark)",
-                minHeight: 48,
-              }}
-            >
-              {direction.hero.headline}
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--brand-body)",
-                fontSize: 16,
-                lineHeight: 1.6,
-                color: "var(--brand-dark)",
-                maxWidth: 520,
-              }}
-            >
-              {direction.about_excerpt}
-            </div>
-            <div className="brand-canvas-static mt-2 flex gap-8">
-              <MonoLabel tracking="14">
-                {`Headings · ${canvasTokens.heading_font}`}
-              </MonoLabel>
-              <MonoLabel tracking="14">
-                {`Body · ${canvasTokens.body_font}`}
-              </MonoLabel>
-            </div>
-          </BrandCanvas>
-        ) : (
-          <p className="text-body text-ink-2">
-            Your palette is still being set up. This section fills in as soon as it&rsquo;s ready.
-          </p>
-        )}
-      </section>
-
-      {/* ── This month, in your brand ───────────────────────────────────── */}
-      <section className="mt-10 flex flex-col gap-8">
-        <SectionHeader title="This month, in your brand" />
-        <div className="flex items-start gap-12 max-xl:flex-col">
-          <div className="flex flex-none items-start gap-4 max-md:flex-wrap">
-            {socialTemplates?.map((template) => (
-              <BrandPreview
-                key={template.id}
-                model={model}
-                variant="social"
-                template={template}
-                practitionerLine={practitionerLine}
-              />
-            ))}
-          </div>
-
-          <div className="min-w-0 max-w-presence-card flex-1 rounded-card border border-line bg-card p-7">
-            {entitled ? (
-              <>
-                <h3 className="text-pretty font-display text-card-title font-medium leading-card tracking-question text-ink">
-                  Your month is already running.
-                </h3>
-                <p className="mt-3.5 text-ui leading-prose text-ink-2">
-                  Monthly Presence is active — twelve posts, four stories and an
-                  editorial calendar, in your colors.
-                </p>
-                <MonoLabel tracking="14" className="mt-5 block">
-                  {`${formatUsd(MONTHLY_PRESENCE.amountCents)}/month · Cancel anytime`}
-                </MonoLabel>
-                <ButtonLink
-                  href="/app/content"
-                  variant="secondary"
-                  className="mt-6 w-full"
-                >
-                  See this month
-                </ButtonLink>
-              </>
-            ) : (
-              <>
-                <h3 className="text-pretty font-display text-card-title font-medium leading-card tracking-question text-ink">
-                  Want 12 of these every month?
-                </h3>
-                <p className="mt-3.5 text-ui leading-prose text-ink-2">
-                  {MONTHLY_PRESENCE.tagline}
-                </p>
-                <MonoLabel tracking="14" className="mt-5 block">
-                  {`${formatUsd(MONTHLY_PRESENCE.amountCents)}/month · Cancel anytime`}
-                </MonoLabel>
-                <ButtonLink
-                  href={monthlyCheckoutHref}
-                  variant="accent"
-                  className="mt-6 w-full"
-                >
-                  Add Monthly Presence
-                </ButtonLink>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Voice & tone ────────────────────────────────────────────────── */}
-      {voiceGuide ? (
-        <section className="mt-12 flex flex-col gap-10">
-          <SectionHeader
-            title="Voice & tone"
-            trailing={
-              <span className="flex-none rounded-pill border border-line px-3 py-1.5 font-mono text-mono uppercase tracking-mono-12 text-ink-2">
-                Board-safe copy
-              </span>
-            }
-          />
-          <div className="flex max-w-voice max-md:flex-col max-md:gap-8">
-            <div className="box-border flex-1 pr-14 max-md:pr-0">
-              <h3 className="font-display text-subsection font-medium text-ink">
-                Sounds like you
-              </h3>
-              <div className="mt-6 flex flex-col gap-5 text-body text-ink">
-                {voiceGuide.sounds_like.map((line) => (
-                  <p key={line}>{line}</p>
-                ))}
+          <section id="kit-site" className="mt-12 flex flex-col gap-6 border-b border-line pb-12">
+            <SectionHeader title="Your site" id="kit-site-heading" />
+            <div className="w-site-mock max-w-full">
+              <div className="overflow-hidden rounded-card border border-line shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]">
+                <BrandPreview model={model} size="full" rendering={direction.rendering} />
               </div>
+              <p className="mt-3 text-helper leading-prose text-ink-2">
+                This is your brand on a page. Your pages, copy and builder
+                instructions live in the site editor.
+              </p>
             </div>
-            <div className="w-px flex-none bg-line max-md:h-px max-md:w-full" />
-            <div className="box-border flex-1 pl-14 max-md:pl-0">
-              <h3 className="font-display text-subsection font-medium text-ink">
-                Never write this
-              </h3>
-              <div className="mt-6 flex flex-col items-start gap-5 text-body text-ink-3">
-                {voiceGuide.never_write.map((line) => (
-                  <span key={line} className="relative inline-block">
-                    <span>{line}</span>
-                    {/* Barré posé à mi-hauteur, comme la référence — pas un
-                        `line-through`, dont l'épaisseur varie avec la police. */}
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-x-0 top-1/2 h-px bg-[var(--ink-3)]"
-                    />
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
+            <SiteCard brandKitId={brandKitId} model={model} builderLabel={siteBuilderLabel} />
+          </section>
+
+          <section id="kit-words" className="mt-12 flex flex-col gap-5 border-b border-line pb-12">
+            <SectionHeader
+              title="Your words"
+              id="kit-words-heading"
+              trailing={
+                <span className="flex-none rounded-pill border border-line px-3 py-1.5 font-mono text-mono uppercase tracking-mono-12 text-ink-2">
+                  Board-safe copy
+                </span>
+              }
+            />
+            <WordsSection voiceGuide={voiceGuide} tokens={canvasTokens} />
+          </section>
+
+          <section id="kit-assets" className="mt-12 flex flex-col gap-5">
+            <SectionHeader title="Your assets" id="kit-assets-heading" />
+            <AssetsSection brandKitId={brandKitId} />
+          </section>
+        </div>
+      </div>
 
       <div className="mt-12 max-w-[720px] border-t border-line pt-6">
         <EthicsDisclaimer />

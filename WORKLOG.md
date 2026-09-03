@@ -462,3 +462,79 @@ frontend renderer wired into the registry: 5 identity wordmark treatments (+2 fr
 4 monogram assets, 5 web/icon assets, 3 color exports, 7 social assets, 2 business card sides, 4 document
 assets — 34 renderable keys total, all locally verified, all committed and pushed. Moving to Lot 3
 (workspace UI) next, per the delivery order.
+
+---
+
+## Lot 3 — the brand kit becomes a workspace
+
+**What was built.** `components/kit/brand-kit-view.tsx` rewritten into six navigable sections — Identity ·
+Colors · Type · Your site · Your words · Your assets — each following applied/specified/actionable. No
+backend migration this lot (pure frontend, reusing the Lot 4.4 asset catalogue and the site editor's
+existing contrast/tokens RPCs).
+
+- `components/kit/workspace-nav.tsx` — sticky rail on desktop (`position: sticky`), horizontal scroller on
+  mobile (`max-lg:flex-row max-lg:overflow-x-auto`). Plain anchor links to each section's `id`; no
+  scroll-spy (see DECISIONS.md for why).
+- `components/kit/identity-section.tsx` — new. Applied: a live CSS approximation of the wordmark (real
+  heading font/ink/practice name) plus the monogram, inside a `<BrandCanvas>`. Specified: the four ink
+  treatments and the monogram letters, in words. Actionable: two `AssetDownloadButton`s (wordmark, monogram)
+  plus a link down to Your assets.
+- `components/kit/colors-section.tsx` — replaces `palette-section.tsx` (deleted). Applied:
+  `LabeledRegionCanvas`, a real small-page composition (header band, heading, button, link, accent mark,
+  body copy) with every one of the six roles tagged in place, not five rectangles. Specified: the existing
+  swatch grid, unchanged. Actionable: all seven contrast pairs with a live Fix button, reusing
+  `lib/site/contrast.ts`'s existing `isBelowAa`/`pairReading`/`pairNote`/`contrastSummary` helpers (the
+  same logic the site editor's own `ContrastSection` uses — not reimplemented) and calling
+  `site_spec_fix_contrast` directly, re-rendering from the RETURNED envelope only (same rule the editor's
+  version documents: a fix moves one token, and every pair sharing it moves too).
+- `components/kit/type-section.tsx` — new. A specimen at three real sizes (hero headline, hero subhead, an
+  about-excerpt paragraph) using the direction's own copy — never lorem ipsum — inside a `<BrandCanvas>`.
+- `components/kit/words-section.tsx` — the former inline "Voice & tone" block, now inside a `<BrandCanvas>`
+  (the gap Lot 1 left, per the brief) — same two-column sounds-like/never-write content, her fonts and
+  colors now carrying it instead of plain app styling.
+- `components/kit/assets-section.tsx` + `components/kit/asset-download-button.tsx` — the new "Your assets"
+  browser: fetches a manifest listing once, groups by catalogue group, one real download button per key
+  (POSTs to the existing per-key route, opens the signed URL), plus a prominent "Download everything" for
+  `brand_kit_zip`.
+- "This month, in your brand" removed from this page entirely, per the brief — content belongs on the
+  Content page. Its now-dead inputs (`socialTemplates`, `practitionerLine`, `entitled`,
+  `monthlyCheckoutHref` props; the `getSubscription`/`isEntitledToMonthlyPresence` call in `page.tsx`)
+  removed rather than left unused.
+
+**A real architectural gap found and closed along the way.** The asset route's siteSpec-load +
+fingerprint-compute logic existed only inside the per-key POST route — listing the manifest for "Your
+assets" needed the exact same computation, and copying it a second time would have been the kind of drift
+`asset-fingerprint.ts`'s own header warns against. Factored into `lib/kit/asset-context.ts`
+(`loadAssetContext`), used by both the existing POST route (refactored) and a new GET
+`/api/brand-kits/[id]/assets` route (listing only, no render/upload/sign side effect). Also caught and
+fixed: `AssetManifestEntry.kind` in `lib/kit/asset-rpc.ts` was still typed `"svg" | "png"` from before Lot
+4.4 widened the real catalogue to eight kinds — widened to match.
+
+**Verified, and how.**
+- `tsc --noEmit` clean, `eslint` clean (caught and fixed three real warnings: an unused `tokens` local left
+  over from the asset-context refactor, an unused `MonoLabel` import, an unused `STORY_WIDTH` constant from
+  the previous lot). Full `vitest` suite 925/925 passing (up from 916 — the route-enumerating paywall test
+  and the service-role-forwarding test both auto-discovered the two new routes and passed without any
+  manual registration, confirming both are real, filesystem-scanning tests, not a hardcoded list).
+  **`next build` run twice** (once before, once after a self-caught layout bug — see below) — full
+  production build succeeds, both new routes appear correctly in the route manifest
+  (`/api/brand-kits/[id]/assets` GET, `/api/brand-kits/[id]/assets/[key]` POST unchanged).
+- Caught reviewing my own layout code before commit (not by a tool): the sections wrapper div declared
+  `flex-col gap-16` without `display: flex` on itself — dead utility classes, no visual effect, since each
+  section already carries its own `mt-12`/`border-b`/`pb-12` spacing independently. Removed the dead
+  classes rather than making them "work" and double-spacing every section.
+- Manually traced every prop threaded from `page.tsx` through to each new/changed component, confirming
+  types line up with what `site_spec_get`/`brand_kit_reveal_get`'s actual shapes provide (no invented
+  fields).
+
+**Not verified — and this is a real, disclosed gap, not an oversight:** this entire lot is UI, and none of
+it has been seen rendered in an actual browser. This repo has zero `.test.tsx`/testing-library coverage
+anywhere (checked before starting — this isn't new to this lot), and the live page requires an
+authenticated, entitled, direction-selected kit — not reachable from this sandbox without real Supabase
+credentials, which this session does not have and will not invent a workaround for. Verification here is:
+correct types, a clean production build, correct data flow traced by hand, and faithful reuse of already-
+proven business logic (`lib/site/contrast.ts`) rather than reimplementing it. The sticky-rail nav, the
+labelled-region canvas's actual visual legibility, the live Fix button's real round trip, and the download
+buttons' real click-through all still need a human in a browser — added to PREVIEW_CHECKLIST.md territory
+for the user's own pass. This is the same category of gap this session has disclosed since its second
+DECISIONS.md entry, now including UI as well as Storage/Auth.
