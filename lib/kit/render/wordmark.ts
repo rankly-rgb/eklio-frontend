@@ -13,8 +13,8 @@ import { getCachedFontBuffer } from "@/lib/kit/render/font-cache";
  * `createElement` already produces, no real React render involved.
  */
 
-const WIDTH = 960;
-const HEIGHT = 240;
+export const WORDMARK_WIDTH = 960;
+export const WORDMARK_HEIGHT = 240;
 
 export type WordmarkInput = {
   practiceName: string;
@@ -54,8 +54,8 @@ export async function renderWordmarkSvgDark(input: WordmarkInput): Promise<strin
   );
 
   return satori(tree, {
-    width: WIDTH,
-    height: HEIGHT,
+    width: WORDMARK_WIDTH,
+    height: WORDMARK_HEIGHT,
     fonts: [
       {
         name: input.headingFont,

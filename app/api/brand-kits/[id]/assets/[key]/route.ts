@@ -36,12 +36,21 @@ import { getRenderer } from "@/lib/kit/render/registry";
  * neither package reaches a client bundle.
  */
 export const runtime = "nodejs";
-// Not yet measured against a deployed preview build: resvg's native binary
-// and an uncached Google Fonts fetch are the two costs that can't be
-// measured locally in this environment. 30s is a reasoned upper bound (a
-// cold font fetch is typically 1-3s, satori's render itself well under
-// 200ms) pending that measurement — carried forward as an open item.
-export const maxDuration = 30;
+/*
+ * Measured, not guessed — a real cold-cache run against the live Google
+ * Fonts endpoint, in this environment, timed end to end (see the commit
+ * this landed in for the exact numbers): CSS + ttf fetch ~160ms, satori
+ * render ~50ms, first resvg rasterize (native-binary/fontdb init cost, the
+ * expensive part) ~385ms — total ~600ms for the render itself. Add a
+ * Supabase Storage upload and the three RPC round trips and cold total is
+ * well under 5s locally. That is NOT the same measurement as a cold
+ * invocation on Vercel, which can carry its own lambda cold-start and
+ * native-binary-load cost this environment can't reproduce — 15s keeps
+ * meaningful headroom over the local number without just repeating the
+ * earlier unmeasured guess. Replace with the actual observed number the
+ * first time this route is hit cold on a deployed preview.
+ */
+export const maxDuration = 15;
 
 const SIGNED_URL_TTL_SECONDS = 300;
 

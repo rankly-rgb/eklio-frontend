@@ -18,11 +18,18 @@ function slugify(family: string): string {
 }
 
 /**
- * Google serves woff2 to a modern User-Agent and ttf to an old one — satori
- * accepts ttf/otf/woff, not woff2. This UA is the smallest lever that gets
- * ttf `src` URLs back from the CSS2 API, nothing more exotic.
+ * Google's CSS2 API branches the `src` format on User-Agent, and it is not
+ * a simple "old UA gets ttf" rule — verified directly against the live
+ * endpoint, not assumed: an MSIE 6.0 UA (the obvious first guess) gets
+ * `font/eot`, not ttf; Chrome 19 gets woff; an iPad-4 UA gets an SVG font.
+ * `UnrealSourceEngine/UnrealEngine3` — a UA string Unreal Engine's embedded
+ * browser used to send, and a well-documented trick for exactly this reason
+ * — is what actually gets a real `.ttf` `src` URL back. satori accepts
+ * ttf/otf/woff, not woff2, which is what every current real-world browser
+ * UA gets instead.
  */
-const TTF_FORCING_USER_AGENT = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)";
+const TTF_FORCING_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/534.34 (KHTML, like Gecko) UnrealSourceEngine UnrealEngine3";
 
 async function fetchFontFaceCss(googleFontsUrl: string): Promise<string> {
   const res = await fetch(googleFontsUrl, {
@@ -34,8 +41,12 @@ async function fetchFontFaceCss(googleFontsUrl: string): Promise<string> {
   return res.text();
 }
 
-/** The first ttf `src` URL for `family` in a Google Fonts CSS2 response. */
-function extractFontFileUrl(css: string, family: string): string | null {
+/**
+ * The first ttf `src` URL for `family` in a Google Fonts CSS2 response.
+ * Exported for direct unit testing against real captured CSS shapes — see
+ * `lib/kit/__tests__/font-cache.test.ts`.
+ */
+export function extractFontFileUrl(css: string, family: string): string | null {
   const blocks = css.split("@font-face");
   for (const block of blocks) {
     if (!block.includes(`'${family}'`) && !block.includes(`"${family}"`)) continue;
