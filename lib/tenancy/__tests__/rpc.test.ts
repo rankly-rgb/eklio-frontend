@@ -5,6 +5,7 @@ import {
   acceptOrgInvite,
   createOrgInvite,
   previewOrgInvite,
+  provisionClinicianProject,
   removeOrgMember,
 } from "@/lib/tenancy/rpc";
 
@@ -163,5 +164,40 @@ describe("removeOrgMember", () => {
     expect(!result.ok && result.error.message).toBe(
       "remove_org_member: cannot remove an owner"
     );
+  });
+});
+
+describe("provisionClinicianProject", () => {
+  it("sends p_organization_id and returns the project id", async () => {
+    const { rpc, client } = stub(PROJECT_ID);
+    const result = await provisionClinicianProject(client, {
+      organizationId: ORG_ID,
+    });
+
+    expect(lastCall(rpc)).toEqual([
+      "provision_clinician_project",
+      { p_organization_id: ORG_ID },
+    ]);
+    expect(result).toEqual({ ok: true, data: PROJECT_ID });
+  });
+
+  it("passes through a non-member refusal as-is", async () => {
+    const { client } = stub(null, {
+      message: "provision_clinician_project: is not an active member of organization",
+    });
+    const result = await provisionClinicianProject(client, {
+      organizationId: ORG_ID,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error.message).toContain("not an active member");
+  });
+
+  it("rejects a malformed organization id before the network call", async () => {
+    const { rpc, client } = stub(PROJECT_ID);
+    await expect(
+      provisionClinicianProject(client, { organizationId: "not-a-uuid" })
+    ).rejects.toThrow();
+    expect(rpc).not.toHaveBeenCalled();
   });
 });

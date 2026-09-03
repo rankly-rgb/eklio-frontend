@@ -10,21 +10,11 @@ import { getOrCreateOwnProject } from "@/lib/data/clinician-brief";
  * own comment says so explicitly ("Does not create a project — that stays
  * in the app flow"). This action IS that app flow: accept, then
  * self-provision the accepted clinician's own project in the joined
- * organization (getOrCreateOwnProject — see its comment for why this is
- * the self-service path and organization_members.project_id is not).
- *
- * ⚠ What this action does NOT do, and why: the brief for this lot says to
- * call apply_charter_to_project after accepting, then route into the
- * brief pre-filled. apply_charter_to_project requires the CALLER to be the
- * organization's active owner (is_org_owner(auth.uid()) — lot B1,
- * 20260903120000_field_source_locks.sql) — but the caller here is the
- * newly-accepted CLINICIAN, never the owner. No admin/service-role client
- * changes this: that function reads auth.uid() from the caller's own JWT,
- * which a service-role connection does not carry. This is the stop-clause
- * condition "a fact in the brief contradicts the repo" — flagged in the
- * final report rather than worked around with a new bypass function.
- * Charter application stays something only the owner can trigger; nothing
- * in lot D currently gives her a button for it (also noted in the report).
+ * organization via getOrCreateOwnProject(), which goes through the
+ * provision_clinician_project RPC (E1/E2,
+ * 20260903150000_clinician_project_provisioning.sql). That RPC applies
+ * the organization's charter internally after its own membership check —
+ * the clinician never needs to be, or act as, the organization's owner.
  */
 
 export type AcceptInviteResult =
@@ -49,7 +39,6 @@ export async function acceptInvite(input: { token: string }): Promise<AcceptInvi
   }
 
   const project = await getOrCreateOwnProject(supabase, {
-    userId: user.id,
     organizationId: result.data,
   });
   if (!project) {

@@ -152,3 +152,30 @@ export async function removeOrgMember(
   if (error) return { ok: false, error };
   return { ok: true, data: null };
 }
+
+/* ── provision_clinician_project ───────────────────────────────────────── */
+
+/**
+ * Self-service project provisioning for an active member of the
+ * organization — replaces a plain client-side `projects` insert, which
+ * cannot work (see 20260903150000_clinician_project_provisioning.sql's
+ * trace: INSERT...RETURNING into `projects` fails under
+ * `projects_select_org`'s self-referential SELECT policy, for any
+ * authenticated user, not just this flow). SECURITY DEFINER on the
+ * backend: its own internal insert bypasses RLS entirely. Idempotent per
+ * (member, organization) — a second call for the same org returns the
+ * same project id. Also applies the org's charter, if one exists.
+ */
+export async function provisionClinicianProject(
+  supabase: Client,
+  input: { organizationId: string }
+): Promise<TenancyRpcResult<string>> {
+  const { organizationId } = z.object({ organizationId: uuid }).parse(input);
+
+  const { data, error } = await supabase.rpc("provision_clinician_project", {
+    p_organization_id: organizationId,
+  });
+
+  if (error) return { ok: false, error };
+  return { ok: true, data: uuid.parse(data) };
+}

@@ -2002,6 +2002,10 @@ export type Database = {
     }
     Functions: {
       accept_org_invite: { Args: { p_token: string }; Returns: string }
+      apply_charter_internal: {
+        Args: { p_organization_id: string; p_project_id: string }
+        Returns: undefined
+      }
       apply_charter_to_project: {
         Args: { p_organization_id: string; p_project_id: string }
         Returns: undefined
@@ -2169,6 +2173,10 @@ export type Database = {
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_usp_options_valid: { Args: { p: Json }; Returns: boolean }
+      provision_clinician_project: {
+        Args: { p_organization_id: string }
+        Returns: string
+      }
       purchase_status_before: {
         Args: { p_purchase_id: string; p_status: string }
         Returns: string

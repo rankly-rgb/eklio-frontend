@@ -12,6 +12,7 @@ import {
   type ClinicianProfilePatch,
 } from "@/lib/tenancy/clinician-profile";
 import type { ClinicianStepDraft } from "@/lib/tenancy/clinician-brief/flow";
+import { provisionClinicianProject } from "@/lib/tenancy/rpc";
 
 type Client = SupabaseClient<Database>;
 
@@ -29,17 +30,6 @@ export type ClinicianBriefBundle = {
  * (the B2B scenario this feature targets: joined someone else's practice)
  * over her own auto-created owner org, since a user can hold both. A user
  * with only the auto-created owner org resolves to that one.
- *
- * ⚠ Does NOT read organization_members.project_id. That column's own
- * comment (20260903100000_organizations_and_members.sql) says it is "set
- * by the app flow, not by accept_org_invite" — but organization_members'
- * own UPDATE policy is owner-only (organization_members_update_owner), so
- * a clinician cannot set it on her own row, and nothing in this session's
- * four lots adds a path that could. The actually-writable link a clinician
- * CAN self-provision is a `projects` row with her own user_id and the
- * target organization_id: `projects_insert_own` only checks
- * `user_id = auth.uid()`, unconstrained by organization — see
- * getOrCreateOwnProject() below.
  */
 async function loadOwnMembership(supabase: Client, userId: string) {
   const { data, error } = await supabase
@@ -54,35 +44,22 @@ async function loadOwnMembership(supabase: Client, userId: string) {
 }
 
 /**
- * The user's own project within one organization, creating it on first
- * visit if none exists yet — self-service, since `projects_insert_own`
- * only requires `user_id = auth.uid()`.
+ * The user's own project within one organization, provisioning it on
+ * first visit if none exists yet. Goes through provision_clinician_project
+ * (E1) rather than a plain `projects` insert — that RPC is SECURITY
+ * DEFINER for exactly this reason: its own internal insert bypasses RLS,
+ * where a client-side INSERT...RETURNING into `projects` cannot (see that
+ * migration's trace). It also applies the org's charter, if one exists.
  */
 export async function getOrCreateOwnProject(
   supabase: Client,
-  input: { userId: string; organizationId: string }
+  input: { organizationId: string }
 ): Promise<{ id: string } | null> {
-  const { data: existing } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("user_id", input.userId)
-    .eq("organization_id", input.organizationId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (existing) return existing;
-
-  const { data: created, error } = await supabase
-    .from("projects")
-    .insert({
-      user_id: input.userId,
-      organization_id: input.organizationId,
-      name: "My profile",
-    })
-    .select("id")
-    .single();
-  if (error || !created) return null;
-  return created;
+  const result = await provisionClinicianProject(supabase, {
+    organizationId: input.organizationId,
+  });
+  if (!result.ok) return null;
+  return { id: result.data };
 }
 
 /**
@@ -107,7 +84,6 @@ export async function loadClinicianBrief(
   if (!org) return null;
 
   const project = await getOrCreateOwnProject(supabase, {
-    userId,
     organizationId: org.id,
   });
   if (!project) return null;
