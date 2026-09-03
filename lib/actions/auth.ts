@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signedInRedirectPath } from "@/lib/auth/next-url";
+import { safeNextPath, signedInRedirectPath } from "@/lib/auth/next-url";
 import { siteUrl } from "@/lib/site-url";
 
 export type AuthFormState = { error: string } | null;
@@ -59,12 +59,25 @@ export async function signUp(
     return { error: "Use a password of at least 8 characters." };
   }
 
+  /*
+   * Same mechanism signIn already uses (lib/auth/next-url.ts), reused
+   * rather than a second redirect scheme: `next` travels in a hidden form
+   * field (see components/auth-form.tsx), gets filtered here, and — for
+   * signUp specifically — rides along inside emailRedirectTo so it
+   * survives the email-confirmation round trip. app/auth/callback/route.ts
+   * is where it's consumed and validated again on the way back in.
+   */
+  const next = safeNextPath(String(formData.get("next") ?? ""));
+  const emailRedirectTo = next
+    ? `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}`
+    : `${siteUrl()}/auth/callback`;
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl()}/auth/callback`,
+      emailRedirectTo,
     },
   });
 

@@ -18,13 +18,14 @@ export default async function LoginPage({
    * redirection. Le premier est de l'hygiène, le second est la garde.
    */
   const next = safeNextPath(raw) ?? undefined;
+  const signupHref = next ? `/signup?next=${encodeURIComponent(next)}` : "/signup";
 
   return (
     <AuthShell title="Sign in">
       <AuthForm action={signIn} submitLabel="Sign in" next={next} />
       <p className="text-helper text-ink-2">
         No account yet?{" "}
-        <Link href="/signup" className="text-ink underline decoration-[var(--line)] underline-offset-4 hover:decoration-[var(--accent)]">
+        <Link href={signupHref} className="text-ink underline decoration-[var(--line)] underline-offset-4 hover:decoration-[var(--accent)]">
           Create one
         </Link>
       </p>

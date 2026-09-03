@@ -75,12 +75,12 @@ export default async function InviteLandingPage({
           <p className="text-helper leading-prose text-ink-2">
             No account yet?{" "}
             <Link
-              href="/signup"
+              href={`/signup?next=${encodeURIComponent(`/invite/${token}`)}`}
               className="text-ink underline decoration-[var(--line)] underline-offset-4 hover:decoration-[var(--accent)]"
             >
               Create one
             </Link>
-            , confirm your email, then come back to this link to accept.
+            , confirm your email, and you'll land back here automatically.
           </p>
         </div>
       )}
