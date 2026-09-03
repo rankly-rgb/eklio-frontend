@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
+@import "../styles/canvas.css";
 
 /*
  * Feuille de base. Elle ne définit AUCUNE valeur : tout vient de

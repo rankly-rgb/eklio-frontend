@@ -5,12 +5,14 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import { SectionHeader } from "@/components/ui/section-header";
 import { ButtonLink } from "@/components/ui/button";
 import { BrandPreview } from "@/components/preview/brand-preview";
+import { BrandCanvas } from "@/components/kit/brand-canvas";
 import { useBrandFont } from "@/components/preview/use-brand-font";
 import { SiteCard } from "@/components/kit/site-card";
 import { PaletteSection } from "@/components/kit/palette-section";
 import { EthicsDisclaimer } from "@/components/ethics-disclaimer";
 import { previewModelFromDirection, type Direction, type SocialTemplates, type VoiceGuide } from "@/lib/brand/shapes";
 import { MONTHLY_PRESENCE, formatUsd } from "@/lib/billing/plans";
+import type { ContrastReport, SitePreviewTokens } from "@/lib/site/types";
 
 /*
  * Le kit de marque — Écrans 5 et 6, une seule page qui défile.
@@ -42,6 +44,8 @@ export function BrandKitView({
   siteBuilderLabel,
   entitled,
   monthlyCheckoutHref,
+  canvasTokens,
+  canvasContrast,
 }: {
   brandKitId: string;
   projectId: string;
@@ -54,6 +58,10 @@ export function BrandKitView({
   siteBuilderLabel: string | null;
   entitled: boolean;
   monthlyCheckoutHref: string;
+  /** Les six rôles + quatre variantes (§3), ou `null` si le spec n'est pas encore semé. */
+  canvasTokens: SitePreviewTokens | null;
+  /** Les sept paires de contraste (§4), ou `null` dans le même cas. */
+  canvasContrast: ContrastReport | null;
 }) {
   const model = previewModelFromDirection(direction, practiceName);
   const ready = useBrandFont(direction.typography.google_fonts_url);
@@ -72,9 +80,22 @@ export function BrandKitView({
         </div>
 
         <div className="flex flex-none items-center gap-4">
+          {/*
+           * L'exception voulue par le lot 1 : sa couleur primaire, sur
+           * EXACTEMENT un élément de niveau app par écran — le bouton
+           * d'action primaire. `cta_ink` pour le libellé, jamais un blanc
+           * supposé. Un style en ligne, pas une classe : c'est un élément
+           * précis, pas une surface réutilisable.
+           */}
           <ButtonLink
             href={`/app/brand-kits/${brandKitId}/site`}
             variant="primary"
+            className={canvasTokens ? "hover:opacity-90" : undefined}
+            style={
+              canvasTokens
+                ? { background: canvasTokens.primary, color: canvasTokens.cta_ink }
+                : undefined
+            }
           >
             Edit your site
           </ButtonLink>
@@ -103,11 +124,20 @@ export function BrandKitView({
       <section className="mt-6 flex flex-col gap-6">
         <SectionHeader title="Your site" />
         <div className="w-site-mock max-w-full">
-          <BrandPreview
-            model={model}
-            size="full"
-            rendering={direction.rendering}
-          />
+          {/*
+           * Cadre canvas — filet, rayon, ombre intérieure discrète — SANS
+           * injecter de jetons `--brand-*` : <BrandPreview> gère déjà les
+           * siens (`--p-*`) en interne, et le lot 3 dit d'en garder la
+           * substance inchangée. C'est le même langage visuel que
+           * `.brand-canvas`, appliqué en classes plutôt qu'en composant.
+           */}
+          <div className="overflow-hidden rounded-card border border-line shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]">
+            <BrandPreview
+              model={model}
+              size="full"
+              rendering={direction.rendering}
+            />
+          </div>
           <p className="mt-3 text-helper leading-prose text-ink-2">
             {/* La maquette du kit montre la marque appliquée à une page
                 d'accueil. Les quatre pages, elles, s'éditent dans l'éditeur de
@@ -127,49 +157,56 @@ export function BrandKitView({
       {/* ── Palette ─────────────────────────────────────────────────────── */}
       <section className="mt-8 flex flex-col gap-5">
         <SectionHeader title="Palette" />
-        <PaletteSection direction={direction} />
+        <PaletteSection tokens={canvasTokens} contrast={canvasContrast} />
       </section>
 
       {/* ── Typography ──────────────────────────────────────────────────── */}
       <section className="mt-8 flex flex-col gap-5">
         <SectionHeader title="Typography" />
-        <div
-          className="flex flex-col gap-3 transition-opacity duration-[var(--dur-font)]"
-          style={{ opacity: ready ? 1 : 0 }}
-        >
-          <div
-            style={{
-              fontFamily: `"${direction.typography.heading_font}", Georgia, serif`,
-              fontWeight: 500,
-              fontSize: 42,
-              lineHeight: 1.06,
-              letterSpacing: "-0.025em",
-              color: "var(--ink)",
-              minHeight: 48,
-            }}
+        {canvasTokens ? (
+          <BrandCanvas
+            tokens={canvasTokens}
+            className="flex flex-col gap-3 p-6 transition-opacity duration-[var(--dur-font)]"
+            style={{ opacity: ready ? 1 : 0 }}
           >
-            {direction.hero.headline}
-          </div>
-          <div
-            style={{
-              fontFamily: `"${direction.typography.body_font}", system-ui, sans-serif`,
-              fontSize: 16,
-              lineHeight: 1.6,
-              color: "var(--ink-2)",
-              maxWidth: 520,
-            }}
-          >
-            {direction.about_excerpt}
-          </div>
-          <div className="mt-2 flex gap-8">
-            <MonoLabel tracking="14">
-              {`Headings · ${direction.typography.heading_font}`}
-            </MonoLabel>
-            <MonoLabel tracking="14">
-              {`Body · ${direction.typography.body_font}`}
-            </MonoLabel>
-          </div>
-        </div>
+            <div
+              style={{
+                fontFamily: "var(--brand-heading)",
+                fontWeight: 500,
+                fontSize: 42,
+                lineHeight: 1.06,
+                letterSpacing: "-0.025em",
+                color: "var(--brand-dark)",
+                minHeight: 48,
+              }}
+            >
+              {direction.hero.headline}
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--brand-body)",
+                fontSize: 16,
+                lineHeight: 1.6,
+                color: "var(--brand-dark)",
+                maxWidth: 520,
+              }}
+            >
+              {direction.about_excerpt}
+            </div>
+            <div className="brand-canvas-static mt-2 flex gap-8">
+              <MonoLabel tracking="14">
+                {`Headings · ${canvasTokens.heading_font}`}
+              </MonoLabel>
+              <MonoLabel tracking="14">
+                {`Body · ${canvasTokens.body_font}`}
+              </MonoLabel>
+            </div>
+          </BrandCanvas>
+        ) : (
+          <p className="text-body text-ink-2">
+            Your palette is still being set up. This section fills in as soon as it&rsquo;s ready.
+          </p>
+        )}
       </section>
 
       {/* ── This month, in your brand ───────────────────────────────────── */}

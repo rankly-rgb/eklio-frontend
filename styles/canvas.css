@@ -1,0 +1,56 @@
+/*
+ * Eklio — the paid-space `--brand-*` canvas layer.
+ *
+ * Deliberately separate from `styles/tokens.css`, which is locked to the
+ * eight pre-purchase reference screens and their measured `--app`-level
+ * values. Nothing here is an app token: it is the frame `<BrandCanvas>`
+ * (`components/kit/brand-canvas.tsx`) draws around a block of her palette,
+ * and the motion budget for a token swap inside one.
+ *
+ * The law: Eklio's chrome stays neutral (the existing `--bg`/`--ink`/etc. in
+ * `styles/tokens.css`, untouched); the therapist's brand only ever appears
+ * inside a canvas. No brand color is ever set on `:root`, `body`, or an
+ * app-level element outside this file's one documented exception (the single
+ * primary-action button per screen, styled inline where it's used — never
+ * here, since that is one specific element, not a reusable class).
+ */
+
+:root {
+  /* State change (hover, focus, an open/closed toggle) inside a canvas. */
+  --dur-canvas-state: 200ms;
+  /* A color or font swap when the underlying site spec changes. */
+  --dur-canvas-token: 400ms;
+}
+
+/*
+ * The frame: a visible 1px hairline, a radius, a subtle inner shadow. Inside
+ * it, her paper color is the background, her body font is the default text
+ * font, and her dark-neutral is the default ink — the same "text vs fill"
+ * rule as everywhere else in this layer, applied to the canvas's own base.
+ */
+.brand-canvas {
+  border: 1px solid color-mix(in srgb, var(--brand-dark, #000) 12%, transparent);
+  border-radius: var(--radius-card);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: var(--brand-paper);
+  color: var(--brand-dark);
+  font-family: var(--brand-body);
+}
+
+/*
+ * Brand tokens ANIMATE: a palette or font change inside a canvas crosses it
+ * in 400ms instead of jumping. As with `.brand-preview` (`styles/tokens.css`'s
+ * pre-purchase equivalent), custom properties don't transition themselves —
+ * the properties that CONSUME them do, hence the descent onto the subtree.
+ * `.brand-canvas-static` opts a node out (an icon glyph, a fixed-color badge).
+ */
+.brand-canvas,
+.brand-canvas *:not(.brand-canvas-static) {
+  transition:
+    background-color var(--dur-canvas-token) ease-in-out,
+    border-color var(--dur-canvas-token) ease-in-out,
+    color var(--dur-canvas-token) ease-in-out,
+    fill var(--dur-canvas-token) ease-in-out;
+}
+
+/* `prefers-reduced-motion` is already handled globally in `app/globals.css`. */

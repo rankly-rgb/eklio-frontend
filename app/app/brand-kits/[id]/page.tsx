@@ -68,6 +68,18 @@ export default async function BrandKitPage({
       ? builderOf(siteCatalog.builder_targets, siteSpec.data.spec.target).label
       : null;
 
+  /*
+   * The six color roles and four derived variants (§3 of the contract), and
+   * the seven real contrast pairs (§4) — exactly as the database computed
+   * them, never re-derived here (the contract is explicit: a client-side
+   * float implementation will disagree with the database on a boundary).
+   * `null` only in the tolerated edge case where an entitled kit's site spec
+   * hasn't been seeded yet; the paid-space canvases show their own "still
+   * setting up" state rather than approximate her palette client-side.
+   */
+  const canvasTokens = siteSpec.ok ? siteSpec.data.preview.tokens : null;
+  const canvasContrast = siteSpec.ok ? siteSpec.data.contrast : null;
+
   return (
     <BrandKitView
       brandKitId={id}
@@ -78,6 +90,8 @@ export default async function BrandKitPage({
       voiceGuide={kit.voiceGuide}
       practitionerLine={kit.row.practitioner_line}
       siteBuilderLabel={siteBuilderLabel}
+      canvasTokens={canvasTokens}
+      canvasContrast={canvasContrast}
       // Une seule règle d'accès dans toute l'application (§7).
       entitled={isEntitledToMonthlyPresence(subscription)}
       monthlyCheckoutHref={`/app/checkout?project=${kit.projectId}`}
