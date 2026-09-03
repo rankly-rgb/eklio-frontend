@@ -10,6 +10,7 @@ import { renderOgImage } from "@/lib/kit/render/og-image";
 import { svgToPng, svgToPngAtWidth } from "@/lib/kit/render/rasterize";
 import { renderMonogramSvg, renderMonogramPng512 } from "@/lib/kit/render/monogram";
 import { renderMonogramIconSvg } from "@/lib/kit/render/monogram-icon";
+import { renderPaletteAse, renderTokensJson, renderColorsCss } from "@/lib/kit/render/color-exports";
 
 /*
  * The extension point for Lot 4.4/4.5: one entry per `asset_catalog.key`,
@@ -311,6 +312,51 @@ const RENDERERS: Record<string, Renderer> = {
     };
     const bytes = Buffer.from(JSON.stringify(manifest, null, 2), "utf8");
     return { bytes, contentType: "application/json" };
+  },
+  palette_ase: async (ctx) => {
+    const bytes = renderPaletteAse({
+      primary: ctx.tokens.primary,
+      secondary: ctx.tokens.secondary,
+      accent: ctx.tokens.accent,
+      paper: ctx.tokens.paper,
+      light_neutral: ctx.tokens.light_neutral,
+      dark_neutral: ctx.tokens.dark_neutral,
+      primary_text: ctx.tokens.primary_text,
+      secondary_text: ctx.tokens.secondary_text,
+      accent_text: ctx.tokens.accent_text,
+      cta_ink: ctx.tokens.cta_ink,
+    });
+    return { bytes, contentType: "application/octet-stream" };
+  },
+  tokens_json: async (ctx) => {
+    const bytes = renderTokensJson({
+      primary: ctx.tokens.primary,
+      secondary: ctx.tokens.secondary,
+      accent: ctx.tokens.accent,
+      paper: ctx.tokens.paper,
+      light_neutral: ctx.tokens.light_neutral,
+      dark_neutral: ctx.tokens.dark_neutral,
+      primary_text: ctx.tokens.primary_text,
+      secondary_text: ctx.tokens.secondary_text,
+      accent_text: ctx.tokens.accent_text,
+      cta_ink: ctx.tokens.cta_ink,
+    });
+    return { bytes, contentType: "application/json" };
+  },
+  colors_css: async (ctx) => {
+    const bytes = renderColorsCss({
+      primary: ctx.tokens.primary,
+      secondary: ctx.tokens.secondary,
+      accent: ctx.tokens.accent,
+      paper: ctx.tokens.paper,
+      light_neutral: ctx.tokens.light_neutral,
+      dark_neutral: ctx.tokens.dark_neutral,
+      primary_text: ctx.tokens.primary_text,
+      secondary_text: ctx.tokens.secondary_text,
+      accent_text: ctx.tokens.accent_text,
+      cta_ink: ctx.tokens.cta_ink,
+    });
+    return { bytes, contentType: "text/css" };
   },
   palette_sheet_png: async (ctx) => {
     const svg = await renderPaletteSheetPng({

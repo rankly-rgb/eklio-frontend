@@ -305,3 +305,36 @@ bucket's `allowed_mime_types`. `20260903220000_monogram_and_web_icons.sql` inser
 actual consumption by a real browser install prompt (the JSON shape follows the spec's documented fields,
 not tested against a real "Add to Home Screen" flow — no browser automation against a live deployed origin
 is possible from this sandbox).
+
+---
+
+## Lot 4.4 (continued) — `palette_ase`, `tokens_json`, `colors_css`
+
+**What was built.** `lib/kit/render/color-exports.ts` — three pure data transforms of the same ten token
+values (six roles + four derived variants), no satori/resvg: `renderTokensJson` (flat JSON, kebab-case
+keys), `renderColorsCss` (`:root { --role: #hex; }`), and `renderPaletteAse` (hand-built Adobe Swatch
+Exchange binary — same "write it by hand rather than add a dependency for a small stable format" reasoning
+`lib/kit/pdf.ts` already established for PDF). `colors_css`/`tokens_json` deliberately use plain kebab-case
+property names (`--primary`, not `--brand-primary`), not the internal `--brand-*` prefix `canvas-tokens.ts`
+uses for Eklio's own UI — this file ships INTO someone else's stylesheet, where an unexplained `--brand-*`
+namespace would be a stranger's naming convention landing in their project.
+
+Backend: `20260903230000_color_export_formats.sql` inserts the three catalog rows (`color` group, kinds
+`ase`/`json`/`css` — no new CHECK-constraint work needed, `20260903210000` already widened it). No new RLS,
+same reference-data pattern as every prior catalogue addition.
+
+**Verified, and how.**
+- Backend: `scripts/local-verify.sh`, 48/48 tests passing, seed mirrors clean. Dry-run + apply against the
+  live project, ledger corrected to `20260903230000`.
+- Frontend: `tsc --noEmit` clean, full `vitest` suite 905/905 passing. The ASE file gets the strongest
+  verification of anything built so far this lot: a hand-written byte-level parser (not a library) reads
+  the actual rendered `.ase` buffer back — signature, version, block count, then EVERY block's name, RGB
+  hex, and color type — and confirms all ten decode back to exactly the input hex values, AND that the
+  running byte offset after the last block equals the buffer's total length exactly (proof no block-length
+  field is miscalculated, which would otherwise silently corrupt every block after the first). `tokens.json`
+  and `colors.css` inspected directly — correct keys, correct hex values, consistent naming between the two
+  files.
+
+**Not verified:** the `.ase` file has not been opened in a real Adobe product (no such tool is available in
+this sandbox) — verification here is a correct-by-construction byte-level round trip against the documented
+format, not a real Illustrator/Photoshop import. Flagged, not claimed.
