@@ -1,5 +1,14 @@
 # Branch reconciliation — pre–US-migration base
 
+> **2026-09-02 note:** `claude/eklio-bootstrap-ukuxfu`, the branch this
+> document calls "the default branch" throughout, has since been renamed to
+> `main` on GitHub (default branch and Vercel's production branch both
+> updated). The branch-name references below are left as-is — they are an
+> accurate record of what was true at the time this pass ran, including
+> facts (like "zero commits beyond the initial bootstrap commit") that were
+> already superseded well before the rename. For current branch state, see
+> `BRANCH_STATE.md` at the repo root.
+
 This document is the deliverable of a reconciliation pass run before the
 France→US migration. Its job was to establish one coherent source-of-truth
 branch to migrate *from*, without touching production or Supabase. It changes
