@@ -25,6 +25,7 @@ function kit(overrides: Partial<BrandKit> = {}): BrandKit {
       directions: null,
       ethics_check: null,
       multi_builder_prompt: null,
+      origin: "generated",
       pdf_url: null,
       practitioner_line: "Nora Whitfield, LCSW",
       selected_direction_id: SAMPLE_DIRECTIONS[1].id,

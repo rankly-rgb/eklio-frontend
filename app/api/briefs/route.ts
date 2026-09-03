@@ -3,6 +3,7 @@ import { authenticate, json, serverError } from "@/lib/api/handler";
 import { rateLimit } from "@/lib/api/rate-limit";
 import { countUnpaidProjects } from "@/lib/billing/entitlements";
 import { track } from "@/lib/analytics";
+import type { TablesInsert } from "@/types/supabase";
 
 /*
  * POST /api/briefs — crée un projet et son brief, rend l'identifiant.
@@ -60,9 +61,12 @@ export async function POST() {
     );
   }
 
+  // organization_id is NOT NULL with no column default — projects_set_default_organization
+  // (20260903100500_projects_organization_id.sql) fills it from user_id's owned organization
+  // at insert time. The client never sets it; the generated Insert type doesn't know that.
   const { data: project, error } = await supabase
     .from("projects")
-    .insert({ user_id: userId })
+    .insert({ user_id: userId } as TablesInsert<"projects">)
     .select("id")
     .single();
 

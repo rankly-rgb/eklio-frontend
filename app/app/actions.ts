@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import type { TablesInsert } from "@/types/supabase";
 
 export type ProjectFormState = { error: string } | null;
 
@@ -31,9 +32,12 @@ export async function createProject(
     return { error: parsed.error.issues[0].message };
   }
 
+  // organization_id is NOT NULL with no column default — projects_set_default_organization
+  // (20260903100500_projects_organization_id.sql) fills it from user_id's owned organization
+  // at insert time. The client never sets it; the generated Insert type doesn't know that.
   const { data: project, error } = await supabase
     .from("projects")
-    .insert({ user_id: user.id, name: parsed.data })
+    .insert({ user_id: user.id, name: parsed.data } as TablesInsert<"projects">)
     .select("id")
     .single();
 
