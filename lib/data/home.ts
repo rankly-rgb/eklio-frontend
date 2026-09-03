@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { loadBrandKitByProject, type BrandKit } from "@/lib/data/brand-kit";
-import { loadChecklist, type Checklist } from "@/lib/data/checklist";
+import { loadLaunchProgress, type LaunchProgress } from "@/lib/data/checklist";
 import {
   EMPTY_CALENDAR,
   loadCalendar,
@@ -42,7 +42,7 @@ export type HomeModel = {
   brandKit: BrandKit | null;
   briefProgressStep: number | null;
   briefStarted: boolean;
-  checklist: Checklist;
+  checklist: LaunchProgress;
   calendar: CalendarSummary;
   monthKey: string;
   monthLabel: string;
@@ -85,7 +85,7 @@ export async function loadHome(
       brandKit: null,
       briefProgressStep: null,
       briefStarted: false,
-      checklist: { items: [], doneCount: 0, total: 0 },
+      checklist: { items: [], resolvedCount: 0, total: 0 },
       calendar: EMPTY_CALENDAR,
       monthKey: month,
       monthLabel: monthLabel(month),
@@ -106,8 +106,8 @@ export async function loadHome(
 
   const [checklist, calendar] = await Promise.all([
     brandKit
-      ? loadChecklist(supabase, brandKit.row.id)
-      : Promise.resolve({ items: [], doneCount: 0, total: 0 }),
+      ? loadLaunchProgress(supabase, brandKit.row.id)
+      : Promise.resolve({ items: [], resolvedCount: 0, total: 0 }),
     brandKit ? loadCalendar(supabase, userId, month) : Promise.resolve(EMPTY_CALENDAR),
   ]);
 

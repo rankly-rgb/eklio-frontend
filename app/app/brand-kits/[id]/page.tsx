@@ -7,6 +7,8 @@ import { siteSpecGet } from "@/lib/site/rpc";
 import { readSiteCatalog } from "@/lib/site/catalog";
 import { builderOf } from "@/lib/site/output";
 import { readCatalog } from "@/lib/catalog/read";
+import { loadLaunchProgress } from "@/lib/data/checklist";
+import type { PracticeDetails } from "@/lib/kit/launch-copy";
 
 /*
  * Le kit de marque — Écrans 5 et 6, une seule page qui défile.
@@ -53,11 +55,26 @@ export default async function BrandKitPage({
    * semé rend la carte sans nom de constructeur, ce qui est vrai. Faire échouer
    * le kit entier pour un libellé serait disproportionné.
    */
-  const [siteSpec, siteCatalog, catalog] = await Promise.all([
+  const [siteSpec, siteCatalog, catalog, launchProgress] = await Promise.all([
     siteSpecGet(supabase, id),
     readSiteCatalog(supabase).catch(() => null),
     readCatalog(supabase).catch(() => null),
+    loadLaunchProgress(supabase, id),
   ]);
+
+  // Same fields `lib/kit/asset-context.ts` reads from the site spec for the
+  // asset renderers — reused here rather than re-fetched, since this page
+  // already loaded `siteSpec` for the "Your site" card.
+  const practiceDetails: PracticeDetails | null = siteSpec.ok && siteSpec.data.spec.practice_details
+    ? {
+        practitionerName: siteSpec.data.spec.practice_details.practitioner_name ?? null,
+        licenseLabel: siteSpec.data.spec.practice_details.license_label ?? null,
+        licenseNumber: siteSpec.data.spec.practice_details.license_number ?? null,
+        city: siteSpec.data.spec.practice_details.city ?? null,
+        state: siteSpec.data.spec.practice_details.state ?? null,
+      }
+    : null;
+  const bookingUrl = siteSpec.ok ? siteSpec.data.spec.hero.cta_target_url || null : null;
 
   const siteBuilderLabel =
     siteSpec.ok && siteCatalog
@@ -98,6 +115,10 @@ export default async function BrandKitPage({
       siteBuilderLabel={siteBuilderLabel}
       canvasTokens={canvasTokens}
       canvasContrast={canvasContrast}
+      launchProgress={launchProgress}
+      practitionerLine={kit.row.practitioner_line}
+      practiceDetails={practiceDetails}
+      bookingUrl={bookingUrl}
     />
   );
 }

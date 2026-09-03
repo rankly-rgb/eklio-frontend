@@ -495,3 +495,92 @@ route now uses for the same reason, and the exact table `guard.ts`'s own `rulesB
 — a lookup by `rule_id`/`ruleId`, `reason`/`violation.reason` never displayed. Third correct reader of one
 source, not a fourth invention of the content — the same principle the Ethics Guard PDF-page fix above
 just re-established.
+
+---
+
+### 2026-09-03 — Lot 6: "Your first week" evolves `launch_checklist_items` in place, not a parallel `launch_steps` table
+
+**Question.** The brief specifies a new table `launch_steps` (`brand_kit_id, step_key, status, completed_at,
+updated_at`) with RPCs `get_launch_progress`/`set_launch_step` and seven exact steps. Research (before
+writing anything, per the lesson from the Lot 7 mistake above) found a complete, already-shipped system
+under a different name — `launch_checklist_items`
+(`20260827104000_launch_checklist_items.sql`): RLS'd, idempotently seeded on kit creation, backfilled,
+guard-railed, with a full frontend stack already wired into the home screen
+(`lib/data/checklist.ts`, `app/api/checklist/[id]/route.ts`, `components/home/checklist-card.tsx`). It has
+six items (missing two of the brief's seven: `social_setup`, `booking_link`), a `done_at`-only binary
+status (the brief wants a `todo`/`done`/`skipped` tri-state), and one item — `choose_direction` — that
+predates this chantier and isn't one of the seven at all.
+
+**Chosen.** One additive migration
+(`eklio-backend/supabase/migrations/20260903260000_launch_checklist_first_week.sql`): widen the `key` CHECK
+to add `social_setup`/`booking_link`; add a nullable `skipped_at` column with a mutual-exclusion CHECK
+against `done_at`; UPDATE (not delete-and-recreate) four existing keys' `label`/`description` to the
+brief's wording, and rename `paste_site_prompt` → `site_setup` in place (`done_at` carried over — Lot 1
+replaced the "paste your site prompt" flow with the site editor, so the row's underlying meaning — "get
+your brand onto your actual site" — is unchanged, only its old name was stale); leave `choose_direction`
+rows alone but exclude that key from both new RPCs' output (it stays for the pre-existing
+`complete_choose_direction` trigger to keep writing to, never shown as one of "your first week"'s seven);
+`CREATE OR REPLACE` `seed_launch_checklist` to seed all eight keys going forward, re-run once over every
+existing kit for the backfill; add `get_launch_progress`/`set_launch_step` with the brief's exact RPC
+names, both re-revoking EXECUTE from `anon` explicitly (belt-and-suspenders alongside Postgres's own
+CREATE-OR-REPLACE-preserves-ACLs behavior, matching `20260902090000_revoke_internal_function_surface.sql`'s
+own defensive style) and re-asserting the guard rail inline. Dry-run rehearsed against the live project
+(`begin; ... rollback;`) before applying for real, then the ledger version corrected to the file's own
+timestamp — the same live-apply discipline as every Lot 4.4 migration.
+
+**Why not the brief's literal `launch_steps` table.** It and `launch_checklist_items` are the same feature
+under two different names — building the second one would have shipped two checklists nobody asked for,
+split the auto-completion trigger's target from the read path, and thrown away tested RLS for no reason.
+The four stop conditions don't forbid evolving a table in place; they forbid destructive changes, and
+nothing here drops a row, deletes progress, or is irreversible in a way that would matter if this call
+is wrong — the DOWN section can't undo the reseed/relabel without deleting real `done_at`/`skipped_at`
+progress, so it deliberately leaves the schema forward-compatible instead of attempting a rollback that
+would itself be destructive.
+
+---
+
+### 2026-09-03 — Lot 6: home's card and the kit page's row share one `LaunchChecklist` component, but not the same context richness
+
+**Question.** The brief asks for both "a compact progress row on the kit page" and "the primary card on
+home", each step "showing the exact asset and exact text, never generic advice" — concretely, for example,
+the email-signature step shows the actual signature block with a Copy button, and the social-setup step
+shows a real ≤150-char bio with a counter. Building that twice (once per surface) would drift the moment
+either one changed. But the two pages don't have the same data on hand for free: the kit page
+(`app/app/brand-kits/[id]/page.tsx`) already calls `siteSpecGet` for the "Your site" card, so
+`practice_details`/`hero.cta_target_url` (credential, location, booking link) cost nothing extra there;
+home's aggregate (`lib/data/home.ts`) does not fetch the site spec today, and it is read on every visit to
+the retention screen — adding an RPC call there for checklist copy alone is a real, recurring cost for a
+detail view most visits won't open.
+
+**Chosen.** One shared component, `components/checklist/launch-checklist.tsx` — the list, the
+optimistic Mark-done/Skip-for-now write (via the same `PATCH /api/checklist/[id]` route both surfaces already
+call), the progress bar, the "resolved === total" one-line collapse, and the per-step detail switch — takes
+a `LaunchStepContext` whose richer fields (`practiceDetails`, `bookingUrl`) are optional. The kit page's
+`LaunchProgressRow` passes the full context (it already has the site spec in hand). Home's `ChecklistCard`
+passes `practiceDetails: null, bookingUrl: null` deliberately, with a comment explaining why, and those two
+steps render their honest "finish this in the site editor" fallback there instead of the copy-paste block.
+Nothing is invented to fill the gap — a real absence gets an honest, specific message pointing at where to
+fix it, never a generic placeholder.
+
+**Why not fetch the site spec on home too.** It would make every home load pay for a lookup whose payoff
+(richer content on two of seven checklist steps, only visible if she expands them) is disproportionate to
+its cost on the screen she'll load daily. The kit page already amortizes that cost for other cards; home
+doesn't have that already-paid-for lookup to lean on.
+
+---
+
+### 2026-09-03 — Lot 6: per-step "generated" bio and email-signature block are deterministic string assembly, never new copy
+
+**Question.** The brief's parenthetical for `social_setup` says "a generated bio ≤150 chars with a
+counter" and for `email_signature` "the block, a Copy button". Both read, out of context, as if they might
+call for writing new marketing copy on her behalf — which the standing rule (no model call anywhere in the
+asset pipeline, the PDF, or the ethics scanner — deterministic, always) would forbid, and which nothing in
+this chantier's pipeline does anywhere else.
+
+**Chosen.** `lib/kit/launch-copy.ts` — three pure functions, unit-tested (`__tests__/launch-copy.test.ts`,
+9 cases): `personalStatement()` joins fields the kit already has (practitioner line, license, city/state)
+with an em dash, dropping anything missing; `shortBio()` truncates the kit's own `about_excerpt` to ≤150
+chars at a word boundary with an ellipsis — a truncation of existing copy, not new copy; `emailSignatureText()`
+assembles a plain-text block from the same already-on-file fields plus the booking URL. "Generated" here
+means "derived deterministically from data already on the kit," matching the fingerprinted-asset pipeline's
+own meaning of the word — never a model call, and nothing here writes anything back to the kit.

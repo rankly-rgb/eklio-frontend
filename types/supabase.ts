@@ -552,6 +552,7 @@ export type Database = {
           id: string
           key: string
           label: string
+          skipped_at: string | null
           sort_order: number
           updated_at: string
           user_id: string
@@ -564,6 +565,7 @@ export type Database = {
           id?: string
           key: string
           label: string
+          skipped_at?: string | null
           sort_order: number
           updated_at?: string
           user_id: string
@@ -576,6 +578,7 @@ export type Database = {
           id?: string
           key?: string
           label?: string
+          skipped_at?: string | null
           sort_order?: number
           updated_at?: string
           user_id?: string
@@ -1790,6 +1793,7 @@ export type Database = {
         Args: { p_brand_kit_id: string; p_current_fingerprint: string }
         Returns: Json
       }
+      get_launch_progress: { Args: { p_brand_kit_id: string }; Returns: Json }
       grant_plan_allowance: {
         Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
         Returns: boolean
@@ -1838,6 +1842,10 @@ export type Database = {
         Returns: number
       }
       seed_site_spec: { Args: { p_brand_kit_id: string }; Returns: number }
+      set_launch_step: {
+        Args: { p_brand_kit_id: string; p_key: string; p_status: string }
+        Returns: Json
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       site_catalog: { Args: never; Returns: Json }

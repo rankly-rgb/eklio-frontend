@@ -1,97 +1,99 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Tables } from "@/types/supabase";
+import type { Database } from "@/types/supabase";
 
 /*
- * La checklist de lancement.
+ * "Your first week" — the seven-step launch checklist.
  *
- * Les items sont SEMÉS par la base (`seed_launch_checklist`, SECURITY DEFINER,
- * idempotente) : la RLS refuse l'INSERT et le DELETE côté application. On ne
- * peut donc que LIRE les siens et COCHER les siens — ce qui est exactement le
- * périmètre de l'accueil.
+ * Reads and writes go through `get_launch_progress`/`set_launch_step`
+ * (SECURITY DEFINER RPCs, 20260903260000_launch_checklist_first_week.sql),
+ * never a direct table read: the RPCs already exclude the legacy
+ * `choose_direction` row and shape the tri-state status, so there is only
+ * one place that logic lives.
  */
 
 type Client = SupabaseClient<Database>;
 
-export type ChecklistItem = {
-  id: string;
-  key: Tables<"launch_checklist_items">["key"];
+export const LAUNCH_STEP_KEYS = [
+  "site_setup",
+  "update_directory",
+  "google_profile",
+  "social_setup",
+  "email_signature",
+  "booking_link",
+  "first_post",
+] as const;
+
+export type LaunchStepKey = (typeof LAUNCH_STEP_KEYS)[number];
+export type LaunchStepStatus = "todo" | "done" | "skipped";
+
+export type LaunchStep = {
+  key: LaunchStepKey;
   label: string;
   description: string | null;
-  done: boolean;
-  sortOrder: number;
+  status: LaunchStepStatus;
 };
 
-export type Checklist = {
-  items: ChecklistItem[];
-  doneCount: number;
+export type LaunchProgress = {
+  items: LaunchStep[];
+  resolvedCount: number;
   total: number;
 };
 
-function toItem(row: Tables<"launch_checklist_items">): ChecklistItem {
-  return {
-    id: row.id,
-    key: row.key,
-    label: row.label,
-    description: row.description,
-    done: row.done_at !== null,
-    sortOrder: row.sort_order,
-  };
-}
+const EMPTY_PROGRESS: LaunchProgress = { items: [], resolvedCount: 0, total: 0 };
 
-export async function loadChecklist(
+export async function loadLaunchProgress(
   supabase: Client,
   brandKitId: string
-): Promise<Checklist> {
-  const { data, error } = await supabase
-    .from("launch_checklist_items")
-    .select("*")
-    .eq("brand_kit_id", brandKitId)
-    .order("sort_order");
+): Promise<LaunchProgress> {
+  const { data, error } = await supabase.rpc("get_launch_progress", {
+    p_brand_kit_id: brandKitId,
+  });
 
   if (error) {
-    console.error("[checklist] lecture", error);
-    return { items: [], doneCount: 0, total: 0 };
+    console.error("[checklist] get_launch_progress", error);
+    return EMPTY_PROGRESS;
   }
 
-  const items = (data ?? []).map(toItem);
+  const result = data as
+    | { items: LaunchStep[]; resolved_count: number; total: number }
+    | { error: { code: string; message: string } };
+
+  if ("error" in result) {
+    console.error("[checklist] get_launch_progress", result.error);
+    return EMPTY_PROGRESS;
+  }
+
   return {
-    items,
-    doneCount: items.filter((item) => item.done).length,
-    total: items.length,
+    items: result.items,
+    resolvedCount: result.resolved_count,
+    total: result.total,
   };
 }
 
-export type ToggleOutcome =
-  | { ok: true; item: ChecklistItem }
+export type SetStepOutcome =
+  | { ok: true }
   | { ok: false; reason: "not-found" }
   | { ok: false; reason: "write-failed"; detail: unknown };
 
-/**
- * Coche ou décoche un item.
- *
- * L'UPDATE est cadré par `user_id` en plus de la RLS : une politique qui
- * changerait ne doit pas transformer cette route en levier sur la checklist
- * d'autrui. Un item absent ou d'autrui répond « not-found », donc 404.
- */
-export async function toggleChecklistItem(
+export async function setLaunchStep(
   supabase: Client,
-  itemId: string,
-  userId: string,
-  done: boolean
-): Promise<ToggleOutcome> {
-  const { data, error } = await supabase
-    .from("launch_checklist_items")
-    .update({
-      done_at: done ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", itemId)
-    .eq("user_id", userId)
-    .select("*")
-    .maybeSingle();
+  brandKitId: string,
+  key: LaunchStepKey,
+  status: LaunchStepStatus
+): Promise<SetStepOutcome> {
+  const { data, error } = await supabase.rpc("set_launch_step", {
+    p_brand_kit_id: brandKitId,
+    p_key: key,
+    p_status: status,
+  });
 
   if (error) return { ok: false, reason: "write-failed", detail: error };
-  if (!data) return { ok: false, reason: "not-found" };
 
-  return { ok: true, item: toItem(data) };
+  const result = data as { ok: true } | { error: { code: string; message: string } };
+  if ("error" in result) {
+    if (result.error.code === "not_found") return { ok: false, reason: "not-found" };
+    return { ok: false, reason: "write-failed", detail: result.error };
+  }
+
+  return { ok: true };
 }

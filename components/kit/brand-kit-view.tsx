@@ -14,8 +14,12 @@ import { EthicsBadge } from "@/components/kit/ethics-badge";
 import { AssetsSection } from "@/components/kit/assets-section";
 import { SiteCard } from "@/components/kit/site-card";
 import { BrandPreview } from "@/components/preview/brand-preview";
+import { LaunchProgressRow } from "@/components/kit/launch-progress-row";
+import type { LaunchStepContext } from "@/components/checklist/launch-checklist";
 import { previewModelFromDirection, type Direction, type EthicsCheck, type VoiceGuide } from "@/lib/brand/shapes";
 import type { ContrastReport, SitePreviewTokens } from "@/lib/site/types";
+import type { LaunchProgress } from "@/lib/data/checklist";
+import type { PracticeDetails } from "@/lib/kit/launch-copy";
 
 type RuleLabel = { id: string; label: string; description: string };
 
@@ -54,6 +58,10 @@ export function BrandKitView({
   siteBuilderLabel,
   canvasTokens,
   canvasContrast,
+  launchProgress,
+  practitionerLine,
+  practiceDetails,
+  bookingUrl,
 }: {
   brandKitId: string;
   projectId: string;
@@ -70,8 +78,23 @@ export function BrandKitView({
   canvasTokens: SitePreviewTokens | null;
   /** Les sept paires de contraste (§4), ou `null` dans le même cas. */
   canvasContrast: ContrastReport | null;
+  /** "Your first week" (Lot 6) — the seven-step checklist's current state. */
+  launchProgress: LaunchProgress;
+  practitionerLine: string | null;
+  practiceDetails: PracticeDetails | null;
+  bookingUrl: string | null;
 }) {
   const model = previewModelFromDirection(direction, practiceName);
+
+  const launchContext: LaunchStepContext = {
+    practiceName,
+    practitionerLine,
+    aboutExcerpt: direction.about_excerpt,
+    practiceDetails,
+    bookingUrl,
+    assetsHref: "#kit-assets",
+    siteHref: `/app/brand-kits/${brandKitId}/site`,
+  };
 
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-6 max-md:px-[var(--gutter-sm)]">
@@ -119,6 +142,12 @@ export function BrandKitView({
           </Link>
         </div>
       </div>
+
+      <LaunchProgressRow
+        brandKitId={brandKitId}
+        progress={launchProgress}
+        context={launchContext}
+      />
 
       {/* ── Le workspace : rail + sections ──────────────────────────────── */}
       <div className="mt-10 flex items-start gap-12 max-lg:flex-col max-lg:gap-8">

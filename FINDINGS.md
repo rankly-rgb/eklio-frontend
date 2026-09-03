@@ -35,3 +35,9 @@ built around. One line each: what, where, why it matters.
   widening the fingerprint to the site spec's own version/etag (`SiteSpecEnvelope.etag` already exists for
   exactly this kind of staleness check) rather than the current field-by-field list, which is a real design
   change to the caching scheme this session isn't making unilaterally.
+
+- Once "Your first week" fully resolves, home's right-column slot shows only the one-liner "Your brand is
+  live in seven places." with nothing beside it — the brief says Monthly Presence's card takes that slot at
+  that point, but that card is Lot 8's build, not this one. Not broken (the layout doesn't collapse oddly,
+  the slot just looks sparse), and not worth a placeholder built now only to be replaced next lot — flagged
+  so Lot 8 knows this is the exact transition point it needs to wire into, per the delivery order.

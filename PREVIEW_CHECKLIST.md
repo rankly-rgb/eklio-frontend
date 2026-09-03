@@ -265,3 +265,38 @@ network request, the console error) than to describe it from memory — same sta
    descriptions appear, matching the two underlined phrases? Clear the box — does everything disappear?
 3. Paste something board-safe, e.g. `I work with adults navigating anxiety and burnout.` **Write down:**
    does it say "Nothing flagged" with no underlines?
+
+---
+
+## Part 9 — Lot 6's "Your first week" checklist
+
+Same caveat as Part 7: not seen in a real browser. Verified so far is `tsc`/`eslint`/`next build`/`vitest`
+plus a real dry-run-then-apply against the live database's actual data (see WORKLOG.md) — real, but the
+click-through itself is unverified.
+
+1. On the home screen, does the right-column card say **"Your first week"** (not "Launch checklist") with
+   a progress bar and an "X of 7" count? Does `choose_direction` NOT appear anywhere in the list — only
+   seven rows?
+2. Click a row's label or its chevron. **Write down:** does it expand to show the step's description, then
+   below it something specific to that step (not the same content for every row)? For **"Put your brand on
+   your site"**, an "Open the site editor" button. For **"Install your email signature"**, either a
+   copy-able signature block or an honest "finish your practice details" message, plus two lines of Gmail/
+   Outlook paste instructions. Click the chevron again — does it collapse?
+3. Click **Mark done** on a row. **Write down:** does the label immediately strike through and the count/bar
+   update (before any network round trip completes)? Reload the page — did it stay done? Open DevTools
+   Network — was the request `PATCH /api/checklist/<brand-kit-id>` with body `{"key":"...","status":"done"}`?
+4. Click **Skip for now** on a different row. **Write down:** does it go muted (not struck through, that's
+   the done state) and does "Skip for now" become "Undo skip"? Click **Undo skip** — does it return to plain
+   text?
+5. Open `/app/brand-kits/<id>` (the kit page). **Write down:** just under the header, is there a compact row
+   also reading "Your first week" with its own "X of 7", collapsed by default? Click it — does it expand
+   in place to the SAME seven rows and the SAME per-step detail as home's card (same done/skipped state,
+   since both read the same underlying data)? On this page specifically, does the "Install your email
+   signature" step show the REAL copy-able block (not the fallback message) — this page has the practice
+   details home's card doesn't fetch?
+6. If you can get a kit to all seven done/skipped (marking each one done is enough for this check), does
+   BOTH the home card and the kit-page row collapse to the single line **"Your brand is live in seven
+   places."**?
+
+If anything here is wrong, it's more useful to know exactly what broke (a screenshot, the failing network
+request, the console error) than to describe it from memory — same standard as every other part.

@@ -676,3 +676,77 @@ see DECISIONS.md).
 checking, the underline rendering) — same authenticated-session gap as every other UI surface built this
 session (see Lot 3's WORKLOG entry for the full accounting; this joins PREVIEW_CHECKLIST.md territory
 alongside it).
+
+## Lot 6 — "Your first week" (evolves the existing `launch_checklist_items`, not a new table)
+
+Researched before writing any code, per the lesson from the Lot 7 mistake above: dispatched a research pass
+that found the brief's `launch_steps` concept already shipped under a different name. Full reasoning and
+the four-part decision in DECISIONS.md; this entry is what was built and how it was verified.
+
+**Backend — `20260903260000_launch_checklist_first_week.sql`.**
+- Widened `launch_checklist_items`'s `key` CHECK to add `social_setup`/`booking_link`. Added `skipped_at
+  timestamptz`, mutually exclusive with `done_at` via a CHECK.
+- UPDATEd (never deleted) four existing rows' `label`/`description`/`sort_order` to the brief's wording;
+  renamed `paste_site_prompt` → `site_setup` in place, `done_at` carried over.
+- `CREATE OR REPLACE seed_launch_checklist` now seeds all eight keys (`choose_direction` plus the seven),
+  re-run once over every existing brand kit for the backfill. Re-revoked EXECUTE from
+  `public, anon, authenticated` explicitly after the replace.
+- New RPCs `get_launch_progress(p_brand_kit_id)` (returns the seven steps with `todo`/`done`/`skipped`
+  status plus `resolved_count`/`total`, `choose_direction` excluded) and `set_launch_step(p_brand_kit_id,
+  p_key, p_status)` (refuses `choose_direction`, refuses an unrecognized status, ownership-checked through
+  `brand_kits → projects`, idempotent re-marking via `coalesce`). Both granted to `authenticated` only.
+- Guard rails at the bottom of the migration: every kit has exactly 8 items; no row still carries
+  `paste_site_prompt`; `seed_launch_checklist` still refused to `anon` — matching the existing migration's
+  own style of self-checking assertions.
+
+**Frontend.**
+- `lib/data/checklist.ts` rewritten around the two new RPCs — `loadLaunchProgress`/`setLaunchStep`,
+  replacing the old direct-table `loadChecklist`/`toggleChecklistItem`.
+- `app/api/checklist/[id]/route.ts` — `[id]` now means the brand kit id (was the checklist item's own row
+  id); body is now `{key, status}` (was `{done: boolean}`).
+- `lib/kit/launch-copy.ts` — three pure, unit-tested functions (`personalStatement`, `shortBio`,
+  `emailSignatureText`) that assemble per-step detail copy from data the kit already has. See DECISIONS.md
+  for why this counts as deterministic assembly, not generation.
+- `components/checklist/launch-checklist.tsx` — the shared list: progress bar, per-step expand/collapse,
+  optimistic Mark done/Skip for now (rolls back and shows an error on a failed write, same convention as
+  the old checklist card), a status dot per row (filled = done, muted = skipped, outline = todo), and the
+  per-step detail switch (site editor link, personal statement with Copy, bio + counter + assets link,
+  signature block + Copy + Gmail/Outlook paste instructions, booking link + Copy, template link). Collapses
+  to one line — "Your brand is live in seven places." — once every step is done or skipped.
+- `components/home/checklist-card.tsx` rewritten as a thin wrapper: card chrome, "Your first week" header,
+  and the shared list. Passes `practiceDetails: null, bookingUrl: null` (documented in DECISIONS.md) — home
+  doesn't fetch the site spec, so those two steps show their honest fallback there instead of the richer
+  copy-paste block.
+- `components/kit/launch-progress-row.tsx` (new) — the compact row on the kit page, collapsed by default
+  to a bar + "X of 7", expands in place to the same shared list with the FULL context (the kit page already
+  loads the site spec for the "Your site" card, so `practiceDetails`/`bookingUrl` cost nothing extra here).
+- `app/app/brand-kits/[id]/page.tsx` now also calls `loadLaunchProgress` and extracts `practiceDetails`/
+  `bookingUrl` from the site spec it already fetches (same fields `lib/kit/asset-context.ts` reads, not
+  re-derived a second way).
+- `types/supabase.ts` regenerated (`mcp__Supabase__generate_typescript_types` against the live, now-migrated
+  project) to pick up `skipped_at` and the two new RPCs; the manual addendum block at the file's end was
+  reapplied verbatim, diffed against the previous file to confirm only the intended six lines changed.
+
+**Verified, and how.**
+- Backend: `scripts/local-verify.sh` — migrations replayed clean, 51/51 SQL tests passing (50 pre-existing
+  + this migration's own new test file, `supabase/tests/20260903260000_launch_checklist_first_week.test.sql`
+  — fresh-kit seeding shape, idempotence, `get_launch_progress`/`set_launch_step` behavior including the
+  done/skipped mutual exclusion and the choose_direction refusal, RLS/column-grant boundaries, and the
+  anon-execute guard). The PRE-EXISTING test file for the original migration
+  (`20260827104000_launch_checklist_items.test.sql`) needed its own counts/labels updated (six items →
+  eight, four relabeled) since it runs against the fully-migrated schema, not a point-in-time snapshot —
+  updated and re-verified rather than left red.
+- Backend, live: dry-run (`begin; ... rollback;`) against the live project's REAL data (one real brand kit
+  at the time) confirmed the migration and its guard rails pass before anything was applied for real; after
+  applying, a follow-up read confirmed that real kit now has exactly 8 items, no stray `paste_site_prompt`
+  row, a `site_setup` row, and its pre-existing `done_at` progress intact.
+- Frontend: `tsc --noEmit`, `eslint`, `next build`, and the full `vitest` suite (951/951 — the 9 new
+  `launch-copy.test.ts` cases included) all clean.
+- `lib/kit/launch-copy.ts` — unit-tested directly (not through the UI): joining/omitting missing pieces in
+  `personalStatement`, word-boundary truncation with the length cap actually enforced in `shortBio`, and
+  line assembly/omission in `emailSignatureText`. Caught and fixed one real bug this way: a whitespace-only
+  `practitionerLine` was passing the truthiness check and producing an empty string instead of `null`.
+
+**Not verified:** the actual click-through in a browser — expand/collapse, the optimistic Mark done/Skip
+toggle round-tripping through the real API route, the Copy buttons — same authenticated-session gap as
+every other UI surface this session (see Lot 3's entry for the full accounting).

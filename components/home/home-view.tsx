@@ -106,8 +106,8 @@ export function HomeView({ home }: { home: HomeModel }) {
           </section>
         )}
 
-        {home.checklist.items.length > 0 ? (
-          <ChecklistCard items={home.checklist.items} />
+        {home.brandKit && home.checklist.items.length > 0 ? (
+          <ChecklistCard brandKit={home.brandKit} progress={home.checklist} />
         ) : null}
       </div>
 
