@@ -211,3 +211,99 @@ ordering — every one of them needs a timestamp later than `20260901091000` bef
   (token/typography source of truth), `reveal-rebuild-28o625` + `comp-access-grant-sk7rn6` (already folded
   into reveal-rebuild); backend `eklio-v1-priorities-ssmasp`, `eklio-reveal-rebuild-28o625`,
   `brief-step-4-practitioner-dapkfv` — all three need fresh migration timestamps before/at merge.
+
+---
+
+## What actually happened (2026-09-02/03)
+
+Executed after approval, in this order. Not the plan above verbatim — two real problems surfaced during
+execution that the original audit couldn't have found without querying the live database, and both are
+recorded here because they change what "reconciled" means for anyone reading this later.
+
+### 1. Backend schema drift — bigger than a rename
+
+Auditing why the frontend's already-merged "how you work" UI ran against schema absent from backend
+`main` turned up two separate drifts between the repo and the hosted project (`fobgdsupyfslxbswfuay`,
+us-east-1):
+
+- **11 migrations were live on the hosted project but on no branch's `main`** — pushed directly from the
+  unmerged `eklio-reveal-rebuild-28o625` and `brief-step-4-practitioner-dapkfv` branches, under timestamps
+  neither branch's own files carried.
+- **28 migrations already on `main` were recorded on the hosted project under different timestamps than
+  the files in the repo** — the root cause: migration files had been renumbered on `main` *after* being
+  pushed, which is how the repo stopped describing the database.
+
+Fixed in **eklio-backend PR #11** ("Reconcile migration history with the deployed schema"): renamed the
+28 to match what the project actually recorded, added the 11 under their recorded versions, and — after
+diffing all 18 live function bodies against the branch files via `pg_get_functiondef` — fixed 2 functions
+whose deployed comments had drifted from the source (no logic difference). Verified before merging: sorting
+all 50 resulting migrations by corrected timestamp reproduces the exact same order as the original
+file timestamps (no dependency-order regression), and CI (`db-tests`, full `supabase db reset` replay)
+passed after one real fix — 3 validators the reconciliation introduced weren't registered in the repo's
+own NULL-safety coverage test, exactly the kind of gap that test exists to catch.
+
+Added to `eklio-backend/README.md`, next to the existing "permissive default" defect-pattern note: a
+migration file's timestamp is never edited after it has been pushed to any project; a wrong timestamp is
+corrected by a new migration, never by rewriting an old one.
+
+### 2. A second undocumented object, found by the first fix
+
+Rebasing `eklio-v1-priorities-ssmasp` onto the reconciled trunk, its migration (`REVOKE EXECUTE` on 18
+functions) failed on a fresh CI replay: one of them, `rls_auto_enable()`, didn't exist. Checked against
+the live project: it's real, owned by `postgres` (not Supabase platform scaffolding — the project's other
+6 event triggers are all `supabase_admin`-owned), and it's the function behind a `ddl_command_end` event
+trigger (`ensure_rls`) that **auto-enables RLS on every new table created in `public`.** No migration
+anywhere in git history ever created it.
+
+Fixed in **eklio-backend PR #14**: transcribed verbatim from `pg_get_functiondef()` and `pg_event_trigger`
+on the live project, no changes. Confirmed live, not assumed, what "RLS enabled with zero policies" does
+to each role that matters: `anon` → 0 rows, `authenticated` → 0 rows, `service_role` → all rows (bypasses
+RLS) — no permission error at any point, because default privileges on `public` already grant full table
+access; RLS is the only gate, and it fails silently. **The rule this sets for the next chantier: every new
+table ships its RLS policies in the same migration that creates it** — `CREATE TABLE` alone produces a
+table that is silently unreadable and unwritable to `anon`/`authenticated`, indistinguishable from a
+healthy empty result.
+
+### 3. Backend merge sequence (after PR #11 and #14)
+
+In dependency order, each rebased on the reconciled trunk with now-duplicate migration files removed
+(confirmed zero new migrations remained in `eklio-reveal-rebuild-28o625`'s and
+`brief-step-4-practitioner-dapkfv`'s diffs after dedup — every migration they carried was already
+reconciled):
+
+1. `eklio-backend#12` (`eklio-v1-priorities-ssmasp`) — merged.
+2. `eklio-backend#9` (`eklio-reveal-rebuild-28o625`) — merged.
+3. `eklio-backend#13` (`brief-step-4-practitioner-dapkfv`) — merged; two real rebase conflicts (both
+   branches had independently registered the same 3 validators in the coverage test), resolved in favor
+   of this branch's more detailed rationale.
+
+### 4. Frontend trunk rename
+
+`claude/eklio-bootstrap-ukuxfu` renamed to `main` on GitHub (default branch and Vercel's production
+branch both updated, by the repo owner). `README.md` and `RECONCILIATION.md` updated to match
+(`eklio-frontend#16`) — `RECONCILIATION.md`'s historical branch-name references were left as an accurate
+record of what was true when that pass ran, with a dated note added at the top rather than rewritten.
+
+### 5. Dead-branch disposition — archived, not deleted
+
+Tagging as originally planned (`git tag` + `git push`) failed: this session's git-over-HTTPS access
+returns `403` on any destructive ref operation (tag push, branch delete) — reproducible, not a transient
+network error, and confirmed on both a lightweight tag push and a plain `git push --delete`. No
+tag-creation or branch-deletion endpoint is exposed by the GitHub tooling available in this session either.
+
+Substituted a branch under `archive/` for each, created via the GitHub API, pinned at the same commit a
+tag would have carried:
+
+- `eklio-frontend`: `archive/eklio-fr-us-migration-53dnk1` → `215ac88`, `archive/eklio-v1-priorities-ssmasp`
+  → `94a6f94`.
+- `eklio-backend`: `archive/backend-app-schema` → `5341876`.
+
+**The three original branch names — frontend `claude/eklio-fr-us-migration-53dnk1`, frontend
+`claude/eklio-v1-priorities-ssmasp`, backend `claude/backend-app-schema` — are still on `origin`, not
+deleted.** Their content is fully preserved under the `archive/` names above; deleting the originals needs
+either elevated write access in a future session or manual deletion in the GitHub UI.
+
+### 6. Final state
+
+Both repos: `claude/post-purchase-space`, branched from `main` after all of the above merged, clean
+working tree, level with `origin/main`, pushed.
