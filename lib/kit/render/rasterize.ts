@@ -6,13 +6,55 @@ import { Resvg } from "@resvg/resvg-js";
  * `<path>` outlines, not `<text>` elements referencing a font — so resvg
  * needs no font files here; it only rasterizes shapes already on the page.
  *
- * No scaling decision is made here: `fitTo: { mode: "original" }` renders
- * at exactly the SVG's own declared width/height. A retina/2x variant is a
- * deliberate choice for whoever extends the catalogue, not implied by this
- * first PNG.
+ * ── THE TRIM RULE FOR EVERY IDENTITY ASSET IN THE CATALOGUE ──────────────
+ * Every identity asset is trimmed to its ink bounds with zero padding —
+ * that's what makes a wordmark file droppable into a Squarespace header
+ * without cropping first. Clear space is a rule for the brand guide (Lot 5,
+ * expressed in monogram-widths), never baked pixels here. The one exception
+ * is a mark deliberately inset in a fixed square — `avatar_400`, the
+ * favicons — which call `svgToPng` (untrimmed, exact declared dimensions)
+ * instead of `trimToInk`.
+ */
+
+/**
+ * Renders at exactly the SVG's own declared width/height, no trim, no
+ * scaling. For the fixed-square exceptions to the trim rule above.
  */
 export function svgToPng(svg: string): Buffer {
   const resvg = new Resvg(svg, { fitTo: { mode: "original" } });
+  return resvg.render().asPng();
+}
+
+export type TrimmedRender = {
+  svg: string;
+  png: Buffer;
+  width: number;
+  height: number;
+};
+
+/**
+ * Crops to the visible ink's bounding box — verified directly (not assumed
+ * from the docs' description): `cropByBBox` re-windows the SVG's viewBox to
+ * the bbox's own origin and extent rather than repositioning elements, so a
+ * bbox that doesn't start at (0,0) still crops correctly. One `Resvg`
+ * instance produces both outputs so the PNG and the (also-trimmed) SVG stay
+ * pixel-consistent with each other.
+ *
+ * A mark with no visible ink at all (`innerBBox()` returns `undefined` —
+ * ink-less input, not expected in practice) renders untrimmed rather than
+ * throwing: a full-canvas asset is a better failure than none.
+ */
+export function trimToInk(svg: string): TrimmedRender {
+  const resvg = new Resvg(svg, { fitTo: { mode: "original" } });
+  const bbox = resvg.innerBBox();
+  if (bbox) {
+    resvg.cropByBBox(bbox);
+  }
   const rendered = resvg.render();
-  return rendered.asPng();
+  return {
+    svg: resvg.toString(),
+    png: rendered.asPng(),
+    width: rendered.width,
+    height: rendered.height,
+  };
 }

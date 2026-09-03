@@ -1,10 +1,5 @@
 import type { SitePreviewTokens } from "@/lib/site/types";
-import {
-  renderWordmarkSvgDark,
-  WORDMARK_WIDTH,
-  WORDMARK_HEIGHT,
-} from "@/lib/kit/render/wordmark";
-import { svgToPng } from "@/lib/kit/render/rasterize";
+import { renderWordmarkDark } from "@/lib/kit/render/wordmark";
 
 /*
  * The extension point for Lot 4.4/4.5: one entry per `asset_catalog.key`,
@@ -15,6 +10,11 @@ import { svgToPng } from "@/lib/kit/render/rasterize";
  * `@resvg/resvg-js` (a native binary) for the first time, ahead of the rest
  * of the identity/web/color catalogue, so a native-binary deploy failure is
  * caught on one asset rather than after twenty-five.
+ *
+ * Every identity asset here is trimmed to its ink bounds with zero padding
+ * (see rasterize.ts's trim rule) — the exception is a mark deliberately
+ * inset in a fixed square (avatar_400, favicons), which renders through
+ * `svgToPng` untrimmed instead.
  */
 
 export type RenderContext = {
@@ -37,30 +37,34 @@ const RENDERERS: Record<string, Renderer> = {
     if (!ctx.practiceName) {
       throw new Error("wordmark_svg_dark needs a practice name to render");
     }
-    const svg = await renderWordmarkSvgDark({
+    const trimmed = await renderWordmarkDark({
       practiceName: ctx.practiceName,
       headingFont: ctx.tokens.heading_font,
       googleFontsUrl: ctx.googleFontsUrl,
       darkColor: ctx.tokens.dark_neutral,
     });
-    return { bytes: Buffer.from(svg, "utf8"), contentType: "image/svg+xml" };
+    return {
+      bytes: Buffer.from(trimmed.svg, "utf8"),
+      contentType: "image/svg+xml",
+      width: trimmed.width,
+      height: trimmed.height,
+    };
   },
   wordmark_png_dark: async (ctx) => {
     if (!ctx.practiceName) {
       throw new Error("wordmark_png_dark needs a practice name to render");
     }
-    const svg = await renderWordmarkSvgDark({
+    const trimmed = await renderWordmarkDark({
       practiceName: ctx.practiceName,
       headingFont: ctx.tokens.heading_font,
       googleFontsUrl: ctx.googleFontsUrl,
       darkColor: ctx.tokens.dark_neutral,
     });
-    const png = svgToPng(svg);
     return {
-      bytes: png,
+      bytes: trimmed.png,
       contentType: "image/png",
-      width: WORDMARK_WIDTH,
-      height: WORDMARK_HEIGHT,
+      width: trimmed.width,
+      height: trimmed.height,
     };
   },
 };

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "brand-shots": "tsx scripts/brand-shots/index.ts",
+    "warm-font-cache": "tsx scripts/warm-font-cache.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

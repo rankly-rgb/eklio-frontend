@@ -43,12 +43,18 @@ export const runtime = "nodejs";
  * render ~50ms, first resvg rasterize (native-binary/fontdb init cost, the
  * expensive part) ~385ms — total ~600ms for the render itself. Add a
  * Supabase Storage upload and the three RPC round trips and cold total is
- * well under 5s locally. That is NOT the same measurement as a cold
- * invocation on Vercel, which can carry its own lambda cold-start and
- * native-binary-load cost this environment can't reproduce — 15s keeps
- * meaningful headroom over the local number without just repeating the
- * earlier unmeasured guess. Replace with the actual observed number the
- * first time this route is hit cold on a deployed preview.
+ * well under 5s locally.
+ *
+ * That ~385ms is a PER-LAMBDA-INSTANCE cost (native-binary/fontdb init),
+ * not a per-request one — it recurs on every Vercel cold start, not on a
+ * warm invocation reusing the same instance, and this sandbox's "cold" is
+ * not the same as Vercel's: a real serverless cold start (container boot,
+ * native binary load from a fresh filesystem) is typically slower than a
+ * process that already had the binary loaded once this run. 600ms
+ * end-to-end here is not the worst case there. 15s keeps real headroom
+ * over the local number without repeating the earlier pure guess of 30 —
+ * replace with the actual observed number the first time this route is
+ * hit cold on a deployed preview.
  */
 export const maxDuration = 15;
 

@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { extractFontFileUrl } from "@/lib/kit/render/font-cache";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  extractFontFileUrl,
+  fetchFontFileUrl,
+  FontAcquisitionError,
+} from "@/lib/kit/render/font-cache";
 
 /*
  * Real CSS shapes captured directly from fonts.googleapis.com/css2 with the
@@ -66,5 +70,47 @@ describe("extractFontFileUrl", () => {
 
   it("returns null for a family that isn't in the CSS at all", () => {
     expect(extractFontFileUrl(REAL_TTF_CSS, "Newsreader")).toBeNull();
+  });
+});
+
+describe("fetchFontFileUrl — the User-Agent fallback list", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("falls through to the next User-Agent when the first returns no ttf src", async () => {
+    let call = 0;
+    const fetchMock = vi.fn(async () => {
+      call += 1;
+      // First UA: the EOT shape (no .ttf src). Second UA: the real one.
+      const body = call === 1 ? REAL_EOT_CSS : REAL_TTF_CSS;
+      return new Response(body, { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const url = await fetchFontFileUrl("https://fonts.googleapis.com/css2?family=Fraunces", "Fraunces");
+
+    expect(url).toBe(
+      "https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf"
+    );
+    expect(call).toBe(2);
+  });
+
+  it("does not call a later User-Agent once an earlier one succeeds", async () => {
+    const fetchMock = vi.fn(async () => new Response(REAL_TTF_CSS, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchFontFileUrl("https://fonts.googleapis.com/css2?family=Fraunces", "Fraunces");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws a named FontAcquisitionError, not a generic one, when every User-Agent fails", async () => {
+    const fetchMock = vi.fn(async () => new Response(REAL_EOT_CSS, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchFontFileUrl("https://fonts.googleapis.com/css2?family=Fraunces", "Fraunces")
+    ).rejects.toBeInstanceOf(FontAcquisitionError);
   });
 });
