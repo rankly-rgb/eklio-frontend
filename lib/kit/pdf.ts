@@ -1,23 +1,13 @@
-import type { BrandKit } from "@/lib/data/brand-kit";
-import { hexToRgb } from "@/lib/brand/color";
-import { ETHICS_DISCLAIMER_TEXT } from "@/lib/ethics/disclaimer";
-
 /*
- * Export PDF du kit de marque — écrit à la main, sans dépendance.
+ * Le moteur PDF 1.4 à la main (polices de base Helvetica/Times, sans
+ * dépendance) derrière la feuille d'installation exportable
+ * (`renderMarkdownPdf`, plus bas).
  *
- * POURQUOI À LA MAIN — les deux voies habituelles coûtent trop cher ici :
- * un rendu headless (Puppeteer/Playwright) ajoute ~300 Mo au déploiement et un
- * navigateur à faire tourner en serverless ; une bibliothèque de mise en page
- * ajoute une dépendance pour ce qui est, en pratique, une page de texte et
- * cinq rectangles de couleur. Le format PDF 1.4 avec les polices de base
- * (Helvetica, Times) suffit exactement à ça.
- *
- * CE QUE CE PDF EST — un livrable de référence : les hex de la palette, les
- * noms des polices, le guide de voix, la copy du site. Les COULEURS y sont
- * réelles (rectangles remplis aux valeurs du praticien). Ce que ce PDF n'est
- * PAS — un rendu de la maquette : les polices de marque ne sont pas embarquées,
- * les titres sont composés en Times. Le kit à l'écran reste la référence
- * visuelle, ce fichier est ce qu'on imprime ou qu'on envoie à un prestataire.
+ * Le kit de marque en PDF — Lot 5 — a sa propre implémentation désormais :
+ * `lib/kit/pdf/brand-guide.ts`, pdf-lib + fontkit, ses polices de marque
+ * réellement embarquées. Ce moteur-ci reste exactement pour ce que
+ * `renderMarkdownPdf` en fait : une page de texte, aucune police de marque à
+ * embarquer, aucune raison de payer pdf-lib pour ça.
  */
 
 const PAGE_WIDTH = 595.28; // A4 en points
@@ -122,33 +112,6 @@ class PageBuilder {
     this.cursor -= 6;
   }
 
-  /** Bandeau de swatches aux couleurs réelles du praticien. */
-  swatches(colors: { role: string; hex: string }[]): void {
-    const height = 46;
-    const gap = 8;
-    const width = (CONTENT_WIDTH - gap * (colors.length - 1)) / colors.length;
-    this.cursor -= height;
-
-    colors.forEach(({ hex }, index) => {
-      const rgb = hexToRgb(hex);
-      if (!rgb) return;
-      const x = MARGIN + index * (width + gap);
-      this.parts.push(
-        `${(rgb.r / 255).toFixed(3)} ${(rgb.g / 255).toFixed(3)} ${(rgb.b / 255).toFixed(3)} rg ` +
-          `${x.toFixed(2)} ${this.cursor.toFixed(2)} ${width.toFixed(2)} ${height} re f`
-      );
-    });
-
-    this.cursor -= 14;
-    colors.forEach(({ role, hex }, index) => {
-      const x = MARGIN + index * (width + gap);
-      this.parts.push(
-        `BT 0.35 g /F3 8 Tf 1 0 0 1 ${x.toFixed(2)} ${this.cursor.toFixed(2)} Tm (${escapeText(`${role.toUpperCase()} ${hex}`)}) Tj ET`
-      );
-    });
-    this.cursor -= 6;
-  }
-
   build(): string {
     return this.parts.join("\n");
   }
@@ -206,122 +169,6 @@ function assemble(pages: string[]): Uint8Array {
     bytes[index] = pdf.charCodeAt(index) & 0xff;
   }
   return bytes;
-}
-
-export function renderBrandKitPdf(kit: BrandKit): Uint8Array {
-  const direction = kit.selectedDirection ?? kit.directions?.[0] ?? null;
-  const practice = kit.practiceName ?? "Your practice";
-
-  const pages: PageBuilder[] = [];
-  let page = new PageBuilder();
-  pages.push(page);
-
-  /** Passe à une nouvelle page si le bloc suivant n'y tient plus. */
-  const ensure = (needed: number) => {
-    if (page.remaining < needed) {
-      page = new PageBuilder();
-      pages.push(page);
-    }
-  };
-
-  page.text(practice, { font: "title", size: 26, leading: 32 });
-  if (direction) {
-    page.text(`${direction.name.toUpperCase()} - SELECTED`, {
-      font: "mono",
-      size: 9,
-      leading: 18,
-      gray: 0.45,
-    });
-  }
-  page.rule();
-  page.space(10);
-
-  if (direction) {
-    page.text("PALETTE", { font: "mono", size: 9, leading: 18, gray: 0.45 });
-    page.swatches([
-      { role: "primary", hex: direction.palette.primary },
-      { role: "secondary", hex: direction.palette.secondary },
-      { role: "light", hex: direction.palette.light },
-      { role: "dark", hex: direction.palette.dark },
-      { role: "paper", hex: direction.palette.paper },
-    ]);
-    page.space(14);
-
-    page.text("TYPOGRAPHY", { font: "mono", size: 9, leading: 18, gray: 0.45 });
-    page.text(`Headings: ${direction.typography.heading_font}`, {
-      font: "body",
-      size: 11,
-      leading: 16,
-    });
-    page.text(`Body: ${direction.typography.body_font}`, {
-      font: "body",
-      size: 11,
-      leading: 16,
-    });
-    page.space(14);
-
-    page.text("HOME PAGE", { font: "mono", size: 9, leading: 18, gray: 0.45 });
-    if (direction.hero.overline) {
-      page.text(direction.hero.overline, {
-        font: "mono",
-        size: 9,
-        leading: 15,
-        gray: 0.45,
-      });
-    }
-    page.text(direction.hero.headline, { font: "title", size: 20, leading: 26 });
-    page.text(direction.hero.subhead, { font: "body", size: 11, leading: 17, gray: 0.3 });
-    page.text(`Button: ${direction.hero.cta_label}`, {
-      font: "body",
-      size: 11,
-      leading: 20,
-      gray: 0.3,
-    });
-    page.space(10);
-
-    ensure(160);
-    page.text("ABOUT", { font: "mono", size: 9, leading: 18, gray: 0.45 });
-    page.text(direction.about_excerpt, { font: "body", size: 11, leading: 17 });
-    page.space(14);
-  }
-
-  if (kit.voiceGuide) {
-    ensure(200);
-    page.text("VOICE & TONE", { font: "mono", size: 9, leading: 18, gray: 0.45 });
-    page.text("Sounds like you", { font: "title", size: 14, leading: 22 });
-    for (const line of kit.voiceGuide.sounds_like) {
-      page.text(`- ${line}`, { font: "body", size: 11, leading: 16 });
-    }
-    page.space(8);
-    page.text("Never write this", { font: "title", size: 14, leading: 22 });
-    for (const line of kit.voiceGuide.never_write) {
-      page.text(`- ${line}`, { font: "body", size: 11, leading: 16, gray: 0.45 });
-    }
-    page.space(14);
-  }
-
-  if (kit.socialTemplates) {
-    ensure(180);
-    page.text("SOCIAL TEMPLATES", { font: "mono", size: 9, leading: 18, gray: 0.45 });
-    for (const template of kit.socialTemplates) {
-      page.text(
-        `${template.layout.toUpperCase()} (${template.type}) - ${template.headline}`,
-        { font: "body", size: 11, leading: 16 }
-      );
-    }
-    page.space(14);
-  }
-
-  ensure(120);
-  page.rule();
-  page.text(ETHICS_DISCLAIMER_TEXT, {
-    font: "body",
-    size: 9,
-    leading: 13,
-    gray: 0.45,
-  });
-
-  return assemble(pages.filter((entry) => !entry.isEmpty).map((entry) => entry.build()));
 }
 
 /*

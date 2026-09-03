@@ -538,3 +538,70 @@ labelled-region canvas's actual visual legibility, the live Fix button's real ro
 buttons' real click-through all still need a human in a browser — added to PREVIEW_CHECKLIST.md territory
 for the user's own pass. This is the same category of gap this session has disclosed since its second
 DECISIONS.md entry, now including UI as well as Storage/Auth.
+
+---
+
+## Lot 5 — the brand guide PDF
+
+**What was built.**
+- Added `pdf-lib`/`@pdf-lib/fontkit` as real dependencies (the brief names them explicitly — see
+  DECISIONS.md) — this session's first, since every prior format (PDF-1.4 base, `.ase`, `.zip`) was
+  hand-built specifically to avoid a new one.
+- `lib/kit/pdf/layout.ts` — the shared layout helper, built once, used by all fourteen pages: `wrapText`
+  (measured line breaking against the REAL embedded font's glyph widths via `PDFFont.widthOfTextAtSize`,
+  which is fontkit-backed once a custom TTF is embedded — not a character-count heuristic like the old
+  `lib/kit/pdf.ts`), a four-point baseline grid (`grid()`), `PageFlow` (a per-page y-cursor with `text`/
+  `rule`/`swatchRow`/`advance`), and `BrandGuideDoc` (owns the `PDFDocument`, the three embedded font
+  roles, and draws every page's footer — practice name left, page number right, mono 8pt at real 60%
+  opacity — in one pass at `finish()`, since the total page count isn't known until every page exists).
+- `lib/kit/pdf/brand-guide.ts` — the fourteen pages, composed with the helper, never positioned ad hoc:
+  cover, contents, identity (clear space in monogram-widths, minimum size, exact capitalization), identity
+  misuse (five real strikethrough anti-patterns), colors by role, colors accessibility (all seven pairs,
+  reusing `lib/site/contrast.ts`'s existing `isBelowAa`/`pairReading` rather than reimplementing the AA
+  logic a third time), type families and scale, the scale applied to her real hero/about copy, voice, Ethics
+  Guard's six rules, the site mockup (new `lib/kit/render/site-mockup.ts`, a satori composition — nav bar,
+  overline, headline, subhead, CTA — full-bleed, embedded as a real PNG, not vector text pretending to be a
+  screenshot), the site structure page by page (iterates every enabled page/section generically off
+  whatever `fields` the site spec actually has, not a hardcoded per-section-type list), the four social
+  templates embedded as real PNGs (calling the actual Lot 4.4 renderers — `renderStatementOrQuestionPost`/
+  `renderNotesPost`/`renderSignature` — not a second implementation), and "using this kit" with the
+  VERBATIM disclaimer (reused from the existing `ETHICS_DISCLAIMER_TEXT` constant — already word-for-word
+  the brief's quoted text, confirmed by direct comparison, so quoting it here is correctness by
+  construction, not retyping-and-hoping) plus one small "Made with Eklio" line, the only Eklio mark on any
+  page.
+- `lib/ethics/rule-definitions.ts` — the six Ethics Guard rule families' id/label/why/example, as content
+  only (no scanning logic) — built now, ahead of Lot 7, so the PDF page and Lot 7's real engine (not built
+  yet) can share one source rather than the PDF hardcoding prose Lot 7 would otherwise restate.
+- `GET /api/brand-kits/[id]/pdf` rewritten to assemble `BrandGuideData` (tokens, contrast, direction, voice
+  guide, social templates, site pages, builder label, practitioner line) and call the new composer.
+  `lib/kit/pdf.ts`'s old `renderBrandKitPdf` — the function this route used to call — deleted as dead code,
+  along with its now-unused `swatches()` helper and `hexToRgb`/`ETHICS_DISCLAIMER_TEXT` imports;
+  `renderMarkdownPdf` (the site setup sheet's own, unrelated PDF export) untouched, still backed by the
+  same hand-rolled base-14-font engine (no reason to pay for pdf-lib on a document with no brand fonts to
+  embed). `lib/kit/__tests__/pdf.test.ts` rewritten to test `renderMarkdownPdf` (the only thing left in
+  that file) instead of the deleted function, keeping structural xref-table coverage rather than losing it.
+
+**Verified, and how — this is the most thoroughly independently verified lot of the session.**
+- `tsc --noEmit`/`eslint`/full `vitest` suite (930/930) all clean; `next build` succeeds, route unchanged
+  in the manifest.
+- Installed `poppler-utils` (`pdftotext`/`pdfinfo`/`pdfimages`/`pdftoppm`) specifically to verify PDF output
+  with a REAL, independent tool — not this session's own code checking its own output. Confirmed via
+  `pdfinfo`: exactly 14 pages, US Letter (612×792pt), for both an isolated layout-helper smoke test AND the
+  full real-fixture render. Confirmed via `pdftotext`: every page's actual text is extractable —
+  proof the text is real and selectable, not an image standing in for it (the brief's core requirement,
+  "a PDF of stitched images fails this lot") — including a long paragraph wrapping correctly at real word
+  boundaries against the embedded font's own measured widths. Confirmed via `pdfimages -list`: exactly the
+  expected 5 raster images (1 site mockup on page 11, 4 social template thumbnails on page 13), each at
+  its real declared dimensions.
+- Then went further: rasterized every one of the 14 pages with `pdftoppm` and actually looked at each one.
+  This caught three real visual bugs `tsc`/`pdftotext`/`pdfinfo` structurally could not have caught — see
+  DECISIONS.md for the full account — fixed and re-verified by re-rendering and re-rasterizing after each
+  fix, not assumed fixed from reading the diff.
+- Extracted and visually inspected the site mockup and one social-template PNG directly (not just
+  confirmed their presence) — both showed correct real content, fonts, and colors.
+
+**Not verified:** the actual click-through from the live "Download PDF" link in a real browser (needs the
+same authenticated session this whole session has never had access to) — the route itself is unchanged in
+shape from the version that DID work end-to-end before this lot (same auth/entitlement/response pattern),
+so this is a lower-risk gap than most, but it is still a real one: only the PDF BYTES themselves have been
+proven correct, not the HTTP round trip serving them in production.

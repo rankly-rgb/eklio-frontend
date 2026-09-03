@@ -1,59 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { renderBrandKitPdf } from "@/lib/kit/pdf";
-import type { BrandKit } from "@/lib/data/brand-kit";
-import {
-  SAMPLE_DIRECTIONS,
-  SAMPLE_PRACTICE_NAME,
-  SAMPLE_SOCIAL_TEMPLATES,
-  SAMPLE_VOICE_GUIDE,
-} from "@/lib/brand/sample";
+import { renderMarkdownPdf } from "@/lib/kit/pdf";
 
 /*
- * Le PDF est écrit à la main : ce test tient la structure du fichier, parce
- * qu'un octet de décalage dans la table xref donne un fichier qu'aucun lecteur
- * n'ouvre — et que ça ne se voit pas à la compilation.
+ * The PDF is written by hand: this test holds the file's structure, because
+ * one byte off in the xref table gives a file no reader opens — and that
+ * doesn't show up at compile time.
+ *
+ * `renderBrandKitPdf` (the brand guide) moved to `lib/kit/pdf/brand-guide.ts`
+ * — pdf-lib + fontkit, its own tests. What's left here, `renderMarkdownPdf`,
+ * is the site setup sheet's PDF export, and is the only thing this file's
+ * hand-rolled PDF-1.4 engine still backs.
  */
-
-function kit(overrides: Partial<BrandKit> = {}): BrandKit {
-  return {
-    row: {
-      id: "kit",
-      project_id: "project",
-      content: {},
-      created_at: "",
-      updated_at: "",
-      direction_id: null,
-      directions: null,
-      ethics_check: null,
-      multi_builder_prompt: null,
-      pdf_url: null,
-      practitioner_line: "Nora Whitfield, LCSW",
-      selected_direction_id: SAMPLE_DIRECTIONS[1].id,
-      share_slug: null,
-      site_prompt: null,
-      site_prompt_target: null,
-      social_templates: null,
-      tier: "starter",
-      voice_guide: null,
-    },
-    projectId: "project",
-    practiceName: SAMPLE_PRACTICE_NAME,
-    directions: SAMPLE_DIRECTIONS,
-    selectedDirection: SAMPLE_DIRECTIONS[1],
-    socialTemplates: SAMPLE_SOCIAL_TEMPLATES,
-    voiceGuide: SAMPLE_VOICE_GUIDE,
-    ethicsCheck: null,
-    ...overrides,
-  };
-}
 
 function decode(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
 }
 
-describe("renderBrandKitPdf", () => {
-  it("produit un fichier PDF bien formé", () => {
-    const text = decode(renderBrandKitPdf(kit()));
+describe("renderMarkdownPdf", () => {
+  it("produces a well-formed PDF file", () => {
+    const text = decode(renderMarkdownPdf("Setup", "# Hello\n\nSome body text."));
 
     expect(text.startsWith("%PDF-1.4\n")).toBe(true);
     expect(text.endsWith("%%EOF\n")).toBe(true);
@@ -62,14 +27,19 @@ describe("renderBrandKitPdf", () => {
     expect(text).toContain("startxref");
   });
 
-  it("les offsets de la table xref pointent bien sur leurs objets", () => {
-    const text = decode(renderBrandKitPdf(kit()));
+  it("the xref table's offsets point at their actual objects", () => {
+    const text = decode(
+      renderMarkdownPdf(
+        "Setup",
+        "# Heading one\n\nA paragraph.\n\n## Heading two\n\n- item one\n- item two\n\n> a quote\n\n---\n"
+      )
+    );
 
     const startxref = Number(text.match(/startxref\n(\d+)/)![1]);
     expect(text.slice(startxref, startxref + 4)).toBe("xref");
 
     const table = text.slice(startxref).split("\n");
-    // Ligne 0 : « xref », ligne 1 : « 0 N », ligne 2 : l'objet libre.
+    // Line 0: "xref", line 1: "0 N", line 2: the free object.
     const total = Number(table[1].split(" ")[1]);
     for (let index = 1; index < total; index += 1) {
       const offset = Number(table[2 + index].slice(0, 10));
@@ -77,21 +47,23 @@ describe("renderBrandKitPdf", () => {
     }
   });
 
-  it("écrit les couleurs réelles de la palette, pas un gris de repli", () => {
-    const text = decode(renderBrandKitPdf(kit()));
-    // #B4674A = rgb(180, 103, 74) → 0.706 0.404 0.290 rg
-    expect(text).toContain("0.706 0.404 0.290 rg");
-    expect(text).toContain("PRIMARY #B4674A");
+  it("carries the title and real markdown content", () => {
+    const text = decode(renderMarkdownPdf("Your setup sheet", "# A real heading\n\nReal body text."));
+
+    expect(text).toContain("Your setup sheet");
+    expect(text).toContain("A real heading");
+    expect(text).toContain("Real body text.");
   });
 
-  it("reste valide quand aucune direction n'est retenue", () => {
-    const bare = kit({
-      selectedDirection: null,
-      directions: null,
-      voiceGuide: null,
-      socialTemplates: null,
-    });
-    const text = decode(renderBrandKitPdf(bare));
+  it("stays valid for markdown with no recognized blocks at all", () => {
+    const text = decode(renderMarkdownPdf("Setup", "just plain text, no headings or lists"));
+
+    expect(text.startsWith("%PDF-1.4\n")).toBe(true);
+    expect(text.endsWith("%%EOF\n")).toBe(true);
+  });
+
+  it("stays valid for empty markdown", () => {
+    const text = decode(renderMarkdownPdf("Setup", ""));
 
     expect(text.startsWith("%PDF-1.4\n")).toBe(true);
     expect(text.endsWith("%%EOF\n")).toBe(true);

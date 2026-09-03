@@ -366,3 +366,49 @@ disproportionate to add unilaterally for one lot's visual check when the existin
 bar for UI in this session (per the very first DECISIONS.md entry) is `tsc`/`eslint`/`next build`/`vitest`
 plus honest disclosure of what a real browser would still need to confirm. This joins that same disclosed
 list rather than pretending to close it.
+
+---
+
+### 2026-09-03 — Lot 5: `pdf-lib` + `@pdf-lib/fontkit` added as dependencies
+
+**Question.** The brief names this exact pairing by name ("`pdf-lib` + `fontkit`, no Chromium") for the
+brand guide PDF. Neither was in this repo.
+
+**Chosen.** Installed `pdf-lib@1.17.1` and `@pdf-lib/fontkit@1.1.1` (both current at install time). Not a
+judgment call in the sense the other entries here are — the brief specifies the library by name for
+exactly this purpose, so this is implementing what was asked, not choosing an alternative. Noted here only
+because it's the first new runtime dependency this session has added (every prior format — PDF-1.4 base
+pages, `.ase`, `.zip` — was hand-built specifically to avoid one).
+
+`npm install` surfaced one pre-existing moderate advisory (`fflate`, a transitive dependency of `satori`,
+unrelated to pdf-lib/fontkit) — not introduced by this change, and `npm audit fix --force` would bump
+satori to a breaking major version, risking every Lot 4.4 renderer for a vulnerability in a code path
+(`unzipSync` on malformed ZIP64 input) this app never exercises. Left alone; flagged here rather than run
+silently.
+
+---
+
+### 2026-09-03 — Lot 5: found real layout bugs only by rendering and looking, not by any tool
+
+**What happened.** The layout helper (`lib/kit/pdf/layout.ts`) and the fourteen-page composer
+(`lib/kit/pdf/brand-guide.ts`) both passed `tsc`, `eslint`, and a real independent `pdftotext`/`pdfinfo`
+check (installed `poppler-utils` specifically for this — see WORKLOG.md) on the first pass. Rasterizing
+every page with `pdftoppm` and actually looking at them (not reading extracted text) found THREE real
+bugs none of the above caught: a six-column swatch row whose labels overflowed into the next column
+(`LIGHT NEUTRAL #F4EEE3DARK NEUTRAL #2B2A27` ran together in the text extraction — the tell), the cover
+and Identity pages' large-heading-to-body-text gaps being too tight (baselines nearly touching, since a
+big heading's own leading only clears its own descenders, not a comfortable gap before the next block),
+and the closing page's "Made with Eklio" line sitting almost on top of the disclaimer above it (a raw
+`page.drawText` call missing the same baseline-offset convention `PageFlow.text()` applies automatically).
+
+**Chosen.** Fixed all three: `swatchRow` now truncates a label that would overflow its own column
+(general fix, not just a shorter caller-supplied string); the cover/Identity/Type-applied pages' post-
+heading gaps are now sized proportional to the heading's own font size, not a small fixed constant; the
+type-scale loop's inter-step gap does the same; the stray `drawText` call now applies the same baseline
+offset the layout helper's own `text()` method uses. Re-rendered and re-inspected after each fix.
+
+**Why this is recorded as its own entry.** Not a design decision — a discipline point: a compiling,
+type-checked, text-extractable PDF can still be visually broken, and this session's stated verification
+bar ("open the rendered file and look at it") caught something the automated checks structurally cannot.
+Worth a line so the pattern — render everything with a real tool, then ALSO look at the raster output, not
+just the extracted text — carries into whatever visual output comes after this lot.
