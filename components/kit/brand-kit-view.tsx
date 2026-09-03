@@ -10,11 +10,14 @@ import { IdentitySection } from "@/components/kit/identity-section";
 import { ColorsSection } from "@/components/kit/colors-section";
 import { TypeSection } from "@/components/kit/type-section";
 import { WordsSection } from "@/components/kit/words-section";
+import { EthicsBadge } from "@/components/kit/ethics-badge";
 import { AssetsSection } from "@/components/kit/assets-section";
 import { SiteCard } from "@/components/kit/site-card";
 import { BrandPreview } from "@/components/preview/brand-preview";
-import { previewModelFromDirection, type Direction, type VoiceGuide } from "@/lib/brand/shapes";
+import { previewModelFromDirection, type Direction, type EthicsCheck, type VoiceGuide } from "@/lib/brand/shapes";
 import type { ContrastReport, SitePreviewTokens } from "@/lib/site/types";
+
+type RuleLabel = { id: string; label: string; description: string };
 
 /*
  * Le kit de marque — le workspace du lot 3 : six sections navigables (une
@@ -46,6 +49,8 @@ export function BrandKitView({
   practiceName,
   direction,
   voiceGuide,
+  ethicsCheck,
+  ethicsRules,
   siteBuilderLabel,
   canvasTokens,
   canvasContrast,
@@ -55,6 +60,10 @@ export function BrandKitView({
   practiceName: string | null;
   direction: Direction;
   voiceGuide: VoiceGuide | null;
+  /** Le verdict persisté de la dernière génération (`enforceEthics`), ou `null` s'il n'y en a pas encore. */
+  ethicsCheck: EthicsCheck | null;
+  /** Les six règles réelles de `ethics_rules`, pour le badge et « Check your own words ». */
+  ethicsRules: RuleLabel[];
   /** Le constructeur retenu dans le spec de site, ou `null` s'il n'existe pas. */
   siteBuilderLabel: string | null;
   /** Les six rôles + quatre variantes (§3), ou `null` si le spec n'est pas encore semé. */
@@ -160,13 +169,9 @@ export function BrandKitView({
             <SectionHeader
               title="Your words"
               id="kit-words-heading"
-              trailing={
-                <span className="flex-none rounded-pill border border-line px-3 py-1.5 font-mono text-mono uppercase tracking-mono-12 text-ink-2">
-                  Board-safe copy
-                </span>
-              }
+              trailing={<EthicsBadge ethicsCheck={ethicsCheck} ethicsRules={ethicsRules} />}
             />
-            <WordsSection voiceGuide={voiceGuide} tokens={canvasTokens} />
+            <WordsSection voiceGuide={voiceGuide} tokens={canvasTokens} ethicsRules={ethicsRules} />
           </section>
 
           <section id="kit-assets" className="mt-12 flex flex-col gap-5">

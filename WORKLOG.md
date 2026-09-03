@@ -635,3 +635,44 @@ real forbidden examples. `pdftotext` over the whole document confirms none of th
 understood now, not yet extended. Lot 7's actual remaining work: make the BOARD-SAFE COPY chip clickable
 (reading `brand_kits.ethics_check.flagged`, the real persisted verdict), and build the new "Check your own
 words" textarea calling `checkEthics` directly on text the practitioner writes herself — see DECISIONS.md.
+
+---
+
+## Lot 7 — Ethics Guard's two new UI surfaces
+
+Built on the REAL, already-shipped `checkEthics`/`lib/ethics/guard.ts` engine (understood only after the
+mistake above) — no new rule taxonomy, no new scanning logic. Both surfaces read the real `ethics_rules`
+catalog for user-facing text, never `EthicsViolation.reason` (an internal, partly-French fallback string —
+see DECISIONS.md).
+
+**What was built.**
+- `components/kit/ethics-badge.tsx` — the BOARD-SAFE COPY pill is now a button; clicking it opens a panel
+  listing all six real rules (`short_label`), each with a dot marking whether `brand_kits.ethics_check
+  .flagged` caught anything against it for this kit's actual generated copy, and if so the excerpt that was
+  originally written and rewritten past. Reads the real PERSISTED verdict only — never re-runs a check
+  client-side to produce it.
+- `components/kit/check-your-words.tsx` — a textarea for text she writes herself (a Psychology Today bio,
+  anything outside what Eklio drafts), checked live against `checkEthics` — a pure function, so every
+  keystroke re-checks with no network round trip and no model call. Flagged spans underline (red for
+  `block`, muted for `warn`) via `segmentText()`, a small presentation-only helper that locates each
+  violation's already-known `excerpt` string with `indexOf` — see DECISIONS.md for why this doesn't extend
+  the engine itself to carry offsets. Below the text, each flag lists its real rule label and description.
+- `app/app/brand-kits/[id]/page.tsx` now fetches `readCatalog(supabase)` alongside what it already loaded,
+  passing `ethicsRules` (mapped `{id, label, description}`) and `kit.ethicsCheck` down to both new
+  components via `BrandKitView` → `WordsSection`.
+
+**Verified, and how.**
+- `tsc --noEmit`/`eslint`/`next build` all clean. Full `vitest` suite 937/937 passing.
+- `segmentText()` — the one genuinely new piece of logic here (everything else is either display-only
+  composition or a direct call into the already-tested `checkEthics`) — has its own test file
+  (`components/kit/__tests__/check-your-words.test.ts`), run against the REAL `checkEthics` output on real
+  example strings, not a hand-built fixture: confirms segments always reassemble to exactly the original
+  text (empty case included), confirms flagged segments' text always appears verbatim in the source, and
+  confirms segment order matches the text's own order for multiple simultaneous flags.
+- Manually traced `EthicsBadge`'s and `CheckYourWords`' prop flow from `page.tsx` down, confirming the real
+  `ethics_rules` columns (`short_label`, `description`) are what's read, not the French `reason` fallback.
+
+**Not verified:** the actual click-through in a browser (the popover opening/closing, live-as-you-type
+checking, the underline rendering) — same authenticated-session gap as every other UI surface built this
+session (see Lot 3's WORKLOG entry for the full accounting; this joins PREVIEW_CHECKLIST.md territory
+alongside it).

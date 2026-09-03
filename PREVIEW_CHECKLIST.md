@@ -251,3 +251,17 @@ Lot 3, not skipped). Verification so far is `tsc`/`eslint`/`next build`/`vitest`
 
 If anything here is wrong, it's more useful to know exactly what broke (a screenshot, the failing
 network request, the console error) than to describe it from memory — same standard as Parts 1–6.
+
+---
+
+## Part 8 — Lot 7's Ethics Guard UI
+
+1. In "Your words," click the **Board-safe copy** pill. **Write down:** does a panel open listing six real
+   rules (No timeframes / No proven claims / No client voice / No inflated credentials / No scarcity / No
+   diagnosis of the reader)? If this kit's generated copy was ever flagged and rewritten, does the panel
+   show which rule and what the original text said?
+2. In "Check your own words," paste `This proven method eliminates panic attacks. My clients say they
+   feel heard.` **Write down:** do two phrases underline (red)? Below the text, do two rule names and
+   descriptions appear, matching the two underlined phrases? Clear the box — does everything disappear?
+3. Paste something board-safe, e.g. `I work with adults navigating anxiety and burnout.` **Write down:**
+   does it say "Nothing flagged" with no underlines?

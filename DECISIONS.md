@@ -455,3 +455,43 @@ about what was and wasn't done, mistakes included — restoring the files quickl
 mistake not mattering. A `git status`/`ls`/`Read` before a `Write` to any path not already known to be new
 would have caught this before it happened; that check is now something to do explicitly before creating
 any file in an area of the codebase not already explored this session.
+
+---
+
+### 2026-09-03 — Lot 7: `checkEthics`'s excerpt-only output located by `indexOf`, not by extending the engine
+
+**Question.** "Check your own words" needs to underline flagged SPANS in a textarea. The real, tested
+`checkEthics(text)` returns each violation's matched `excerpt` string (`"...trim()"`-ed matched text) but no
+character offset — by design, per its own comment ("un pattern ne remonte que sa première occurrence : le
+but est de nommer le problème... pas d'en dresser l'inventaire exhaustif"). Extending it to also return an
+offset would touch tested, shipped code in the exact area this session just made one costly mistake in.
+
+**Chosen.** A small, presentation-only `segmentText()` helper (`components/kit/check-your-words.tsx`,
+exported and tested against the REAL `checkEthics` output — not a hand-built fixture) locates each
+violation's excerpt with `text.indexOf()` purely for display, splits the text into plain/flagged segments
+around it, and never touches `lib/ethics/rules.ts` or `guard.ts`. `indexOf` finds the FIRST occurrence,
+which matches the engine's own first-occurrence-only design — no mismatch between what's flagged and what
+gets found to underline.
+
+**Why not extend the engine instead.** Lower risk, smaller surface, and consistent with the actual failure
+mode this session just hit: touching `lib/ethics/*` without a proven need is where the mistake happened.
+Locating an already-known excerpt string is a strictly presentational problem: it doesn't need the engine
+to change shape to solve it.
+
+---
+
+### 2026-09-03 — Lot 7: the BOARD-SAFE COPY badge and "Check your own words" both read the real `ethics_rules` catalog
+
+**Question.** Both new surfaces need user-facing rule text (a label, a plain-English description) to show
+alongside a flag. `EthicsViolation.reason` (the fallback string on each `FORBIDDEN_PATTERNS` entry) exists,
+but reading it directly would be wrong twice over: it's meant as a fallback ONLY for when a rule is
+missing from the database (`guard.ts`'s own `describe()` function: `rule?.description ?? violation.reason`
+— the DB text is preferred), and several of these fallback strings are in French, left over from an
+earlier chantier's own internal reasoning — never meant to reach a US practitioner's screen.
+
+**Chosen.** Both new components take `ethicsRules: {id, label, description}[]` as a prop, populated from
+`readCatalog(supabase).ethicsRules` in `page.tsx` (the exact same query shape `lib/kit/pdf/brand-guide.ts`'s
+route now uses for the same reason, and the exact table `guard.ts`'s own `rulesBlock()` reads for prompts)
+— a lookup by `rule_id`/`ruleId`, `reason`/`violation.reason` never displayed. Third correct reader of one
+source, not a fourth invention of the content — the same principle the Ethics Guard PDF-page fix above
+just re-established.

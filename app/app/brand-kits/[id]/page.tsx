@@ -6,6 +6,7 @@ import { BrandKitView } from "@/components/kit/brand-kit-view";
 import { siteSpecGet } from "@/lib/site/rpc";
 import { readSiteCatalog } from "@/lib/site/catalog";
 import { builderOf } from "@/lib/site/output";
+import { readCatalog } from "@/lib/catalog/read";
 
 /*
  * Le kit de marque — Écrans 5 et 6, une seule page qui défile.
@@ -52,15 +53,26 @@ export default async function BrandKitPage({
    * semé rend la carte sans nom de constructeur, ce qui est vrai. Faire échouer
    * le kit entier pour un libellé serait disproportionné.
    */
-  const [siteSpec, siteCatalog] = await Promise.all([
+  const [siteSpec, siteCatalog, catalog] = await Promise.all([
     siteSpecGet(supabase, id),
     readSiteCatalog(supabase).catch(() => null),
+    readCatalog(supabase).catch(() => null),
   ]);
 
   const siteBuilderLabel =
     siteSpec.ok && siteCatalog
       ? builderOf(siteCatalog.builder_targets, siteSpec.data.spec.target).label
       : null;
+
+  // The real six ethics_rules rows — the same source `lib/ethics/guard.ts`'s
+  // own `rulesBlock()` reads for prompts. Passed down so the BOARD-SAFE COPY
+  // badge and "Check your own words" can show her the real rule text, never
+  // a second hand-written copy of it.
+  const ethicsRules = (catalog?.ethicsRules ?? []).map((rule) => ({
+    id: rule.id,
+    label: rule.short_label,
+    description: rule.description,
+  }));
 
   /*
    * The six color roles and four derived variants (§3 of the contract), and
@@ -81,6 +93,8 @@ export default async function BrandKitPage({
       practiceName={kit.practiceName}
       direction={kit.selectedDirection}
       voiceGuide={kit.voiceGuide}
+      ethicsCheck={kit.ethicsCheck}
+      ethicsRules={ethicsRules}
       siteBuilderLabel={siteBuilderLabel}
       canvasTokens={canvasTokens}
       canvasContrast={canvasContrast}
