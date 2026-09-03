@@ -21,6 +21,7 @@ function kit(overrides: Partial<BrandKit> = {}): BrandKit {
       content: {},
       created_at: "",
       updated_at: "",
+      delivered_seen_at: null,
       direction_id: null,
       directions: null,
       ethics_check: null,

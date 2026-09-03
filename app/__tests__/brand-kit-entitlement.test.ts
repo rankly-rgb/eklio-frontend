@@ -153,6 +153,7 @@ describe("chaque route de brand-kits est gardée", () => {
 const KIT_PAGES = [
   "app/app/brand-kits/[id]/page.tsx",
   "app/app/brand-kits/[id]/site/page.tsx",
+  "app/app/brand-kits/[id]/delivered/page.tsx",
 ];
 
 describe("les pages du kit sont gardées", () => {

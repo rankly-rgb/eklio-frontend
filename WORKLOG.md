@@ -809,3 +809,59 @@ ships the brief's exact visual treatment and exact copy strings, which didn't ex
 rendering, the Download button producing a real file, the subscription card's checkout redirect actually
 reaching Stripe, and the home-slot swap from checklist to Monthly Presence actually firing once a real
 kit's checklist resolves. Same authenticated-session gap as every other UI surface this session.
+
+## Lot 2 — the delivery moment
+
+Backend: `brand_kits.delivered_seen_at` + `mark_brand_kit_delivered(uuid)` (`eklio-backend`, applied live,
+ledger corrected — see that repo's own commit). Frontend built and verified as below; see DECISIONS.md for
+four judgment calls (the real trigger point, reusing the app's four motion primitives with no new
+keyframes, sourcing every surface from the real asset pipeline, and marking "seen" before rendering rather
+than after).
+
+**What was built.**
+- `lib/data/brand-kit.ts` — `markBrandKitDelivered(supabase, brandKitId)`, calling the new RPC and
+  returning `{ok, firstView}` (or `{ok: false}` on any error — same defensive shape as this file's other
+  RPC callers).
+- `app/app/brand-kits/[id]/delivered/page.tsx` (new) — same ownership/direction/entitlement guards as the
+  workspace page, then `markBrandKitDelivered`; `firstView: false` (already seen, or a write failure)
+  redirects to the workspace, never renders the ceremony twice. Fetches the site spec for the ceremony's
+  six real color roles (same `SitePreviewTokens` source `brand-kit-view.tsx`'s `canvasTokens` already uses,
+  not a re-derivation).
+- `components/delivery/delivery-ceremony.tsx` (new) — `DeliveryCeremony`, the actual sequence: the
+  wordmark (fetched as a real signed asset URL, same client pattern `AssetDownloadButton` already
+  establishes), six color bands using `brandCanvasVariables(tokens)`'s `--brand-*` custom properties (not
+  the `<BrandCanvas>` wrapper — its hairline/radius/shadow chrome is a framed-card treatment, wrong for a
+  full-viewport page, so this calls the underlying `brandCanvasVariables()` function directly), four
+  surfaces (the site hero via `<BrandPreview variant="thumbnail" shape="site">`, plus three real rendered
+  assets — `post_statement_1080`, `email_signature_png`, `business_card_front` — fetched the same way as
+  the wordmark), the settling line in `var(--brand-body)`, one primary "Open your brand kit" and one quiet
+  "Download everything" (`AssetDownloadButton` with `assetKey="brand_kit_zip"` — the exact same button
+  `assets-section.tsx` already uses for the same zip).
+- `lib/reveal/use-select-direction.ts` — the direction-selection success path now pushes to
+  `/app/brand-kits/[id]/delivered` instead of straight to the workspace (both the prefetch and the actual
+  `router.push`).
+- `app/__tests__/brand-kit-entitlement.test.ts` — added the new page to `KIT_PAGES`, the route-enumerating
+  paywall test's list, per the standing rule that every new route gets covered there.
+
+**Verified, and how.**
+- Backend: `scripts/local-verify.sh` — 52/52 SQL tests (the new file covers first-call-sets-it,
+  idempotence with the timestamp never moving, ownership refusal, a nonexistent kit id, and the anon-
+  execute guard). Live dry-run (`begin; ... rollback;`) against the real project before applying;
+  applied, ledger version corrected, then confirmed the one real live kit's `delivered_seen_at` is still
+  null (the migration doesn't retroactively mark existing kits delivered — they get the real ceremony the
+  next time they select a direction, which for an already-kitted practitioner won't happen again, so in
+  practice this is display-only for kits created from here on; not a gap this lot needed to backfill).
+- Frontend: `tsc --noEmit`, `eslint`, `next build`, and the full `vitest` suite (958/958) all clean. The
+  new route (`/app/brand-kits/[id]/delivered`) appears in `next build`'s route table.
+- Confirmed by reading `app/globals.css` directly (not assumed) that `@media (prefers-reduced-motion:
+  reduce)` already collapses `.reveal-rise`'s animation duration/delay globally, before relying on it for
+  the ceremony's reduced-motion behavior.
+- Added the new page to the route-enumerating entitlement test and re-ran it in isolation (20/20 passing)
+  before the full suite, to confirm it actually exercises the new file rather than trusting the addition.
+
+**Not verified:** the actual ceremony in a browser — the visual timing/stagger reading as intended, the
+four asset fetches actually resolving and fading in, the wordmark falling back cleanly to plain text if an
+asset fetch fails, the redirect-on-replay actually firing on a second visit, and the full path from
+selecting a direction through the ceremony to the workspace. Same authenticated-session gap as every other
+UI surface this session — this one is a compounded case (three server-side redirects plus a client
+animation plus three async asset fetches) that particularly deserves a real click-through before shipping.

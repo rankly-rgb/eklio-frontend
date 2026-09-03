@@ -253,3 +253,34 @@ export async function selectDirection(
 
   return { ok: true, kit: hydrate(row, kit.practiceName) };
 }
+
+/**
+ * Marks the delivery ceremony (`/app/brand-kits/[id]/delivered`, Lot 2) as
+ * seen for this kit — exactly once. `firstView` is the one the page acts
+ * on: true means this call is the one that just set it (render the
+ * ceremony), false means it was already set (redirect to the workspace —
+ * "No replay button," per the brief). `mark_brand_kit_delivered`'s own
+ * `where delivered_seen_at is null` makes this race-safe without a
+ * separate read first.
+ */
+export async function markBrandKitDelivered(
+  supabase: Client,
+  brandKitId: string
+): Promise<{ ok: true; firstView: boolean } | { ok: false }> {
+  const { data, error } = await supabase.rpc("mark_brand_kit_delivered", {
+    p_brand_kit_id: brandKitId,
+  });
+
+  if (error) {
+    console.error("[brand-kit] mark_brand_kit_delivered", error);
+    return { ok: false };
+  }
+
+  const result = data as { first_view: boolean } | { error: { code: string; message: string } };
+  if ("error" in result) {
+    console.error("[brand-kit] mark_brand_kit_delivered", result.error);
+    return { ok: false };
+  }
+
+  return { ok: true, firstView: result.first_view };
+}

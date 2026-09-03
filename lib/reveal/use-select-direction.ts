@@ -51,11 +51,11 @@ export function useSelectDirection(brandKitId: string, projectId: string, paid: 
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // La révélation précharge la page de kit : c'est la seule destination
-  // possible depuis cet écran, et elle est lourde (maquette 900px, palette,
-  // guide de voix).
+  // La révélation précharge la page de livraison : c'est la seule destination
+  // possible depuis cet écran (Lot 2 — la cérémonie s'intercale avant le
+  // workspace, une fois, puis renvoie dessus).
   useEffect(() => {
-    router.prefetch(`/app/brand-kits/${brandKitId}`);
+    router.prefetch(`/app/brand-kits/${brandKitId}/delivered`);
   }, [router, brandKitId]);
 
   async function choose(directionId: string) {
@@ -87,7 +87,7 @@ export function useSelectDirection(brandKitId: string, projectId: string, paid: 
         return;
       }
 
-      router.push(`/app/brand-kits/${brandKitId}`);
+      router.push(`/app/brand-kits/${brandKitId}/delivered`);
     } catch {
       setError("That didn't go through. Check your connection and try again.");
       setPendingId(null);

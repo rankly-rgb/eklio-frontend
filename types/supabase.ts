@@ -147,6 +147,7 @@ export type Database = {
         Row: {
           content: Json
           created_at: string
+          delivered_seen_at: string | null
           direction_id: string | null
           directions: Json | null
           ethics_check: Json | null
@@ -167,6 +168,7 @@ export type Database = {
         Insert: {
           content?: Json
           created_at?: string
+          delivered_seen_at?: string | null
           direction_id?: string | null
           directions?: Json | null
           ethics_check?: Json | null
@@ -187,6 +189,7 @@ export type Database = {
         Update: {
           content?: Json
           created_at?: string
+          delivered_seen_at?: string | null
           direction_id?: string | null
           directions?: Json | null
           ethics_check?: Json | null
@@ -1797,6 +1800,10 @@ export type Database = {
       grant_plan_allowance: {
         Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
         Returns: boolean
+      }
+      mark_brand_kit_delivered: {
+        Args: { p_brand_kit_id: string }
+        Returns: Json
       }
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }

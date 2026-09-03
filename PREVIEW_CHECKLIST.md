@@ -303,7 +303,35 @@ request, the console error) than to describe it from memory — same standard as
 
 ---
 
-## Part 10 — Lot 8's Monthly Presence
+## Part 10 — Lot 2's delivery moment
+
+Same caveat as every part above, and this one especially: three server-side redirects, a client animation,
+and three async asset fetches compound in a way `tsc`/`vitest` genuinely cannot see through.
+
+1. From a paid project with no direction selected yet, go through the reveal screen and pick a direction.
+   **Write down:** does it land on `/app/brand-kits/<id>/delivered` — NOT straight on the workspace?
+2. On that page, **write down** in order: does the wordmark appear first? Do six color bands arrive
+   shortly after, visibly one at a time rather than all at once? Do four surfaces (a small site mockup,
+   an Instagram post image, an email signature image, a business card image) fade up together, roughly at
+   the same moment as each other? Does a line reading `<Practice name> — your brand, as of today.` settle
+   in below, in the kit's own body font? Do the images actually show real content (not broken-image icons)?
+3. **Write down:** is there exactly one primary button, **"Open your brand kit,"** and one quieter action,
+   **"Download everything"**? No other buttons, no "watch again," no skip button?
+4. Click **Download everything**. **Write down:** does the same zip download that "Your assets" already
+   produces?
+5. Click **Open your brand kit** (or navigate to `/app/brand-kits/<id>` directly). Then navigate BACK to
+   `/app/brand-kits/<id>/delivered` (paste the URL, or use the browser back button). **Write down:** does
+   it redirect straight to the workspace — no ceremony, no flash of it before redirecting?
+6. In OS/browser settings, turn on "reduce motion," then repeat step 1 with a different, still-undelivered
+   kit if one is available. **Write down:** does everything appear instantly, with no visible staggering or
+   fading?
+
+If anything here is wrong, it's more useful to know exactly what broke (a screenshot, the failing network
+request, the console error) than to describe it from memory — same standard as every other part.
+
+---
+
+## Part 11 — Lot 8's Monthly Presence
 
 Same caveat as Parts 7 and 9: not seen in a real browser. Every kit today has zero content rows (the
 monthly cron hasn't run yet for a freshly purchased kit) — reaching a kit WITH content rows for real means

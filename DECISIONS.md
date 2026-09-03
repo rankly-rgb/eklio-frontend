@@ -625,6 +625,81 @@ every other rendered asset in this product got built.
 
 ---
 
+### 2026-09-03 — Lot 2: "right after Stripe returns" means right after a direction is selected, not right after checkout
+
+**Question.** The brief: the delivery ceremony is "reachable once, right after Stripe returns." Taken
+literally, that would put `/delivered` between `checkout/success` and whatever comes next. But the
+ceremony's own content — six real palette colors, a rendered site hero, an Instagram post, an email
+signature, a business card — needs a SELECTED DIRECTION to exist at all; at the moment Stripe returns,
+no direction has been chosen yet (that happens afterward, on the reveal screen). Literally wiring this to
+"right after Stripe returns" would mean either rendering it before there's anything real to show, or
+building a second gate to defer it — neither of which the brief describes.
+
+**Chosen.** Spliced the ceremony in at the ACTUAL moment a brand becomes real: `lib/reveal/
+use-select-direction.ts`'s success path, which used to `router.push('/app/brand-kits/[id]')` straight to
+the workspace after a direction is selected, now pushes to `/app/brand-kits/[id]/delivered` first. That
+page redirects to the workspace once the ceremony's been seen. This is the earliest point in the real
+flow where "your brand, as of today" is actually true — everything the brief's copy describes exists by
+then, nothing in the ceremony is a placeholder waiting to be filled in.
+
+---
+
+### 2026-09-03 — Lot 2: the ceremony is built entirely from the app's four existing motion primitives
+
+**Question.** `app/globals.css`'s own header comment is explicit: "§3 : quatre mouvements, pas un de plus"
+(four movements, not one more) — `route-enter`, `question-enter`, `reveal-rise`, `check-pop`. The delivery
+ceremony needs a wordmark reveal, six colors arriving in sequence 120ms apart, and four surfaces fading up
+together — new-looking motion that could easily have meant new `@keyframes`.
+
+**Chosen.** Reused `.reveal-rise` (already `stagger-index`-driven, already tuned to `--stagger-reveal:
+120ms` for exactly "arrive N × 120ms apart" — the reveal ceremony's own act-two.tsx already stages its
+direction cards this exact way) for every beat: the wordmark at `--stagger-index: 0`, the six color bands
+at 1–6 (arriving 120ms apart, literally), the four surfaces sharing one index (9) so they animate
+together rather than staggered, the settling line at 14, the two actions at 16. No new keyframes anywhere
+in this lot. `prefers-reduced-motion` needed no per-component handling either — the SAME global media
+query that already collapses every animation in the app to near-zero duration
+(`app/globals.css`'s `@media (prefers-reduced-motion: reduce)` block) covers `.reveal-rise` automatically,
+confirmed by reading that rule rather than assumed.
+
+The resulting total is closer to ~2.1–2.3s than the brief's literal "2.4s" — an exact 2.4s would have meant
+either inventing new duration tokens or padding the sequence with dead stagger steps that do nothing but
+wait; reusing the existing rhythm and landing close is truer to "a designer putting the work on the table"
+than hitting a stopwatch number built from arithmetic no one asked to see.
+
+---
+
+### 2026-09-03 — Lot 2: the wordmark, the Instagram post, the signature, and the card are the real rendered assets, fetched the same way every other asset download already works
+
+**Question.** "Wordmark draws in," "four surfaces fade up" (site hero, one Instagram post, the email
+signature, the business card) — all four already exist as real, deterministic renderers from Lot 4.4
+(`wordmark_svg_dark`, `post_statement_1080`, `email_signature_png`, `business_card_front`). The only
+question was how to get them onto this new screen.
+
+**Chosen.** The exact same client pattern `AssetDownloadButton` already uses: a same-origin `POST /api/
+brand-kits/[id]/assets/[key]` fetch (session cookie carried automatically), rendering the asset if its
+fingerprint is stale and returning a short-lived signed URL either way. `DeliveryCeremony` fetches all
+four keys on mount and fades each `<img>` in as its URL arrives — never a second render path, never an
+inline re-implementation of what the registry already produces. The site hero itself reuses `<BrandPreview
+variant="thumbnail" shape="site">`, the same live React component every other brand-preview surface in the
+app already renders from `direction`/`practiceName` — no fetch needed for that one, it was never a stored
+asset to begin with.
+
+---
+
+### 2026-09-03 — Lot 2: `delivered_seen_at` is set before the ceremony renders, not after it finishes
+
+**Question.** Should "seen" mean "the page loaded" or "she watched it through to the end"? The brief says
+"No replay button" and "later visits redirect to the kit" — but doesn't say what counts as a visit if the
+animation is interrupted (a refresh mid-sequence, a slow connection, closing the tab early).
+
+**Chosen.** `mark_brand_kit_delivered` runs server-side, before the ceremony is returned to the browser at
+all — the very first load sets `delivered_seen_at`, full stop. A refresh during the animation redirects to
+the workspace instead of restarting it. This is the stricter, simpler reading of "no replay button": there
+genuinely is no way to see it twice, not even by accident, and it avoids a second, fuzzier definition of
+"watched" that would need its own client-side signal (an animation-end event, a timer) to be trustworthy.
+
+---
+
 ### 2026-09-03 — Lot 8: fixed one live dead-route bug found along the way, left one dead-code instance of the same bug alone
 
 **Question.** Research surfaced two places linking to the removed `/app/projets/...` route tree (retired
