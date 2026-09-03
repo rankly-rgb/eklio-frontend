@@ -332,6 +332,7 @@ export type Database = {
           project_id: string
           rate_is_public: boolean
           session_rate_cents: number | null
+          slug: string | null
           status: string
           supervisor_name: string | null
           updated_at: string
@@ -352,6 +353,7 @@ export type Database = {
           project_id: string
           rate_is_public?: boolean
           session_rate_cents?: number | null
+          slug?: string | null
           status: string
           supervisor_name?: string | null
           updated_at?: string
@@ -372,6 +374,7 @@ export type Database = {
           project_id?: string
           rate_is_public?: boolean
           session_rate_cents?: number | null
+          slug?: string | null
           status?: string
           supervisor_name?: string | null
           updated_at?: string
@@ -1077,7 +1080,10 @@ export type Database = {
           directions_limit: number
           label: string
           price_cents: number
+          price_per_seat_cents: number | null
           regenerations_limit: number
+          seat_allowance: number | null
+          seat_floor: number | null
           sort_order: number
           tier: string
           updated_at: string
@@ -1087,7 +1093,10 @@ export type Database = {
           directions_limit: number
           label: string
           price_cents: number
+          price_per_seat_cents?: number | null
           regenerations_limit: number
+          seat_allowance?: number | null
+          seat_floor?: number | null
           sort_order: number
           tier: string
           updated_at?: string
@@ -1097,7 +1106,10 @@ export type Database = {
           directions_limit?: number
           label?: string
           price_cents?: number
+          price_per_seat_cents?: number | null
           regenerations_limit?: number
+          seat_allowance?: number | null
+          seat_floor?: number | null
           sort_order?: number
           tier?: string
           updated_at?: string
@@ -2083,6 +2095,7 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: Json
       }
+      clinician_setup_sheet: { Args: { p_profile_id: string }; Returns: Json }
       comp_access_active: { Args: Record<PropertyKey, never>; Returns: boolean }
       comp_grant_active: { Args: { p_user_id: string }; Returns: boolean }
       comp_grant_credits: { Args: { p_user_id: string }; Returns: number }
@@ -2128,6 +2141,7 @@ export type Database = {
         Returns: Json
       }
       direction_limits: { Args: Record<PropertyKey, never>; Returns: Json }
+      ensure_clinician_slug: { Args: { p_profile_id: string }; Returns: string }
       ensure_month_skeleton: {
         Args: { p_month: string; p_user_id: string }
         Returns: number
@@ -2142,6 +2156,10 @@ export type Database = {
       }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
+      organization_entitlement: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       organization_profile_health: {
         Args: { p_organization_id: string }
         Returns: {
@@ -2154,6 +2172,10 @@ export type Database = {
           status: string
         }[]
       }
+      organization_seat_count: {
+        Args: { p_organization_id: string }
+        Returns: number
+      }
       organization_seo_grid: {
         Args: { p_organization_id: string }
         Returns: {
@@ -2162,6 +2184,39 @@ export type Database = {
           grid: string
           modality_id: string
         }[]
+      }
+      organization_seo_grid_proposals: {
+        Args: { p_organization_id: string }
+        Returns: {
+          axis_id: string
+          clinician_count: number
+          grid: string
+          has_page: boolean
+          modality_id: string
+          proposed_slug: string
+          proposed_title: string
+        }[]
+      }
+      organization_setup_sheet_rows: {
+        Args: { p_organization_id: string }
+        Returns: {
+          blocking: Json
+          booking_url: string
+          credentials: string
+          full_name: string
+          modalities: string
+          photo_ready: boolean
+          populations: string
+          profile_id: string
+          rate_public: string
+          slug: string
+          states: string
+          status: string
+        }[]
+      }
+      practice_page_title: {
+        Args: { p_parts: string[]; p_practice_name: string }
+        Returns: string
       }
       preview_org_invite: {
         Args: { p_token: string }
@@ -2415,6 +2470,7 @@ export type Database = {
         Args: { p_frag: Json; p_spec: Json }
         Returns: string
       }
+      slugify_text: { Args: { p_text: string }; Returns: string }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }
         Returns: string
@@ -2653,3 +2709,10 @@ export type FieldSource = "generated" | "imported" | "derived" | "inherited"
 
 // clinician_profiles.status — 20260903130500_clinician_profiles.sql
 export type ClinicianProfileStatus = "licensed" | "associate" | "supervised_intern"
+
+// plans.tier / purchases.tier — 20260903170000_organization_entitlement.sql
+// widened both CHECKs to add 'practice_seats', a distinct B2B seat-based
+// tier, never to be confused with the pre-existing 'practice' one-time
+// solo-kit quality tier.
+export type PlanTier = "free" | "starter" | "practice" | "signature" | "practice_seats"
+export type PurchaseTier = "starter" | "practice" | "signature" | "practice_seats"
