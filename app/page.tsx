@@ -63,6 +63,15 @@ export default function LandingPage() {
               About seven minutes. One-time from $79.
             </span>
           </div>
+          <p className="text-ui text-ink-2">
+            Solo practice.{" "}
+            <Link
+              href="/practice"
+              className="text-ink underline decoration-[var(--line)] underline-offset-4 hover:decoration-[var(--accent)]"
+            >
+              I run a practice with other clinicians →
+            </Link>
+          </p>
         </section>
 
         <section className="border-t border-line px-[var(--gutter)] py-16 max-md:px-[var(--gutter-sm)]">
