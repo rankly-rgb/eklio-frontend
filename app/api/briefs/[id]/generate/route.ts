@@ -202,6 +202,24 @@ export async function POST(
       if (!(pipelineError instanceof GenerationNotImplementedError)) {
         console.error("[generate] pipeline", pipelineError);
       }
+
+      /*
+       * A failed run must not burn her allowance — consume_generation_credit
+       * already ran, unconditionally, before this pipeline started (it has
+       * to, for the atomicity that stops two concurrent requests both
+       * winning). release_generation_credit undoes that spend, but only
+       * while brand_kits.directions is still null, so it can never refund a
+       * run that actually delivered something. The session client, not
+       * admin: the RPC is auth.uid()-scoped, same as everything else this
+       * route reads with `supabase` before entering after().
+       */
+      const released = await supabase.rpc("release_generation_credit", {
+        p_brand_kit_id: kit.id,
+      });
+      if (released.error) {
+        console.error("[generate] release_generation_credit", released.error);
+      }
+
       await createAdminClient()
         .from("brand_kits")
         .update({

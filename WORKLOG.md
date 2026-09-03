@@ -146,3 +146,44 @@ everything else in this tier) and, same as `wordmark_png_dark` before it, nothin
 still-open Vercel-only items (resvg on Vercel's runtime, real cold-start timing, and now also the actual
 preview verification the user is running independently, per their last message before "stop reporting
 between steps").
+
+---
+
+## 2026-09-03 — A failed directions pipeline was burning her free-tier allowance
+
+Found while auditing the rest of the B2C path for the same class of bug as usp-options (per "bugs
+anywhere on that path are yours to fix without asking") — traced `consume_generation_credit`, the RPC the
+3-directions pipeline (`app/api/briefs/[id]/generate/route.ts`) spends before every run.
+
+**The bug.** `consume_generation_credit` runs before the model call, unconditionally (has to, for
+race-safety against two concurrent requests). Its counter logic: a project's first-ever call sets
+`directions_generated` straight to `directions_limit` (3, on every plan including free); every later call
+increments `regenerations_used`, capped by `regenerations_limit` (**1** on the free tier). A first attempt
+that fails outright — the exact missing-`ANTHROPIC_API_KEY` scenario the usp-options fix addresses —
+still spends the full 3, having produced zero directions. Her first legitimate retry is then charged
+against a budget of 1 regeneration instead of getting a real first try. A second failure (the config-missing
+case fails identically every time) locks her out of the entire free tier, permanently, having seen zero
+directions — on the exact tier a brand-new signup is on.
+
+**The fix (eklio-backend `68f7c6a`):** `release_generation_credit(p_brand_kit_id)` — resets both counters
+to zero, but only while `brand_kits.directions` is still null, so a real delivered result is never
+retroactively refunded (the database decides, not a flag). Same shape of problem
+`direction_assets_claim` already solved elsewhere in this schema ("a fresh claim may retake the same
+reservation rather than booking a second one").
+
+`app/api/briefs/[id]/generate/route.ts`: called from the pipeline's own failure handler (inside `after()`,
+alongside the existing `track("generation_failed", ...)` and job-status write), with the session client
+(the RPC is `auth.uid()`-scoped, same as everything else this route reads before entering `after()`) — a
+release failure is logged and non-fatal, same posture as every other best-effort write in that block.
+
+**Verified how:** backend — the exact bug reproduced and the fix proven in
+`supabase/tests/20260903190000_release_generation_credit.test.sql` (consume burns the full allowance,
+release resets it because directions is still null, a second consume gets a genuine first attempt not a
+regeneration; plus release refuses once directions exist, ownership scoping, unauthenticated refusal) —
+against both the live database (dry run, confirmed zero currently-affected real projects, then applied)
+and the local verification loop (44/44 tests). Frontend — `types/supabase.ts` regenerated (purely
+additive diff, confirmed), `tsc --noEmit`/`eslint`/`next build` clean, 902/902 tests.
+
+**Not verified:** the actual route wiring at runtime (needs a real failed pipeline run against live Auth —
+same live-Storage/Auth gap as everything else in this session; the RPC itself and its exact refusal/reset
+behavior IS verified for real, just not this specific route's call to it end to end).

@@ -1824,6 +1824,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_generation_credit: {
+        Args: { p_brand_kit_id: string }
+        Returns: boolean
+      }
       request_brand_asset_upload: {
         Args: { p_brand_kit_id: string; p_fingerprint: string; p_key: string }
         Returns: Json
