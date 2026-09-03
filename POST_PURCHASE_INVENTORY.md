@@ -95,6 +95,11 @@ Lot 4's `asset_catalog.min_tier` gating (deferred, not built this lot), the sour
 eventually wired must be `purchases`/`resolveEntitledTier()`, not `brand_kits.tier`** — the codebase itself
 already draws this line.
 
+**Rule, confirmed 2026-09-03: when `min_tier` is eventually enforced, it compares against
+`resolveEntitledTier()` — current entitlement — never against `brand_kits.tier`, which is a fixed snapshot
+of what was delivered at generation time. The same sentence is repeated in the migration comment that adds
+`asset_catalog.min_tier` (§4.2 of the brief).**
+
 ### `plans` — live contents
 
 | tier | label | price | directions_limit | regenerations_limit | total runs |
@@ -172,12 +177,20 @@ keeps the real title as visible/accessible text underneath, opens `MonthlyPresen
 — exactly the section Lot 3 says to kill from the brand kit page and Lot 8 says to replace on the content
 page.
 
-**Flag for the coming lots, not a stop condition**: Lot 8 assumes real, downloadable first-post/first-story
-content exists to show. With the table empty and no write path built, Lot 8's "first post and story, in
-full, downloadable" needs either real generated content to already exist by the time that lot runs, or
-Lot 8 render against whatever the generation pipeline produces once it exists. This is out of this brief's
-scope to build (the brief is post-purchase surfaces, not the content-generation pipeline) — flagging so
-Lot 8 isn't blocked by a false assumption that sample data exists today.
+**Decided, 2026-09-03: this table stays empty.** A fully-coded, owner-RLS'd table that has never received
+a row is a feature built and never turned on — a product finding, logged in `FINDINGS.md`, not a bug for
+this chantier to fix. No write path, no generator, no seed data gets built here.
+
+Lot 8 ships against both real states:
+- Rows exist → the brief as written: first post/story in full and downloadable, the rest a legible locked
+  calendar.
+- Zero rows (every kit today) → an honest empty state in her brand: "Your first month is being prepared."
+  plus the Monthly Presence card. No fabricated sample posts, no placeholder headlines, no lorem — showing
+  invented content as though it were hers is worse than showing nothing.
+
+Lot 4's four post assets (`post_statement_1080` etc.) keep the brief's own fallback: render from the
+month's first four items when they exist, from the direction's sample copy when they don't — in the
+fallback case the file is a template, described as such in the zip's `README.txt`.
 
 ---
 
@@ -210,6 +223,12 @@ no-headless-browser philosophy, is a PDF library that embeds custom TTF/OTF font
 + `fontkit`) rather than either satori/resvg or a browser — flagging this now so Lot 5 doesn't start from
 the wrong tool; will confirm before building it.
 
+**Decided, 2026-09-03: `pdf-lib` + `fontkit`, confirmed.** `pdf-lib` has no layout engine, so a small
+layout helper (measured line breaking through `fontkit`, a text-flow function, a baseline grid) gets built
+first and all fourteen pages compose through it — no page-by-page hand positioning. Page 13 (social
+templates) embeds the PNGs Lot 4 already renders; every other page is real, selectable, embedded-font text.
+The brief's Lot 5 requirement is unchanged; only the tool is now decided.
+
 ---
 
 ## 6. The route-enumerating paywall test
@@ -229,6 +248,12 @@ only covers `app/api/brand-kits/**`, not `app/app/brand-kits/**` pages. Extendin
 own rule to extend rather than route around) means: new API routes need nothing extra as long as they
 guard correctly; new pages need a line added to `KIT_PAGES`.
 
+**Decided, 2026-09-03: `KIT_PAGES` needing a manual line is itself a guard that can silently stop
+guarding.** In the same commit as the first new page route this brief adds (Lot 5's `/guide/print`, per
+the delivery order — Lot 2's `/delivered` lands later but is the same shape), add a test that enumerates
+the actual page files under `app/app/brand-kits/[id]/**` and fails if one is absent from `KIT_PAGES`. A
+forgotten page route then fails the suite instead of shipping unguarded.
+
 The reveal page is separately asserted **unguarded** — deliberate, "the reveal is the sales pitch."
 
 ---
@@ -242,6 +267,19 @@ of documentation.
 
 **This is stop-condition 0.4's first clause, and it is true: there is no storage bucket I may write to.**
 See below.
+
+**Decided, 2026-09-03: create two private buckets in the same migration as `brand_assets`/`asset_catalog`
+(brief step 3, Lot 4.1–4.3), policies in that migration too.**
+
+- `brand-assets` — per-kit rendered files, path `brand-assets/{brand_kit_id}/{fingerprint}/{filename}`.
+  Owner reads their own objects, nobody reads anyone else's, writes only through the signed upload URL
+  `request_brand_asset_upload` issues. A per-object size cap and an allowed MIME list, not left open.
+- `fonts` — the TTF cache, keyed family+weight. Server-side only — no client role (`anon`/`authenticated`)
+  reads or writes it; shared across kits, holds no user data.
+
+Both get the same treatment as `rls_auto_enable`'s test: a test proving a non-owner reads zero objects and
+the owner reads their own — a storage policy that silently returns nothing is the same failure mode as a
+table without RLS policies.
 
 ---
 
