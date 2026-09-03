@@ -215,6 +215,191 @@ export type Database = {
         }
         Relationships: []
       }
+      clinician_licensed_states: {
+        Row: {
+          profile_id: string
+          state_code: string
+        }
+        Insert: {
+          profile_id: string
+          state_code: string
+        }
+        Update: {
+          profile_id?: string
+          state_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinician_licensed_states_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "clinician_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinician_licensed_states_state_code_fkey"
+            columns: ["state_code"]
+            isOneToOne: false
+            referencedRelation: "us_states"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      clinician_modalities: {
+        Row: {
+          modality_id: string
+          profile_id: string
+          prominence: string | null
+        }
+        Insert: {
+          modality_id: string
+          profile_id: string
+          prominence?: string | null
+        }
+        Update: {
+          modality_id?: string
+          profile_id?: string
+          prominence?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinician_modalities_modality_id_fkey"
+            columns: ["modality_id"]
+            isOneToOne: false
+            referencedRelation: "modality_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinician_modalities_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "clinician_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinician_modalities_prominence_fkey"
+            columns: ["prominence"]
+            isOneToOne: false
+            referencedRelation: "modality_prominence_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinician_populations: {
+        Row: {
+          population_id: string
+          profile_id: string
+        }
+        Insert: {
+          population_id: string
+          profile_id: string
+        }
+        Update: {
+          population_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinician_populations_population_id_fkey"
+            columns: ["population_id"]
+            isOneToOne: false
+            referencedRelation: "population_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinician_populations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "clinician_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinician_profiles: {
+        Row: {
+          accepting_clients: boolean
+          booking_url: string | null
+          created_at: string
+          credentials: string | null
+          full_name: string
+          id: string
+          member_id: string
+          organization_id: string
+          outside_the_room: string | null
+          personality_note: string | null
+          philosophy_quote: string | null
+          photo_provided: boolean
+          project_id: string
+          rate_is_public: boolean
+          session_rate_cents: number | null
+          status: string
+          supervisor_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepting_clients?: boolean
+          booking_url?: string | null
+          created_at?: string
+          credentials?: string | null
+          full_name: string
+          id?: string
+          member_id: string
+          organization_id: string
+          outside_the_room?: string | null
+          personality_note?: string | null
+          philosophy_quote?: string | null
+          photo_provided?: boolean
+          project_id: string
+          rate_is_public?: boolean
+          session_rate_cents?: number | null
+          status: string
+          supervisor_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepting_clients?: boolean
+          booking_url?: string | null
+          created_at?: string
+          credentials?: string | null
+          full_name?: string
+          id?: string
+          member_id?: string
+          organization_id?: string
+          outside_the_room?: string | null
+          personality_note?: string | null
+          philosophy_quote?: string | null
+          photo_provided?: boolean
+          project_id?: string
+          rate_is_public?: boolean
+          session_rate_cents?: number | null
+          status?: string
+          supervisor_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinician_profiles_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "organization_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinician_profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinician_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comp_grants: {
         Row: {
           created_at: string
@@ -749,6 +934,7 @@ export type Database = {
         Row: {
           brand_charter_kit_id: string | null
           created_at: string
+          default_supervisor_name: string | null
           id: string
           name: string
           owner_user_id: string
@@ -757,6 +943,7 @@ export type Database = {
         Insert: {
           brand_charter_kit_id?: string | null
           created_at?: string
+          default_supervisor_name?: string | null
           id?: string
           name: string
           owner_user_id: string
@@ -765,6 +952,7 @@ export type Database = {
         Update: {
           brand_charter_kit_id?: string | null
           created_at?: string
+          default_supervisor_name?: string | null
           id?: string
           name?: string
           owner_user_id?: string
@@ -913,6 +1101,30 @@ export type Database = {
           sort_order?: number
           tier?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      population_cards: {
+        Row: {
+          active: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          full_name?: string
+          id?: string
+          label?: string
+          sort_order?: number
         }
         Relationships: []
       }
@@ -1719,6 +1931,21 @@ export type Database = {
         }
         Relationships: []
       }
+      us_states: {
+        Row: {
+          code: string
+          name: string
+        }
+        Insert: {
+          code: string
+          name: string
+        }
+        Update: {
+          code?: string
+          name?: string
+        }
+        Relationships: []
+      }
       usp_fingerprints: {
         Row: {
           brief_id: string
@@ -1844,6 +2071,14 @@ export type Database = {
       }
       can_access_org_logo_path: { Args: { p_name: string }; Returns: boolean }
       can_access_project: { Args: { p_project_id: string }; Returns: boolean }
+      clinician_effective_supervisor: {
+        Args: { p_profile_id: string }
+        Returns: string
+      }
+      clinician_profile_completeness: {
+        Args: { p_profile_id: string }
+        Returns: Json
+      }
       comp_access_active: { Args: Record<PropertyKey, never>; Returns: boolean }
       comp_grant_active: { Args: { p_user_id: string }; Returns: boolean }
       comp_grant_credits: { Args: { p_user_id: string }; Returns: number }
@@ -1903,6 +2138,27 @@ export type Database = {
       }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
+      organization_profile_health: {
+        Args: { p_organization_id: string }
+        Returns: {
+          blocking_missing: Json
+          full_name: string
+          is_stale: boolean
+          member_id: string
+          profile_id: string
+          score: number
+          status: string
+        }[]
+      }
+      organization_seo_grid: {
+        Args: { p_organization_id: string }
+        Returns: {
+          axis_id: string
+          clinician_count: number
+          grid: string
+          modality_id: string
+        }[]
+      }
       preview_org_invite: {
         Args: { p_token: string }
         Returns: {
@@ -2304,6 +2560,7 @@ export const Constants = {
 } as const
 
 
+
 /* ------------------------------------------------------------------------
  * ADDENDUM MANUEL — à réappliquer après chaque régénération.
  *
@@ -2385,3 +2642,6 @@ export type BrandOrigin = "generated" | "imported" | "mixed"
 // site_specs.field_sources value type — 20260903102000_brand_field_sources.sql
 // (validate_field_sources() in the same migration; not a column type itself)
 export type FieldSource = "generated" | "imported" | "derived" | "inherited"
+
+// clinician_profiles.status — 20260903130500_clinician_profiles.sql
+export type ClinicianProfileStatus = "licensed" | "associate" | "supervised_intern"
