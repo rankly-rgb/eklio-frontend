@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isPracticeUiEnabled } from "@/lib/tenancy/flags";
 import { loadOwnedOrganization } from "@/lib/data/organization";
 import { getOrganizationProfileHealth } from "@/lib/tenancy/clinician-profile";
+import { getOrganizationEntitlement } from "@/lib/tenancy/entitlement";
 import { ButtonLink } from "@/components/ui/button";
 import { MonoLabel } from "@/components/ui/mono-label";
 
@@ -25,20 +27,43 @@ export default async function PracticeDashboardPage() {
   const org = await loadOwnedOrganization(supabase, user.id);
   if (!org) notFound();
 
-  const health = await getOrganizationProfileHealth(supabase, {
-    organizationId: org.id,
-  });
+  const [health, entitlement] = await Promise.all([
+    getOrganizationProfileHealth(supabase, { organizationId: org.id }),
+    getOrganizationEntitlement(supabase, { organizationId: org.id }),
+  ]);
   const rows = health.ok ? health.data : [];
+  const seatCount = entitlement.ok ? entitlement.data.seatCount : null;
+  const seatAllowance = entitlement.ok ? entitlement.data.seatAllowance : null;
+  const gridEntitled = entitlement.ok && entitlement.data.capabilities.grid;
 
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)] max-md:pt-10">
       <div className="flex items-start justify-between gap-6 max-md:flex-col max-md:items-stretch">
-        <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
-          {org.name}
-        </h1>
-        <ButtonLink href="/app/practice/invite" variant="primary" className="flex-none">
-          Invite a clinician
-        </ButtonLink>
+        <div>
+          <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
+            {org.name}
+          </h1>
+          {seatCount !== null && seatAllowance !== null ? (
+            <MonoLabel tracking="16" className="mt-2 block">
+              {`${seatCount} of ${seatAllowance} seats`}
+            </MonoLabel>
+          ) : null}
+        </div>
+        <div className="flex flex-none items-center gap-3">
+          {rows.length > 0 ? (
+            <ButtonLink href="/api/practice/sheets/csv" variant="secondary">
+              Download all (CSV)
+            </ButtonLink>
+          ) : null}
+          {gridEntitled ? (
+            <ButtonLink href="/app/practice/grid" variant="secondary">
+              View grid
+            </ButtonLink>
+          ) : null}
+          <ButtonLink href="/app/practice/invite" variant="primary">
+            Invite a clinician
+          </ButtonLink>
+        </div>
       </div>
 
       {rows.length === 0 ? (
@@ -71,13 +96,20 @@ export default async function PracticeDashboardPage() {
                   </p>
                 ) : null}
               </div>
-              <MonoLabel
-                tracking="16"
-                tone={row.score === 100 ? "accent" : "ink-2"}
-                className="flex-none"
-              >
-                {`${row.score}%`}
-              </MonoLabel>
+              <div className="flex flex-none items-center gap-4">
+                <Link
+                  href={`/app/practice/${row.memberId}/sheet`}
+                  className="text-ui text-ink-2 underline decoration-[var(--line)] underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"
+                >
+                  Setup sheet
+                </Link>
+                <MonoLabel
+                  tracking="16"
+                  tone={row.score === 100 ? "accent" : "ink-2"}
+                >
+                  {`${row.score}%`}
+                </MonoLabel>
+              </div>
             </li>
           ))}
         </ul>

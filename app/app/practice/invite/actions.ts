@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { loadOwnedOrganization } from "@/lib/data/organization";
 import { createOrgInvite } from "@/lib/tenancy/rpc";
+import { isSeatAllowanceExceeded } from "@/lib/tenancy/entitlement";
 
 /*
  * Same server-action shape as app/app/checkout/actions.ts: a plain-object
@@ -40,6 +41,13 @@ export async function sendInvite(input: { email: string }): Promise<SendInviteRe
   });
 
   if (!result.ok) {
+    if (isSeatAllowanceExceeded(result.error)) {
+      return {
+        ok: false,
+        error:
+          "You've used every seat included in your plan. Remove an inactive seat or contact us to add more.",
+      };
+    }
     return { ok: false, error: result.error.message || GENERIC_ERROR };
   }
   return { ok: true, token: result.data };
