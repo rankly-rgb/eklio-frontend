@@ -247,3 +247,61 @@ are visible to an authenticated caller.
 [key]` route (same live-Storage/Auth gap noted throughout this session) — the renderer functions themselves
 are verified with real output, the route's plumbing around them is unchanged from the already-shipped
 `wordmark_png_dark` path.
+
+---
+
+## Lot 4.4 (continued) — monogram family, favicons/icon_512/avatar_400, manifest_values_json
+
+**What was built.**
+- `lib/kit/render/monogram.ts` — `monogramLetters()` (one or two initials, single-word-name exception),
+  `renderMonogramSvg` (ink `tokens.primary`, no background, trimmed — `monogram_svg`), `renderMonogramPng512`
+  (fixed 512×512, kept whole, three treatments driven by caller-supplied ink/background —
+  `monogram_png_512_primary`/`_paper`/`_transparent`).
+- `lib/kit/render/monogram-icon.ts` — `renderMonogramIconSvg`, the shared "monogram on primary, inset in a
+  78% circle" geometry behind `favicon_16`, `favicon_32`, `apple_touch_icon_180`, `icon_512`, `avatar_400`.
+  Two-pass render: measures the glyph's real ink bbox diagonal at a large reference size, then renders the
+  final square at the font size that makes that diagonal exactly 78% of the canvas (see DECISIONS.md for
+  why this is computed, not eyeballed). ONE svg render serves all three of apple_touch_icon_180/icon_512/
+  avatar_400 (same letters/treatment, different raster width via `svgToPngAtWidth`), and a second single-
+  letter render serves favicon_16/32.
+- `manifest_values_json` — pure JSON, no satori/resvg involved: name, a ≤12-char `short_name` (PWA
+  convention, trimmed to the nearest whole word), `theme_color`/`background_color` from tokens, icon refs.
+- Registry wiring for all ten new keys in `lib/kit/render/registry.ts`.
+
+Backend: `20260903210000_asset_catalog_kind_expansion.sql` widens `asset_catalog.kind` and
+`brand_assets.kind`'s CHECK constraints from `('svg','png')` to add `json`/`css`/`ase`/`html`/`zip` (needed
+now for `manifest_values_json`, and ahead of the color/document lots that will need the rest — widened once
+rather than reopening the same constraint five more times), plus the matching widen of the `brand-assets`
+bucket's `allowed_mime_types`. `20260903220000_monogram_and_web_icons.sql` inserts the ten catalog rows
+(identity/web/social groups). No new RLS — same reference-data pattern as every prior catalogue addition.
+
+**Verified, and how.**
+- Backend: `scripts/local-verify.sh`, 47/47 tests passing, seed mirrors clean, both migrations replay
+  clean against the local stub. The kind-expansion test explicitly probes all five new kinds AND confirms an
+  unlisted kind (`'bogus'`) is still rejected — not just that the constraint got looser, but that it's still
+  a real constraint. Dry-run in `begin/rollback` against the live project for both migrations, then applied
+  for real, ledger versions corrected to `20260903210000`/`20260903220000`.
+- Frontend: `tsc --noEmit` clean, full `vitest` suite 904/904 passing (the two new files were automatically
+  picked up by the existing `renderer-not-in-client-bundle.test.ts`, which enumerates `lib/kit/render/*.ts`
+  rather than naming files by hand — confirmed neither new file imports satori/resvg into a client bundle
+  path). Ran every new renderer directly via `tsx` with the fake-env-var technique against real font data
+  (Fraunces) and real practice-name input:
+  - `monogramLetters("Warm Welcome Therapy")` → `"WW"` (correct: both first words happen to start with W —
+    cross-checked against `monogramLetters("Solace")` → `"S"` and `monogramLetters(name, true)` → `"W"`, so
+    this is confirmed to be the letter-selection logic working correctly on a coincidental test name, not a
+    duplication bug).
+  - `monogram_svg`: real trimmed output, primary-color ink, transparent ground — visually inspected,
+    correct.
+  - `monogram_png_512_primary`/`_paper`/`_transparent`: visually inspected, correct ink/background pairing
+    per treatment, full 512×512 canvas kept (not trimmed).
+  - `icon_512`/`apple_touch_icon_180`(sized only, not separately re-inspected)/`avatar_400`: visually
+    inspected at 512px — the monogram sits with a clear, even margin inside the square, consistent with a
+    78%-diameter inset (not touching or nearly touching any edge, not tiny/lost in the middle either).
+  - `favicon_16`/`favicon_32`: rendered at their real target sizes AND at 128px (for human-legible
+    inspection only — not a shipped size) from the same underlying vector; visually confirmed single-letter,
+    correctly inset, legible even at the tiny real sizes given the trimmed proportions.
+
+**Not verified:** live Storage/route round trip (same gap as every asset this session); the PWA manifest's
+actual consumption by a real browser install prompt (the JSON shape follows the spec's documented fields,
+not tested against a real "Add to Home Screen" flow — no browser automation against a live deployed origin
+is possible from this sandbox).

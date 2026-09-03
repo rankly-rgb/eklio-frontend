@@ -144,3 +144,60 @@ satori's output is fully vectorized, so re-rasterizing at a different width is l
 the vector, not a scaled-up raster. Height is derived from the trimmed aspect ratio at render time, not
 stored as a fixed catalog value (same reasoning `asset_catalog_trimmed_dims_null` already established for
 `wordmark_png_dark`).
+
+---
+
+### 2026-09-03 — `monogram_png_512`'s three treatments split into three catalog keys
+
+**Question.** Same shape of question as `wordmark_png_light` above: the brief names one item
+("`monogram_png_512` … in three treatments: on primary, on paper, and transparent") but the schema is one
+row per file.
+
+**Chosen.** `monogram_png_512_primary`, `monogram_png_512_paper`, `monogram_png_512_transparent`. Same
+reasoning, same precedent, recorded once above rather than repeated in full here.
+
+---
+
+### 2026-09-03 — the standalone `monogram_svg`'s one ink treatment: `tokens.primary`
+
+**Question.** The brief gives `monogram_png_512` three ink/background treatments but only ever names one
+`monogram_svg` — unlike the wordmark, which gets a dedicated key per ink (`_dark`, `_light`, `_mono_black`,
+`_mono_white`). What single treatment does the standalone vector monogram get?
+
+**Chosen.** Ink `tokens.primary`, no background, trimmed to ink bounds — a colored mark, droppable onto
+anything, matching the "transparent" PNG treatment's ink logic exactly (same color, no fill), which is the
+one of the three that a trimmed vector can actually represent (a fixed-background treatment inherently
+needs a fixed canvas, which trimming would defeat).
+
+**Why not `tokens.dark_neutral`, matching the wordmark's own default.** The wordmark's default is the ink
+that sits on a light page (its most common use — page body text neighbourhood). A monogram's most common
+standalone use is closer to a logomark reference for someone else's design work (a printer, a sign maker,
+a social media manager building a template) — `primary` is the color that IS the brand, and is what
+`monogram_png_512_transparent` (its closest sibling) already uses.
+
+---
+
+### 2026-09-03 — the 78%-inscribed-circle inset, computed geometrically rather than eyeballed
+
+**Question.** The brief's rule for favicon_16/32, apple_touch_icon_180, icon_512, and avatar_400 —
+"inset inside a 78% inscribed circle so a circular crop never clips it" — is a precise geometric
+constraint. satori has no primitive for "fit this glyph inside a circle of a given size"; the obvious
+shortcut is a hand-picked font-size constant that "looks about right."
+
+**Chosen.** A two-pass render (`lib/kit/render/monogram-icon.ts`): pass 1 renders the monogram alone at a
+large reference font size and measures its real ink bounding box via resvg's `innerBBox()` (the same
+primitive `trimToInk` already uses elsewhere in this file); pass 2 scales the font size so that bbox
+diagonal equals exactly 78% of the canvas diameter, then renders the real, final square. Deterministic —
+same inputs, same two renders, same output every time; no LLM, no guess-and-eyeball constant to maintain
+per font family.
+
+**Why the diagonal, not width or height alone.** The inscribed-circle constraint is about a CIRCULAR crop
+never clipping the mark — the smallest circle guaranteed to contain an arbitrary (possibly asymmetric)
+glyph shape is bounded by its bounding-box diagonal, not its width or height alone. Using the diagonal is
+the conservative choice in the direction the rule cares about (never clips), even though it means a
+roughly-square glyph like "W" sits somewhat smaller than a single tall/narrow character would.
+
+**What this does NOT solve.** satori centers the text's LAYOUT box, not the glyph's visual ink centroid —
+for a one- or two-character monogram in a serif display face this is a few pixels of asymmetry (descender
+weight, cap-height vs. x-height quirks), not a defect this renderer claims to have fixed. Same honesty bar
+as `wordmark.ts`'s existing tracking note. Verified visually (not just by dimension) — see WORKLOG.md.

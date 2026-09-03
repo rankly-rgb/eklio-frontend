@@ -8,6 +8,8 @@ import {
 import { renderPaletteSheetPng } from "@/lib/kit/render/palette-sheet";
 import { renderOgImage } from "@/lib/kit/render/og-image";
 import { svgToPng, svgToPngAtWidth } from "@/lib/kit/render/rasterize";
+import { renderMonogramSvg, renderMonogramPng512 } from "@/lib/kit/render/monogram";
+import { renderMonogramIconSvg } from "@/lib/kit/render/monogram-icon";
 
 /*
  * The extension point for Lot 4.4/4.5: one entry per `asset_catalog.key`,
@@ -163,6 +165,152 @@ const RENDERERS: Record<string, Renderer> = {
       width: 2400,
       height: Math.round(trimmed.height * scale),
     };
+  },
+  monogram_svg: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("monogram_svg needs a practice name to render");
+    }
+    const trimmed = await renderMonogramSvg({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      primaryColor: ctx.tokens.primary,
+    });
+    return {
+      bytes: Buffer.from(trimmed.svg, "utf8"),
+      contentType: "image/svg+xml",
+      width: trimmed.width,
+      height: trimmed.height,
+    };
+  },
+  monogram_png_512_primary: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("monogram_png_512_primary needs a practice name to render");
+    }
+    const png = await renderMonogramPng512({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      ink: ctx.tokens.cta_ink,
+      background: ctx.tokens.primary,
+    });
+    return { bytes: png, contentType: "image/png", width: 512, height: 512 };
+  },
+  monogram_png_512_paper: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("monogram_png_512_paper needs a practice name to render");
+    }
+    const png = await renderMonogramPng512({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      ink: ctx.tokens.primary,
+      background: ctx.tokens.paper,
+    });
+    return { bytes: png, contentType: "image/png", width: 512, height: 512 };
+  },
+  monogram_png_512_transparent: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("monogram_png_512_transparent needs a practice name to render");
+    }
+    const png = await renderMonogramPng512({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      ink: ctx.tokens.primary,
+    });
+    return { bytes: png, contentType: "image/png", width: 512, height: 512 };
+  },
+  favicon_16: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("favicon_16 needs a practice name to render");
+    }
+    const svg = await renderMonogramIconSvg({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      background: ctx.tokens.primary,
+      ink: ctx.tokens.cta_ink,
+      forceSingleLetter: true,
+    });
+    return { bytes: svgToPngAtWidth(svg, 16), contentType: "image/png", width: 16, height: 16 };
+  },
+  favicon_32: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("favicon_32 needs a practice name to render");
+    }
+    const svg = await renderMonogramIconSvg({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      background: ctx.tokens.primary,
+      ink: ctx.tokens.cta_ink,
+      forceSingleLetter: true,
+    });
+    return { bytes: svgToPngAtWidth(svg, 32), contentType: "image/png", width: 32, height: 32 };
+  },
+  apple_touch_icon_180: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("apple_touch_icon_180 needs a practice name to render");
+    }
+    const svg = await renderMonogramIconSvg({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      background: ctx.tokens.primary,
+      ink: ctx.tokens.cta_ink,
+    });
+    return { bytes: svgToPngAtWidth(svg, 180), contentType: "image/png", width: 180, height: 180 };
+  },
+  icon_512: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("icon_512 needs a practice name to render");
+    }
+    const svg = await renderMonogramIconSvg({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      background: ctx.tokens.primary,
+      ink: ctx.tokens.cta_ink,
+    });
+    return { bytes: svgToPngAtWidth(svg, 512), contentType: "image/png", width: 512, height: 512 };
+  },
+  avatar_400: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("avatar_400 needs a practice name to render");
+    }
+    const svg = await renderMonogramIconSvg({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      background: ctx.tokens.primary,
+      ink: ctx.tokens.cta_ink,
+    });
+    return { bytes: svgToPngAtWidth(svg, 400), contentType: "image/png", width: 400, height: 400 };
+  },
+  manifest_values_json: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("manifest_values_json needs a practice name to render");
+    }
+    // The PWA manifest spec recommends short_name stay short enough to fit
+    // under a home-screen icon (~12 characters is the usual guidance) —
+    // trimmed to the nearest whole word rather than mid-word.
+    const shortName =
+      ctx.practiceName.length <= 12
+        ? ctx.practiceName
+        : ctx.practiceName.slice(0, 12).replace(/\s+\S*$/, "");
+    const manifest = {
+      name: ctx.practiceName,
+      short_name: shortName || ctx.practiceName.slice(0, 12),
+      theme_color: ctx.tokens.primary,
+      background_color: ctx.tokens.paper,
+      icons: [
+        { src: "icon_512.png", sizes: "512x512", type: "image/png" },
+        { src: "apple_touch_icon_180.png", sizes: "180x180", type: "image/png" },
+      ],
+    };
+    const bytes = Buffer.from(JSON.stringify(manifest, null, 2), "utf8");
+    return { bytes, contentType: "application/json" };
   },
   palette_sheet_png: async (ctx) => {
     const svg = await renderPaletteSheetPng({
