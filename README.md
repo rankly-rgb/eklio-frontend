@@ -150,7 +150,9 @@ npm run test     # Vitest (modules purs, gardes, contraintes de rendu, contraste
    voulez isoler les données de test — sinon un seul projet suffit pour
    démarrer).
 4. Déployer. Le build (`next build`) est vérifié en local avant chaque push
-   sur `claude/eklio-bootstrap-ukuxfu`.
+   sur `main` (branche par défaut du repo depuis le renommage de
+   `claude/eklio-bootstrap-ukuxfu`, alignée sur la branche de production
+   Vercel).
 
 ## Brand shots (image generation CLI)
 
