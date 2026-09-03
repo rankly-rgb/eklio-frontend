@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { AnthropicNotConfiguredError } from "@/lib/ai/client";
 import type { Database } from "@/types/supabase";
 
 /*
@@ -81,6 +83,50 @@ export function serverError(context: string, detail: unknown): NextResponse {
     { error: "Something didn't go through on our side. Your answers are saved." },
     { status: 500 }
   );
+}
+
+/**
+ * A synchronous generation call's error, classified into the three things
+ * it can actually mean — never collapsed into one generic message, because
+ * a guardrail rejection, a model failure, and a missing API key are three
+ * different events and the person waiting deserves to know which. Used by
+ * routes that call the model directly in the request/response cycle
+ * (`usp-options`, `tone-cards`) — the async pipeline (`generate`) has its
+ * own reasons not to forward error text to the client at all (see
+ * `lib/generation/job.ts`'s `error` field comment) and doesn't use this.
+ *
+ * - `AnthropicNotConfiguredError` — infrastructure, not her answers.
+ *   503, so a client can tell "try again, this isn't about you" apart from
+ *   a 500 that might be a real bug worth investigating.
+ * - `Anthropic.APIError` (rate limit, timeout, a bad response from the
+ *   model) — genuinely transient, worth an immediate retry. 502.
+ * - Anything else — an actual bug. Falls back to `serverError`'s existing
+ *   generic message and logging, unchanged.
+ */
+export function generationErrorResponse(context: string, error: unknown): NextResponse {
+  if (error instanceof AnthropicNotConfiguredError) {
+    console.error(`[api] ${context}: generation not configured`, error.message);
+    return NextResponse.json(
+      {
+        error: "Generation isn't available right now — that's on us, not your answers. Try again shortly.",
+        code: "generation_unavailable",
+      },
+      { status: 503 }
+    );
+  }
+
+  if (error instanceof Anthropic.APIError) {
+    console.error(`[api] ${context}: model call failed`, error);
+    return NextResponse.json(
+      {
+        error: "The model didn't respond just now. Try again — this isn't about your answers.",
+        code: "model_call_failed",
+      },
+      { status: 502 }
+    );
+  }
+
+  return serverError(context, error);
 }
 
 /** Corps JSON, ou `null` si le corps est absent ou malformé. */

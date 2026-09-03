@@ -100,6 +100,7 @@ export function PositioningScreen({
           options?: UspOption[];
           partial?: boolean;
           message?: string;
+          error?: string;
         } | null;
         if (cancelled) return;
         if (response.ok && body?.options) {
@@ -110,9 +111,17 @@ export function PositioningScreen({
           // confirmée. Si son id confirmé n'est plus dans le lot rafraîchi,
           // le rendu ci-dessous le montre dans son propre bloc, séparément.
         } else if (initialOptions === null) {
-          setPartialMessage(
-            "We couldn't find positioning options that were truly yours just now.",
-          );
+          /*
+           * `body?.error` first, always — the server now tells the truth
+           * about which of three things happened (a guardrail rejection
+           * reads as `partial`/`message` above, never gets here; a missing
+           * API key or a model failure both land here with their own
+           * honest text from generationErrorResponse). Overriding it with
+           * a fixed "these weren't truly yours" string regardless of cause
+           * was the bug — a config problem read as if her answers were
+           * the issue.
+           */
+          setPartialMessage(body?.error ?? GENERIC_ERROR);
         }
         // Sinon : ce qui était déjà affiché reste affiché — une vérification
         // de fraîcheur en arrière-plan qui échoue n'est pas une raison de
@@ -120,7 +129,7 @@ export function PositioningScreen({
       } catch {
         if (!cancelled && initialOptions === null) {
           setPartialMessage(
-            "We couldn't find positioning options that were truly yours just now.",
+            "We couldn't reach the server just now — check your connection and reload.",
           );
         }
       } finally {

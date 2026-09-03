@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   authenticate,
   badRequest,
+  generationErrorResponse,
   json,
   notFound,
   readJson,
@@ -132,6 +133,6 @@ export async function POST(
 
     return json({ ok: true, options: result.options, partial: false, stale: hashStale });
   } catch (error) {
-    return serverError("POST /api/briefs/usp-options", error);
+    return generationErrorResponse("POST /api/briefs/usp-options", error);
   }
 }

@@ -14,13 +14,28 @@ import Anthropic from "@anthropic-ai/sdk";
  * already-built client. Behavior ported from `eklio-fr-us-migration-53dnk1`
  * (taken as-is; that branch itself is not merged).
  */
+
+/**
+ * Thrown by `getAnthropicClient()` when the key is missing — a distinct
+ * class, not a generic `Error`, so a caller can tell "not configured" apart
+ * from a genuine model-call failure (`instanceof Anthropic.APIError`) or a
+ * bug. See `lib/api/handler.ts`'s `generationErrorResponse` for where that
+ * distinction becomes three different user-facing messages instead of one.
+ */
+export class AnthropicNotConfiguredError extends Error {
+  constructor() {
+    super(
+      "ANTHROPIC_API_KEY is not set. Generation is disabled until it is configured server-side."
+    );
+    this.name = "AnthropicNotConfiguredError";
+  }
+}
+
 let client: Anthropic | null = null;
 
 export function getAnthropicClient(): Anthropic {
   if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error(
-      "ANTHROPIC_API_KEY is not set. Generation is disabled until it is configured server-side."
-    );
+    throw new AnthropicNotConfiguredError();
   }
 
   if (!client) {

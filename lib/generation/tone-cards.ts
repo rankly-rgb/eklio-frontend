@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient, GENERATION_MODEL } from "@/lib/ai/client";
+import { AnthropicNotConfiguredError, getAnthropicClient, GENERATION_MODEL } from "@/lib/ai/client";
 import { checkBannedPhrases } from "@/lib/generation/banned-phrases";
 import { buildHowYouWorkContext } from "@/lib/generation/how-you-work-context";
 import { toneCardsSchema, type ToneCards } from "@/lib/generation/how-you-work-shapes";
@@ -145,6 +145,15 @@ export async function generateToneCards(
 
       return { ok: true, cards: parsed.data };
     } catch (error) {
+      if (error instanceof AnthropicNotConfiguredError) {
+        // Retrying a missing API key MAX_ATTEMPTS times is pure wasted
+        // latency — it will fail identically every time. The fallback
+        // response is unchanged (this is already an honest, deliberate
+        // design — "standard openings" is what it says it is), only the
+        // pointless retries are skipped.
+        console.error("[tone-cards] generation not configured — skipping remaining attempts");
+        break;
+      }
       console.error("[tone-cards] generation attempt failed", error);
     }
   }
