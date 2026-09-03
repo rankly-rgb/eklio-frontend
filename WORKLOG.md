@@ -81,5 +81,31 @@ See `DECISIONS.md` for the reasoning; summarized here as what was actually estab
   cannot run here.
 - A real PostgreSQL 16 server IS available locally (`apt`-installed, not started by default) — started for
   this session. This is NOT the same as Supabase's own Postgres image: it has no `auth`/`storage`/`extensions`
-  schemas, no `auth.uid()`, no `storage.objects`/`storage.buckets` pre-built. [continued in next entry as
-  that gets built]
+  schemas, no `auth.uid()`, no `storage.objects`/`storage.buckets` pre-built.
+
+**Built** (eklio-backend, commits `452537e` and `cfe6639`): a hand-built stub `auth`/`storage` schema
+(`scripts/local-verify-stub-schema.sql`) plus a wrapper (`scripts/local-verify.sh`) that rebuilds a local
+database from zero, applies the stub, replays every migration in order, runs `seed.sql`, then every
+`supabase/tests/*.test.sql` file, then the seed-mirror check — the same things CI asserts against a real
+Supabase Postgres image, just locally. First run found and fixed two real bugs, both pre-existing in test
+files from earlier in this session (not migrations): two tests asserted state that was true right after
+their own migration but false after a *later* migration changed it, because the full suite runs against
+the cumulative end state, not a snapshot per migration — a real gap in the earlier one-migration-at-a-time
+live-DB dry-run technique. See eklio-backend's own commit for the specifics.
+
+Then `scripts/local-verify-fixture.sql`: one account, one completed brief, one brand kit with three
+directions and one selected, comp access granted — entirely synthetic, entirely local, never touches the
+real deployed database or the real `nainarahal@gmail.com` test account. Verified for real against it
+(not just asserted): `brand_kit_entitled()` → true, `get_brand_asset_manifest()` → both current catalog
+rows with `current: false`, `request_brand_asset_upload()` → the correct storage path.
+
+**What this tier proves and doesn't.** Proves: every RLS policy, every RPC's logic and refusals, every
+migration's correctness, against a real Postgres engine — strong, real verification, not simulated. Does
+NOT prove: anything requiring Supabase's actual Storage or Auth HTTP APIs (a real signed URL, an actual
+object landing in a bucket, a real login) — those APIs aren't running anywhere reachable from this sandbox,
+local or remote, for the same egress-policy reason curl couldn't reach them directly. For asset rendering
+specifically, the renderer itself (satori + resvg + the Google Fonts fetch, which the earlier Lot 4.1–4.4
+work already confirmed IS reachable) can still be verified for real, standalone, outside the Storage-
+dependent upload/download/signed-URL path — see the Lot 4.4 entries below for how that's used going
+forward. Anything that genuinely needs live Storage/Auth joins the existing Vercel-only-provable list
+(`@resvg/resvg-js` on Vercel's runtime, real cold-start timing) for the user's batch review.
