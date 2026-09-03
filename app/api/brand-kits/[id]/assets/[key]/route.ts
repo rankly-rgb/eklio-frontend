@@ -115,6 +115,8 @@ export async function POST(
     },
     practiceName: kit.practiceName,
     hero: kit.selectedDirection.hero,
+    socialTemplates: kit.socialTemplates,
+    practitionerLine: kit.row.practitioner_line,
   });
 
   const manifest = await getBrandAssetManifest(supabase, id, fingerprint);
@@ -141,6 +143,8 @@ export async function POST(
       practiceName: kit.practiceName,
       googleFontsUrl: kit.selectedDirection.typography.google_fonts_url,
       hero: kit.selectedDirection.hero,
+      socialTemplates: kit.socialTemplates,
+      practitionerLine: kit.row.practitioner_line,
     });
   } catch (err) {
     return serverError("assets:render", err);

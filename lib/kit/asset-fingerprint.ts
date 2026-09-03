@@ -62,6 +62,14 @@ export type AssetFingerprintInput = {
   practiceName: string | null;
   /** null only for a renderer that never reaches this — every current caller has a selected direction. */
   hero: { overline: string; headline: string } | null;
+  /**
+   * Lot 4.4 (social posts): the kit-level statement/question/notes/signature
+   * copy. Only hashed because a renderer now actually reads it
+   * (post_statement_1080 and siblings) — see the file header's rule.
+   */
+  socialTemplates: unknown;
+  /** Lot 4.4 (business cards, the signature social tile): read by name only, never parsed here. */
+  practitionerLine: string | null;
 };
 
 /** Deterministic: same input, same output, regardless of key insertion order. */

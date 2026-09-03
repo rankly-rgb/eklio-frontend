@@ -338,3 +338,67 @@ same reference-data pattern as every prior catalogue addition.
 **Not verified:** the `.ase` file has not been opened in a real Adobe product (no such tool is available in
 this sandbox) — verification here is a correct-by-construction byte-level round trip against the documented
 format, not a real Illustrator/Photoshop import. Flagged, not claimed.
+
+---
+
+## Lot 4.4 (continued) — social posts, story, covers, business cards
+
+**Research first.** Before writing any renderer, dispatched a research pass on the content model backing
+"the month's first four items… the selected direction's sample copy" (the brief's exact words for the four
+social post archetypes). Findings, in full, are now in DECISIONS.md — short version: `monthly_presence_content`
+is empty in production AND has no archetype column to map rows to templates by; `kit.socialTemplates` (a
+kit-level 4-tuple: statement/question/notes/signature, each with `headline`/`body`/`palette_role`/
+`typography_role`) is the only real content matching the four archetypes, and is what every renderer here
+reads.
+
+**What was built.**
+- `lib/kit/render/social-posts.ts` — `renderStatementOrQuestionPost` (bottom-aligned headline, full-bleed
+  tile), `renderNotesPost` (uppercase label headline + REAL body text if the template has any — never
+  fabricated placeholder lines, unlike the on-screen preview's loading-state grey bars), `renderSignature`
+  (centred headline + `practitioner_line`, parameterized `shape: "square" | "story"` so
+  `post_signature_1080` and `story_1080x1920` share one function — see DECISIONS.md for why that's not a
+  schema conflict). All three mirror the existing on-screen `SocialTile` preview's visual language
+  (background from `tokens[palette_role]`, contrast via the same luminance test, font from
+  `typography_role`) at export resolution rather than inventing a new design.
+- `lib/kit/render/covers.ts` — `renderLinkedInCover`/`renderFacebookCover`, both keeping text clear of the
+  platform's bottom-left avatar-overlay zone (see DECISIONS.md).
+- `lib/kit/render/business-card.ts` — `renderBusinessCardFront` (mirrors the existing `BusinessCard`
+  preview component's layout: practice name, primary hairline, `practitioner_line`) and
+  `renderBusinessCardBack` (the standalone monogram on primary — brief specifies no back content, see
+  DECISIONS.md). Both at 1125×675px (3.5×2in + 0.125in bleed at 300dpi), with hand-drawn crop marks
+  spanning the bleed edge to the trim line.
+- `RenderContext` extended with `socialTemplates`/`practitionerLine`; both threaded through the asset route
+  (`app/api/brand-kits/[id]/assets/[key]/route.ts`) at both the fingerprint call and the renderer call.
+  `AssetFingerprintInput` extended to hash both (a renderer now actually reads them — the file's own rule
+  for when to extend); `asset-fingerprint.test.ts` updated with the new required fields plus three new
+  cases (changes with `socialTemplates`, changes with `practitionerLine`, null vs. present distinguished).
+
+Backend: `20260903240000_social_and_print_assets.sql` inserts the nine catalog rows (`social`/`print`
+groups). No new kind, no new RLS — reference data under the existing policy.
+
+**Verified, and how.**
+- Backend: `scripts/local-verify.sh`, 49/49 tests passing, seed mirrors clean. Dry-run + apply against the
+  live project, ledger corrected to `20260903240000`.
+- Frontend: `tsc --noEmit` clean (caught and fixed two real type errors along the way — a heterogeneous
+  `createElement[]` array losing its widened type when only the first element was known, in both
+  `renderNotesPost` and `renderSignature` — fixed with an explicit `ReturnType<typeof createElement>[]`
+  annotation rather than a cast). Full `vitest` suite 911/911 passing. Ran all nine renderers directly via
+  `tsx` with the fake-env-var technique, real font data (Fraunces), and realistic fixture content (a
+  four-template `SocialTemplates` tuple, a practitioner line). Every one inspected visually, not just by
+  byte count:
+  - `post_statement_1080`/`post_question_1080`: real headline, bottom-aligned, correct palette-role
+    background and contrast-safe ink.
+  - `post_notes_1080`: uppercase label plus the REAL body paragraph rendered (confirming the "no fabricated
+    placeholder lines" decision actually took effect, not just that it compiled).
+  - `post_signature_1080` and `story_1080x1920`: same centred headline + practitioner line, correctly
+    composed into a square and a portrait canvas respectively from the one `shape` parameter.
+  - `cover_linkedin_1584x396`/`cover_facebook_1640x624`: overline pill + practice name, visibly clear of
+    the bottom-left corner (the avatar-overlay zone), not centred over it.
+  - `business_card_front`: practice name top-left, primary hairline + practitioner line bottom-left, all
+    eight crop-mark ticks present and correctly positioned at the four corners.
+  - `business_card_back`: monogram centred on primary, ink correctly `cta_ink`, crop marks present.
+
+**Not verified:** live Storage/route round trip (same gap as every asset this session); the two cover
+images' actual behaviour once uploaded to real LinkedIn/Facebook profiles (the avatar-clearance zone is
+sized from documented/observed platform overlay geometry, not confirmed against a live upload — no browser
+automation against those platforms is possible from this sandbox).

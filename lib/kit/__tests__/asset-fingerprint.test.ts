@@ -18,6 +18,8 @@ const BASE: AssetFingerprintInput = {
   },
   practiceName: "Elm & Ember Therapy",
   hero: { overline: "LCSW · PORTLAND, OR", headline: "A calmer place to start." },
+  socialTemplates: null,
+  practitionerLine: "Nora Whitfield, LCSW",
 };
 
 describe("computeAssetFingerprint", () => {
@@ -34,6 +36,8 @@ describe("computeAssetFingerprint", () => {
     const reordered: AssetFingerprintInput = {
       practiceName: BASE.practiceName,
       hero: BASE.hero,
+      socialTemplates: BASE.socialTemplates,
+      practitionerLine: BASE.practitionerLine,
       tokens: {
         heading_font: BASE.tokens.heading_font,
         body_font: BASE.tokens.body_font,
@@ -91,5 +95,24 @@ describe("computeAssetFingerprint", () => {
     const nullHero = computeAssetFingerprint({ ...BASE, hero: null });
     const withHero = computeAssetFingerprint(BASE);
     expect(nullHero).not.toBe(withHero);
+  });
+
+  it("changes when socialTemplates changes", () => {
+    const withTemplates = computeAssetFingerprint({
+      ...BASE,
+      socialTemplates: [{ id: "a", headline: "Something new." }],
+    });
+    expect(withTemplates).not.toBe(computeAssetFingerprint(BASE));
+  });
+
+  it("changes when practitionerLine changes", () => {
+    const changed = { ...BASE, practitionerLine: "Someone Else, PhD" };
+    expect(computeAssetFingerprint(changed)).not.toBe(computeAssetFingerprint(BASE));
+  });
+
+  it("distinguishes a null practitionerLine from a present one", () => {
+    const nullLine = computeAssetFingerprint({ ...BASE, practitionerLine: null });
+    const withLine = computeAssetFingerprint(BASE);
+    expect(nullLine).not.toBe(withLine);
   });
 });

@@ -11,6 +11,14 @@ import { svgToPng, svgToPngAtWidth } from "@/lib/kit/render/rasterize";
 import { renderMonogramSvg, renderMonogramPng512 } from "@/lib/kit/render/monogram";
 import { renderMonogramIconSvg } from "@/lib/kit/render/monogram-icon";
 import { renderPaletteAse, renderTokensJson, renderColorsCss } from "@/lib/kit/render/color-exports";
+import {
+  renderStatementOrQuestionPost,
+  renderNotesPost,
+  renderSignature,
+} from "@/lib/kit/render/social-posts";
+import { renderLinkedInCover, renderFacebookCover } from "@/lib/kit/render/covers";
+import { renderBusinessCardFront, renderBusinessCardBack } from "@/lib/kit/render/business-card";
+import type { SocialTemplates } from "@/lib/brand/shapes";
 
 /*
  * The extension point for Lot 4.4/4.5: one entry per `asset_catalog.key`,
@@ -32,8 +40,12 @@ export type RenderContext = {
   tokens: SitePreviewTokens;
   practiceName: string | null;
   googleFontsUrl: string;
-  /** Only asset renderers that need hero copy (og_image_1200x630) read this. */
+  /** Only asset renderers that need hero copy (og_image_1200x630, the covers) read this. */
   hero: { overline: string; headline: string } | null;
+  /** Only the social post renderers read this — the kit-level 4-tuple (statement/question/notes/signature). */
+  socialTemplates: SocialTemplates | null;
+  /** Only the signature social renderers and the print/document renderers read this. */
+  practitionerLine: string | null;
 };
 
 export type RenderedAsset = {
@@ -44,6 +56,18 @@ export type RenderedAsset = {
 };
 
 type Renderer = (ctx: RenderContext) => Promise<RenderedAsset>;
+
+function socialTokens(ctx: RenderContext) {
+  return {
+    primary: ctx.tokens.primary,
+    secondary: ctx.tokens.secondary,
+    paper: ctx.tokens.paper,
+    light_neutral: ctx.tokens.light_neutral,
+    dark_neutral: ctx.tokens.dark_neutral,
+    heading_font: ctx.tokens.heading_font,
+    body_font: ctx.tokens.body_font,
+  };
+}
 
 const RENDERERS: Record<string, Renderer> = {
   wordmark_svg_dark: async (ctx) => {
@@ -357,6 +381,115 @@ const RENDERERS: Record<string, Renderer> = {
       cta_ink: ctx.tokens.cta_ink,
     });
     return { bytes, contentType: "text/css" };
+  },
+  post_statement_1080: async (ctx) => {
+    const template = ctx.socialTemplates?.[0];
+    if (!template) throw new Error("post_statement_1080 needs socialTemplates to render");
+    const bytes = await renderStatementOrQuestionPost({
+      template,
+      tokens: socialTokens(ctx),
+      googleFontsUrl: ctx.googleFontsUrl,
+    });
+    return { bytes, contentType: "image/png", width: 1080, height: 1080 };
+  },
+  post_question_1080: async (ctx) => {
+    const template = ctx.socialTemplates?.[1];
+    if (!template) throw new Error("post_question_1080 needs socialTemplates to render");
+    const bytes = await renderStatementOrQuestionPost({
+      template,
+      tokens: socialTokens(ctx),
+      googleFontsUrl: ctx.googleFontsUrl,
+    });
+    return { bytes, contentType: "image/png", width: 1080, height: 1080 };
+  },
+  post_notes_1080: async (ctx) => {
+    const template = ctx.socialTemplates?.[2];
+    if (!template) throw new Error("post_notes_1080 needs socialTemplates to render");
+    const bytes = await renderNotesPost({
+      template,
+      tokens: socialTokens(ctx),
+      googleFontsUrl: ctx.googleFontsUrl,
+    });
+    return { bytes, contentType: "image/png", width: 1080, height: 1080 };
+  },
+  post_signature_1080: async (ctx) => {
+    const template = ctx.socialTemplates?.[3];
+    if (!template) throw new Error("post_signature_1080 needs socialTemplates to render");
+    const bytes = await renderSignature({
+      template,
+      tokens: socialTokens(ctx),
+      practitionerLine: ctx.practitionerLine,
+      googleFontsUrl: ctx.googleFontsUrl,
+      shape: "square",
+    });
+    return { bytes, contentType: "image/png", width: 1080, height: 1080 };
+  },
+  story_1080x1920: async (ctx) => {
+    const template = ctx.socialTemplates?.[3];
+    if (!template) throw new Error("story_1080x1920 needs socialTemplates to render");
+    const bytes = await renderSignature({
+      template,
+      tokens: socialTokens(ctx),
+      practitionerLine: ctx.practitionerLine,
+      googleFontsUrl: ctx.googleFontsUrl,
+      shape: "story",
+    });
+    return { bytes, contentType: "image/png", width: 1080, height: 1920 };
+  },
+  cover_linkedin_1584x396: async (ctx) => {
+    if (!ctx.practiceName) throw new Error("cover_linkedin_1584x396 needs a practice name to render");
+    const bytes = await renderLinkedInCover({
+      practiceName: ctx.practiceName,
+      overline: ctx.hero?.overline ?? null,
+      headingFont: ctx.tokens.heading_font,
+      bodyFont: ctx.tokens.body_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      primaryColor: ctx.tokens.primary,
+      ctaInk: ctx.tokens.cta_ink,
+      paperColor: ctx.tokens.paper,
+      darkColor: ctx.tokens.dark_neutral,
+    });
+    return { bytes, contentType: "image/png", width: 1584, height: 396 };
+  },
+  cover_facebook_1640x624: async (ctx) => {
+    if (!ctx.practiceName) throw new Error("cover_facebook_1640x624 needs a practice name to render");
+    const bytes = await renderFacebookCover({
+      practiceName: ctx.practiceName,
+      overline: ctx.hero?.overline ?? null,
+      headingFont: ctx.tokens.heading_font,
+      bodyFont: ctx.tokens.body_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      primaryColor: ctx.tokens.primary,
+      ctaInk: ctx.tokens.cta_ink,
+      paperColor: ctx.tokens.paper,
+      darkColor: ctx.tokens.dark_neutral,
+    });
+    return { bytes, contentType: "image/png", width: 1640, height: 624 };
+  },
+  business_card_front: async (ctx) => {
+    if (!ctx.practiceName) throw new Error("business_card_front needs a practice name to render");
+    const bytes = await renderBusinessCardFront({
+      practiceName: ctx.practiceName,
+      practitionerLine: ctx.practitionerLine,
+      headingFont: ctx.tokens.heading_font,
+      bodyFont: ctx.tokens.body_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      paperColor: ctx.tokens.paper,
+      darkColor: ctx.tokens.dark_neutral,
+      primaryColor: ctx.tokens.primary,
+    });
+    return { bytes, contentType: "image/png", width: 1125, height: 675 };
+  },
+  business_card_back: async (ctx) => {
+    if (!ctx.practiceName) throw new Error("business_card_back needs a practice name to render");
+    const bytes = await renderBusinessCardBack({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      primaryColor: ctx.tokens.primary,
+      ctaInk: ctx.tokens.cta_ink,
+    });
+    return { bytes, contentType: "image/png", width: 1125, height: 675 };
   },
   palette_sheet_png: async (ctx) => {
     const svg = await renderPaletteSheetPng({

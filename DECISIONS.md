@@ -201,3 +201,77 @@ roughly-square glyph like "W" sits somewhat smaller than a single tall/narrow ch
 for a one- or two-character monogram in a serif display face this is a few pixels of asymmetry (descender
 weight, cap-height vs. x-height quirks), not a defect this renderer claims to have fixed. Same honesty bar
 as `wordmark.ts`'s existing tracking note. Verified visually (not just by dimension) — see WORKLOG.md.
+
+---
+
+### 2026-09-03 — social posts render from `kit.socialTemplates`, not `monthly_presence_content`
+
+**Question.** The brief says render `post_statement_1080`/`_question`/`_notes`/`_signature` "from the
+month's first four items when they exist; from the selected direction's sample copy when they don't."
+Researched both candidate sources before writing any renderer (dispatched a research pass rather than
+guessing): `monthly_presence_content` (the real content-calendar table) is confirmed EMPTY in production
+today and — this is the part that matters, not just "empty for now" — it has **no archetype/layout column
+at all**. Its rows are `(month, day_of_month, type: 'post'|'story', title, caption, visual_spec jsonb
+unshaped)`; nothing marks a row as "the statement one" vs. "the question one." `ensure_month_skeleton`
+inserts 12 undifferentiated `post` rows and 4 `story` rows per month with no archetype tag. So "the
+month's first four items" as literally specified would be four arbitrary early-day `post` rows with no
+way to know which is meant to render as which template.
+
+The other candidate, `directionSchema` (a Direction's own fields), has NO statement/question/notes/
+signature copy at all — confirmed by reading it in full. The only real content in this schema matching the
+four archetypes by name is `brand_kits.social_templates` (`kit.socialTemplates`), a kit-level 4-tuple the
+generation pipeline writes once at kit creation and never varies by direction.
+
+**Chosen.** Every social post renderer in this lot reads `kit.socialTemplates` only. The
+`monthly_presence_content` branch is not implemented — there is no well-defined mapping from its rows to
+an archetype to implement it correctly, and building a rule for a table currently empty in every kit today
+(per FINDINGS.md) would be speculative, not a real feature. Lot 8 ("Monthly Presence, sold honestly") is
+explicitly where this table's real shape and use get decided — an archetype column, if the row-to-template
+mapping is ever actually needed, belongs there, in the same migration that gives Monthly Presence its
+first real writer.
+
+**Why not stop and ask.** Reversible: nothing here forecloses adding the `monthly_presence_content` branch
+later — `kit.socialTemplates` stays the fallback either way. Not a secret, not destructive, not an
+architecture commitment across a large surface — squarely inside "decide and keep going."
+
+---
+
+### 2026-09-03 — `post_signature_1080` and `story_1080x1920` share one content source, two canvases
+
+**Question.** `socialTemplatesSchema`'s fourth entry (`layout: "signature"`) is typed `type: "story"` —
+the schema itself only ever models "signature" as a portrait story tile, never as a square post. The brief
+asks for BOTH `post_signature_1080` (1080×1080, square, one of the "Social" group's four posts) and
+`story_1080x1920` (1080×1920, portrait, its own separate catalogue item) — which reads like a conflict:
+where does a SQUARE signature post's content come from, if the schema only has a story-shaped one?
+
+**Chosen.** Not a conflict — one piece of content (`kit.socialTemplates[3]`: a headline plus
+`practitioner_line`), rendered into two canvases. `renderSignature()` (`lib/kit/render/social-posts.ts`)
+takes a `shape: "square" | "story"` parameter and composes the same centred headline/practitioner-line
+layout at 1080×1080 or 1080×1920. This matches how the on-screen preview already treats the `signature`
+tile — a centred short statement, not something whose meaning changes with aspect ratio — and avoids
+inventing a second, un-sourced content field for the square version.
+
+---
+
+### 2026-09-03 — business card back: the standalone monogram on primary
+
+**Question.** The brief specifies `business_card_front`'s content in detail (via the existing `BusinessCard`
+preview component, whose layout this renderer mirrors) but says nothing about `business_card_back`.
+
+**Chosen.** The two-letter (or one-letter) monogram, centred, ink `cta_ink` on a `primary` fill — the same
+visual language as `monogram_png_512_primary`, reused rather than invented fresh. A plain, common
+back-of-card treatment (mark alone, no text) that needs no new content decision.
+
+---
+
+### 2026-09-03 — cover images keep content clear of the platform avatar overlay
+
+**Question.** LinkedIn and Facebook both overlay the profile photo on the lower-left of a cover image at
+render time — content placed there in the uploaded file gets covered. Nothing in the brief calls this out
+explicitly.
+
+**Chosen.** Both `cover_linkedin_1584x396` and `cover_facebook_1640x624` keep all text clear of a
+bottom-left zone sized at 1.6× the cover's own height (a conservative estimate — LinkedIn's own avatar
+overlay is roughly square and about that tall) — content sits right-of-centre instead. Better to under-use
+the canvas than ship a file where the practice name is guaranteed to be hidden behind the practitioner's
+own photo on the platform it's for.
