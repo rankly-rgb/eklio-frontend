@@ -117,3 +117,30 @@ correct later, unlike the four things that actually warrant stopping.
   name in the heading font, the selected direction's `hero.headline` as a supporting line, an overline
   pill in the primary color/cta_ink pairing (the same visual language `BrandCanvas` already uses
   elsewhere in the paid space) — full-bleed on the `paper` color.
+
+---
+
+### 2026-09-03 — `wordmark_png_light` split into two catalog keys, one per pixel width
+
+**Question.** POST_PURCHASE_BRIEF.md names one item, "`wordmark_png_light` at 1200px and 2400px wide."
+`asset_catalog` and the manifest/route contract are built around one row = one downloadable file with one
+set of dimensions (see `get_brand_asset_manifest`'s shape — `width`/`height` are scalar columns, not an
+array). Two sizes under one key would need either two rows sharing a key (breaks the primary key) or a
+new "sizes" concept nothing else in the schema has.
+
+**Chosen.** Two catalog keys: `wordmark_png_light_1200` and `wordmark_png_light_2400`. Matches the
+pattern already established for every other size-varying item already in the catalogue by name
+(`favicon_16`/`favicon_32`, `business_card_front`/`_back`) — a manifest entry is one file, two sizes are
+two entries.
+
+**Why.** Consistent with the schema as it already exists (no migration to the manifest shape itself), and
+consistent with how the brief itself names other multi-size items — cheap to relabel later if the user
+meant something else (e.g. a single endpoint that content-negotiates size), which nothing else in this
+session's context suggests.
+
+**Implementation note.** Both sizes rasterize the SAME trimmed light-ink SVG (one satori render, one
+`trimToInk` call) at two different target widths via `svgToPngAtWidth` (new helper, `rasterize.ts`) —
+satori's output is fully vectorized, so re-rasterizing at a different width is lossless with respect to
+the vector, not a scaled-up raster. Height is derived from the trimmed aspect ratio at render time, not
+stored as a fixed catalog value (same reasoning `asset_catalog_trimmed_dims_null` already established for
+`wordmark_png_dark`).

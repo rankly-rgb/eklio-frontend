@@ -25,6 +25,20 @@ export function svgToPng(svg: string): Buffer {
   return resvg.render().asPng();
 }
 
+/**
+ * Rasterizes an SVG at a specific target width, aspect ratio preserved —
+ * for a mark that ships in more than one pixel size from the same trimmed
+ * vector (e.g. `wordmark_png_light` at 1200px and 2400px). satori's SVG
+ * output is fully vectorized (glyphs as `<path>`, no font dependency at
+ * this stage — see the header above), so re-rasterizing the same trimmed
+ * SVG at a different width costs nothing but this one resvg pass and stays
+ * pixel-faithful to the vector, unlike scaling a PNG after the fact.
+ */
+export function svgToPngAtWidth(svg: string, width: number): Buffer {
+  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: width } });
+  return resvg.render().asPng();
+}
+
 export type TrimmedRender = {
   svg: string;
   png: Buffer;

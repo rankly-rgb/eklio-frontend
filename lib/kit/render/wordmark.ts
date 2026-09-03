@@ -34,8 +34,16 @@ export type WordmarkInput = {
   darkColor: string;
 };
 
-/** The raw satori output — full 960x240 canvas, untrimmed. Use `renderWordmarkDark` below unless you specifically need this. */
-export async function renderWordmarkSvgDark(input: WordmarkInput): Promise<string> {
+/**
+ * Renders the wordmark at a given ink colour. Shared by every ink treatment
+ * (`dark`, `light`, `mono_black`, `mono_white`) — same layout, same font
+ * weight, only the fill differs, so the four treatments stay visually
+ * identical apart from ink.
+ */
+async function renderWordmarkSvgWithInk(
+  input: Omit<WordmarkInput, "darkColor">,
+  ink: string
+): Promise<string> {
   const fontData = await getCachedFontBuffer(input.headingFont, input.googleFontsUrl);
 
   const tree = createElement(
@@ -56,7 +64,7 @@ export async function renderWordmarkSvgDark(input: WordmarkInput): Promise<strin
           display: "flex",
           fontFamily: input.headingFont,
           fontSize: 84,
-          color: input.darkColor,
+          color: ink,
           letterSpacing: "-0.02em",
         },
       },
@@ -78,6 +86,11 @@ export async function renderWordmarkSvgDark(input: WordmarkInput): Promise<strin
   });
 }
 
+/** The raw satori output — full 960x240 canvas, untrimmed. Use `renderWordmarkDark` below unless you specifically need this. */
+export async function renderWordmarkSvgDark(input: WordmarkInput): Promise<string> {
+  return renderWordmarkSvgWithInk(input, input.darkColor);
+}
+
 /**
  * The wordmark, trimmed to its ink bounds (see rasterize.ts's trim rule) —
  * one render, one crop, so the svg and png outputs stay pixel-consistent.
@@ -86,5 +99,46 @@ export async function renderWordmarkSvgDark(input: WordmarkInput): Promise<strin
  */
 export async function renderWordmarkDark(input: WordmarkInput): Promise<TrimmedRender> {
   const svg = await renderWordmarkSvgDark(input);
+  return trimToInk(svg);
+}
+
+/**
+ * `wordmark_svg_light` / `wordmark_png_light` — the counterpart treatment
+ * for a dark background. Ink is `tokens.paper`, the kit's own light colour,
+ * not a literal white — same reasoning as `darkColor` never being a
+ * supposed black: the mark stays on-brand at either end of the palette.
+ */
+export type WordmarkLightInput = {
+  practiceName: string;
+  headingFont: string;
+  googleFontsUrl: string;
+  /** `tokens.paper` — the ink colour for the light treatment. */
+  paperColor: string;
+};
+
+export async function renderWordmarkLight(input: WordmarkLightInput): Promise<TrimmedRender> {
+  const svg = await renderWordmarkSvgWithInk(input, input.paperColor);
+  return trimToInk(svg);
+}
+
+/**
+ * `wordmark_svg_mono_black` / `wordmark_svg_mono_white` — single-colour
+ * treatments for contexts that can't carry brand colour at all (engraving,
+ * a one-colour print run, a stamp). Ink is a literal black or white on
+ * purpose here: "mono" means fixed, not brand-token-derived.
+ */
+export type WordmarkMonoInput = {
+  practiceName: string;
+  headingFont: string;
+  googleFontsUrl: string;
+};
+
+export async function renderWordmarkMonoBlack(input: WordmarkMonoInput): Promise<TrimmedRender> {
+  const svg = await renderWordmarkSvgWithInk(input, "#000000");
+  return trimToInk(svg);
+}
+
+export async function renderWordmarkMonoWhite(input: WordmarkMonoInput): Promise<TrimmedRender> {
+  const svg = await renderWordmarkSvgWithInk(input, "#FFFFFF");
   return trimToInk(svg);
 }

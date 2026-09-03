@@ -1,8 +1,13 @@
 import type { SitePreviewTokens } from "@/lib/site/types";
-import { renderWordmarkDark } from "@/lib/kit/render/wordmark";
+import {
+  renderWordmarkDark,
+  renderWordmarkLight,
+  renderWordmarkMonoBlack,
+  renderWordmarkMonoWhite,
+} from "@/lib/kit/render/wordmark";
 import { renderPaletteSheetPng } from "@/lib/kit/render/palette-sheet";
 import { renderOgImage } from "@/lib/kit/render/og-image";
-import { svgToPng } from "@/lib/kit/render/rasterize";
+import { svgToPng, svgToPngAtWidth } from "@/lib/kit/render/rasterize";
 
 /*
  * The extension point for Lot 4.4/4.5: one entry per `asset_catalog.key`,
@@ -70,6 +75,93 @@ const RENDERERS: Record<string, Renderer> = {
       contentType: "image/png",
       width: trimmed.width,
       height: trimmed.height,
+    };
+  },
+  wordmark_svg_light: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("wordmark_svg_light needs a practice name to render");
+    }
+    const trimmed = await renderWordmarkLight({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      paperColor: ctx.tokens.paper,
+    });
+    return {
+      bytes: Buffer.from(trimmed.svg, "utf8"),
+      contentType: "image/svg+xml",
+      width: trimmed.width,
+      height: trimmed.height,
+    };
+  },
+  wordmark_svg_mono_black: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("wordmark_svg_mono_black needs a practice name to render");
+    }
+    const trimmed = await renderWordmarkMonoBlack({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+    });
+    return {
+      bytes: Buffer.from(trimmed.svg, "utf8"),
+      contentType: "image/svg+xml",
+      width: trimmed.width,
+      height: trimmed.height,
+    };
+  },
+  wordmark_svg_mono_white: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("wordmark_svg_mono_white needs a practice name to render");
+    }
+    const trimmed = await renderWordmarkMonoWhite({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+    });
+    return {
+      bytes: Buffer.from(trimmed.svg, "utf8"),
+      contentType: "image/svg+xml",
+      width: trimmed.width,
+      height: trimmed.height,
+    };
+  },
+  wordmark_png_light_1200: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("wordmark_png_light_1200 needs a practice name to render");
+    }
+    const trimmed = await renderWordmarkLight({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      paperColor: ctx.tokens.paper,
+    });
+    const png = svgToPngAtWidth(trimmed.svg, 1200);
+    const scale = 1200 / trimmed.width;
+    return {
+      bytes: png,
+      contentType: "image/png",
+      width: 1200,
+      height: Math.round(trimmed.height * scale),
+    };
+  },
+  wordmark_png_light_2400: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("wordmark_png_light_2400 needs a practice name to render");
+    }
+    const trimmed = await renderWordmarkLight({
+      practiceName: ctx.practiceName,
+      headingFont: ctx.tokens.heading_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      paperColor: ctx.tokens.paper,
+    });
+    const png = svgToPngAtWidth(trimmed.svg, 2400);
+    const scale = 2400 / trimmed.width;
+    return {
+      bytes: png,
+      contentType: "image/png",
+      width: 2400,
+      height: Math.round(trimmed.height * scale),
     };
   },
   palette_sheet_png: async (ctx) => {

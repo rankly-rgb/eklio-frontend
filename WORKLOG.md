@@ -187,3 +187,63 @@ additive diff, confirmed), `tsc --noEmit`/`eslint`/`next build` clean, 902/902 t
 **Not verified:** the actual route wiring at runtime (needs a real failed pipeline run against live Auth —
 same live-Storage/Auth gap as everything else in this session; the RPC itself and its exact refusal/reset
 behavior IS verified for real, just not this specific route's call to it end to end).
+
+---
+
+## 2026-09-03 — POST_PURCHASE_BRIEF.md written to the repo
+
+Wrote the user's full remaining brief (rest of the Lot 4.4 catalogue + Lots 3/5/7/6/8/2/9 in full detail)
+verbatim into `POST_PURCHASE_BRIEF.md` at the repo root, committed and pushed as its own commit (`4a5abef`)
+before resuming any other work, per the user's explicit instruction. Cleared the now-answered "rest of the
+Lot 4.4 catalogue" entry in `QUESTIONS.md`, pointing future reads at the brief file instead. From here,
+`POST_PURCHASE_BRIEF.md` is the source of record for the remaining delivery order — re-read it on a context
+rollover rather than treating this as unrecoverable.
+
+---
+
+## Lot 4.4 (continued) — wordmark ink treatments: `wordmark_svg_light`, `wordmark_svg_mono_black`,
+## `wordmark_svg_mono_white`, `wordmark_png_light_1200`, `wordmark_png_light_2400`
+
+**What was built.** Five new identity assets, all reusing the existing `wordmark_svg_dark` layout with a
+different ink: `renderWordmarkSvgWithInk()` (new, `lib/kit/render/wordmark.ts`) factors the shared satori
+tree out from `renderWordmarkSvgDark`, and four public functions wrap it — `renderWordmarkLight` (ink
+`tokens.paper`, never a literal white — same "on-brand ink" reasoning as the existing dark treatment),
+`renderWordmarkMonoBlack`/`renderWordmarkMonoWhite` (ink literal `#000000`/`#FFFFFF` — deliberately NOT
+brand-token-derived: "mono" means fixed, for single-colour print/engraving contexts that can't carry brand
+colour at all). All three trim to ink bounds via the existing `trimToInk`, matching every other identity
+asset. `wordmark_png_light_1200`/`_2400` reuse the SAME trimmed light SVG rasterized twice at different
+target widths via a new `svgToPngAtWidth()` helper (`rasterize.ts`) — one satori render, two resvg passes,
+not two independent renders (see DECISIONS.md for why this is a two-key split rather than one key with two
+sizes). None of these needed an `asset-fingerprint.ts` change: their inputs (`tokens.paper`, font, practice
+name, or nothing brand-derived at all for the mono treatments) were already hashed.
+
+Backend: `20260903200000_wordmark_ink_treatments.sql` inserts the five `asset_catalog` rows (identity
+group, `svg`/`png` kind, `starter` tier, sort_order 2/5/6/7/8 filling the gaps left around the existing
+dark treatments). No RLS change — reference data under the existing `asset_catalog_select_all` policy, same
+as every prior catalogue addition. Paired test asserts kind/width/height/group per key and that all five
+are visible to an authenticated caller.
+
+**Verified, and how.**
+- Backend: `scripts/local-verify.sh` — full migration replay (56 migrations) + full SQL test suite, 45/45
+  passing, seed mirrors clean. Dry-run in a `begin/rollback` transaction against the live project via
+  `mcp__Supabase__execute_sql`, then applied for real via `apply_migration`, ledger version corrected to
+  `20260903200000` to match the file's own timestamp.
+- Frontend: `tsc --noEmit` clean, `eslint` implied clean (no new lint surface beyond the compiled file),
+  full `vitest` suite 902/902 passing (no regressions). Ran the three new renderers directly via `tsx` with
+  fake-but-valid `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` (same technique as the dark
+  wordmark — Storage cache-miss fails and falls through to the real, reachable Google Fonts fetch, logged
+  non-fatally, exactly as coded) against a real font family (Fraunces) and a real Google Fonts CSS2 URL.
+  Confirmed by direct inspection: `wordmark-light.png` renders "Warm Welcome Therapy" in the given paper
+  ink, `wordmark-mono-black.png` in solid black, both visually correct on read-back. `wordmark-mono-white`
+  produces a non-empty trimmed bbox (951×83, matching the other two treatments exactly, not the full
+  960×240 canvas a trim-failure/ink-less render would produce) — confirming real ink was detected and
+  trimmed, even though the PNG previews as blank against a white viewer background (expected: it's a white
+  mark on a transparent ground). The two width variants: `wordmark-light-1200.png`/`-2400.png` came back at
+  the exact requested widths with heights matching the trimmed aspect ratio to the pixel (105 and 209 for a
+  951×83 source, i.e. exactly `round(83 * 1200/951)` and `round(83 * 2400/951)`), confirming
+  `svgToPngAtWidth` scales correctly rather than cropping or distorting.
+
+**Not verified:** live Storage upload/signed-URL round trip through the real `/api/brand-kits/[id]/assets/
+[key]` route (same live-Storage/Auth gap noted throughout this session) — the renderer functions themselves
+are verified with real output, the route's plumbing around them is unchanged from the already-shipped
+`wordmark_png_dark` path.
