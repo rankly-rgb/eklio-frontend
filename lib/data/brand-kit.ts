@@ -104,6 +104,7 @@ export async function loadBrandKit(
     .select("*, projects!inner(user_id, name)")
     .eq("id", brandKitId)
     .eq("projects.user_id", userId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error || !data) return null;
@@ -140,6 +141,7 @@ export async function loadBrandKitByProject(
     .from("brand_kits")
     .select("*")
     .eq("project_id", projectId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (!row) return null;
@@ -283,4 +285,122 @@ export async function markBrandKitDelivered(
   }
 
   return { ok: true, firstView: result.first_view };
+}
+
+/*
+ * Housekeeping (Lot 9) — soft delete, restore, "Recently deleted."
+ *
+ * Deletion is a free action, not a paid one: an unpaid or reversed kit must
+ * still be deletable, so these never check `isBrandKitEntitled` (see
+ * `app/__tests__/brand-kit-entitlement.test.ts`'s `FREE` allowlist entries
+ * for the two routes that call these).
+ */
+
+export async function deleteBrandKit(
+  supabase: Client,
+  brandKitId: string
+): Promise<{ ok: true } | { ok: false; reason: "not-found" } | { ok: false; reason: "write-failed" }> {
+  const { data, error } = await supabase.rpc("delete_brand_kit", {
+    p_brand_kit_id: brandKitId,
+  });
+
+  if (error) {
+    console.error("[brand-kit] delete_brand_kit", error);
+    return { ok: false, reason: "write-failed" };
+  }
+  const result = data as { ok: true } | { error: { code: string; message: string } };
+  if ("error" in result) {
+    if (result.error.code === "not_found") return { ok: false, reason: "not-found" };
+    console.error("[brand-kit] delete_brand_kit", result.error);
+    return { ok: false, reason: "write-failed" };
+  }
+  return { ok: true };
+}
+
+export async function restoreBrandKit(
+  supabase: Client,
+  brandKitId: string
+): Promise<{ ok: true } | { ok: false; reason: "not-found" } | { ok: false; reason: "write-failed" }> {
+  const { data, error } = await supabase.rpc("restore_brand_kit", {
+    p_brand_kit_id: brandKitId,
+  });
+
+  if (error) {
+    console.error("[brand-kit] restore_brand_kit", error);
+    return { ok: false, reason: "write-failed" };
+  }
+  const result = data as { ok: true } | { error: { code: string; message: string } };
+  if ("error" in result) {
+    if (result.error.code === "not_found") return { ok: false, reason: "not-found" };
+    console.error("[brand-kit] restore_brand_kit", result.error);
+    return { ok: false, reason: "write-failed" };
+  }
+  return { ok: true };
+}
+
+export type DeletedBrandKit = {
+  brandKitId: string;
+  practiceName: string;
+  deletedAt: string;
+  purgeAt: string;
+  /** Computed server-side (not in the browser) so the client never calls `Date.now()` during render. */
+  daysLeft: number;
+};
+
+export async function listDeletedBrandKits(supabase: Client): Promise<DeletedBrandKit[]> {
+  const { data, error } = await supabase.rpc("list_deleted_brand_kits");
+  if (error) {
+    console.error("[brand-kit] list_deleted_brand_kits", error);
+    return [];
+  }
+  const rows = data as Array<{
+    brand_kit_id: string;
+    practice_name: string;
+    deleted_at: string;
+    purge_at: string;
+  }>;
+  const now = Date.now();
+  return rows.map((row) => ({
+    brandKitId: row.brand_kit_id,
+    practiceName: row.practice_name,
+    deletedAt: row.deleted_at,
+    purgeAt: row.purge_at,
+    daysLeft: Math.max(0, Math.ceil((new Date(row.purge_at).getTime() - now) / 86_400_000)),
+  }));
+}
+
+export type HomeActivity = {
+  since: string | null;
+  newAssets: { key: string; label: string }[];
+  contentReady: { type: "post" | "story"; title: string; dayOfMonth: number }[];
+};
+
+export async function loadHomeActivity(
+  supabase: Client,
+  brandKitId: string
+): Promise<HomeActivity> {
+  const empty: HomeActivity = { since: null, newAssets: [], contentReady: [] };
+  const { data, error } = await supabase.rpc("home_recent_activity", {
+    p_brand_kit_id: brandKitId,
+  });
+  if (error) {
+    console.error("[brand-kit] home_recent_activity", error);
+    return empty;
+  }
+  const result = data as
+    | { since: string | null; new_assets: { key: string; label: string }[]; content_ready: { type: "post" | "story"; title: string; day_of_month: number }[] }
+    | { error: { code: string; message: string } };
+  if ("error" in result) {
+    console.error("[brand-kit] home_recent_activity", result.error);
+    return empty;
+  }
+  return {
+    since: result.since,
+    newAssets: result.new_assets,
+    contentReady: result.content_ready.map((item) => ({
+      type: item.type,
+      title: item.title,
+      dayOfMonth: item.day_of_month,
+    })),
+  };
 }

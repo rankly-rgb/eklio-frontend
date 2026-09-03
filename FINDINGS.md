@@ -59,3 +59,27 @@ built around. One line each: what, where, why it matters.
   while researching Lot 8, left untouched. All three need a scheduler/infrastructure decision the comment
   itself says doesn't belong to the frontend; none of them are what "sold honestly" asked for. Still real
   and still worth doing eventually — noted here rather than re-discovered by whoever builds them.
+
+- `home_recent_activity` (Lot 9) advances its own "last seen" marker on every call, and it's called from
+  inside `loadHome()` — the one function both the home page and `GET /api/home` share. Nothing in this repo
+  calls `GET /api/home` today, so this is safe as shipped, but if that route is ever polled by a future
+  client (rather than loaded once per visit) "Since you were here" will under-report, since each poll would
+  advance the marker past activity a real visit hasn't actually happened for yet. See DECISIONS.md for why
+  this wasn't re-architected pre-emptively.
+
+- A brand kit that gets soft-deleted (Lot 9) makes `loadBrandKitByProject` return `null` for its project —
+  home then falls back to its "no kit yet, start your brief" empty state for that project, even though the
+  underlying brief is complete. Not wrong exactly (there genuinely is no active kit for that project
+  anymore), but the copy ("Your brief is where it starts…") doesn't quite fit a user who finished a brief
+  and then deleted the kit it produced. A real redesign of home's empty states for this specific case is
+  out of proportion to the rest of this lot — flagged rather than patched with copy that would only cover
+  one of several possible paths into that same fallback.
+
+- Lot 9's accessibility/mobile pass was a CODE-level review of this session's own additions (Lots 2, 6, 7,
+  8, 9) — semantic elements, `aria-label`s on icon-only controls, focus-trap/Escape/focus-return on the two
+  new modals (copied from `components/site/reset-section.tsx`'s already-established pattern), responsive
+  `max-md:`/`max-lg:` classes where a layout goes multi-column, and status conveyed by more than color alone
+  (text + strikethrough alongside `LaunchChecklist`'s status dot, for instance). It did not extend to the
+  rest of the app, and none of it was confirmed in an actual browser or screen reader — same authenticated-
+  session gap as every other UI surface this session, called out explicitly here rather than implied by a
+  clean `tsc`/`eslint` run.

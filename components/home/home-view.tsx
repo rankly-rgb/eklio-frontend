@@ -6,6 +6,8 @@ import { BrandPreview } from "@/components/preview/brand-preview";
 import { ChecklistCard } from "@/components/home/checklist-card";
 import { MonthlyPresenceCard } from "@/components/home/monthly-presence-card";
 import { ContentGrid } from "@/components/home/content-grid";
+import { SinceYouWereHere } from "@/components/home/since-you-were-here";
+import { RecentlyDeletedSection } from "@/components/home/recently-deleted-section";
 import { StartBriefButton } from "@/components/brief/start-brief-button";
 import { previewModelFromDirection } from "@/lib/brand/shapes";
 import { SAMPLE_PREVIEW } from "@/lib/brand/sample";
@@ -120,6 +122,8 @@ export function HomeView({ home }: { home: HomeModel }) {
         ) : null}
       </div>
 
+      <SinceYouWereHere activity={home.activity} />
+
       {kit && direction && home.calendar.items.length > 0 ? (
         <section className="mt-7 flex flex-col gap-5">
           <SectionHeader title="This month's content" mono={home.monthLabel} />
@@ -138,6 +142,8 @@ export function HomeView({ home }: { home: HomeModel }) {
           </Link>
         </section>
       ) : null}
+
+      <RecentlyDeletedSection kits={home.deletedKits} />
     </main>
   );
 }

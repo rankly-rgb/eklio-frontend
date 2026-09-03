@@ -331,7 +331,36 @@ request, the console error) than to describe it from memory — same standard as
 
 ---
 
-## Part 11 — Lot 8's Monthly Presence
+## Part 11 — Lot 9's home and housekeeping
+
+Same caveat as every part above. This is the final lot; nothing here has been seen in a real browser.
+
+1. On home, with a brand kit that has real activity to show (a newly-rendered asset, or content that just
+   became ready): does a **"Since you were here"** card appear with real, specific lines (an asset name, or
+   a post/story date and title) — never generic text? On a kit with nothing new, does the card simply not
+   appear at all?
+2. On `/app/brand-kits/<id>`, scroll to the bottom. **Write down:** is there a **"Housekeeping"** section
+   with **"Delete this brand kit"**? Click it — does a modal open with focus already in the text field, a
+   line saying deletion doesn't refund and gives 30 days to restore, and a **Delete** button that stays
+   disabled until you type the exact practice name? Press Escape — does it close and return focus to the
+   button you clicked?
+3. Type the practice name exactly and click **Delete**. **Write down:** does it redirect to `/app`? Does
+   `/app/brand-kits/<id>` now 404 or redirect away rather than still showing the kit?
+4. On home, **write down:** does a **"Recently deleted"** section now show that kit's practice name and a
+   "N days left to restore" line? Click **Restore**. **Write down:** does the kit disappear from Recently
+   deleted, and does `/app/brand-kits/<id>` work again?
+5. On home, with a subscriber whose month has content, does the Monthly Presence card show a **"Next —
+   <date>, post/story."** line (or the real title instead of "Next" if that item is already unlocked)
+   below the ready count?
+6. Turn on "reduce motion" and repeat step 2 — does the modal still open normally (it has no motion of its
+   own beyond `route-enter`, so this should look identical either way)?
+
+If anything here is wrong, it's more useful to know exactly what broke (a screenshot, the failing network
+request, the console error) than to describe it from memory — same standard as every other part.
+
+---
+
+## Part 12 — Lot 8's Monthly Presence
 
 Same caveat as Parts 7 and 9: not seen in a real browser. Every kit today has zero content rows (the
 monthly cron hasn't run yet for a freshly purchased kit) — reaching a kit WITH content rows for real means

@@ -700,6 +700,90 @@ genuinely is no way to see it twice, not even by accident, and it avoids a secon
 
 ---
 
+### 2026-09-03 — Lot 9: "Since you were here" reuses `brand_assets`/`monthly_presence_content` timestamps, not `site_spec_diff`
+
+**Question.** The brief: "`Since you were here` built from the existing diff and the asset fingerprint."
+"The existing diff" most literally names `site_spec_diff`/`change_marks` — the "changed since you copied"
+mechanism the site editor's staleness banner already uses. But that mechanism is keyed to a specific,
+different event (`last_copied_spec_version`), not to a home visit; there was also no "last visited home"
+marker anywhere in the schema at all (confirmed by research before writing anything) — this needed new
+state regardless of which diff mechanism backed it.
+
+**Chosen.** One new nullable marker, `brand_kits.home_content_seen_at`, and one RPC
+(`home_recent_activity`) that reports two real signals since it — new `brand_assets` rows (each one IS a
+fingerprinted render; a new row appearing IS a fingerprint changing — "the asset fingerprint," literally)
+and `monthly_presence_content` items that moved to `ready`/`published` — then advances the marker. A
+never-visited kit (null marker) reports nothing rather than its entire history, matching `mark_brand_kit_
+delivered`'s own "first_view" idea of not treating "never" the same as "everything."
+
+**Why not reuse `site_spec_diff`.** Doing so faithfully would mean adding a second baseline column to
+`site_specs` (`home_seen_spec_version`, alongside the existing `last_copied_spec_version`) and a near-
+duplicate of `site_spec_diff`'s `change_marks`-parsing SQL to avoid touching an already-shipped, tested
+function's shape — real, avoidable surface for the same underlying spirit ("what's new since she was
+here") that two already-timestamped tables already answer directly. Recorded as a deliberate scope call,
+not silently narrower than what the brief's wording most literally names.
+
+**A real caveat, not silently absorbed.** `home_recent_activity` MUTATES its own marker on every call —
+reading it is not free of side effects. It only runs from `loadHome()`, which both the home page and
+`GET /api/home` call identically (this codebase's own rule: "the screen and the route cannot diverge").
+Nothing in this repo currently calls `GET /api/home` more than once per real visit, so this is safe today —
+but if that route is ever polled by a future client (a mobile app, for instance) rather than loaded once
+per visit, the marker will advance on every poll and "Since you were here" will under-report. Flagged in
+FINDINGS.md rather than solved by re-architecting the mutating-RPC design pre-emptively for a client that
+doesn't exist yet.
+
+---
+
+### 2026-09-03 — Lot 9: the typed practice-name confirmation is a client-side safety net, not a server-verified check
+
+**Question.** `delete_brand_kit(kit_id)` — the brief specifies "typed confirmation of the practice name."
+Should the RPC itself verify the typed string server-side, or is a client-side gate enough?
+
+**Chosen.** Client-side only: `DeleteKitSection`'s modal disables the Delete button until the typed text
+exactly matches `practiceName`, but `delete_brand_kit` itself only checks ownership (`auth.uid()` through
+`brand_kits -> projects`) — the same split `ConfirmReset` (`components/site/reset-section.tsx`) already
+uses for its own destructive confirmation, and the one this new modal's focus-trap/ARIA/Escape behavior
+copies verbatim. The typed name's job is catching a wrong click or a moment of second-guessing, not
+authorization — ownership is the real boundary, and it's already enforced independent of anything the
+client sends. Replicating the name-match server-side would also require the RPC to reproduce `hydrate()`'s
+practice-name fallback chain (`project_briefs.practice_name` else `projects.name`) in SQL — a second
+implementation of a rule that already lives in exactly one place in the frontend.
+
+---
+
+### 2026-09-03 — Lot 9: deleting and restoring a kit are free actions, not gated on `isBrandKitEntitled`
+
+**Question.** Every route under `app/api/brand-kits/[id]/...` is required, by the route-enumerating test,
+to either call `isBrandKitEntitled` or rely on a database-level refusal, or be explicitly allowlisted as
+free with a reason. Should deleting/restoring require a paid, entitled kit?
+
+**Chosen.** No — added to the test's `FREE` allowlist instead. An unpaid kit, or one whose purchase was
+later reversed, still needs to be deletable as ordinary account housekeeping; gating deletion on the same
+paywall that gates the kit's CONTENT would mean a practitioner who wants to delete a kit she never finished
+paying for, or whose payment was reversed, could not — the exact wrong failure mode for a "clean up after
+yourself" action. Restoring gets the same allowlisting for the same reason: it undoes a free action, so it
+has to be free too.
+
+---
+
+### 2026-09-03 — Lot 9: the 30-day storage purge is a real, registered cron this session never triggers
+
+**Question.** "Storage purged after [30 days]" is explicit in the brief. Building and registering an
+actually-scheduled destructive job (hard-deleting rows and Storage objects) sits close to the stop
+condition around destructive database/storage actions — worth pausing on rather than building reflexively.
+
+**Chosen.** Built it (`app/api/cron/purge-deleted-kits`, registered in `vercel.json` at `0 6 * * *`),
+following `cron/monthly`'s exact established pattern (`authorizeCron`, `service_role`, idempotent,
+externally scheduled) — but never invoked it, in this session, against the live project. The distinction
+that matters: the stop condition is about actions taken directly, now, against real deployed data — not
+about writing code whose eventual, scheduled, user-consented behavior (a kit she typed her own practice
+name to confirm deleting, 30 days ago) is a purge. The same logic already governs every other cron in this
+product (`cron/monthly` writes real content on a schedule this session doesn't fire either). Building it
+and registering it is the deliverable the brief asks for; running it against production data was never in
+scope for this session regardless.
+
+---
+
 ### 2026-09-03 — Lot 8: fixed one live dead-route bug found along the way, left one dead-code instance of the same bug alone
 
 **Question.** Research surfaced two places linking to the removed `/app/projets/...` route tree (retired

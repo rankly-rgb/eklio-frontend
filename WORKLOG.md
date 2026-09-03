@@ -865,3 +865,81 @@ asset fetch fails, the redirect-on-replay actually firing on a second visit, and
 selecting a direction through the ceremony to the workspace. Same authenticated-session gap as every other
 UI surface this session — this one is a compounded case (three server-side redirects plus a client
 animation plus three async asset fetches) that particularly deserves a real click-through before shipping.
+
+## Lot 9 — home and housekeeping (final lot)
+
+Researched before writing any code (a dispatched pass covering `change_marks`, any existing "last seen"
+state, the asset-fingerprint comparison story, settings/typed-confirmation precedent, Storage layout and
+the cron pattern, soft-delete precedent, every route this chantier added, and the route-enumerating test's
+exact mechanism). Full findings shaped four scope decisions in DECISIONS.md — read those first; this entry
+is what got built and how it was verified. "The brand card with her live mockup" and "the launch ring" were
+already shipped (Lot 3's "Your brand" card, Lot 6's progress bar) — nothing new needed for either.
+
+**Backend (`eklio-backend`, three migrations, applied live, ledgers corrected).**
+- `20260903280000_delete_brand_kit.sql` — `deleted_at` on `brand_kits`; `delete_brand_kit`/
+  `restore_brand_kit` (owner-scoped, idempotent); `list_deleted_brand_kits` (the caller's own kits still
+  inside the 30-day window). Never touches `purchases`/`subscriptions` — deletion doesn't refund.
+- `20260903290000_home_recent_activity.sql` — `home_content_seen_at` on `brand_kits`; `home_recent_activity`
+  reports new `brand_assets` rows and newly-ready/published `monthly_presence_content` since the marker,
+  then advances it. See DECISIONS.md for why this doesn't reuse `site_spec_diff`.
+
+**Frontend.**
+- `lib/data/brand-kit.ts` — `loadBrandKit`/`loadBrandKitByProject` now filter `deleted_at is null` (RLS
+  itself stays unchanged — a deleted kit is still readable by its owner, which is how "Recently deleted"
+  works at all); new `deleteBrandKit`/`restoreBrandKit`/`listDeletedBrandKits`/`loadHomeActivity` callers.
+  `DeletedBrandKit.daysLeft` is computed server-side (not via `Date.now()` in a component) specifically to
+  avoid a real React purity lint violation caught while building the "Recently deleted" row (`Cannot call
+  impure function during render` — see below).
+- `app/api/brand-kits/[id]/delete/route.ts` and `.../restore/route.ts` (new) — both added to the route-
+  enumerating test's `FREE` allowlist rather than gated on `isBrandKitEntitled`: deletion and its undo are
+  account housekeeping, not paid features (see DECISIONS.md).
+- `components/kit/delete-kit-section.tsx` (new) — a "Housekeeping" section at the bottom of the kit
+  workspace, typed practice-name confirmation, focus-trap/ARIA/Escape modal copied from `ConfirmReset`'s
+  established pattern (`components/site/reset-section.tsx`). Wired into `brand-kit-view.tsx`, only when
+  `practiceName` is non-null.
+- `components/home/recently-deleted-section.tsx` and `since-you-were-here.tsx` (new) — both render nothing
+  when empty, wired into `home-view.tsx`. `since-you-were-here.tsx` exports `ordinal()` (day → "3rd"/"11th"
+  etc.), unit-tested including the 11/12/13 exceptions.
+- `components/home/monthly-presence-card.tsx` — added "the next item and its date" (the first
+  not-yet-published calendar item, its real title when visible or "Next" when still locked, its date and
+  Post/Story kind) below the ready-count line.
+- `lib/data/home.ts` — `HomeModel` gained `activity: HomeActivity` and `deletedKits: DeletedBrandKit[]`,
+  both fetched in `loadHome()` (shared by the page and `GET /api/home` — see the mutating-RPC caveat in
+  FINDINGS.md).
+- `app/api/cron/purge-deleted-kits/route.ts` (new) — the other half of soft delete: kits deleted 30+ days
+  ago get their `brand_assets` storage objects removed, then the row (cascades to everything else FK'd to
+  it), following `cron/monthly`'s exact `authorizeCron`/`service_role`/idempotent pattern. Registered in
+  `vercel.json` (`0 6 * * *`). Never invoked against the live project this session — see DECISIONS.md for
+  why building and registering it is still in scope.
+- `app/__tests__/brand-kit-entitlement.test.ts` — `delete`/`restore` added to `FREE` with real
+  justification strings; a new, separate `describe` block covers `/api/monthly-presence/checkout` (outside
+  `ROUTES_DIR`, gated by a different check — `isEntitledToMonthlyPresence`, not `isBrandKitEntitled` —
+  so folding it into the existing enumeration would have been a false test, not real coverage).
+
+**Verified, and how.**
+- Backend: `scripts/local-verify.sh` — 54/54 SQL tests across both new migrations (delete/restore
+  idempotence and ownership refusal, the 30-day window boundary and the practice-name fallback in
+  `list_deleted_brand_kits`, and `home_recent_activity`'s old-vs-new filtering and null-marker-means-
+  nothing-to-report behavior). One real test bug caught and fixed along the way: `now()` is fixed for an
+  entire Postgres transaction, so a test relying on real elapsed time between two RPC calls in the same
+  `begin;...rollback;` block silently compared a timestamp to itself — fixed with explicit `+ interval`
+  offsets instead of `pg_sleep`. Both migrations dry-run rehearsed against the live project's real data
+  before applying; ledger versions corrected afterward.
+- Frontend: `tsc --noEmit`, `eslint`, `next build`, and the full `vitest` suite (973/973) all clean. Both
+  new API routes and the purge cron appear in `next build`'s route table.
+- The route-enumerating test extension was actually exercised, not just added: re-ran the full suite after
+  each addition and confirmed the specific new assertions passed rather than trusting the diff.
+- `since-you-were-here.tsx`'s `ordinal()` — unit-tested directly, including the 11/12/13 exceptions a naive
+  `%10` rule would get wrong.
+- One real ESLint rule violation caught before it shipped: `recently-deleted-section.tsx` originally called
+  `Date.now()` directly during render (`react-hooks/purity`'s "Cannot call impure function during render"),
+  which would produce a hydration mismatch. Fixed by computing `daysLeft` server-side in
+  `listDeletedBrandKits` instead of client-side at render time.
+
+**Not verified:** the actual click-through in a browser for any of this lot's UI — the delete confirmation
+modal's typed-match gating, the focus trap, the restore flow, "Since you were here" and "Recently deleted"
+actually rendering real data, the home-slot swap timing. The purge cron specifically has never run against
+real data of any kind, live or local (local-verify's Postgres stub has no Storage to exercise the
+`storage.remove()` call against) — its SQL-side logic (which kits are candidates) is implicitly exercised
+by nothing directly; this is the one piece of Lot 9 with the least direct verification, flagged plainly
+rather than claimed otherwise.

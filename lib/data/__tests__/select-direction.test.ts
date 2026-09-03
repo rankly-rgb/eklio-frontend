@@ -50,7 +50,9 @@ function client(update: { data: unknown; error: unknown }): {
     return {
       select: () => ({
         eq: () => ({
-          eq: () => ({ maybeSingle: async () => ({ data: kitRow, error: null }) }),
+          eq: () => ({
+            is: () => ({ maybeSingle: async () => ({ data: kitRow, error: null }) }),
+          }),
         }),
       }),
       update: () => ({

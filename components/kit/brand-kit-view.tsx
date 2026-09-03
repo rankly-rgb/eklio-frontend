@@ -15,6 +15,7 @@ import { AssetsSection } from "@/components/kit/assets-section";
 import { SiteCard } from "@/components/kit/site-card";
 import { BrandPreview } from "@/components/preview/brand-preview";
 import { LaunchProgressRow } from "@/components/kit/launch-progress-row";
+import { DeleteKitSection } from "@/components/kit/delete-kit-section";
 import type { LaunchStepContext } from "@/components/checklist/launch-checklist";
 import { previewModelFromDirection, type Direction, type EthicsCheck, type VoiceGuide } from "@/lib/brand/shapes";
 import type { ContrastReport, SitePreviewTokens } from "@/lib/site/types";
@@ -220,6 +221,12 @@ export function BrandKitView({
           Edit my brief
         </ButtonLink>
       </div>
+
+      {practiceName ? (
+        <div className="mt-12 max-w-[720px] border-t border-line pt-6">
+          <DeleteKitSection brandKitId={brandKitId} practiceName={practiceName} />
+        </div>
+      ) : null}
     </main>
   );
 }

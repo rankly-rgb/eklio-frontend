@@ -42,7 +42,12 @@ const ROUTES_DIR = join(ROOT, "app/api/brand-kits");
  * La révélation, elle, est gratuite et entière — mais elle est une page, pas
  * une route d'API, et elle ne sert pas de livrable.
  */
-const FREE: Record<string, string> = {};
+const FREE: Record<string, string> = {
+  "app/api/brand-kits/[id]/delete/route.ts":
+    "Deletion is account housekeeping, not a paid feature -- an unpaid or reversed kit must still be deletable.",
+  "app/api/brand-kits/[id]/restore/route.ts":
+    "Restoring undoes a free housekeeping action, not a paid one -- gating it on entitlement would be inconsistent.",
+};
 
 /** Les appels qui posent la question du droit, explicitement. */
 const EXPLICIT_CHECK = /\bisBrandKitEntitled\s*\(/;
@@ -236,5 +241,19 @@ describe("la ligne de kit précède le crédit", () => {
     for (const dir of ["lib", "app", "components"]) walk(join(ROOT, dir));
 
     expect(inserts).toEqual(["app/api/briefs/[id]/generate/route.ts"]);
+  });
+});
+
+/*
+ * Monthly Presence's own paywall (Lot 8) is a DIFFERENT question from a kit
+ * purchase — `isEntitledToMonthlyPresence`, a subscription, not
+ * `isBrandKitEntitled` — and its one route lives outside `ROUTES_DIR`, so it
+ * is invisible to the enumeration above. A second, small, parallel check
+ * rather than folding it into machinery built for a different guard.
+ */
+describe("le paywall de Monthly Presence est gardé séparément", () => {
+  it("app/api/monthly-presence/checkout/route.ts appelle isEntitledToMonthlyPresence", () => {
+    const source = code(join(ROOT, "app/api/monthly-presence/checkout/route.ts"));
+    expect(source).toMatch(/\bisEntitledToMonthlyPresence\s*\(/);
   });
 });

@@ -1,6 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import { loadBrandKitByProject, type BrandKit } from "@/lib/data/brand-kit";
+import {
+  loadBrandKitByProject,
+  listDeletedBrandKits,
+  loadHomeActivity,
+  type BrandKit,
+  type DeletedBrandKit,
+  type HomeActivity,
+} from "@/lib/data/brand-kit";
 import { loadLaunchProgress, type LaunchProgress } from "@/lib/data/checklist";
 import {
   EMPTY_CALENDAR,
@@ -49,7 +56,13 @@ export type HomeModel = {
   subscription: Subscription | null;
   entitled: boolean;
   nudge: Nudge | null;
+  /** "Since you were here" — empty when there's no kit, or nothing changed. */
+  activity: HomeActivity;
+  /** Recently deleted kits still inside their 30-day window, this user's own. */
+  deletedKits: DeletedBrandKit[];
 };
+
+const EMPTY_ACTIVITY: HomeActivity = { since: null, newAssets: [], contentReady: [] };
 
 export async function loadHome(
   supabase: Client,
@@ -58,7 +71,7 @@ export async function loadHome(
 ): Promise<HomeModel> {
   const month = monthKey(now);
 
-  const [{ data: profile }, { data: project }, subscription] = await Promise.all([
+  const [{ data: profile }, { data: project }, subscription, deletedKits] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
     /*
      * Le projet COURANT est le plus récemment touché. Le produit n'expose pas
@@ -73,6 +86,10 @@ export async function loadHome(
       .limit(1)
       .maybeSingle(),
     getSubscription(supabase, userId),
+    // Not scoped to the current project: a kit can be deleted from any of
+    // her projects, and "Recently deleted" is account-level housekeeping,
+    // not tied to whichever one is most recently touched.
+    listDeletedBrandKits(supabase),
   ]);
 
   const entitled = isEntitledToMonthlyPresence(subscription, now);
@@ -92,6 +109,8 @@ export async function loadHome(
       subscription,
       entitled,
       nudge: null,
+      activity: EMPTY_ACTIVITY,
+      deletedKits,
     };
   }
 
@@ -104,11 +123,19 @@ export async function loadHome(
     loadBrandKitByProject(supabase, project.id, userId),
   ]);
 
-  const [checklist, calendar] = await Promise.all([
+  const [checklist, calendar, activity] = await Promise.all([
     brandKit
       ? loadLaunchProgress(supabase, brandKit.row.id)
       : Promise.resolve({ items: [], resolvedCount: 0, total: 0 }),
     brandKit ? loadCalendar(supabase, userId, month) : Promise.resolve(EMPTY_CALENDAR),
+    /*
+     * `home_recent_activity` ADVANCES its own marker on every call — reading
+     * it is not free of side effects, so this only ever runs from the real
+     * home surfaces (this function, called by the page and by GET /api/home
+     * — see FINDINGS.md for the caveat if that route is ever polled rather
+     * than loaded once per visit).
+     */
+    brandKit ? loadHomeActivity(supabase, brandKit.row.id) : Promise.resolve(EMPTY_ACTIVITY),
   ]);
 
   return {
@@ -124,6 +151,8 @@ export async function loadHome(
     subscription,
     entitled,
     nudge: pickNudge({ project, brief, brandKit, calendar }),
+    activity,
+    deletedKits,
   };
 }
 

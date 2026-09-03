@@ -147,10 +147,12 @@ export type Database = {
         Row: {
           content: Json
           created_at: string
+          deleted_at: string | null
           delivered_seen_at: string | null
           direction_id: string | null
           directions: Json | null
           ethics_check: Json | null
+          home_content_seen_at: string | null
           id: string
           multi_builder_prompt: string | null
           pdf_url: string | null
@@ -168,10 +170,12 @@ export type Database = {
         Insert: {
           content?: Json
           created_at?: string
+          deleted_at?: string | null
           delivered_seen_at?: string | null
           direction_id?: string | null
           directions?: Json | null
           ethics_check?: Json | null
+          home_content_seen_at?: string | null
           id?: string
           multi_builder_prompt?: string | null
           pdf_url?: string | null
@@ -189,10 +193,12 @@ export type Database = {
         Update: {
           content?: Json
           created_at?: string
+          deleted_at?: string | null
           delivered_seen_at?: string | null
           direction_id?: string | null
           directions?: Json | null
           ethics_check?: Json | null
+          home_content_seen_at?: string | null
           id?: string
           multi_builder_prompt?: string | null
           pdf_url?: string | null
@@ -1762,6 +1768,7 @@ export type Database = {
         Args: { p_brand_kit_id: string }
         Returns: boolean
       }
+      delete_brand_kit: { Args: { p_brand_kit_id: string }; Returns: Json }
       direction_assets_claim: {
         Args: {
           p_brand_kit_id: string
@@ -1801,6 +1808,8 @@ export type Database = {
         Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
         Returns: boolean
       }
+      home_recent_activity: { Args: { p_brand_kit_id: string }; Returns: Json }
+      list_deleted_brand_kits: { Args: never; Returns: Json }
       mark_brand_kit_delivered: {
         Args: { p_brand_kit_id: string }
         Returns: Json
@@ -1843,6 +1852,7 @@ export type Database = {
         Args: { p_brand_kit_id: string; p_fingerprint: string; p_key: string }
         Returns: Json
       }
+      restore_brand_kit: { Args: { p_brand_kit_id: string }; Returns: Json }
       section_type_fields_valid: { Args: { p: Json }; Returns: boolean }
       seed_launch_checklist: {
         Args: { p_brand_kit_id: string }
