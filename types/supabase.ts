@@ -14,6 +14,135 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      asset_catalog: {
+        Row: {
+          description: string
+          group: string
+          height: number | null
+          key: string
+          kind: string
+          label: string
+          min_tier: string
+          sort_order: number
+          width: number | null
+        }
+        Insert: {
+          description: string
+          group: string
+          height?: number | null
+          key: string
+          kind: string
+          label: string
+          min_tier?: string
+          sort_order?: number
+          width?: number | null
+        }
+        Update: {
+          description?: string
+          group?: string
+          height?: number | null
+          key?: string
+          kind?: string
+          label?: string
+          min_tier?: string
+          sort_order?: number
+          width?: number | null
+        }
+        Relationships: []
+      }
+      banned_phrases: {
+        Row: {
+          active: boolean
+          category: string
+          id: string
+          phrase: string
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          id?: string
+          phrase: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          id?: string
+          phrase?: string
+        }
+        Relationships: []
+      }
+      brand_assets: {
+        Row: {
+          brand_kit_id: string
+          byte_size: number
+          created_at: string
+          fingerprint: string
+          height: number | null
+          id: string
+          key: string
+          kind: string
+          storage_path: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          brand_kit_id: string
+          byte_size: number
+          created_at?: string
+          fingerprint: string
+          height?: number | null
+          id?: string
+          key: string
+          kind: string
+          storage_path: string
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          brand_kit_id?: string
+          byte_size?: number
+          created_at?: string
+          fingerprint?: string
+          height?: number | null
+          id?: string
+          key?: string
+          kind?: string
+          storage_path?: string
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_assets_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_assets_key_fkey"
+            columns: ["key"]
+            isOneToOne: false
+            referencedRelation: "asset_catalog"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       brand_kits: {
         Row: {
           content: Json
@@ -155,6 +284,39 @@ export type Database = {
           id?: string
           label?: string
           sort_order?: number
+        }
+        Relationships: []
+      }
+      comp_grants: {
+        Row: {
+          created_at: string
+          expires_at: string
+          generation_credits: number
+          granted_by: string
+          id: string
+          reason: string
+          revoked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          generation_credits?: number
+          granted_by: string
+          id?: string
+          reason: string
+          revoked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          generation_credits?: number
+          granted_by?: string
+          id?: string
+          reason?: string
+          revoked_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -459,6 +621,51 @@ export type Database = {
         }
         Relationships: []
       }
+      modality_cards: {
+        Row: {
+          active: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          full_name?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      modality_prominence_options: {
+        Row: {
+          active: boolean
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       monthly_presence_content: {
         Row: {
           brand_kit_id: string
@@ -521,6 +728,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      not_a_fit_cards: {
+        Row: {
+          active: boolean
+          id: string
+          label: string
+          referral_note: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          id: string
+          label: string
+          referral_note: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          label?: string
+          referral_note?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       palette_families: {
         Row: {
@@ -881,102 +1112,6 @@ export type Database = {
           },
         ]
       }
-      session_style_cards: {
-        Row: {
-          active: boolean
-          description: string
-          id: string
-          label: string
-          sort_order: number
-          voice_hints: string[]
-        }
-        Insert: {
-          active?: boolean
-          description: string
-          id: string
-          label: string
-          sort_order: number
-          voice_hints: string[]
-        }
-        Update: {
-          active?: boolean
-          description?: string
-          id?: string
-          label?: string
-          sort_order?: number
-          voice_hints?: string[]
-        }
-        Relationships: []
-      }
-      not_a_fit_cards: {
-        Row: {
-          active: boolean
-          id: string
-          label: string
-          referral_note: string
-          sort_order: number
-        }
-        Insert: {
-          active?: boolean
-          id: string
-          label: string
-          referral_note: string
-          sort_order: number
-        }
-        Update: {
-          active?: boolean
-          id?: string
-          label?: string
-          referral_note?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
-      modality_cards: {
-        Row: {
-          active: boolean
-          full_name: string
-          id: string
-          label: string
-          sort_order: number
-        }
-        Insert: {
-          active?: boolean
-          full_name: string
-          id: string
-          label: string
-          sort_order: number
-        }
-        Update: {
-          active?: boolean
-          full_name?: string
-          id?: string
-          label?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
-      modality_prominence_options: {
-        Row: {
-          active: boolean
-          id: string
-          label: string
-          sort_order: number
-        }
-        Insert: {
-          active?: boolean
-          id: string
-          label: string
-          sort_order: number
-        }
-        Update: {
-          active?: boolean
-          id?: string
-          label?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
       projects: {
         Row: {
           created_at: string
@@ -1155,6 +1290,33 @@ export type Database = {
           label?: string
           sort_order?: number
           source?: string
+        }
+        Relationships: []
+      }
+      session_style_cards: {
+        Row: {
+          active: boolean
+          description: string
+          id: string
+          label: string
+          sort_order: number
+          voice_hints: string[]
+        }
+        Insert: {
+          active?: boolean
+          description: string
+          id: string
+          label: string
+          sort_order: number
+          voice_hints: string[]
+        }
+        Update: {
+          active?: boolean
+          description?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          voice_hints?: string[]
         }
         Relationships: []
       }
@@ -1475,27 +1637,43 @@ export type Database = {
         }
         Relationships: []
       }
-      /*
-       * `app_settings` et `usp_stopwords` — JAMAIS lues par `authenticated`
-       * (RLS activée, zéro policy, privilèges révoqués à `anon`/`authenticated`,
-       * migration `20260831101000_usp_guardrail_tables.sql`). `service_role`
-       * les lit directement (il ignore RLS) : c'est le SEUL rôle qui les
-       * atteint, et seulement depuis `lib/generation/usp-guardrails.ts`.
-       */
-      app_settings: {
+      usp_fingerprints: {
         Row: {
-          key: string
-          value: Json
+          brief_id: string
+          created_at: string
+          id: string
+          normalized: string
+          scope_key: string
+          statement: string
+          user_id: string
         }
         Insert: {
-          key: string
-          value: Json
+          brief_id: string
+          created_at?: string
+          id?: string
+          normalized: string
+          scope_key: string
+          statement: string
+          user_id: string
         }
         Update: {
-          key?: string
-          value?: Json
+          brief_id?: string
+          created_at?: string
+          id?: string
+          normalized?: string
+          scope_key?: string
+          statement?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "usp_fingerprints_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: true
+            referencedRelation: "project_briefs"
+            referencedColumns: ["project_id"]
+          },
+        ]
       }
       usp_stopwords: {
         Row: {
@@ -1514,7 +1692,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      brand_kit_direction_contrast: { Args: { p_direction: Json }; Returns: Json }
+      brand_kit_asset_path_owner: { Args: { p_name: string }; Returns: boolean }
+      brand_kit_direction_contrast: {
+        Args: { p_direction: Json }
+        Returns: Json
+      }
       brand_kit_direction_palette_hash: {
         Args: { p_palette: Json }
         Returns: string
@@ -1549,11 +1731,23 @@ export type Database = {
         Returns: boolean
       }
       brand_kit_voice_guide_valid: { Args: { p: Json }; Returns: boolean }
+      brief_completed_steps_renumber_up: {
+        Args: { p_steps: number[] }
+        Returns: number[]
+      }
       brief_preview: { Args: { p_brief_id: string }; Returns: Json }
+      brief_progress_step_renumber_up: {
+        Args: { p_progress: number }
+        Returns: number
+      }
+      brief_step_renumber_up: { Args: { p_step: number }; Returns: number }
       calendar_summary: {
         Args: { p_month: string; p_user_id: string }
         Returns: Json
       }
+      comp_access_active: { Args: never; Returns: boolean }
+      comp_grant_active: { Args: { p_user_id: string }; Returns: boolean }
+      comp_grant_credits: { Args: { p_user_id: string }; Returns: number }
       complete_choose_direction: {
         Args: { p_brand_kit_id: string }
         Returns: undefined
@@ -1569,7 +1763,7 @@ export type Database = {
           p_daily_cap_cents: number
           p_direction_index: number
           p_palette_hash: string
-          p_reclaim_after?: unknown
+          p_reclaim_after?: string
         }
         Returns: Json
       }
@@ -1592,13 +1786,32 @@ export type Database = {
         Args: { p_month: string; p_user_id: string }
         Returns: number
       }
+      get_brand_asset_manifest: {
+        Args: { p_brand_kit_id: string; p_current_fingerprint: string }
+        Returns: Json
+      }
       grant_plan_allowance: {
         Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
         Returns: boolean
       }
+      project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
+      project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }
+      project_briefs_usp_options_valid: { Args: { p: Json }; Returns: boolean }
       purchase_status_before: {
         Args: { p_purchase_id: string; p_status: string }
         Returns: string
+      }
+      record_brand_asset: {
+        Args: {
+          p_brand_kit_id: string
+          p_byte_size: number
+          p_fingerprint: string
+          p_height?: number
+          p_key: string
+          p_storage_path: string
+          p_width?: number
+        }
+        Returns: Json
       }
       record_purchase_status_event: {
         Args: {
@@ -1611,12 +1824,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      request_brand_asset_upload: {
+        Args: { p_brand_kit_id: string; p_fingerprint: string; p_key: string }
+        Returns: Json
+      }
       section_type_fields_valid: { Args: { p: Json }; Returns: boolean }
       seed_launch_checklist: {
         Args: { p_brand_kit_id: string }
         Returns: number
       }
       seed_site_spec: { Args: { p_brand_kit_id: string }; Returns: number }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       site_catalog: { Args: never; Returns: Json }
       site_output_catalog_version: { Args: never; Returns: string }
       site_output_fill: {
@@ -1827,6 +2046,7 @@ export type Database = {
         Args: { p_brief_id: string; p_statement: string }
         Returns: string
       }
+      usp_normalize: { Args: { p_text: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
@@ -1845,12 +2065,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1874,11 +2094,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1899,11 +2119,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1924,11 +2144,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1941,11 +2161,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import {
   authenticate,
   badRequest,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/api/handler";
 import { loadBrandKit, selectDirection } from "@/lib/data/brand-kit";
 import { track } from "@/lib/analytics";
+import { warmFontCache } from "@/lib/kit/render/font-cache";
 
 /*
  * POST /api/brand-kits/[id]/direction — retient une des trois directions.
@@ -48,6 +50,28 @@ export async function POST(
 
   if (outcome.ok) {
     track("direction_chosen", { brandKitId: id });
+
+    /*
+     * Font-cache warming — the one place this chantier reaches outside the
+     * paid space. `after()` schedules the fetch once the response is
+     * already on its way to the client; it throws outside a request scope
+     * (unit tests, any caller not wrapped in a Next.js request), which must
+     * not fail a direction selection that has already succeeded, hence the
+     * try/catch. Strictly additive: the renderer re-fetches on a cache miss
+     * regardless, this only shortens that path for the common case.
+     */
+    const typography = outcome.kit.selectedDirection?.typography;
+    if (typography) {
+      try {
+        after(() => {
+          warmFontCache(typography.heading_font, typography.google_fonts_url);
+          warmFontCache(typography.body_font, typography.google_fonts_url);
+        });
+      } catch (err) {
+        console.error("[kit/render] could not schedule font-cache warming", err);
+      }
+    }
+
     return json({
       selectedDirectionId: outcome.kit.row.selected_direction_id,
     });

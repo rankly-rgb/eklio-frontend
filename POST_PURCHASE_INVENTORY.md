@@ -269,17 +269,49 @@ of documentation.
 See below.
 
 **Decided, 2026-09-03: create two private buckets in the same migration as `brand_assets`/`asset_catalog`
-(brief step 3, Lot 4.1–4.3), policies in that migration too.**
+(brief step 3, Lot 4.1–4.3), policies in that migration too. Shipped in
+`20260903090000_brand_asset_storage.sql` (eklio-backend).**
 
 - `brand-assets` — per-kit rendered files, path `brand-assets/{brand_kit_id}/{fingerprint}/{filename}`.
-  Owner reads their own objects, nobody reads anyone else's, writes only through the signed upload URL
-  `request_brand_asset_upload` issues. A per-object size cap and an allowed MIME list, not left open.
+  Owner reads their own objects, nobody reads anyone else's. A per-object size cap and an allowed MIME
+  list, not left open.
 - `fonts` — the TTF cache, keyed family+weight. Server-side only — no client role (`anon`/`authenticated`)
   reads or writes it; shared across kits, holds no user data.
 
-Both get the same treatment as `rls_auto_enable`'s test: a test proving a non-owner reads zero objects and
-the owner reads their own — a storage policy that silently returns nothing is the same failure mode as a
-table without RLS policies.
+**Correction, 2026-09-03: the plan above ("writes only through the signed upload URL
+`request_brand_asset_upload` issues") described a mechanism that does not exist, and shipped differently.**
+
+**Postgres cannot mint a Supabase Storage signed URL.** `createSignedUploadUrl()` /
+`createSignedUrl()` are calls against the separate Storage HTTP service, over a signing key that service
+holds — nothing in the `storage` schema, and no extension installed on this project, can produce that
+signature from inside a Postgres function. An RPC that "returns a signed upload URL" was never
+implementable as written.
+
+What actually shipped: the security boundary is **RLS policies on `storage.objects`**, not an RPC. A
+policy helper, `brand_kit_asset_path_owner(name)`, parses the object path's first segment as the
+`brand_kit_id` and calls `brand_kit_entitled()` — the existing, single definition of "paid for this kit,"
+reused whole. These policies are what actually authorize a read or a write, and they hold for *any*
+caller that reaches `storage.objects` under RLS — including `createSignedUploadUrl()`/`createSignedUrl()`
+themselves. `request_brand_asset_upload` still exists, but it now returns a **path**, not a URL: it
+validates the asset key and the fingerprint's shape and hands back `{bucket, storage_path}`, which
+eklio-frontend then passes to `createSignedUploadUrl()` using the caller's own session to get an actual
+signed URL. Two consequences worth carrying forward:
+
+- The RPC's `brand_kit_entitled()` check is a courtesy — an early, clear `payment_required` refusal — not
+  the boundary. Removing it would not open anything the storage policies don't already close.
+- The defining test of the lot is a session that never calls any RPC and drives `storage.objects` directly
+  under its own JWT: refused for a path under another kit's `brand_kit_id`, refused for its own kit while
+  unpaid, allowed only for its own paid kit's path. That test exists
+  (`supabase/tests/20260903090000_brand_asset_storage.test.sql`, eklio-backend) and is what actually proves
+  the boundary, not the RPC-level tests alongside it.
+
+Full detail, including the four implementation gotchas (defensive UUID-shaped path parsing, INSERT+UPDATE
+granted together for idempotent re-renders, no client `DELETE` ever, the path — not
+`storage.objects.owner` — as the authority), is in `FRONTEND_CONTRACT.md` §10 (eklio-backend).
+
+Both buckets get the same treatment as `rls_auto_enable`'s test: proof that a non-owner reads zero objects
+and the owner reads their own — a storage policy that silently returns nothing is the same failure mode as
+a table without RLS policies.
 
 ---
 
