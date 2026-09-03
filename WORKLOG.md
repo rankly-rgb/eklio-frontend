@@ -750,3 +750,62 @@ the four-part decision in DECISIONS.md; this entry is what was built and how it 
 **Not verified:** the actual click-through in a browser — expand/collapse, the optimistic Mark done/Skip
 toggle round-tripping through the real API route, the Copy buttons — same authenticated-session gap as
 every other UI surface this session (see Lot 3's entry for the full accounting).
+
+## Lot 8 — Monthly Presence, sold honestly
+
+Researched before writing any code (a dispatched Explore pass covering every blur/lock pattern, the
+Content page and its data flow, `monthly_presence_content` end to end, the subscription/entitlement
+system, and existing tests) — full findings and why the actual redesign turned out narrower than the
+brief's framing suggested are in DECISIONS.md. Short version: the one real "blurred card" was already
+blurring a real title, not a fabricated one, and the zero-row states were already honest; this lot still
+ships the brief's exact visual treatment and exact copy strings, which didn't exist verbatim before.
+
+**What was built.**
+- `components/home/content-grid.tsx` — `LockedTile` rewritten: no more `blur-[9px]`/centered padlock over a
+  colored block. Now a plain bordered row at `opacity-50` (hover `opacity-70`) showing the date (`Sep 3`,
+  a new `shortDate()` helper), the type (`Post`/`Story`), the real title in the direction's heading font,
+  and a small `PadlockGlyph` (`size="sm"`, was the unsized/larger default) — still clickable to open the
+  unlock modal. `tileSurface()`'s palette-tinted background helper is gone with it (nothing else used it).
+  `OpenTile` gets a `Download` action next to its Ready/Draft/Published label, calling a new `downloadCaption()`
+  helper (client-side `Blob` → `<a download>`, title + caption as a `.txt` file) — only when the item has a
+  caption. See DECISIONS.md for why this is a text download, not a rendered image.
+- `app/api/monthly-presence/checkout/route.ts` (new) — the same `createMonthlyPresenceCheckout` call
+  `POST /api/content/[id]/unlock` already makes, without that route's item-ownership lookup — needed
+  because a kit with zero content rows this month (the honest empty state) has no tile `[id]` to hang the
+  existing route off, and the underlying checkout call never needed one.
+- `components/presence/subscription-card.tsx` (new) — `MonthlyPresenceSubscriptionCard`, the brief's exact
+  line (`Twelve posts, four stories, and the calendar — $39/month. Cancel anytime.` — price interpolated
+  from `MONTHLY_PRESENCE.amountCents` via `formatUsd`, so it can't drift from the real pricing source), an
+  `accent` "Add Monthly Presence" button hitting the new route, loading/error states. No countdown, no
+  discount timer, no scarcity language anywhere in it.
+- `app/app/content/page.tsx` — zero-row branch's copy changed to the brief's exact
+  `"Your first month is being prepared."` (kit exists) — the "no kit yet" branch's different, correct copy
+  is untouched. Renders `MonthlyPresenceSubscriptionCard` below the grid (content-rows branch) or below the
+  empty-state card (zero-rows branch) whenever `!home.entitled`.
+- `components/home/monthly-presence-card.tsx` (new) — `MonthlyPresenceCard`, home's version: a compact
+  status line (zero rows → the same exact "being prepared" copy; content rows → `N of M ready for
+  <Month>.` plus a link to `/app/content`), and the same subscription card below it when not entitled.
+- `components/home/home-view.tsx` — the right-column slot now renders `MonthlyPresenceCard` once
+  `home.checklist.resolvedCount === home.checklist.total` (Lot 6's "that transition is when the
+  subscription gets sold" boundary), `ChecklistCard` otherwise. Resolves the FINDINGS.md item Lot 6 flagged
+  about this exact slot going sparse once the checklist resolves.
+- `app/app/checkout/success/page.tsx` — fixed two dead links to the removed `/app/projets/...` route tree
+  (found during Lot 8's research, unrelated to Monthly Presence itself but on the same page): now `/app`
+  and `/app/content`. See DECISIONS.md for why `app/app/actions.ts`'s matching dead links were left alone
+  (unreachable dead code, not a live bug).
+
+**Verified, and how.**
+- `tsc --noEmit`, `eslint`, `next build`, and the full `vitest` suite (954/954) all clean. The new route
+  (`/api/monthly-presence/checkout`) appears in `next build`'s route table.
+- The pre-existing route-enumerating test (`app/__tests__/brand-kit-entitlement.test.ts`) discovers routes
+  via `readdirSync`, not a hardcoded list — the new route is automatically covered by whatever it asserts,
+  confirmed by it staying green with no changes needed on my part.
+- Manually re-traced `LockedTile`'s and `OpenTile`'s prop flow and confirmed no leftover reference to the
+  removed `tileSurface()`/`darkenLightness` import, and that `Palette`/`Typography` types are still used
+  where still needed (`OpenTile`'s colored surface is untouched — only the locked tile's presentation
+  changed).
+
+**Not verified:** the actual click-through in a browser — the locked row's reduced-opacity/lock-glyph
+rendering, the Download button producing a real file, the subscription card's checkout redirect actually
+reaching Stripe, and the home-slot swap from checklist to Monthly Presence actually firing once a real
+kit's checklist resolves. Same authenticated-session gap as every other UI surface this session.

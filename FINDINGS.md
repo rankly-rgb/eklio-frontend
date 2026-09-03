@@ -41,3 +41,21 @@ built around. One line each: what, where, why it matters.
   that point, but that card is Lot 8's build, not this one. Not broken (the layout doesn't collapse oddly,
   the slot just looks sparse), and not worth a placeholder built now only to be replaced next lot — flagged
   so Lot 8 knows this is the exact transition point it needs to wire into, per the delivery order.
+  RESOLVED by Lot 8: `home-view.tsx` now renders `MonthlyPresenceCard` in that slot once
+  `home.checklist.resolvedCount === home.checklist.total`, instead of relying on `ChecklistCard`'s own
+  internal one-line collapse (which stays as-is for the kit page's row, where remaining inside the "Your
+  first week" framing when resolved is still the right call).
+
+- `app/app/actions.ts`'s `createProject`/`deleteProject` — both `redirect()` to the removed
+  `/app/projets/...` route tree, and both are dead code: grep confirms nothing imports either function from
+  any component. Not a live bug (nothing reachable 404s through it), so left alone rather than bundled into
+  Lot 8's live dead-route fix (`checkout/success`) — deciding whether unused server actions are safe to
+  delete outright is a separate call from this lot's "sold honestly" scope. If this file is ever wired back
+  up, its redirect targets need the same fix `checkout/success` just got.
+
+- `MONTHLY_PRESENCE_STORIES`/`MONTHLY_PRESENCE_POSTS` in `lib/billing/plans.ts` and the pre-existing
+  `TODO(retention)` comment above `MONTHLY_PRESENCE` (three documented-but-unbuilt retention seams: a
+  monthly-ready delivery notification, per-post publish reminders, easier publishing/export) — read in full
+  while researching Lot 8, left untouched. All three need a scheduler/infrastructure decision the comment
+  itself says doesn't belong to the frontend; none of them are what "sold honestly" asked for. Still real
+  and still worth doing eventually — noted here rather than re-discovered by whoever builds them.

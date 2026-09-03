@@ -6,22 +6,19 @@ import { Button } from "@/components/ui/button";
 import { PadlockGlyph } from "@/components/ui/glyphs";
 import { PlaceholderLines } from "@/components/ui/placeholder-lines";
 import { MonthlyPresenceModal } from "@/components/home/monthly-presence-modal";
-import { darkenLightness } from "@/lib/brand/color";
 import type { Palette, Typography } from "@/lib/brand/shapes";
 import type { CalendarItem } from "@/lib/data/calendar";
 
 /*
  * La grille de contenu du mois (Écran 7).
  *
- * LA TUILE VERROUILLÉE, exactement comme la référence : le MÊME contenu, flouté
- * par une couche `inset:-16px` — le débord existe pour qu'aucun bord net
- * n'apparaisse au ras du cadre — un cadenas centré, et le titre LISIBLE en
- * encre juste dessous.
- *
- * Ce titre-là n'est pas décoratif : le §9 demande que la tuile verrouillée
- * porte son titre en texte accessible, pas seulement dans la couche floutée.
- * Un lecteur d'écran doit apprendre ce qui est verrouillé, pas qu'il y a
- * quelque chose de flou.
+ * LOT 8 — la tuile verrouillée n'est plus floutée : le §9 accessible existe
+ * déjà (le titre en clair, dessous), donc le flou par-dessus n'ajoutait
+ * qu'une couche décorative que le brief demande de supprimer purement et
+ * simplement — "Delete every blurred card in the product." Elle rend
+ * maintenant en LISIBLE et sobre : date, type (Post/Story), le titre réel en
+ * ses polices, à opacité réduite, avec un petit cadenas — jamais un rendu
+ * flou faisant semblant de cacher quelque chose.
  */
 
 export function ContentGrid({
@@ -72,14 +69,12 @@ export function ContentGrid({
           columns === 5 ? "grid-cols-5" : "grid-cols-4"
         } max-lg:grid-cols-3 max-md:grid-cols-2`}
       >
-        {items.map((item, index) =>
+        {items.map((item) =>
           item.status === "locked" ? (
             <LockedTile
               key={item.id}
               item={item}
-              palette={palette}
               typography={typography}
-              index={index}
               onOpen={() => void unlock(item)}
             />
           ) : (
@@ -126,9 +121,23 @@ function titleCase(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase();
 }
 
-/** Les tuiles alternent le clair et sa version assombrie, comme la référence. */
-function tileSurface(palette: Palette, index: number): string {
-  return index % 2 === 0 ? palette.light : darkenLightness(palette.light, 3.3);
+/** `2026-09-01` + `3` → `Sep 3`, for the locked row's date column. */
+function shortDate(month: string, dayOfMonth: number): string {
+  const date = new Date(`${month}T12:00:00Z`);
+  const monthAbbrev = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(date);
+  return `${monthAbbrev} ${dayOfMonth}`;
+}
+
+function downloadCaption(item: CalendarItem) {
+  const title = item.title ?? "Untitled";
+  const text = item.caption ? `${title}\n\n${item.caption}` : title;
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${title.replace(/[^\w\s-]/g, "").trim().slice(0, 60) || "post"}.txt`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function OpenTile({
@@ -171,13 +180,20 @@ function OpenTile({
         gap={6}
         opacity={0.5}
       />
-      <MonoLabel
-        tracking="14"
-        tone={ready ? "accent" : "ink-3"}
-        className="mt-3 block"
-      >
-        {ready ? "Ready" : item.status === "published" ? "Published" : "Draft"}
-      </MonoLabel>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <MonoLabel tracking="14" tone={ready ? "accent" : "ink-3"}>
+          {ready ? "Ready" : item.status === "published" ? "Published" : "Draft"}
+        </MonoLabel>
+        {item.caption ? (
+          <button
+            type="button"
+            onClick={() => downloadCaption(item)}
+            className="text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+          >
+            Download
+          </button>
+        ) : null}
+      </div>
       {item.caption ? <span className="sr-only">{item.caption}</span> : null}
     </div>
   );
@@ -185,55 +201,39 @@ function OpenTile({
 
 function LockedTile({
   item,
-  palette,
   typography,
-  index,
   onOpen,
 }: {
   item: CalendarItem;
-  palette: Palette;
   typography: Typography;
-  index: number;
   onOpen: () => void;
 }) {
   const title = item.title ?? "A post for later this month";
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Unlock “${title}”`}
-        className="relative block h-[138px] w-full overflow-hidden rounded-preview"
-        style={{ background: tileSurface(palette, index) }}
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`Unlock “${title}”`}
+      className="box-border flex h-[138px] w-full flex-col justify-between rounded-preview border border-line p-[18px] text-left opacity-50 transition-opacity hover:opacity-70"
+    >
+      <div className="flex w-full items-center justify-between gap-2">
+        <MonoLabel tracking="12" tone="ink-3">
+          {`${shortDate(item.month, item.day_of_month)} · ${item.type === "post" ? "Post" : "Story"}`}
+        </MonoLabel>
+        <PadlockGlyph size="sm" />
+      </div>
+      <span
+        className="text-pretty"
+        style={{
+          fontFamily: `"${typography.heading_font}", Georgia, serif`,
+          fontWeight: 500,
+          fontSize: 17,
+          lineHeight: 1.2,
+        }}
       >
-        {/*
-          Débord de 16px : le flou d'une couche posée à ras du cadre laisserait
-          un liseré net sur les quatre bords.
-        */}
-        <span
-          aria-hidden="true"
-          className="absolute -inset-4 box-border flex items-end p-[34px] blur-[9px]"
-        >
-          <span
-            style={{
-              fontFamily: `"${typography.heading_font}", Georgia, serif`,
-              fontWeight: 500,
-              fontSize: 22,
-              lineHeight: 1.12,
-              color: palette.dark,
-            }}
-          >
-            {title}
-          </span>
-        </span>
-        <span className="absolute inset-0 flex items-center justify-center">
-          <PadlockGlyph />
-        </span>
-      </button>
-
-      {/* Le titre en clair : lisible à l'œil ET pour un lecteur d'écran. */}
-      <p className="mt-3.5 text-ui leading-body text-ink">{title}</p>
-    </div>
+        {title}
+      </span>
+    </button>
   );
 }

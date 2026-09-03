@@ -584,3 +584,60 @@ chars at a word boundary with an ellipsis — a truncation of existing copy, not
 assembles a plain-text block from the same already-on-file fields plus the booking URL. "Generated" here
 means "derived deterministically from data already on the kit," matching the fingerprinted-asset pipeline's
 own meaning of the word — never a model call, and nothing here writes anything back to the kit.
+
+---
+
+### 2026-09-03 — Lot 8: the "blurred card" the brief means turns out to already be more honest than assumed — research before redesign confirmed what to actually change
+
+**Question.** The brief says "Delete every blurred card in the product" and describes fabricated sample
+content as the thing being removed. Research (dispatched before writing anything, same discipline as Lot
+6) found `components/home/content-grid.tsx`'s `LockedTile` — the one real blurred-card pattern in the
+product — already shows a REAL title (from `monthly_presence_content.title`, which the backend
+deliberately populates even on locked rows) both blurred inside the tile AND legibly in plain text right
+below it for screen readers. So the blur was decorative and honest (a real title, not an invented one),
+and the zero-row states already in place (`/app/content`'s "Nothing yet" card, home's section simply not
+rendering) already showed no fabricated content anywhere. Nothing here was actually dishonest.
+
+**Chosen.** Ship the brief's redesign anyway — it's still a real, specified visual change (blur → legible
+reduced-opacity row with a small lock, not a big centered padlock over a colored block) and exact required
+copy strings ("Your first month is being prepared.", the subscription card's line) neither of which existed
+verbatim before. But the WORLDVIEW driving the implementation changed: this isn't "remove fabricated
+content," it's "the honest empty/locked states already existed structurally, now they get the brief's exact
+words and the brief's visual treatment." Recorded here so a future reader doesn't assume this lot fixed a
+dishonesty bug — it didn't find one.
+
+---
+
+### 2026-09-03 — Lot 8: "downloadable" ships as a plain-text file, not a rendered image asset
+
+**Question.** The brief: "the first post and first story in full and downloadable." Lot 4.4 built a full
+deterministic image-rendering pipeline (satori/resvg) for kit assets, so "downloadable" could mean the same
+kind of rendered PNG/SVG output. But `monthly_presence_content.visual_spec` — the column that would carry
+that — is never written anywhere: `lib/generation/monthly.ts`'s `planMonth()` only ever returns
+`title`/`caption`; no renderer, no template, no asset-catalog entry exists for monthly content today.
+
+**Chosen.** "Downloadable" ships as a client-side `.txt` file (title + caption via a `Blob`/`<a download>`),
+added to `OpenTile` in `content-grid.tsx`. Building a whole new visual-post rendering subsystem — new
+templates, a new renderer, storage, caching — to make "downloadable" mean "an image" is a genuinely large
+new feature, not a display-honesty fix, and isn't something this lot's brief asked for outright. If Eklio
+ever wants rendered monthly-post images, that's its own lot with its own asset-catalog rows, matching how
+every other rendered asset in this product got built.
+
+---
+
+### 2026-09-03 — Lot 8: fixed one live dead-route bug found along the way, left one dead-code instance of the same bug alone
+
+**Question.** Research surfaced two places linking to the removed `/app/projets/...` route tree (retired
+at "lot 1," per `brand-kit-view.tsx`'s own header comment): `app/app/checkout/success/page.tsx` (two
+`Link`s, on the real post-purchase confirmation page) and `app/app/actions.ts`'s `createProject`/
+`deleteProject` (two `redirect()` calls). Same root cause, different severity: `checkout/success` is a
+real page a paying user lands on; `actions.ts`'s two functions are grep-confirmed unreachable — no
+component anywhere imports `createProject` or `deleteProject`.
+
+**Chosen.** Fixed `checkout/success`'s two links (now `/app`, which resolves the user's current
+project/kit itself and picks the right next step, and `/app/content` for the subscribed case) — a real,
+live bug on a page every paying customer reaches, mechanical and low-risk to fix. Left `actions.ts`
+untouched and logged it in FINDINGS.md instead: it's dead code, not a live bug (nothing can 404 through
+code nothing calls), and deciding whether to delete unused server actions outright is a separate judgment
+call from "sold honestly" — not this lot's scope, and not free to bundle in without a closer look at
+whether it's truly safe to remove.

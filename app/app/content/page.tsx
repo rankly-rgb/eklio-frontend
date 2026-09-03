@@ -5,6 +5,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { ContentGrid } from "@/components/home/content-grid";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { ButtonLink } from "@/components/ui/button";
+import { MonthlyPresenceSubscriptionCard } from "@/components/presence/subscription-card";
 
 /*
  * Le mois entier (lien « Content » de l'en-tête).
@@ -40,22 +41,30 @@ export default async function ContentPage() {
             monthLabel={home.monthLabel}
             columns={4}
           />
+          {!home.entitled ? (
+            <div className="max-w-[420px]">
+              <MonthlyPresenceSubscriptionCard />
+            </div>
+          ) : null}
         </section>
       ) : (
-        <div className="mt-8 flex max-w-[520px] flex-col gap-5 rounded-card border border-line p-8">
-          <MonoLabel tracking="16">Nothing yet</MonoLabel>
-          <p className="text-helper leading-prose text-ink-2">
-            {home.brandKit
-              ? "Your first month arrives on the first. One post is ready straight away, and the rest of the month is there when you want it."
-              : "Content follows your brand. Finish your brief and choose a direction first."}
-          </p>
-          <ButtonLink
-            href={home.brandKit ? `/app/brand-kits/${home.brandKit.row.id}` : "/app"}
-            variant="secondary"
-            className="self-start"
-          >
-            {home.brandKit ? "Open brand kit" : "Back home"}
-          </ButtonLink>
+        <div className="mt-8 flex max-w-[520px] flex-col gap-5">
+          <div className="flex flex-col gap-5 rounded-card border border-line p-8">
+            <MonoLabel tracking="16">This month</MonoLabel>
+            <p className="text-helper leading-prose text-ink-2">
+              {home.brandKit
+                ? "Your first month is being prepared."
+                : "Content follows your brand. Finish your brief and choose a direction first."}
+            </p>
+            <ButtonLink
+              href={home.brandKit ? `/app/brand-kits/${home.brandKit.row.id}` : "/app"}
+              variant="secondary"
+              className="self-start"
+            >
+              {home.brandKit ? "Open brand kit" : "Back home"}
+            </ButtonLink>
+          </div>
+          {home.brandKit && !home.entitled ? <MonthlyPresenceSubscriptionCard /> : null}
         </div>
       )}
     </main>

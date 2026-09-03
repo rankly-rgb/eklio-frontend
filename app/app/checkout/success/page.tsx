@@ -110,24 +110,27 @@ export default async function CheckoutSuccessPage({
       </div>
 
       <div className="flex flex-wrap gap-3">
+        {/*
+         * `/app` — home resolves the user's current project/kit itself and
+         * shows the right next step (choose a direction, open the kit, and
+         * so on). This page only has `project_id`, not a brand_kit id, so it
+         * can't build a kit-scoped link directly; home already does that
+         * resolution on every load.
+         */}
         <Link
-          href={
-            purchase?.project_id
-              ? `/app/projets/${purchase.project_id}/directions`
-              : "/app"
-          }
+          href="/app"
           className="inline-flex h-10 items-center rounded-pill bg-ink px-[30px] text-ui font-semibold text-bg transition-colors hover:bg-ink-2"
         >
-          {purchase?.project_id ? "Go to my project" : "Go to my projects"}
+          Go to my project
         </Link>
-        {subscribed && purchase?.project_id && (
+        {subscribed ? (
           <Link
-            href={`/app/projets/${purchase.project_id}/presence`}
+            href="/app/content"
             className="inline-flex h-10 items-center rounded-pill border border-line px-[26px] text-ui text-ink transition-colors hover:bg-card"
           >
             {MONTHLY_PRESENCE.label}
           </Link>
-        )}
+        ) : null}
       </div>
     </div>
   );

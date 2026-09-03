@@ -4,6 +4,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { ButtonLink } from "@/components/ui/button";
 import { BrandPreview } from "@/components/preview/brand-preview";
 import { ChecklistCard } from "@/components/home/checklist-card";
+import { MonthlyPresenceCard } from "@/components/home/monthly-presence-card";
 import { ContentGrid } from "@/components/home/content-grid";
 import { StartBriefButton } from "@/components/brief/start-brief-button";
 import { previewModelFromDirection } from "@/lib/brand/shapes";
@@ -106,8 +107,16 @@ export function HomeView({ home }: { home: HomeModel }) {
           </section>
         )}
 
-        {home.brandKit && home.checklist.items.length > 0 ? (
-          <ChecklistCard brandKit={home.brandKit} progress={home.checklist} />
+        {home.brandKit && home.checklist.total > 0 ? (
+          home.checklist.resolvedCount === home.checklist.total ? (
+            <MonthlyPresenceCard
+              calendar={home.calendar}
+              entitled={home.entitled}
+              monthLabel={home.monthLabel}
+            />
+          ) : (
+            <ChecklistCard brandKit={home.brandKit} progress={home.checklist} />
+          )
         ) : null}
       </div>
 

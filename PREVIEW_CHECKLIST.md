@@ -300,3 +300,44 @@ click-through itself is unverified.
 
 If anything here is wrong, it's more useful to know exactly what broke (a screenshot, the failing network
 request, the console error) than to describe it from memory — same standard as every other part.
+
+---
+
+## Part 10 — Lot 8's Monthly Presence
+
+Same caveat as Parts 7 and 9: not seen in a real browser. Every kit today has zero content rows (the
+monthly cron hasn't run yet for a freshly purchased kit) — reaching a kit WITH content rows for real means
+either waiting for the 1st of a month or manually calling `ensure_month_skeleton`/`POST /api/cron/monthly`
+against a test kit; both parts of this checklist are worth walking.
+
+**Zero rows (today's actual state for every kit):**
+
+1. Open `/app/content`. **Write down:** does the card say exactly **"Your first month is being prepared."**
+   (not "Nothing yet")? If this account isn't subscribed to Monthly Presence, does a second card appear
+   below it reading exactly **"Twelve posts, four stories, and the calendar — $39/month. Cancel anytime."**
+   with an **"Add Monthly Presence"** button?
+2. Click **Add Monthly Presence**. **Write down:** does the button say "Opening checkout…", then does the
+   page redirect to a real Stripe Checkout page (subscription mode, $39/month)? Check DevTools Network —
+   was the request `POST /api/monthly-presence/checkout`?
+3. On the home screen, once "Your first week" is fully resolved (see Part 9), does the right-column slot
+   show a **"Monthly Presence"** card with the same "Your first month is being prepared." line, and the
+   same subscription card beneath it if not subscribed?
+
+**With content rows (needs a kit whose month has been seeded):**
+
+4. Open `/app/content`. **Write down:** do LOCKED items render as a plain bordered row (NOT blurred) at
+   reduced opacity, showing a date (e.g. "Sep 7"), "Post" or "Story", the real headline in the direction's
+   heading font, and a small padlock in the corner? Click one — does the unlock modal still open?
+5. Do UNLOCKED items show their full title and a **Download** link next to their Ready/Draft/Published
+   label? Click **Download** — does a real `.txt` file save, and does it contain the title and caption?
+6. On the home screen (checklist resolved), does the Monthly Presence card now read `N of M ready for
+   <Month>.` with a **"See this month"** link to `/app/content`, instead of "being prepared"?
+
+**The fixed dead links:**
+
+7. Trigger a real Stripe checkout for a brand-kit purchase (test mode) and land on
+   `/app/checkout/success`. **Write down:** does "Go to my project" go to `/app` (not a 404)? If Monthly
+   Presence was included, does the second button go to `/app/content` (not a 404)?
+
+If anything here is wrong, it's more useful to know exactly what broke (a screenshot, the failing network
+request, the console error) than to describe it from memory — same standard as every other part.
