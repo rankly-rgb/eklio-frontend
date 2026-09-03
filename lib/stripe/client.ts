@@ -63,14 +63,3 @@ export function kitPriceId(tier: KitTier): string {
 export function monthlyPresencePriceId(): string {
   return requireEnv(MONTHLY_PRESENCE.priceEnvVar);
 }
-
-/**
- * Base des URL de retour de Checkout.
- *
- * Même repli que les liens de confirmation d'email : sans
- * `NEXT_PUBLIC_SITE_URL`, un retour de paiement en preview renverrait vers le
- * localhost du serveur, pas vers celui du praticien.
- */
-export function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}

@@ -4,6 +4,7 @@ import { loadBrandKit } from "@/lib/data/brand-kit";
 import {
   getSubscription,
   isBrandKitEntitled,
+  isCompAccessActive,
   isEntitledToMonthlyPresence,
   purchaseWasReversed,
 } from "@/lib/billing/entitlements";
@@ -57,10 +58,11 @@ export default async function BrandKitPage({
    * semé rend la carte sans nom de constructeur, ce qui est vrai. Faire échouer
    * le kit entier pour un libellé serait disproportionné.
    */
-  const [subscription, siteSpec, siteCatalog] = await Promise.all([
+  const [subscription, siteSpec, siteCatalog, compAccess] = await Promise.all([
     getSubscription(supabase, user.id),
     siteSpecGet(supabase, id),
     readSiteCatalog(supabase).catch(() => null),
+    isCompAccessActive(supabase),
   ]);
 
   const siteBuilderLabel =
@@ -81,6 +83,7 @@ export default async function BrandKitPage({
       // Une seule règle d'accès dans toute l'application (§7).
       entitled={isEntitledToMonthlyPresence(subscription)}
       monthlyCheckoutHref={`/app/checkout?project=${kit.projectId}`}
+      compAccess={compAccess}
     />
   );
 }

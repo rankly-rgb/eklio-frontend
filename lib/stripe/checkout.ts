@@ -5,8 +5,8 @@ import {
   getStripeClient,
   kitPriceId,
   monthlyPresencePriceId,
-  siteUrl,
 } from "@/lib/stripe/client";
+import { siteUrl } from "@/lib/site-url";
 import { buildCheckoutMetadata } from "@/lib/stripe/metadata";
 import type { KitTier } from "@/lib/kit/tiers";
 
