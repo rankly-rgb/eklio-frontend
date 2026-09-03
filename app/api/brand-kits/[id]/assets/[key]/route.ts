@@ -114,6 +114,7 @@ export async function POST(
       body_font: tokens.body_font,
     },
     practiceName: kit.practiceName,
+    hero: kit.selectedDirection.hero,
   });
 
   const manifest = await getBrandAssetManifest(supabase, id, fingerprint);
@@ -139,6 +140,7 @@ export async function POST(
       tokens,
       practiceName: kit.practiceName,
       googleFontsUrl: kit.selectedDirection.typography.google_fonts_url,
+      hero: kit.selectedDirection.hero,
     });
   } catch (err) {
     return serverError("assets:render", err);

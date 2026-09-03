@@ -1,5 +1,8 @@
 import type { SitePreviewTokens } from "@/lib/site/types";
 import { renderWordmarkDark } from "@/lib/kit/render/wordmark";
+import { renderPaletteSheetPng } from "@/lib/kit/render/palette-sheet";
+import { renderOgImage } from "@/lib/kit/render/og-image";
+import { svgToPng } from "@/lib/kit/render/rasterize";
 
 /*
  * The extension point for Lot 4.4/4.5: one entry per `asset_catalog.key`,
@@ -21,6 +24,8 @@ export type RenderContext = {
   tokens: SitePreviewTokens;
   practiceName: string | null;
   googleFontsUrl: string;
+  /** Only asset renderers that need hero copy (og_image_1200x630) read this. */
+  hero: { overline: string; headline: string } | null;
 };
 
 export type RenderedAsset = {
@@ -65,6 +70,59 @@ const RENDERERS: Record<string, Renderer> = {
       contentType: "image/png",
       width: trimmed.width,
       height: trimmed.height,
+    };
+  },
+  palette_sheet_png: async (ctx) => {
+    const svg = await renderPaletteSheetPng({
+      tokens: {
+        primary: ctx.tokens.primary,
+        secondary: ctx.tokens.secondary,
+        accent: ctx.tokens.accent,
+        paper: ctx.tokens.paper,
+        light_neutral: ctx.tokens.light_neutral,
+        dark_neutral: ctx.tokens.dark_neutral,
+      },
+      bodyFont: ctx.tokens.body_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+    });
+    // Not trimmed: the layout already fills the canvas edge-to-edge (six
+    // equal swatches, no designed-in margin), so trimToInk would be a
+    // no-op here — svgToPng skips the pointless bbox computation.
+    return {
+      bytes: svgToPng(svg),
+      contentType: "image/png",
+      width: 1200,
+      height: 600,
+    };
+  },
+  og_image_1200x630: async (ctx) => {
+    if (!ctx.practiceName) {
+      throw new Error("og_image_1200x630 needs a practice name to render");
+    }
+    if (!ctx.hero) {
+      throw new Error("og_image_1200x630 needs hero copy to render");
+    }
+    const svg = await renderOgImage({
+      practiceName: ctx.practiceName,
+      overline: ctx.hero.overline,
+      headline: ctx.hero.headline,
+      headingFont: ctx.tokens.heading_font,
+      bodyFont: ctx.tokens.body_font,
+      googleFontsUrl: ctx.googleFontsUrl,
+      primaryColor: ctx.tokens.primary,
+      ctaInk: ctx.tokens.cta_ink,
+      paperColor: ctx.tokens.paper,
+      darkColor: ctx.tokens.dark_neutral,
+    });
+    // Deliberately NOT trimmed — see DECISIONS.md, "og_image_1200x630 is
+    // not trimmed to ink bounds": platforms display this at exactly this
+    // size, so a cropped file would be re-cropped unpredictably by
+    // whichever platform renders it.
+    return {
+      bytes: svgToPng(svg),
+      contentType: "image/png",
+      width: 1200,
+      height: 630,
     };
   },
 };

@@ -64,3 +64,56 @@ start looking like a well-understood, expected condition.
 **Why.** A distinct status lets a future caller (a retry wrapper, a status-code-based UI branch, an
 uptime check) tell these apart without parsing message text — which is the same principle the frontend
 fix depends on (`code` field, not just message string matching).
+
+---
+
+### 2026-09-03 — `og_image_1200x630` is not trimmed to ink bounds, despite the Lot 4.4 rule
+
+**Question.** The trim-to-ink-bounds rule ("every identity asset... zero padding") names two exceptions:
+`avatar_400` and the favicons. `og_image_1200x630` isn't one of them — should it be trimmed anyway?
+
+**Chosen.** No. Trimming stays off for this one too, added as a third exception.
+
+**Why.** The rule's own purpose is "droppable into a Squarespace header without cropping first" — that
+reasoning doesn't apply here. An Open Graph image's entire function is being displayed at a platform-
+claimed fixed size (its name literally is that size): Twitter, Facebook, LinkedIn, Slack unfurls all read
+the `og:image` meta tag and render it at 1200×630 (or crop/pad to fit that ratio if the actual file
+differs) — a trimmed, irregular-aspect-ratio file would be cropped unpredictably by whichever platform
+displays it, which is a worse outcome than the padding the trim rule exists to avoid elsewhere. The
+canvas is designed to be filled edge-to-edge on purpose (full-bleed background, not a sparse mark on
+empty space), so this isn't fighting the rule so much as recognizing this asset was never the shape the
+rule was written for.
+
+**Where this lives in code.** `lib/kit/render/registry.ts`'s `og_image_1200x630` entry calls `svgToPng`
+(the untrimmed path), not `trimToInk` — same mechanism `avatar_400`/favicons will use, just triggered by
+a different reason, documented at the call site.
+
+---
+
+### 2026-09-03 — Building `palette_sheet_png` and `og_image_1200x630` without the full Lot 4.4 catalogue
+
+**Question.** The user referenced "the catalogue I gave you" for Lot 4.4's identity/web/color assets, but
+that catalogue (exact keys, dimensions, descriptions) is not in this session's context — likely from
+before a context compaction. The user separately named these two specific assets and asked for them as
+PNGs. Wait for the full list, or proceed on what's concretely specified?
+
+**Chosen.** Proceed with these two now, on reasonable inferred specs, each recorded here. Continue
+building further identity/web/color assets only for ones inferable with similar confidence (a
+"typography specimen," a "letterhead," ordinary category items with an obvious shape); flag anything
+whose exact spec genuinely can't be guessed safely in `QUESTIONS.md` rather than invent it.
+
+**Why.** Stopping to ask contradicts the explicit instruction this session is now operating under
+("stop reporting between steps and stop waiting for me"); the two named assets are concrete enough to
+build confidently (dimensions are in one of the two names outright); the risk of inferring wrong on
+something this reversible (a PNG spec, not a schema or an architecture choice) is low and cheap to
+correct later, unlike the four things that actually warrant stopping.
+
+**The inferred specs, so they're on record:**
+- `palette_sheet_png` — 1200×600, six equal-width swatches (200px) for the six color roles in the brief's
+  documented order (primary, secondary, accent, paper, light_neutral, dark_neutral), each labeled with its
+  role name and hex value in the kit's body font. Not trimmed to ink bounds in practice — the design fills
+  the canvas edge-to-edge on purpose, so trimming is a no-op here, not a rule violation.
+- `og_image_1200x630` — see the trim-exception entry above for why it isn't cropped. Content: practice
+  name in the heading font, the selected direction's `hero.headline` as a supporting line, an overline
+  pill in the primary color/cta_ink pairing (the same visual language `BrandCanvas` already uses
+  elsewhere in the paid space) — full-bleed on the `paper` color.

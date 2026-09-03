@@ -18,12 +18,13 @@ import { createHash } from "node:crypto";
  * WHAT'S HASHED, AND WHY IT'S SMALLER THAN THE BRIEF'S FULL LIST. An earlier
  * draft of this chantier's brief named the six colour roles, four derived
  * variants, both font families, practice_name, hero copy, "the licence label
- * and number", city/state, and the social template set as inputs. This first
- * version hashes only what Lot 4.1–4.3's one renderer (wordmark_svg_dark)
- * actually reads: the tokens, both font families, and practice_name — hashing
- * a field no renderer consumes yet would be speculative, not correctness.
- * Extend `AssetFingerprintInput` (and this comment) the same lot that adds a
- * renderer reading hero copy, licence/city/state, or the template set. Two
+ * and number", city/state, and the social template set as inputs. Only
+ * fields some renderer actually reads are hashed — hashing a field nothing
+ * consumes would be speculative, not correctness. Lot 4.1–4.3 added tokens/
+ * fonts/practiceName (wordmark_svg_dark/wordmark_png_dark); Lot 4.4 adds
+ * `hero` (overline + headline — og_image_1200x630 is the first renderer
+ * that reads copy beyond the practice name). Extend further the same lot
+ * that adds a renderer reading licence/city/state or the template set. Two
  * more notes for whoever does: `license_number` does not exist anywhere in
  * this schema — only `license_types.label` (a short credential abbreviation,
  * e.g. "LCSW") does; and RENDERER_VERSION already covers "the renderer's
@@ -59,6 +60,8 @@ export type AssetFingerprintInput = {
     body_font: string;
   };
   practiceName: string | null;
+  /** null only for a renderer that never reaches this — every current caller has a selected direction. */
+  hero: { overline: string; headline: string } | null;
 };
 
 /** Deterministic: same input, same output, regardless of key insertion order. */

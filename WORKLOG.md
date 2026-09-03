@@ -109,3 +109,40 @@ work already confirmed IS reachable) can still be verified for real, standalone,
 dependent upload/download/signed-URL path — see the Lot 4.4 entries below for how that's used going
 forward. Anything that genuinely needs live Storage/Auth joins the existing Vercel-only-provable list
 (`@resvg/resvg-js` on Vercel's runtime, real cold-start timing) for the user's batch review.
+
+---
+
+## 2026-09-03 — Lot 4.4: `palette_sheet_png`, `og_image_1200x630`
+
+Built without the full Lot 4.4 catalogue (not in this session's context — see DECISIONS.md); these two
+were named explicitly, on inferred specs also recorded in DECISIONS.md.
+
+- `lib/kit/render/palette-sheet.ts` — the six colour roles as labelled swatches (role name + hex), 1200×600,
+  fills the canvas edge-to-edge on purpose.
+- `lib/kit/render/og-image.ts` — practice name, the selected direction's hero overline/headline, on the
+  paper colour, 1200×630. Registry entry explicitly documents (and DECISIONS.md explains) why this one is
+  never trimmed to ink bounds, unlike every other identity asset so far.
+- `lib/kit/render/registry.ts` — both wired in; `RenderContext` gained a `hero` field (only
+  `og_image_1200x630` reads it).
+- `lib/kit/asset-fingerprint.ts` — extended to hash `hero.overline`/`hero.headline`, since
+  `og_image_1200x630` is the first renderer whose output depends on copy beyond the practice name. Comment
+  updated to say so, per its own instruction to extend it "the same lot that adds a renderer reading hero
+  copy."
+
+**Verified how:** the actual, unmodified production renderer functions, run directly via `tsx` (not
+mocked) with fake-but-syntactically-valid `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` env vars.
+This is not a workaround for a missing secret (nothing here needs a *real* key) — `getCachedFontBuffer`'s
+Storage cache-check and cache-upload both fail against the fake host exactly as they would against any
+unreachable one, are caught exactly as designed (`if (cached.data)` false → falls through to a real fetch;
+upload failure is logged, non-fatal), and the *actual* Google Fonts fetch (real network, genuinely
+reachable from this sandbox) still runs for real. Produced real PNGs from real font data through real
+satori + real resvg, then looked at them — sent to the user, not just described. Backend: seeded via the
+same live-DB dry-run-then-apply discipline as every prior migration, then confirmed against the local
+fixture — `get_brand_asset_manifest()` returns all four current catalog entries with the right groups/
+dimensions. 901/901 tests, `tsc --noEmit` clean, `eslint` clean, `next build` clean.
+
+**Not verified:** the actual Storage round trip for either asset (needs live Storage API, same gap as
+everything else in this tier) and, same as `wordmark_png_dark` before it, nothing new here changes the
+still-open Vercel-only items (resvg on Vercel's runtime, real cold-start timing, and now also the actual
+preview verification the user is running independently, per their last message before "stop reporting
+between steps").

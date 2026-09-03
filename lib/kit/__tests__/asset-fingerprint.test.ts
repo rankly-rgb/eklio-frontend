@@ -17,6 +17,7 @@ const BASE: AssetFingerprintInput = {
     body_font: "Nunito Sans",
   },
   practiceName: "Elm & Ember Therapy",
+  hero: { overline: "LCSW · PORTLAND, OR", headline: "A calmer place to start." },
 };
 
 describe("computeAssetFingerprint", () => {
@@ -32,6 +33,7 @@ describe("computeAssetFingerprint", () => {
   it("does not depend on object key insertion order", () => {
     const reordered: AssetFingerprintInput = {
       practiceName: BASE.practiceName,
+      hero: BASE.hero,
       tokens: {
         heading_font: BASE.tokens.heading_font,
         body_font: BASE.tokens.body_font,
@@ -76,5 +78,18 @@ describe("computeAssetFingerprint", () => {
     const nullName = computeAssetFingerprint({ ...BASE, practiceName: null });
     const emptyName = computeAssetFingerprint({ ...BASE, practiceName: "" });
     expect(nullName).not.toBe(emptyName);
+  });
+
+  it("changes when the hero overline or headline changes", () => {
+    const changedOverline = { ...BASE, hero: { ...BASE.hero!, overline: "PhD · SEATTLE, WA" } };
+    const changedHeadline = { ...BASE, hero: { ...BASE.hero!, headline: "Something else entirely." } };
+    expect(computeAssetFingerprint(changedOverline)).not.toBe(computeAssetFingerprint(BASE));
+    expect(computeAssetFingerprint(changedHeadline)).not.toBe(computeAssetFingerprint(BASE));
+  });
+
+  it("distinguishes a null hero from a present one", () => {
+    const nullHero = computeAssetFingerprint({ ...BASE, hero: null });
+    const withHero = computeAssetFingerprint(BASE);
+    expect(nullHero).not.toBe(withHero);
   });
 });
