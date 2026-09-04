@@ -63,6 +63,7 @@ export function BrandKitView({
   practitionerLine,
   practiceDetails,
   bookingUrl,
+  compAccess,
 }: {
   brandKitId: string;
   projectId: string;
@@ -84,6 +85,8 @@ export function BrandKitView({
   practitionerLine: string | null;
   practiceDetails: PracticeDetails | null;
   bookingUrl: string | null;
+  /** Accès comp actif (base de données) — jamais un droit, un signal d'affichage. */
+  compAccess: boolean;
 }) {
   const model = previewModelFromDirection(direction, practiceName);
 
@@ -105,9 +108,14 @@ export function BrandKitView({
           <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink">
             {practiceName ?? "Your brand"}
           </h1>
-          <MonoLabel tracking="16" className="mt-3 block">
-            {`${direction.name} · Selected`}
-          </MonoLabel>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <MonoLabel tracking="16">{`${direction.name} · Selected`}</MonoLabel>
+            {compAccess ? (
+              <span className="flex-none rounded-pill border border-accent px-3 py-1.5 font-mono text-mono uppercase tracking-mono-12 text-accent">
+                Comp access
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex flex-none items-center gap-4">

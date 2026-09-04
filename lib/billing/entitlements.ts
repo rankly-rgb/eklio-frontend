@@ -178,6 +178,31 @@ export async function isBrandKitEntitled(
   return data === true;
 }
 
+/* ── Comp access — un signal d'AFFICHAGE, jamais un droit ────────────────── */
+
+/**
+ * L'utilisatrice courante a-t-elle un accès comp actif ?
+ *
+ * ⚠ CECI N'ACCORDE RIEN. C'est un signal d'affichage — pour distinguer une
+ * session comp d'une session payante en QA ou sur une capture d'écran — pas
+ * une seconde façon de décider un droit. Le droit reste entièrement dans
+ * `brand_kit_entitled` (en base) : `comp_access_active()` y est déjà lu en
+ * interne, elle n'est pas redécidée ici.
+ *
+ * ── ÉCHEC FERMÉ ─────────────────────────────────────────────────────────
+ * Une erreur de lecture rend `false` : au pire l'indicateur manque, jamais
+ * l'inverse.
+ */
+export async function isCompAccessActive(supabase: Client): Promise<boolean> {
+  const { data, error } = await supabase.rpc("comp_access_active");
+
+  if (error) {
+    console.error("[entitlements] comp_access_active", error);
+    return false;
+  }
+  return data === true;
+}
+
 /* ── Les projets qu'on n'a pas payés ─────────────────────────────────────── */
 
 /**

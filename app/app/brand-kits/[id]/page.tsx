@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
-import { isBrandKitEntitled, purchaseWasReversed } from "@/lib/billing/entitlements";
+import { isBrandKitEntitled, isCompAccessActive, purchaseWasReversed } from "@/lib/billing/entitlements";
 import { BrandKitView } from "@/components/kit/brand-kit-view";
 import { siteSpecGet } from "@/lib/site/rpc";
 import { readSiteCatalog } from "@/lib/site/catalog";
@@ -55,11 +55,12 @@ export default async function BrandKitPage({
    * semé rend la carte sans nom de constructeur, ce qui est vrai. Faire échouer
    * le kit entier pour un libellé serait disproportionné.
    */
-  const [siteSpec, siteCatalog, catalog, launchProgress] = await Promise.all([
+  const [siteSpec, siteCatalog, catalog, launchProgress, compAccess] = await Promise.all([
     siteSpecGet(supabase, id),
     readSiteCatalog(supabase).catch(() => null),
     readCatalog(supabase).catch(() => null),
     loadLaunchProgress(supabase, id),
+    isCompAccessActive(supabase),
   ]);
 
   // Same fields `lib/kit/asset-context.ts` reads from the site spec for the
@@ -119,6 +120,7 @@ export default async function BrandKitPage({
       practitionerLine={kit.row.practitioner_line}
       practiceDetails={practiceDetails}
       bookingUrl={bookingUrl}
+      compAccess={compAccess}
     />
   );
 }
