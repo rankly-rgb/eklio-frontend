@@ -306,3 +306,140 @@ a re-render would quietly hand her the new file under the old name.
   `consume_generation_credit` on the delivery path.** If a lot genuinely needs to charge for something in
   `lib/kit`, that test is the conversation to have first — not the file to edit.
 - **`asset_variant_path` is the only place a storage path is built.** Do not construct one in TypeScript.
+
+---
+
+## 2026-09-05 — Session 3, step 7A: what `direction_assets` already solved
+
+Branch: `claude/post-purchase-v2`, both repos.
+
+Read in full: `eklio-backend/supabase/migrations/20260901074421_direction_assets.sql` (355 lines) and the
+palette-hash + reveal-read half of `20260901074458_brand_kit_reveal.sql`. **Nothing was called, extended,
+wired or fixed.** Re-verified this session that no eklio-frontend file references
+`direction_assets_claim`, `_mark_ready`, `_mark_failed` or `brand_kit_direction_palette_hash` outside the
+generated `types/supabase.ts` — the grep returns nothing.
+
+### How it claims a slot
+
+`direction_assets_claim(brand_kit_id, direction_index, palette_hash, cost_estimate_cents, daily_cap_cents,
+reclaim_after default interval '10 minutes')`. It upserts the slot row (`on conflict … do nothing` against
+the unique `(brand_kit_id, direction_index, kind)`), then takes `select … for update` on it. **Every
+decision happens under that one row lock**, which is what makes two concurrent invocations impossible to
+both satisfy:
+
+| state | outcome |
+| --- | --- |
+| `ready` + same `palette_hash` | `already_ready`, nothing reserved |
+| `failed` + same `palette_hash` | `already_failed`, nothing reserved |
+| `claimed`, `claimed_at` inside the window | `busy`, nothing reserved |
+| `claimed`, `claimed_at` older than the window | `reclaimed` — **budget-neutral** |
+| anything else | reserve, then `claimed` |
+
+The claim token is `claimed_at` itself, stamped from `clock_timestamp()` (not `now()`, so two claims inside
+one transaction still differ). `mark_ready`/`mark_failed` act only
+`where status = 'claimed' and claimed_at = p_claim_token`, so an invocation that lost its claim to a
+reclaim and then finishes writes zero rows and gets `{ok:false, reason:'stale_claim'}` — refused, never
+believed, never a clobber.
+
+**A claim that is never released is not collected by anything.** There is no sweeper. It simply becomes
+reclaimable after `p_reclaim_after`, and the reclaimer inherits the original `reserved_cents` rather than
+booking a second one. If no one ever calls again, the reservation stays booked — but against
+`spend_date = current_date`, so it stops mattering when the date rolls over. It self-heals at midnight
+rather than leaking permanently, which is a deliberate-looking consequence of keying the budget by day.
+
+**One real edge case in that design.** `mark_ready`/`mark_failed` release against `claimed_at::date`, and a
+reclaim re-stamps `claimed_at`. A claim booked just before midnight and reclaimed just after releases
+against the *new* day's row: day 1's `reserved_cents` stays permanently inflated and day 2's would go
+negative if `greatest(0, …)` did not clamp it. Small, self-healing, and worth not inheriting.
+
+### How the daily cap is expressed and enforced
+
+`direction_asset_daily_spend`, one row per `spend_date` (the date is the primary key), carrying
+`reserved_cents` and `actual_cents`.
+
+**The ceiling lives in neither a table nor a SQL constant — it is passed in per call** as
+`p_daily_cap_cents`, alongside `p_cost_estimate_cents`. The migration says why in its own words: this
+function "enforces a budget, it does not know one", because OpenAI's current price and the configured cap
+live in eklio-frontend, which is the side that holds the key. Since nothing in eklio-frontend has ever
+called it, **the cap is today a parameter with no caller — undefined in practice, not merely unused.**
+
+Enforcement is one conditional UPDATE, which is the whole trick:
+
+```sql
+update public.direction_asset_daily_spend
+   set reserved_cents = reserved_cents + p_cost_estimate_cents
+ where spend_date = current_date
+   and reserved_cents + p_cost_estimate_cents <= p_daily_cap_cents
+returning true into v_reserved;
+```
+
+Check and increment are the same statement, so concurrent claims cannot each read an under-cap total and
+then each add to it. Reserved is booked **at claim time** — in-flight spend counts against the budget the
+moment it starts — and reconciled down at settle time; `actual_cents` only ever grows, and only by what a
+real successful generation cost.
+
+### What it records on refusal, failure, and moderation
+
+- **Refusal: nothing.** `budget_exceeded`, `busy`, `already_ready` and `already_failed` all return a reason
+  to the caller and change no state, increment no counter, and leave no timestamp. After the fact you
+  cannot tell a kit that rendered a gradient because the cap was hit from one where nothing ever ran.
+- **Failure: the fact, and nothing else.** `mark_failed` sets `status='failed'` and releases the
+  reservation. No reason, no error text, no attempt count. Failure is terminal *for that palette hash*
+  only — a regenerated direction with a different hash is a fresh, unbilled slot, which is how the schema
+  avoids "permanently failed" outliving the input that caused it. Retry is explicitly the caller's job
+  ("one retry on a transient error, before ever calling this").
+- **Moderation: nothing at all.** There is no moderation column, no distinct status, no code. A repo-wide
+  grep for "moderation" across every migration in eklio-backend returns zero hits. A content-policy refusal
+  is indistinguishable from a timeout — both land as `failed`. (The marketing CLI
+  `scripts/brand-shots/openai.ts` *does* separate `content_policy_violation` / `moderation_blocked` into a
+  `ContentPolicyError`, but nothing carries that distinction into the database.)
+
+That last one is the gap that matters most for LOT 5: this chantier forbids faces, people, hands and text in
+any generated image, so a moderation refusal is a **prompt defect we need to see**, not a transient failure
+to retry into.
+
+### What `brand_images` should mirror
+
+1. Upsert + `select … for update` as the single decision point, returning
+   `{claimed, reason, image_id, claim_token}`.
+2. `claimed_at` as an opaque claim token, with both settle functions conditioned on it and returning
+   `{ok:false, reason:'stale_claim'}` instead of raising.
+3. Reserve-at-claim / reconcile-at-settle against a per-day row, with the cap checked and applied in **one**
+   conditional UPDATE.
+4. Budget-neutral reclaim past a caller-supplied window.
+5. Cost estimate and cap passed in by the caller — the database enforces a budget it does not know. This is
+   what keeps OpenAI's price in exactly one place, next to the key.
+6. `status not null default 'pending'` and the permissive-default discipline: only `status='ready'` **and** a
+   fingerprint matching the kit's current one is ever exposed; every other state is silently the gradient.
+7. `service_role`-only EXECUTE on the write functions, a defense-in-depth owner SELECT policy, and no
+   INSERT/UPDATE policy for `authenticated` at all.
+
+### What is specific to the reveal and must not be copied
+
+1. `direction_index between 0 and 2` and `kind = 'ambiance'`. `brand_images` is keyed by **slot** on a paid
+   kit, not by a free direction index.
+2. `palette_hash` and `brand_kit_direction_palette_hash`. That md5 over five palette roles belongs to the
+   reveal and stays there. `image_fingerprint` is a different function over a deliberately different input,
+   and the rest of this repo fingerprints with SHA-256, not md5.
+3. The free/pre-purchase framing. `brand_images` sits behind `brand_kit_entitled`, and must additionally
+   separate **initial slots** (part of what she bought, no credit) from **regeneration** (a credit checked
+   before the call and not charged on failure) — a distinction the reveal has no reason to make.
+4. Terminal failure with no reason. Add a reason, and make moderation its own outcome.
+5. Deriving the spend row from `claimed_at::date`. Store the reservation's own `spend_date` on the row, so a
+   reclaim across midnight releases against the row it actually booked.
+6. `url` as a stored column. `direction_assets` persists both `url` and `storage_path`; this chantier's rule
+   is signed URLs only, never persisted. Store the path.
+
+### ⚠ The product now has two image systems, one of them dormant
+
+`direction_assets` (free, pre-purchase, one ambiance image per direction, fully built, wired into
+`brand_kit_reveal_get`, **never called**) and `brand_images` (paid, post-purchase, seven slots, built this
+session). They will share a pattern and share nothing else — no table, no function, no hash. Whether they
+should eventually be unified into one image subsystem is a **product decision for a later chantier, not
+this session's**, and it is deliberately not taken here. Anyone taking it should start from this section
+and from FINDINGS.md's `direction_assets` entry.
+
+### Cut from this chantier
+
+**The ornament is cut.** Logged here so it is not silently forgotten: it is not built, not scaffolded, and
+not stubbed, and no slot in `brand_images` is reserved for it.
