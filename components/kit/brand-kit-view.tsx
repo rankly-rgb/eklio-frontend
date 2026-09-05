@@ -52,6 +52,7 @@ export function BrandKitView({
   practiceDetails,
   bookingUrl,
   compAccess,
+  heroImageUrl,
 }: {
   brandKitId: string;
   projectId: string;
@@ -81,6 +82,8 @@ export function BrandKitView({
   bookingUrl: string | null;
   /** Accès comp actif (base de données) — jamais un droit, un signal d'affichage. */
   compAccess: boolean;
+  /** The hero photograph's signed URL, or null for the gradient placeholder. */
+  heroImageUrl: string | null;
 }) {
   const model = previewModelFromDirection(direction, practiceName);
   const [activeMobileSection, setActiveMobileSection] = useState<SectionId>("kit-assets");
@@ -112,6 +115,7 @@ export function BrandKitView({
         bookingUrl={bookingUrl}
         stats={assetStats}
         compAccess={compAccess}
+        heroImageUrl={heroImageUrl}
       />
 
       <LaunchProgressRow

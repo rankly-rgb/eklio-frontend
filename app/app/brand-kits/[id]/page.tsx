@@ -9,6 +9,9 @@ import { builderOf } from "@/lib/site/output";
 import { readCatalog } from "@/lib/catalog/read";
 import { loadLaunchProgress } from "@/lib/data/checklist";
 import { loadAssetStats } from "@/lib/data/asset-stats";
+import { loadImageContext } from "@/lib/images/context";
+import { computeImageFingerprint } from "@/lib/images/fingerprint";
+import { getBrandImages } from "@/lib/images/rpc";
 import type { PracticeDetails } from "@/lib/kit/launch-copy";
 
 /*
@@ -108,9 +111,21 @@ export default async function BrandKitPage({
   const colorLabels = siteSpec.ok ? siteSpec.data.spec.color_labels : null;
   const sitePracticeDetails = siteSpec.ok ? siteSpec.data.spec.practice_details : null;
 
+  /*
+   * The hero photograph, if one exists for the CURRENT image fingerprint.
+   * Signed server-side and handed to <PhotoSlot> as a plain `src`: no client
+   * fetch, no skeleton, and the gradient stays the rendered state whenever
+   * there is nothing to show -- which is every kit until Lot 5 runs.
+   *
+   * A failure to resolve one is not a failure to render the page. The
+   * gradient IS the fallback path, and it is already what this screen draws.
+   */
+  const heroImageUrl = await loadHeroImageUrl(supabase, kit);
+
   return (
     <BrandKitView
       brandKitId={id}
+      heroImageUrl={heroImageUrl}
       projectId={kit.projectId}
       practiceName={kit.practiceName}
       direction={kit.selectedDirection}
@@ -130,4 +145,31 @@ export default async function BrandKitPage({
       compAccess={compAccess}
     />
   );
+}
+
+/**
+ * The hero photograph for a kit, or null.
+ *
+ * Null is the normal answer, not an error: every kit renders the gradient
+ * until Lot 5 has generated something for its current fingerprint, and a kit
+ * whose brand has since moved renders the gradient again rather than a
+ * photograph of colours she no longer uses. `get_brand_images` decides that
+ * — `current` is `ready` AND at this fingerprint, never one or the other.
+ */
+async function loadHeroImageUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  kit: Awaited<ReturnType<typeof loadBrandKit>>
+): Promise<string | null> {
+  if (!kit) return null;
+  const context = await loadImageContext(supabase, kit);
+  if (!context.ok) return null;
+
+  const rows = await getBrandImages(supabase, kit.row.id, computeImageFingerprint(context.input));
+  const hero = rows.find((row) => row.slot === "hero" && row.current && row.storage_path);
+  if (!hero?.storage_path) return null;
+
+  const signed = await supabase.storage
+    .from("brand-assets")
+    .createSignedUrl(hero.storage_path, 300);
+  return signed.data?.signedUrl ?? null;
 }

@@ -117,3 +117,41 @@ built around. One line each: what, where, why it matters.
   edit, and because the phrase "until the 30-day purge" is not true today. Someone should decide whether
   superseded versions get a retention window at all, and if so, whether it lives in a new cron or in a
   renamed general-purpose one.
+
+- **`gpt-image-2` is not evaluated, and cannot be until it has a flat price.** It exists and is available,
+  but it is billed by token only, with no published flat per-image price. That makes a hard, provable spend
+  cap impossible to compute BEFORE the call, which is what `brand_images_claim` reserves against — the whole
+  budget mechanism assumes a number you can know in advance. `gpt-image-1` is pinned in
+  `lib/images/config.ts` for exactly that reason, in one place, never inlined. Someone should re-evaluate
+  gpt-image-2 (quality per dollar, and whether a token-based estimate can be bounded tightly enough to
+  reserve against) once OpenAI publishes flat pricing or once a measured token ceiling is trustworthy.
+
+- **`<PhotoSlot>` had zero call sites when Session 3 started.** Session 2's log records it as the seam every
+  photo surface was built on — "every surface in LOTS 3 and 4 that will later carry a generated photograph
+  … built NOW with the existing gradient colour block as its rendered state, behind a single component that
+  takes an optional image source". The component was built, tested and committed; nothing ever rendered it.
+  A repo-wide grep for `PhotoSlot` and `ambiancePlaceholder` found only the component, its own helper, and
+  that helper's unit test. So Session 3's "supply the source" meant wiring it in for the first time, in the
+  one place a hero photograph belongs (the kit header's full-bleed band). Matters because the gap was
+  invisible: the component compiled, its tests passed, and the log said the surfaces were on it. Anyone
+  reading Session 2's log should read this entry beside it.
+
+- **An image regeneration spends a DIRECTION regeneration.** `consume_generation_credit` is the product's
+  only credit primitive, and its meter is `generation_credits.directions_generated` /
+  `regenerations_used` against `plans.regenerations_limit` — the ladder for regenerating brand DIRECTIONS.
+  Lot 5 was told regeneration of a photograph consumes a credit, and rather than invent a second meter
+  (the same reasoning that kept `launch_checklist_items` and `direction_assets` from being duplicated) it
+  spends that one. So a therapist who regenerates her hero photograph twice has two fewer direction
+  regenerations, which is not what either meter's name suggests. Matters because the two are priced
+  completely differently — a direction regeneration is a model call over text, a photograph is $0.25 — and
+  because she cannot see which meter she is spending. Someone should decide whether photographs get their
+  own allowance, and if so, whether it is per kit or per plan.
+
+- **There is no post-purchase refund for a generation credit.** `release_generation_credit` refunds only
+  while `brand_kits.directions is still null`, which is never true after delivery. That is why the image
+  pipeline checks credit availability BEFORE the API call (advisory,
+  `brand_kit_has_generation_credit`) and consumes AFTER the image is recorded, rather than
+  consume-then-refund. The window between the two is real: two concurrent regenerations of different slots
+  could both pass the advisory check and both consume. It is bounded by the per-slot claim lock and by the
+  daily image ceiling, and it costs at most one extra credit, never money. Someone should decide whether a
+  genuine post-purchase refund primitive is worth having.

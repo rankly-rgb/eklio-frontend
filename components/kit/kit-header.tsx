@@ -1,6 +1,7 @@
 "use client";
 
 import { BrandCanvas } from "@/components/kit/brand-canvas";
+import { PhotoSlot } from "@/components/kit/photo-slot";
 import { KitMenu } from "@/components/kit/kit-menu";
 import { StateTile } from "@/components/kit/state-tile";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -40,6 +41,7 @@ export function KitHeader({
   bookingUrl,
   stats,
   compAccess,
+  heroImageUrl = null,
 }: {
   brandKitId: string;
   projectId: string;
@@ -51,6 +53,13 @@ export function KitHeader({
   bookingUrl: string | null;
   stats: AssetStats | null;
   compAccess: boolean;
+  /**
+   * The hero photograph's signed URL, or null for the gradient. This is the
+   * ONLY thing Lot 5 changes about this component: <PhotoSlot> was built in
+   * Session 2 to take exactly this, and it renders the same gradient block
+   * with no source as it does today. No skeleton, no second loading pattern.
+   */
+  heroImageUrl?: string | null;
 }) {
   useBrandFont(tokens?.google_fonts_url ?? null);
 
@@ -70,6 +79,19 @@ export function KitHeader({
 
       {tokens ? (
         <>
+          {/*
+            * The hero band — the one image ever shown large and full-bleed.
+            * Gradient until Lot 5 generates one, photograph after, and the
+            * transition between them is <PhotoSlot>'s own 400ms cross-fade
+            * from the same block rather than from empty space.
+            */}
+          <PhotoSlot
+            tokens={tokens}
+            src={heroImageUrl}
+            alt={heroImageUrl ? `A photograph in ${practiceName ?? "your"} brand's colors` : ""}
+            className="aspect-[3/2] w-full rounded-card max-md:aspect-[4/3]"
+          />
+
           <BrandCanvas tokens={tokens} className="flex flex-col items-center gap-3 px-8 py-16 text-center">
             <span
               style={{

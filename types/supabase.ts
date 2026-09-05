@@ -167,6 +167,98 @@ export type Database = {
           },
         ]
       }
+      brand_image_daily_spend: {
+        Row: {
+          actual_cents: number
+          reserved_cents: number
+          spend_date: string
+        }
+        Insert: {
+          actual_cents?: number
+          reserved_cents?: number
+          spend_date?: string
+        }
+        Update: {
+          actual_cents?: number
+          reserved_cents?: number
+          spend_date?: string
+        }
+        Relationships: []
+      }
+      brand_images: {
+        Row: {
+          attempts: number
+          brand_kit_id: string
+          byte_size: number | null
+          claimed_at: string | null
+          cost_cents: number | null
+          created_at: string
+          failure_reason: string
+          id: string
+          image_fingerprint: string
+          model: string
+          quality: string
+          reserved_cents: number | null
+          reserved_on: string | null
+          size: string
+          slot: string
+          status: string
+          storage_path: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          brand_kit_id: string
+          byte_size?: number | null
+          claimed_at?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          failure_reason?: string
+          id?: string
+          image_fingerprint: string
+          model?: string
+          quality?: string
+          reserved_cents?: number | null
+          reserved_on?: string | null
+          size?: string
+          slot: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          brand_kit_id?: string
+          byte_size?: number | null
+          claimed_at?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          failure_reason?: string
+          id?: string
+          image_fingerprint?: string
+          model?: string
+          quality?: string
+          reserved_cents?: number | null
+          reserved_on?: string | null
+          size?: string
+          slot?: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_images_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_kits: {
         Row: {
           content: Json
@@ -1878,6 +1970,52 @@ export type Database = {
         }
         Returns: string
       }
+      brand_images_claim: {
+        Args: {
+          p_brand_kit_id: string
+          p_cost_estimate_cents: number
+          p_daily_cap_cents: number
+          p_image_fingerprint: string
+          p_reclaim_after?: string
+          p_slot: string
+        }
+        Returns: Json
+      }
+      brand_images_enabled: { Args: never; Returns: boolean }
+      brand_images_mark_failed: {
+        Args: {
+          p_claim_token: string
+          p_failure_reason: string
+          p_image_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      brand_images_mark_ready: {
+        Args: {
+          p_byte_size: number
+          p_claim_token: string
+          p_cost_cents: number
+          p_image_id: string
+          p_model: string
+          p_quality: string
+          p_size: string
+          p_storage_path: string
+        }
+        Returns: Json
+      }
+      brand_images_path: {
+        Args: {
+          p_brand_kit_id: string
+          p_image_fingerprint: string
+          p_slot: string
+        }
+        Returns: string
+      }
+      brand_images_setting_int: {
+        Args: { p_fallback: number; p_key: string }
+        Returns: number
+      }
       brand_kit_asset_path_owner: { Args: { p_name: string }; Returns: boolean }
       brand_kit_direction_contrast: {
         Args: { p_direction: Json }
@@ -1896,6 +2034,10 @@ export type Database = {
       brand_kit_entitled: { Args: { p_brand_kit_id: string }; Returns: boolean }
       brand_kit_entitling_statuses: { Args: never; Returns: string[] }
       brand_kit_ethics_check_valid: { Args: { p: Json }; Returns: boolean }
+      brand_kit_has_generation_credit: {
+        Args: { p_brand_kit_id: string }
+        Returns: boolean
+      }
       brand_kit_hero_valid: { Args: { p: Json }; Returns: boolean }
       brand_kit_is_owned: { Args: { p_brand_kit_id: string }; Returns: boolean }
       brand_kit_palette_valid: { Args: { p: Json }; Returns: boolean }
@@ -1987,6 +2129,10 @@ export type Database = {
       }
       get_brand_asset_versions: {
         Args: { p_brand_kit_id: string; p_key: string }
+        Returns: Json
+      }
+      get_brand_images: {
+        Args: { p_brand_kit_id: string; p_image_fingerprint: string }
         Returns: Json
       }
       get_launch_progress: { Args: { p_brand_kit_id: string }; Returns: Json }

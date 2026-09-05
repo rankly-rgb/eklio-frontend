@@ -67,7 +67,16 @@ export type AnalyticsEvent =
   | "asset_detail_opened"
   | "asset_downloaded"
   | "asset_zip_downloaded"
-  | "asset_insitu_viewed";
+  | "asset_insitu_viewed"
+  /* ── post-purchase-v2, Lot 5 (generated photography) ─────────────────
+   * `brand_image_generated`'s `cost_cents` is what the PRICE TABLE says the
+   * image cost, never anything derived from the model's `usage` block --
+   * see lib/images/config.ts. `brand_image_refused` carries the machine
+   * reason (budget_exceeded, moderated, busy, ...), never the prompt and
+   * never a message written for her.
+   */
+  | "brand_image_generated"
+  | "brand_image_refused";
 
 /** Valeurs admises : rien qui puisse porter du texte libre d'utilisateur. */
 export type AnalyticsProperties = Record<

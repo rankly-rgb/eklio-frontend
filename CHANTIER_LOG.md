@@ -443,3 +443,205 @@ and from FINDINGS.md's `direction_assets` entry.
 
 **The ornament is cut.** Logged here so it is not silently forgotten: it is not built, not scaffolded, and
 not stubbed, and no slot in `brand_images` is reserved for it.
+
+---
+
+## 2026-09-05 — Session 3, step 7C: LOT 5.1–5.5, one slot end to end
+
+Branch: `claude/post-purchase-v2`, both repos. Two commits: `Step 7c (backend)`, `Step 7c (frontend)`.
+
+**Nothing was generated. Nothing was spent.** `api.openai.com` is unreachable from this session, so the one
+real call is a command for a human to run — documented at the bottom of this entry. Everything else is
+proved by tests against a stubbed client: 66 files, 1180 tests, green.
+
+### What was built
+
+| | |
+| --- | --- |
+| `brand_images` | seven slots per paid kit, one row each, claim/settle RPCs |
+| `brand_image_daily_spend` | the ceiling, one row per day |
+| `lib/images/config.ts` | the prompt pack — model, slots, price table, ceiling |
+| `lib/images/fingerprint.ts` | `computeImageFingerprint`, deliberately narrower |
+| `lib/images/prompt.ts` | the derived prompt, built from closed vocabularies |
+| `lib/images/client.ts` | the injectable model client and its error classification |
+| `lib/images/generate.ts` | claim → prompt → model → upload → settle |
+| `app/api/brand-kits/[id]/images/[slot]` | POST, Node runtime, the therapist's own session |
+| `app/api/brand-kits/[id]/images` | GET, every slot with its state |
+| `scripts/brand-image/generate-one.ts` | the one command, guarded to one slot |
+
+### The three things asked for up front, and where each one lives
+
+1. **The model client is injectable.** `generateBrandImage` takes an `ImageModelClient`.
+   `lib/images/__tests__/generate.test.ts` runs eighteen cases — claim refusals, one retry and only one, a
+   moderation that is never retried, an upload failure that still settles the reservation, a lost claim,
+   credits before and after — all against a stub, all for nothing. `openAiImageClientFromEnv()` is
+   constructed in exactly two places: the route handler and the script.
+2. **The placeholder is the seam.** `<PhotoSlot>` already took an optional `src`; the kit header now renders
+   it as a full-bleed band and the page signs a URL server-side and passes it. No skeleton, no second
+   loading pattern, no rewrite of the surface — the gradient is still exactly what a kit with no photograph
+   draws. ⚠ **The premise needed correcting: `<PhotoSlot>` had zero call sites.** Session 2 built and tested
+   the component but never rendered it anywhere. See FINDINGS.md.
+3. **`computeAssetFingerprint` is byte-identical.** Two tests hold it there: one greps
+   `lib/kit/asset-fingerprint.ts` for any mention of photography, one freezes its output for a fixed input
+   at `dad3d59478ded36a9619deaf4f4f7ccab94250baa399bfcaf7783e577342b402`. `computeImageFingerprint` hashes
+   direction (id, name, tone keywords), the six colour roles, specialty, city, state, and
+   `IMAGE_PROMPT_VERSION` — and PROJECTS those fields explicitly rather than spreading its input, so a
+   caller handing over a wider object cannot silently widen the hash. Eleven tests move each hashed field
+   and assert it shifts; six add copy fields and assert it does not.
+
+### The four departures from `direction_assets`, all tested
+
+Step 7A named two flaws and the brief added the fix for both. All four departures are in
+`supabase/tests/20260905194933_brand_images.test.sql`:
+
+1. **A refusal is recorded.** The cap writes `status='refused_cap'` with a `failure_reason` on the row. A
+   gradient is always explainable, which in `direction_assets` it is not.
+2. **Moderation is terminal; a transient failure is not.** `moderated` is never reclaimed — retrying a
+   refused prompt spends money to be refused again. `failed` (a timeout, a 5xx) and `refused_cap` stay
+   retryable, because neither means the prompt is wrong and neither should cost her a slot.
+3. **The reservation remembers its own day** (`reserved_on`), instead of deriving it from
+   `claimed_at::date`, which released against the wrong day when a claim was reclaimed across midnight.
+4. **The caller is `authenticated`, not `service_role`** — this product forbids `service_role` in a
+   user-facing route. That makes the borrowed "caller supplies the cap" pattern unsafe on its own, so the
+   caller-supplied cap and estimate are clamped against `app_settings` bounds it can only tighten. A forged
+   cap of 999999999 and a zeroed estimate are both tested and both refused. The frontend still supplies the
+   real numbers, keeping OpenAI's price in one place next to the key.
+
+### Cost, as configured
+
+Price table in `lib/images/config.ts`, retrieved 2026-09-05, keyed on (model, quality, size). Cents are
+rounded **up**: this number is both what is reserved against the ceiling and what is recorded as spend, and
+a budget that under-counts is not a budget.
+
+| slot | size | quality | USD | recorded |
+| --- | --- | --- | --- | --- |
+| hero | 1536x1024 | high | $0.250 | 25¢ |
+| ambient_a | 1024x1536 | medium | $0.063 | 7¢ |
+| ambient_b | 1024x1536 | medium | $0.063 | 7¢ |
+| post_bg_1 | 1024x1024 | medium | $0.042 | 5¢ |
+| post_bg_2 | 1024x1024 | medium | $0.042 | 5¢ |
+| post_bg_3 | 1024x1024 | medium | $0.042 | 5¢ |
+| texture | 1024x1024 | medium | $0.042 | 5¢ |
+| **per kit** | | | **$0.544** | **59¢** |
+
+**100 kits: $54.40 actual, $59.00 as recorded.** The 8% gap is the rounding, always in the safe direction.
+A test asserts every slot resolves to a price and that an unpriced combination THROWS rather than costing
+nothing — the failure mode that would let an image slip under the ceiling without filling it.
+
+`cost_cents` never comes from the response's `usage` block. `usage` is recorded and never treated as money.
+
+### Six of seven slots are off
+
+`IMAGE_SLOTS[slot].enabled` is `true` for `hero` alone. A disabled slot is refused before a claim is made,
+before a client is constructed, and before anything is reserved — so "do not generate the other six" is a
+property of the code, not of anyone's discipline. A test asserts exactly one slot is enabled. Turning the
+others on is a deliberate edit in a later session.
+
+### Decisions taken without asking
+
+- **The kill switch lives in `app_settings`, not in an environment variable.** A switch only the caller
+  honours is not a switch: the RPC is reachable directly, so the switch has to be where the RPC reads it.
+  Off, missing, or unparseable all read as off. Flipping it is a row update, not a deploy.
+- **Images go in the existing `brand-assets` bucket** under `{kit}/images/{fingerprint}/{slot}.webp`, so the
+  existing storage policies authorize them unchanged — owned AND entitled, via the first path segment. A
+  new bucket would have meant a second copy of that policy. The bucket's mime allowlist gains `image/webp`;
+  the deterministic renders keep their SVG/PNG paths untouched.
+- **The specialty label and the city never reach the model.** They go through closed lookup tables to a
+  setting register and a light register. A specialty label is clinical language about her clients, and a
+  named city invites a recognisable landmark; neither belongs in a photograph of an empty room. This is
+  where "no free-text prompt in the paid space" is actually kept rather than merely stated, and it is why
+  her three tone keywords — the only part of the prompt not written in that file — pass a narrow character
+  gate rather than being trusted.
+- **A moved fingerprint is not a regeneration.** She spends a credit only when she asks for a different
+  image of a slot she already has at the current fingerprint. Changing a colour makes a new photograph of a
+  changed brand, bounded by the daily ceiling rather than by her allowance.
+- **The credit is checked before the call and consumed after the record.** There is no post-purchase refund
+  primitive, so this is the only shape that satisfies both halves of the brief. The window is real and
+  bounded; see FINDINGS.md.
+
+### Known, logged, not fixed
+
+- **An image regeneration spends a DIRECTION regeneration.** `consume_generation_credit` is the only credit
+  primitive, and its meter is the directions ladder. Rather than invent a second meter, Lot 5 spends that
+  one. FINDINGS.md carries the full note; the decision is yours.
+- **`city` is hashed but not prompted.** A move within the same state invalidates an image whose prompt
+  would be identical. That is the specified input list, kept as specified; the alternative — silently
+  dropping an input you named — is worse. It costs one regeneration in a rare case.
+- **The ornament is cut**, and was cut in step 7A. Nothing was built, scaffolded or stubbed for it, and no
+  slot is reserved for it.
+
+### THE ONE COMMAND
+
+Run on a machine that can reach `api.openai.com`. It calls the same `generateBrandImage` the route handler
+calls — same claim, same ceiling, same price table, same storage path. Not the marketing CLI.
+
+```
+npx tsx scripts/brand-image/generate-one.ts --kit <brand_kit_id> --slot hero
+```
+
+It needs, in `.env.local` at the repo root (already covered by `.gitignore`) or in the environment:
+
+```
+OPENAI_API_KEY=...
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+EKLIO_SESSION_ACCESS_TOKEN=...      # a signed-in therapist's tokens, so every
+EKLIO_SESSION_REFRESH_TOKEN=...     # RPC runs as SHE would run it
+```
+
+It deliberately refuses a `service_role` key. The point is to exercise the caller's own session:
+`brand_kit_entitled()` and the storage policies are the security boundary, and a `service_role` run would
+prove nothing about either.
+
+**The guard:** one slot per run. `--all` is refused, a comma-separated `--slot` is refused, an unknown slot
+is refused, and a slot that is not `enabled` in the prompt pack is refused — all before a client is
+constructed. There is no batch mode and adding one is not a config change.
+
+**A healthy run looks like this** (the fingerprint, path, byte size and prompt wording will differ):
+
+```
+  kit           7c9f2e40-....-............
+  slot          hero
+  size/quality  1536x1024 high
+  fingerprint   4f1c8a...   (64 hex chars)
+  price table   25 cents
+
+  prompt
+    A photograph for a therapy practice's brand. an empty, softly lit interior corner of a private
+    consulting room. The room contains an uncluttered chair beside a window with a long, calm view.
+    wide editorial photograph, the left third open and uncluttered so text can sit over it, shallow
+    depth of field. Lighting: warm hazy afternoon light. Mood: calm, plain, warm. Colour grade the
+    image toward this palette: #B4653F as the dominant hue, ... Strictly excluded: no people, no
+    faces, no hands, no body parts, no text, no lettering, no numbers, no logos, no signage, no
+    watermarks, no brand names.
+
+  calling the image API once…
+
+  DONE
+    storage path  7c9f2e40-..../images/4f1c8a.../hero.webp
+    byte size     412,880 bytes
+    cost_cents    25   (recorded on brand_images)
+    usage         {"input_tokens":...,"output_tokens":...}   (recorded only; never money)
+```
+
+Anything else is a refusal, and it prints the machine reason: `budget_exceeded`, `moderated`, `busy`,
+`already_ready`, `disabled`, `slot_disabled`, `payment_required`. **`moderated` means the prompt is wrong**
+— it is terminal, it is not retried, and it wants a person, not another run.
+
+Afterwards the row is readable directly:
+
+```sql
+select slot, status, cost_cents, byte_size, storage_path, failure_reason
+  from brand_images where brand_kit_id = '<brand_kit_id>';
+select * from brand_image_daily_spend where spend_date = current_date;
+```
+
+`reserved_cents` should be back to 0 and `actual_cents` should be 25.
+
+### What the next session needs to know
+
+- **Step 8 was not started.** LOT 5.6 onward, the other six slots, and the ornament are all untouched.
+- **`IMAGE_PROMPT_VERSION` is the invalidation lever.** Changing a word in `lib/images/prompt.ts` without
+  bumping it leaves every stored photograph claiming to be current when it is not.
+- **The price table has a retrieval date in its comment.** Re-verify it before trusting the 100-kit number
+  again; OpenAI can change prices at any time, and nothing in this repo will notice.
