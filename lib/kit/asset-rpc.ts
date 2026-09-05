@@ -31,7 +31,11 @@ function isRpcError(value: unknown): value is { error: AssetRpcErrorBody } {
 
 async function call<T>(
   supabase: Client,
-  fn: "get_brand_asset_manifest" | "request_brand_asset_upload" | "record_brand_asset",
+  fn:
+    | "get_brand_asset_manifest"
+    | "request_brand_asset_upload"
+    | "record_brand_asset"
+    | "record_asset_download",
   args: Record<string, unknown>
 ): Promise<AssetRpcResult<T>> {
   const { data, error } = await supabase.rpc(fn, args as never);
@@ -61,7 +65,12 @@ export type AssetManifestEntry = {
   height: number | null;
   min_tier: string;
   current: boolean;
-  asset: { storage_path: string; byte_size: number; created_at: string } | null;
+  asset: {
+    storage_path: string;
+    byte_size: number;
+    created_at: string;
+    download_count: number;
+  } | null;
 };
 
 export function getBrandAssetManifest(
@@ -82,6 +91,20 @@ export function requestBrandAssetUpload(
   fingerprint: string
 ): Promise<AssetRpcResult<{ bucket: string; storage_path: string }>> {
   return call(supabase, "request_brand_asset_upload", {
+    p_brand_kit_id: brandKitId,
+    p_key: key,
+    p_fingerprint: fingerprint,
+  });
+}
+
+/** Returns the new count, or `null` on any refusal (not entitled, no matching row) -- never throws, never touches consume_generation_credit. */
+export function recordAssetDownload(
+  supabase: Client,
+  brandKitId: string,
+  key: string,
+  fingerprint: string
+): Promise<AssetRpcResult<number | null>> {
+  return call(supabase, "record_asset_download", {
     p_brand_kit_id: brandKitId,
     p_key: key,
     p_fingerprint: fingerprint,

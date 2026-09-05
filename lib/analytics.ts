@@ -56,7 +56,18 @@ export type AnalyticsEvent =
   | "usp_collision_warned"
   | "usp_collision_kept"
   /* ── post-purchase-v2, Lot 2 (app chrome) ──────────────────────────── */
-  | "search_used";
+  | "search_used"
+  /* ── post-purchase-v2, Lot 4 (asset library) ─────────────────────────
+   * `asset_downloaded`'s `size`/`format` mean the file's byte size and its
+   * catalog `kind` (png/svg/...) -- never the pixel dimensions, which
+   * `asset_catalog.width`/`height` already name differently.
+   */
+  | "asset_library_opened"
+  | "asset_filtered"
+  | "asset_detail_opened"
+  | "asset_downloaded"
+  | "asset_zip_downloaded"
+  | "asset_insitu_viewed";
 
 /** Valeurs admises : rien qui puisse porter du texte libre d'utilisateur. */
 export type AnalyticsProperties = Record<

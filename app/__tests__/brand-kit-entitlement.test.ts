@@ -159,7 +159,25 @@ const KIT_PAGES = [
   "app/app/brand-kits/[id]/page.tsx",
   "app/app/brand-kits/[id]/site/page.tsx",
   "app/app/brand-kits/[id]/delivered/page.tsx",
+  "app/app/brand-kits/[id]/assets/page.tsx",
 ];
+
+/**
+ * `KIT_PAGES` above is hand-maintained, unlike `ROUTES` — and a hand-
+ * maintained list is a guard that can silently stop guarding the moment
+ * someone adds a page and forgets the line (decided 2026-09-03,
+ * `POST_PURCHASE_INVENTORY.md` §6, acted on with this chantier's first new
+ * page route). This walks the same subtree `KIT_PAGES` is meant to cover
+ * and fails if a real `page.tsx` is missing from it — `reveal` is the one
+ * deliberate, asserted exemption above, not an oversight here.
+ */
+function pageFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return pageFiles(full);
+    return entry.name === "page.tsx" ? [full] : [];
+  });
+}
 
 describe("les pages du kit sont gardées", () => {
   it.each(KIT_PAGES)("%s", (path) => {
@@ -180,6 +198,19 @@ describe("les pages du kit sont gardées", () => {
     const source = code(join(ROOT, "app/app/brand-kits/[id]/reveal/page.tsx"));
     expect(EXPLICIT_CHECK.test(source)).toBe(false);
     expect(source).not.toContain("/app/checkout");
+  });
+
+  it("aucune page réelle du kit n'est absente de KIT_PAGES", () => {
+    const known = new Set([...KIT_PAGES, "app/app/brand-kits/[id]/reveal/page.tsx"]);
+    const real = pageFiles(join(ROOT, "app/app/brand-kits/[id]")).map(relative);
+
+    for (const path of real) {
+      expect(
+        known.has(path),
+        `${path} existe mais n'est ni dans KIT_PAGES ni exempté comme la révélation.\n` +
+          "Ajoute-le à l'une des deux listes, explicitement."
+      ).toBe(true);
+    }
   });
 });
 

@@ -11,10 +11,12 @@ import { siteOutputGet } from "@/lib/site/rpc";
 import { loadAssetContext } from "@/lib/kit/asset-context";
 import {
   getBrandAssetManifest,
+  recordAssetDownload,
   recordBrandAsset,
   requestBrandAssetUpload,
 } from "@/lib/kit/asset-rpc";
 import { getRenderer } from "@/lib/kit/render/registry";
+import { track } from "@/lib/analytics";
 
 /*
  * POST /api/brand-kits/[id]/assets/[key] — ensure one rendered brand asset
@@ -61,13 +63,21 @@ export const maxDuration = 15;
 const SIGNED_URL_TTL_SECONDS = 300;
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   ctx: RouteContext<"/api/brand-kits/[id]/assets/[key]">
 ) {
   const auth = await authenticate();
   if (!auth.ok) return auth.response;
 
   const { id, key } = await ctx.params;
+  /*
+   * A thumbnail preview (the kit page's six-card grid, an in-situ frame)
+   * calls this exact route to get a signed URL to DISPLAY an image -- that
+   * is not her downloading it. Only a real "Download" affordance passes
+   * `?intent=download`; anything else (including no param, matching every
+   * caller before this lot) does not count.
+   */
+  const isDownload = request.nextUrl.searchParams.get("intent") === "download";
   const { supabase, userId } = auth.session;
 
   const kit = await loadBrandKit(supabase, id, userId);
@@ -110,6 +120,14 @@ export async function POST(
       .createSignedUrl(entry.asset.storage_path, SIGNED_URL_TTL_SECONDS);
     if (signed.error || !signed.data) {
       return serverError("assets:sign-existing", signed.error);
+    }
+    if (isDownload) {
+      await recordAssetDownload(supabase, id, key, fingerprint);
+      track(key === "brand_kit_zip" ? "asset_zip_downloaded" : "asset_downloaded", {
+        key,
+        size: entry.asset.byte_size,
+        format: entry.kind,
+      });
     }
     return NextResponse.json({ url: signed.data.signedUrl });
   }
@@ -168,5 +186,13 @@ export async function POST(
     return serverError("assets:sign-new", signed.error);
   }
 
+  if (isDownload) {
+    await recordAssetDownload(supabase, id, key, fingerprint);
+    track(key === "brand_kit_zip" ? "asset_zip_downloaded" : "asset_downloaded", {
+      key,
+      size: rendered.bytes.byteLength,
+      format: rendered.contentType,
+    });
+  }
   return NextResponse.json({ url: signed.data.signedUrl });
 }

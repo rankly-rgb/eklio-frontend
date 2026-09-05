@@ -30,7 +30,7 @@ export function AssetDownloadButton({
   async function handleClick() {
     setState("working");
     try {
-      const res = await fetch(`/api/brand-kits/${brandKitId}/assets/${assetKey}`, {
+      const res = await fetch(`/api/brand-kits/${brandKitId}/assets/${assetKey}?intent=download`, {
         method: "POST",
       });
       const body = (await res.json()) as { url?: string; error?: string };

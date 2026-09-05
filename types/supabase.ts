@@ -91,6 +91,7 @@ export type Database = {
           brand_kit_id: string
           byte_size: number
           created_at: string
+          download_count: number
           fingerprint: string
           height: number | null
           id: string
@@ -104,6 +105,7 @@ export type Database = {
           brand_kit_id: string
           byte_size: number
           created_at?: string
+          download_count?: number
           fingerprint: string
           height?: number | null
           id?: string
@@ -117,6 +119,7 @@ export type Database = {
           brand_kit_id?: string
           byte_size?: number
           created_at?: string
+          download_count?: number
           fingerprint?: string
           height?: number | null
           id?: string
@@ -1965,6 +1968,10 @@ export type Database = {
       purchase_status_before: {
         Args: { p_purchase_id: string; p_status: string }
         Returns: string
+      }
+      record_asset_download: {
+        Args: { p_brand_kit_id: string; p_fingerprint: string; p_key: string }
+        Returns: number
       }
       record_brand_asset: {
         Args: {
