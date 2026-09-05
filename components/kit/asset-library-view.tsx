@@ -50,10 +50,12 @@ export function AssetLibraryView({
   brandKitId,
   manifest,
   staleKeys,
+  practiceName,
 }: {
   brandKitId: string;
   manifest: AssetManifestEntry[];
   staleKeys: string[];
+  practiceName: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -312,6 +314,8 @@ export function AssetLibraryView({
           entry={activeAsset}
           status={assetStatus(activeAsset, staleSet)}
           onClose={() => setParam("asset", null)}
+          availableKeys={new Set(manifest.filter((entry) => entry.current).map((entry) => entry.key))}
+          practiceName={practiceName}
         />
       ) : null}
     </div>

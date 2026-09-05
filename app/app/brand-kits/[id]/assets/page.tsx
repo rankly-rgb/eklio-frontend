@@ -49,7 +49,12 @@ export default async function AssetLibraryPage({
       </h1>
 
       {stats ? (
-        <AssetLibraryView brandKitId={id} manifest={stats.manifest} staleKeys={stats.staleKeys} />
+        <AssetLibraryView
+          brandKitId={id}
+          manifest={stats.manifest}
+          staleKeys={stats.staleKeys}
+          practiceName={kit.practiceName ?? "Your practice"}
+        />
       ) : (
         <p className="mt-8 text-body text-ink-2">
           Your palette is still being set up. This page fills in as soon as it&rsquo;s ready.

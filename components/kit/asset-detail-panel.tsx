@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { AssetThumbnail } from "@/components/kit/asset-thumbnail";
 import { AssetDownloadButton } from "@/components/kit/asset-download-button";
+import { InSituSection } from "@/components/kit/in-situ/in-situ-panel";
 import { StatusChip } from "@/components/ui/status-chip";
 import { MonoLabel } from "@/components/ui/mono-label";
 import type { StatusKey } from "@/lib/status";
@@ -30,11 +31,15 @@ export function AssetDetailPanel({
   entry,
   status,
   onClose,
+  availableKeys,
+  practiceName,
 }: {
   brandKitId: string;
   entry: AssetManifestEntry;
   status: StatusKey | null;
   onClose: () => void;
+  availableKeys: Set<string>;
+  practiceName: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
@@ -100,6 +105,13 @@ export function AssetDetailPanel({
           <p className="mt-1.5 text-helper leading-prose text-ink-2">{entry.description}</p>
         </div>
       ) : null}
+
+      <InSituSection
+        brandKitId={brandKitId}
+        assetKey={entry.key}
+        availableKeys={availableKeys}
+        practiceName={practiceName}
+      />
 
       <AssetDownloadButton
         brandKitId={brandKitId}

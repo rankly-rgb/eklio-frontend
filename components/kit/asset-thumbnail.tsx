@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useAssetUrl } from "@/lib/kit/use-asset-url";
 
 /*
  * A real rendered thumbnail — reuses the exact same signed-URL round trip
@@ -16,29 +16,7 @@ export function AssetThumbnail({
   assetKey: string;
   className?: string;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/brand-kits/${brandKitId}/assets/${assetKey}`, { method: "POST" })
-      .then((response) => response.json() as Promise<{ url?: string }>)
-      .then((body) => {
-        if (cancelled) return;
-        if (body.url) setUrl(body.url);
-        else setFailed(true);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [brandKitId, assetKey]);
-
-  if (failed) {
-    return <div className={`bg-card ${className}`} aria-hidden="true" />;
-  }
+  const url = useAssetUrl(brandKitId, assetKey);
 
   return (
     <div className={`relative overflow-hidden bg-card ${className}`}>
