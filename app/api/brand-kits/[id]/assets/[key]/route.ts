@@ -16,6 +16,7 @@ import {
   requestBrandAssetUpload,
 } from "@/lib/kit/asset-rpc";
 import { getRenderer } from "@/lib/kit/render/registry";
+import { renderVariant } from "@/lib/kit/render/variants";
 import { track } from "@/lib/analytics";
 
 /*
@@ -78,6 +79,23 @@ export async function POST(
    * caller before this lot) does not count.
    */
   const isDownload = request.nextUrl.searchParams.get("intent") === "download";
+  /*
+   * `?size=` / `?format=` ask for one of the renditions the catalogue row
+   * itself offers — a width she needs after the fact, or the same mark as a
+   * vector. It is the SAME rendering, re-rasterized from the same source
+   * under the SAME fingerprint, so it costs her nothing: no branch below
+   * calls `consume_generation_credit`, and
+   * `__tests__/download-is-never-a-generation.test.ts` fails if one ever
+   * starts to. What's offered is decided by `asset_catalog`, and enforced
+   * by the two RPCs — never by this route and never by the client, so an
+   * edited URL cannot ask for a width nobody seeded.
+   */
+  const requestedSize = Number.parseInt(request.nextUrl.searchParams.get("size") ?? "", 10);
+  const rendition = {
+    size: Number.isInteger(requestedSize) && requestedSize > 0 ? requestedSize : 0,
+    format: request.nextUrl.searchParams.get("format") ?? "",
+  };
+  const isVariant = rendition.size !== 0 || rendition.format !== "";
   const { supabase, userId } = auth.session;
 
   const kit = await loadBrandKit(supabase, id, userId);
@@ -113,6 +131,84 @@ export async function POST(
   }
   const entry = manifest.data.find((e) => e.key === key);
   if (!entry) return notFound();
+
+  if (isVariant) {
+    /*
+     * The manifest holds one row per key — the native rendition — so a
+     * variant's cache state is not in it. Asking the database for the path
+     * first is what settles both questions at once: it refuses a size or
+     * format the catalogue does not offer, and the path it returns is
+     * either already an object (cached, under this same fingerprint) or
+     * where the render is about to go.
+     */
+    const upload = await requestBrandAssetUpload(supabase, id, key, fingerprint, rendition);
+    if (!upload.ok) {
+      return NextResponse.json({ error: upload.error.message }, { status: 400 });
+    }
+    const stored = { size: upload.data.size, format: upload.data.format };
+
+    const cached = await supabase.storage
+      .from(upload.data.bucket)
+      .createSignedUrl(upload.data.storage_path, SIGNED_URL_TTL_SECONDS);
+    if (!cached.error && cached.data) {
+      if (isDownload) {
+        await recordAssetDownload(supabase, id, key, fingerprint, stored);
+        track("asset_downloaded", { key, size: stored.size, format: stored.format || entry.kind });
+      }
+      return NextResponse.json({ url: cached.data.signedUrl });
+    }
+
+    let variant;
+    try {
+      // No key with variants reads `siteSetupMd` (only site_setup_md and
+      // the zip do, and neither has a vector source), so the extra RPC that
+      // fills it is skipped rather than paid for on every size she picks.
+      variant = await renderVariant(key, { ...renderCtx, siteSetupMd: null }, stored);
+    } catch (err) {
+      return serverError("assets:render-variant", err);
+    }
+    // The catalogue offered a rendition this repo has no vector source for.
+    // Seeded not to happen; a 404 rather than a 500 if it ever does.
+    if (!variant) return notFound();
+
+    const put = await supabase.storage
+      .from(upload.data.bucket)
+      .upload(upload.data.storage_path, variant.bytes, {
+        contentType: variant.contentType,
+        upsert: true,
+      });
+    if (put.error) {
+      return serverError("assets:upload-variant", put.error);
+    }
+
+    const recorded = await recordBrandAsset(
+      supabase,
+      id,
+      key,
+      fingerprint,
+      upload.data.storage_path,
+      variant.bytes.byteLength,
+      variant.width,
+      variant.height,
+      stored
+    );
+    if (!recorded.ok) {
+      return NextResponse.json({ error: recorded.error.message }, { status: 400 });
+    }
+
+    const freshly = await supabase.storage
+      .from(upload.data.bucket)
+      .createSignedUrl(upload.data.storage_path, SIGNED_URL_TTL_SECONDS);
+    if (freshly.error || !freshly.data) {
+      return serverError("assets:sign-variant", freshly.error);
+    }
+
+    if (isDownload) {
+      await recordAssetDownload(supabase, id, key, fingerprint, stored);
+      track("asset_downloaded", { key, size: stored.size, format: stored.format || entry.kind });
+    }
+    return NextResponse.json({ url: freshly.data.signedUrl });
+  }
 
   if (entry.current && entry.asset) {
     const signed = await supabase.storage

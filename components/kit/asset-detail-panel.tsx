@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { AssetThumbnail } from "@/components/kit/asset-thumbnail";
-import { AssetDownloadButton } from "@/components/kit/asset-download-button";
+import { AssetDownloadSplit } from "@/components/kit/asset-download-button";
 import { InSituSection } from "@/components/kit/in-situ/in-situ-panel";
 import { StatusChip } from "@/components/ui/status-chip";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -113,13 +113,17 @@ export function AssetDetailPanel({
         practiceName={practiceName}
       />
 
-      <AssetDownloadButton
+      <AssetDownloadSplit
         brandKitId={brandKitId}
         assetKey={entry.key}
+        kind={entry.kind}
+        availableSizes={entry.available_sizes}
+        availableFormats={entry.available_formats}
+        nativeWidth={entry.width}
         className="self-start rounded-pill bg-ink px-[26px] py-2.5 text-ui font-semibold text-bg hover:bg-ink-2"
       >
         Download
-      </AssetDownloadButton>
+      </AssetDownloadSplit>
     </div>
   );
 }

@@ -64,6 +64,16 @@ export type AssetManifestEntry = {
   width: number | null;
   height: number | null;
   min_tier: string;
+  /**
+   * Pixel widths this asset can be re-rasterized to on demand, and the
+   * formats it can be delivered in — both empty for a key whose pixels have
+   * no vector source this repo can rebuild. The catalogue is the authority
+   * (`lib/kit/render/variants.ts` is seeded to match it, not the reverse),
+   * so a menu built from these two arrays can never offer a file the
+   * renderer cannot make.
+   */
+  available_sizes: number[];
+  available_formats: string[];
   current: boolean;
   asset: {
     storage_path: string;
@@ -84,16 +94,30 @@ export function getBrandAssetManifest(
   });
 }
 
+/**
+ * A rendition of one catalogue key: `{ size: 0, format: "" }` is the native
+ * one every caller before this lot asked for implicitly. Both RPCs below
+ * validate the pair against the catalogue's own arrays and refuse anything
+ * unlisted — the guard lives there, next to the paid check, not in a client
+ * that can be edited.
+ */
+export type AssetRendition = { size: number; format: string };
+
+export const NATIVE_RENDITION: AssetRendition = { size: 0, format: "" };
+
 export function requestBrandAssetUpload(
   supabase: Client,
   brandKitId: string,
   key: string,
-  fingerprint: string
-): Promise<AssetRpcResult<{ bucket: string; storage_path: string }>> {
+  fingerprint: string,
+  rendition: AssetRendition = NATIVE_RENDITION
+): Promise<AssetRpcResult<{ bucket: string; storage_path: string; size: number; format: string }>> {
   return call(supabase, "request_brand_asset_upload", {
     p_brand_kit_id: brandKitId,
     p_key: key,
     p_fingerprint: fingerprint,
+    p_size: rendition.size,
+    p_format: rendition.format,
   });
 }
 
@@ -102,12 +126,15 @@ export function recordAssetDownload(
   supabase: Client,
   brandKitId: string,
   key: string,
-  fingerprint: string
+  fingerprint: string,
+  rendition: AssetRendition = NATIVE_RENDITION
 ): Promise<AssetRpcResult<number | null>> {
   return call(supabase, "record_asset_download", {
     p_brand_kit_id: brandKitId,
     p_key: key,
     p_fingerprint: fingerprint,
+    p_size: rendition.size,
+    p_format: rendition.format,
   });
 }
 
@@ -119,7 +146,8 @@ export function recordBrandAsset(
   storagePath: string,
   byteSize: number,
   width?: number,
-  height?: number
+  height?: number,
+  rendition: AssetRendition = NATIVE_RENDITION
 ): Promise<AssetRpcResult<{ id: string; storage_path: string }>> {
   return call(supabase, "record_brand_asset", {
     p_brand_kit_id: brandKitId,
@@ -129,5 +157,7 @@ export function recordBrandAsset(
     p_byte_size: byteSize,
     p_width: width ?? null,
     p_height: height ?? null,
+    p_size: rendition.size,
+    p_format: rendition.format,
   });
 }

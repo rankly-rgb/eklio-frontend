@@ -31,6 +31,8 @@ export type Database = {
       }
       asset_catalog: {
         Row: {
+          available_formats: string[]
+          available_sizes: number[]
           description: string
           group: string
           height: number | null
@@ -42,6 +44,8 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          available_formats?: string[]
+          available_sizes?: number[]
           description: string
           group: string
           height?: number | null
@@ -53,6 +57,8 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          available_formats?: string[]
+          available_sizes?: number[]
           description?: string
           group?: string
           height?: number | null
@@ -93,10 +99,12 @@ export type Database = {
           created_at: string
           download_count: number
           fingerprint: string
+          format: string
           height: number | null
           id: string
           key: string
           kind: string
+          size: number
           storage_path: string
           user_id: string
           width: number | null
@@ -107,10 +115,12 @@ export type Database = {
           created_at?: string
           download_count?: number
           fingerprint: string
+          format?: string
           height?: number | null
           id?: string
           key: string
           kind: string
+          size?: number
           storage_path: string
           user_id: string
           width?: number | null
@@ -121,10 +131,12 @@ export type Database = {
           created_at?: string
           download_count?: number
           fingerprint?: string
+          format?: string
           height?: number | null
           id?: string
           key?: string
           kind?: string
+          size?: number
           storage_path?: string
           user_id?: string
           width?: number | null
@@ -1846,6 +1858,17 @@ export type Database = {
         Args: { p_brand_kit_id: string; p_query: string }
         Returns: Json
       }
+      asset_variant_path: {
+        Args: {
+          p_brand_kit_id: string
+          p_fingerprint: string
+          p_format: string
+          p_key: string
+          p_kind: string
+          p_size: number
+        }
+        Returns: string
+      }
       brand_kit_asset_path_owner: { Args: { p_name: string }; Returns: boolean }
       brand_kit_direction_contrast: {
         Args: { p_direction: Json }
@@ -1970,7 +1993,13 @@ export type Database = {
         Returns: string
       }
       record_asset_download: {
-        Args: { p_brand_kit_id: string; p_fingerprint: string; p_key: string }
+        Args: {
+          p_brand_kit_id: string
+          p_fingerprint: string
+          p_format?: string
+          p_key: string
+          p_size?: number
+        }
         Returns: number
       }
       record_brand_asset: {
@@ -1978,8 +2007,10 @@ export type Database = {
           p_brand_kit_id: string
           p_byte_size: number
           p_fingerprint: string
+          p_format?: string
           p_height?: number
           p_key: string
+          p_size?: number
           p_storage_path: string
           p_width?: number
         }
@@ -2001,7 +2032,13 @@ export type Database = {
         Returns: boolean
       }
       request_brand_asset_upload: {
-        Args: { p_brand_kit_id: string; p_fingerprint: string; p_key: string }
+        Args: {
+          p_brand_kit_id: string
+          p_fingerprint: string
+          p_format?: string
+          p_key: string
+          p_size?: number
+        }
         Returns: Json
       }
       restore_brand_kit: { Args: { p_brand_kit_id: string }; Returns: Json }
