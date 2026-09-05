@@ -97,3 +97,9 @@ built around. One line each: what, where, why it matters.
   post-purchase-v2 chantier) is silently shipping a placeholder-only experience for a feature whose full
   backend already exists and was paid for; someone should decide whether to wire up the frontend caller or
   remove the dormant mechanism. (Full detail: `POST_PURCHASE_V2_INVENTORY.md` §4.)
+
+- No `/help`, `/privacy`, or `/terms` route exists anywhere in the app (logged-in or marketing) — confirmed
+  by repo-wide search. LOT 2's app footer names all three explicitly (`components/app/footer.tsx`); building
+  three legal/support pages isn't named by any lot in this chantier, so they render as inert mono labels
+  rather than as links to a page that 404s. Matters because the footer now visibly promises three pages
+  that don't exist; someone should decide whether to write them or drop them from the footer's own spec.

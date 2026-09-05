@@ -155,6 +155,7 @@ export type Database = {
           home_content_seen_at: string | null
           id: string
           multi_builder_prompt: string | null
+          notifications_synced_at: string | null
           pdf_url: string | null
           practitioner_line: string | null
           project_id: string
@@ -178,6 +179,7 @@ export type Database = {
           home_content_seen_at?: string | null
           id?: string
           multi_builder_prompt?: string | null
+          notifications_synced_at?: string | null
           pdf_url?: string | null
           practitioner_line?: string | null
           project_id: string
@@ -201,6 +203,7 @@ export type Database = {
           home_content_seen_at?: string | null
           id?: string
           multi_builder_prompt?: string | null
+          notifications_synced_at?: string | null
           pdf_url?: string | null
           practitioner_line?: string | null
           project_id?: string
@@ -607,6 +610,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "launch_checklist_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
         ]
       }
       license_types: {
@@ -739,6 +749,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "monthly_presence_content_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
         ]
       }
       not_a_fit_cards: {
@@ -764,6 +781,58 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          brand_kit_id: string
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          brand_kit_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          brand_kit_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       palette_families: {
         Row: {
@@ -1163,6 +1232,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projects_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
         ]
       }
       purchase_status_events: {
@@ -1265,6 +1341,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -1507,6 +1590,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "site_specs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
         ]
       }
       specialties: {
@@ -1594,6 +1684,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -1701,9 +1798,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      workspaces: {
+        Row: {
+          id: string | null
+          is_current: boolean | null
+          name: string | null
+          owner_name: string | null
+        }
+        Insert: {
+          id?: string | null
+          is_current?: never
+          name?: never
+          owner_name?: never
+        }
+        Update: {
+          id?: string | null
+          is_current?: never
+          name?: never
+          owner_name?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      app_search: {
+        Args: { p_brand_kit_id: string; p_query: string }
+        Returns: Json
+      }
       brand_kit_asset_path_owner: { Args: { p_name: string }; Returns: boolean }
       brand_kit_direction_contrast: {
         Args: { p_direction: Json }
@@ -1813,6 +1934,10 @@ export type Database = {
       mark_brand_kit_delivered: {
         Args: { p_brand_kit_id: string }
         Returns: Json
+      }
+      mark_notifications_read: {
+        Args: { p_brand_kit_id: string }
+        Returns: boolean
       }
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }
@@ -2058,6 +2183,7 @@ export type Database = {
         Args: { p_frag: Json; p_spec: Json }
         Returns: string
       }
+      sync_notifications: { Args: { p_brand_kit_id: string }; Returns: Json }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }
         Returns: string

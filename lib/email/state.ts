@@ -114,6 +114,20 @@ export async function setUnsubscribed(
   userId: string,
   metadata: unknown
 ): Promise<void> {
+  await setEmailSubscribed(admin, userId, metadata, false);
+}
+
+/**
+ * The Settings page's toggle needs both directions; the email link only
+ * ever needs the one-way `setUnsubscribed` above, kept as the narrower name
+ * at its one call site.
+ */
+export async function setEmailSubscribed(
+  admin: Client,
+  userId: string,
+  metadata: unknown,
+  subscribed: boolean
+): Promise<void> {
   const state = parseEmailState(metadata);
   const base =
     metadata && typeof metadata === "object"
@@ -123,7 +137,7 @@ export async function setUnsubscribed(
   await admin.auth.admin.updateUserById(userId, {
     user_metadata: {
       ...base,
-      eklio_emails: { ...state, unsubscribed: true },
+      eklio_emails: { ...state, unsubscribed: !subscribed },
     },
   });
 }

@@ -54,7 +54,9 @@ export type AnalyticsEvent =
   | "usp_selected"
   | "usp_edited"
   | "usp_collision_warned"
-  | "usp_collision_kept";
+  | "usp_collision_kept"
+  /* ── post-purchase-v2, Lot 2 (app chrome) ──────────────────────────── */
+  | "search_used";
 
 /** Valeurs admises : rien qui puisse porter du texte libre d'utilisateur. */
 export type AnalyticsProperties = Record<

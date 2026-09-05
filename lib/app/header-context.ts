@@ -9,6 +9,8 @@ import type { Database } from "@/types/supabase";
 
 export type HeaderContext = {
   initials: string;
+  /** Her full name, falling back to the email's local part -- shown in the account menu. */
+  displayName: string;
   brandKitId: string | null;
 };
 
@@ -51,6 +53,7 @@ export async function loadHeaderContext(
 
   return {
     initials: initialsFrom(profile?.full_name, email),
+    displayName: (profile?.full_name ?? "").trim() || (email ?? "").split("@")[0] || "",
     brandKitId: kit?.id ?? null,
   };
 }

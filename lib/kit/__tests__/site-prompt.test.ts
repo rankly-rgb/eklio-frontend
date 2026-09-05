@@ -24,6 +24,7 @@ function kit(overrides: Partial<BrandKit> = {}): BrandKit {
       deleted_at: null,
       delivered_seen_at: null,
       home_content_seen_at: null,
+      notifications_synced_at: null,
       direction_id: null,
       directions: null,
       ethics_check: null,

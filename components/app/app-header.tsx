@@ -2,22 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { MonoLabel } from "@/components/ui/mono-label";
+import { AccountMenu } from "@/components/app/account-menu";
+import { CommandPalette } from "@/components/app/command-palette";
+import { MobileNav } from "@/components/app/mobile-nav";
+import { NotificationBell } from "@/components/app/notification-bell";
+import type { Workspace } from "@/lib/data/workspaces";
 
 /*
  * En-tête de l'espace connecté — 72px, gouttières de 48px, filet bas.
- * Wordmark Fraunces 600 23px, trois liens en 14px, avatar de 32px à droite.
- * Relevé sur les Écrans 1, 2, 5, 6 et 7, qui portent tous le même en-tête.
+ * Wordmark Fraunces 600 23px, nav en 14px, search + bell + account menu à
+ * droite. Relevé sur les Écrans 1, 2, 5, 6 et 7, qui portent tous le même
+ * en-tête.
  *
- * Aucune monospace dans la navigation (§1) : elle n'apparaît ici que dans les
- * initiales de l'avatar.
+ * Aucune monospace dans la navigation (§1) : elle n'apparaît ici que dans
+ * les initiales de l'avatar et le raccourci ⌘K.
  */
 
 export type HeaderNav = {
-  /** Absent tant qu'aucun kit n'a été généré : les deux liens sont alors inertes. */
+  /** Absent tant qu'aucun kit n'a été généré : les liens qui en dépendent sont alors inertes. */
   brandKitId: string | null;
   initials: string;
+  displayName: string;
+  workspaces: Workspace[];
   signOutAction: () => void | Promise<void>;
 };
 
@@ -25,7 +31,13 @@ function navClass(active: boolean): string {
   return active ? "font-semibold text-ink" : "text-ink-2 hover:text-ink";
 }
 
-export function AppHeader({ brandKitId, initials, signOutAction }: HeaderNav) {
+export function AppHeader({
+  brandKitId,
+  initials,
+  displayName,
+  workspaces,
+  signOutAction,
+}: HeaderNav) {
   const pathname = usePathname() ?? "";
   const kitHref = brandKitId ? `/app/brand-kits/${brandKitId}` : null;
 
@@ -41,10 +53,16 @@ export function AppHeader({ brandKitId, initials, signOutAction }: HeaderNav) {
       href: brandKitId ? "/app/content" : null,
       active: pathname.startsWith("/app/content"),
     },
+    // /app/check doesn't exist yet -- it's LOT 7, a later session. The nav
+    // slot is real now (per this lot's chrome spec); it stays inert until
+    // that route ships, same treatment as "no kit yet" above.
+    { label: "Check", href: null, active: pathname.startsWith("/app/check") },
   ];
 
   return (
-    <header className="flex h-[var(--header-h)] flex-none items-center gap-12 border-b border-line px-[var(--gutter)] max-md:gap-6 max-md:px-[var(--gutter-sm)]">
+    <header className="flex h-[var(--header-h)] flex-none items-center gap-12 border-b border-line px-[var(--gutter)] max-md:gap-4 max-md:px-[var(--gutter-sm)]">
+      <MobileNav links={links} />
+
       <Link
         href="/app"
         className="font-display text-wordmark font-semibold tracking-wordmark text-ink"
@@ -52,7 +70,7 @@ export function AppHeader({ brandKitId, initials, signOutAction }: HeaderNav) {
         Eklio
       </Link>
 
-      <nav aria-label="Main" className="flex items-center gap-8 text-ui">
+      <nav aria-label="Main" className="flex items-center gap-8 text-ui max-md:hidden">
         {links.map((link) =>
           link.href ? (
             <Link
@@ -64,8 +82,8 @@ export function AppHeader({ brandKitId, initials, signOutAction }: HeaderNav) {
               {link.label}
             </Link>
           ) : (
-            // Pas encore de kit : le lien existe visuellement mais ne mène
-            // nulle part. On le rend inerte plutôt que de le faire mentir.
+            // Pas encore disponible (pas de kit, ou route pas encore construite) :
+            // le lien existe visuellement mais ne mène nulle part.
             <span key={link.label} aria-disabled="true" className="text-ink-3">
               {link.label}
             </span>
@@ -75,66 +93,16 @@ export function AppHeader({ brandKitId, initials, signOutAction }: HeaderNav) {
 
       <div className="flex-1" />
 
-      <AccountMenu initials={initials} signOutAction={signOutAction} />
+      <div className="flex items-center gap-3">
+        <CommandPalette brandKitId={brandKitId} />
+        {brandKitId ? <NotificationBell brandKitId={brandKitId} /> : null}
+        <AccountMenu
+          initials={initials}
+          displayName={displayName}
+          workspaces={workspaces}
+          signOutAction={signOutAction}
+        />
+      </div>
     </header>
-  );
-}
-
-function AccountMenu({
-  initials,
-  signOutAction,
-}: {
-  initials: string;
-  signOutAction: () => void | Promise<void>;
-}) {
-  const [open, setOpen] = useState(false);
-  const container = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: MouseEvent) {
-      if (!container.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  return (
-    <div ref={container} className="relative">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Account"
-        onClick={() => setOpen((value) => !value)}
-        className="flex size-8 items-center justify-center rounded-pill border border-line bg-card"
-      >
-        <MonoLabel tracking="08">{initials}</MonoLabel>
-      </button>
-
-      {open ? (
-        <div
-          role="menu"
-          className="route-enter absolute right-0 top-11 z-40 min-w-[168px] rounded-card border border-line bg-bg p-2"
-        >
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              role="menuitem"
-              className="w-full rounded-check px-3 py-2 text-left text-ui text-ink-2 hover:bg-card hover:text-ink"
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
-      ) : null}
-    </div>
   );
 }
