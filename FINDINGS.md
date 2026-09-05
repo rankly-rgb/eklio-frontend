@@ -83,3 +83,17 @@ built around. One line each: what, where, why it matters.
   rest of the app, and none of it was confirmed in an actual browser or screen reader — same authenticated-
   session gap as every other UI surface this session, called out explicitly here rather than implied by a
   clean `tsc`/`eslint` run.
+
+- `direction_assets` (eklio-backend `20260901074421_direction_assets.sql`) is a fully built, production-
+  grade mechanism — table, RLS, and three RPCs (`direction_assets_claim`/`_mark_ready`/`_mark_failed`)
+  implementing a claim/reclaim/daily-spend-cap system for a photoreal "ambiance" image per free direction
+  (`gpt-image-1`, shown in place of the CSS-gradient placeholder in the reveal once ready) — that no
+  frontend code has ever called. Repo-wide grep for the three RPC names in eklio-frontend finds only the
+  generated `types/supabase.ts` stubs and one unrelated `WORKLOG.md` citation. `brand_kit_reveal_get`
+  already reads `direction_assets` and returns `ambiance_url` in its envelope, so the return value is
+  wired end to end — it is just always `null`, for every kit, because nothing ever inserts a `ready` row.
+  Same "built and never turned on" pattern already logged above for `monthly_presence_content` and the
+  Monthly Presence retention TODOs. Matters because the reveal (explicitly out of scope for the
+  post-purchase-v2 chantier) is silently shipping a placeholder-only experience for a feature whose full
+  backend already exists and was paid for; someone should decide whether to wire up the frontend caller or
+  remove the dormant mechanism. (Full detail: `POST_PURCHASE_V2_INVENTORY.md` §4.)
