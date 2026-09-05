@@ -1,51 +1,36 @@
 "use client";
 
-import Link from "next/link";
-import { MonoLabel } from "@/components/ui/mono-label";
+import { useState } from "react";
 import { SectionHeader } from "@/components/ui/section-header";
 import { ButtonLink } from "@/components/ui/button";
 import { EthicsDisclaimer } from "@/components/ethics-disclaimer";
-import { WorkspaceNav } from "@/components/kit/workspace-nav";
+import { WorkspaceNav, type SectionId } from "@/components/kit/workspace-nav";
 import { IdentitySection } from "@/components/kit/identity-section";
 import { ColorsSection } from "@/components/kit/colors-section";
 import { TypeSection } from "@/components/kit/type-section";
 import { WordsSection } from "@/components/kit/words-section";
 import { EthicsBadge } from "@/components/kit/ethics-badge";
-import { AssetsSection } from "@/components/kit/assets-section";
+import { AssetsPreview } from "@/components/kit/assets-preview";
+import { KitHeader } from "@/components/kit/kit-header";
 import { SiteCard } from "@/components/kit/site-card";
 import { BrandPreview } from "@/components/preview/brand-preview";
 import { LaunchProgressRow } from "@/components/kit/launch-progress-row";
 import { DeleteKitSection } from "@/components/kit/delete-kit-section";
 import type { LaunchStepContext } from "@/components/checklist/launch-checklist";
 import { previewModelFromDirection, type Direction, type EthicsCheck, type VoiceGuide } from "@/lib/brand/shapes";
-import type { ContrastReport, SitePreviewTokens } from "@/lib/site/types";
+import type { ContrastReport, PracticeDetails as SitePracticeDetails, SitePreviewTokens } from "@/lib/site/types";
 import type { LaunchProgress } from "@/lib/data/checklist";
 import type { PracticeDetails } from "@/lib/kit/launch-copy";
+import type { AssetStats } from "@/lib/data/asset-stats";
 
 type RuleLabel = { id: string; label: string; description: string };
 
 /*
- * Le kit de marque — le workspace du lot 3 : six sections navigables (une
- * seule page qui défile toujours, mais avec un rail de navigation), chacune
- * appliqué / spécifié / actionnable.
- *
- * ── Ce qui a changé au lot 3 ─────────────────────────────────────────────
- *
- * « This month, in your brand » a disparu de cette page — ce contenu vit sur
- * la page Content, et n'a jamais eu sa place ici (le lot le dit
- * explicitement). Ce qui partait avec elle : `socialTemplates`,
- * `practitionerLine`, `entitled`, `monthlyCheckoutHref` — plus utilisés nulle
- * part sur cette page, retirés plutôt que gardés morts.
- *
- * « Voice & tone » devient « Your words » : même contenu, désormais posé dans
- * un `<BrandCanvas>` (`components/kit/words-section.tsx`) — l'écart que le
- * lot 1 avait laissé.
- *
- * « Palette » devient « Colors » : la section existante était déjà proche de
- * ce que demande le lot, mais gagne un mockup en applied/labelled
- * (`components/kit/colors-section.tsx`) et l'action Fix, en direct.
- *
- * « Identity » et « Your assets » sont entièrement nouvelles.
+ * Le kit de marque — le workspace du lot 3 : un en-tête (wordmark, bandes de
+ * couleur, tuiles d'état, carte de practice), puis six sections navigables
+ * (une seule page qui défile toujours sur desktop, une section à la fois
+ * sur mobile — l'inversion de hiérarchie du lot 3, "Your assets" par
+ * défaut).
  */
 
 export function BrandKitView({
@@ -59,6 +44,9 @@ export function BrandKitView({
   siteBuilderLabel,
   canvasTokens,
   canvasContrast,
+  colorLabels,
+  sitePracticeDetails,
+  assetStats,
   launchProgress,
   practitionerLine,
   practiceDetails,
@@ -80,6 +68,12 @@ export function BrandKitView({
   canvasTokens: SitePreviewTokens | null;
   /** Les sept paires de contraste (§4), ou `null` dans le même cas. */
   canvasContrast: ContrastReport | null;
+  /** The human name alongside each of the six roles, or null before the spec is seeded. */
+  colorLabels: Record<string, string> | null;
+  /** The full site-spec practice_details (name/credential/city/state/email) for the header's practice card. */
+  sitePracticeDetails: SitePracticeDetails | null;
+  /** The four state tiles' real numbers, or null before the spec is seeded. */
+  assetStats: AssetStats | null;
   /** "Your first week" (Lot 6) — the seven-step checklist's current state. */
   launchProgress: LaunchProgress;
   practitionerLine: string | null;
@@ -89,6 +83,7 @@ export function BrandKitView({
   compAccess: boolean;
 }) {
   const model = previewModelFromDirection(direction, practiceName);
+  const [activeMobileSection, setActiveMobileSection] = useState<SectionId>("kit-assets");
 
   const launchContext: LaunchStepContext = {
     practiceName,
@@ -100,57 +95,24 @@ export function BrandKitView({
     siteHref: `/app/brand-kits/${brandKitId}/site`,
   };
 
+  function sectionClass(id: SectionId): string {
+    return id === activeMobileSection ? "" : "max-lg:hidden";
+  }
+
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-6 max-md:px-[var(--gutter-sm)]">
-      {/* ── En-tête ─────────────────────────────────────────────────────── */}
-      <div className="flex items-end gap-8 max-lg:flex-col max-lg:items-start max-lg:gap-5">
-        <div className="min-w-0 flex-1">
-          <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink">
-            {practiceName ?? "Your brand"}
-          </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <MonoLabel tracking="16">{`${direction.name} · Selected`}</MonoLabel>
-            {compAccess ? (
-              <span className="flex-none rounded-pill border border-accent px-3 py-1.5 font-mono text-mono uppercase tracking-mono-12 text-accent">
-                Comp access
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="flex flex-none items-center gap-4">
-          <ButtonLink
-            href={`/app/brand-kits/${brandKitId}/site`}
-            variant="primary"
-            className={canvasTokens ? "hover:opacity-90" : undefined}
-            style={
-              canvasTokens
-                ? { background: canvasTokens.primary, color: canvasTokens.cta_ink }
-                : undefined
-            }
-          >
-            Edit your site
-          </ButtonLink>
-          <a
-            href={`/api/brand-kits/${brandKitId}/pdf`}
-            className="inline-flex h-10 items-center whitespace-nowrap rounded-pill border border-line px-[26px] text-ui text-ink transition-colors hover:bg-card"
-          >
-            Download PDF
-          </a>
-          <Link
-            href={`/app/brand-kits/${brandKitId}/reveal`}
-            className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
-          >
-            Switch direction
-          </Link>
-          <Link
-            href={`/app/briefs/${projectId}/review`}
-            className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
-          >
-            Edit your brief
-          </Link>
-        </div>
-      </div>
+      <KitHeader
+        brandKitId={brandKitId}
+        projectId={projectId}
+        practiceName={practiceName}
+        directionName={direction.name}
+        tokens={canvasTokens}
+        colorLabels={colorLabels}
+        practiceDetails={sitePracticeDetails}
+        bookingUrl={bookingUrl}
+        stats={assetStats}
+        compAccess={compAccess}
+      />
 
       <LaunchProgressRow
         brandKitId={brandKitId}
@@ -159,8 +121,11 @@ export function BrandKitView({
       />
 
       {/* ── Le workspace : rail + sections ──────────────────────────────── */}
-      <div className="mt-10 flex items-start gap-12 max-lg:flex-col max-lg:gap-8">
-        <WorkspaceNav />
+      <div className="mt-10 flex items-start gap-12 max-lg:flex-col max-lg:gap-6">
+        <WorkspaceNav
+          activeMobileSection={activeMobileSection}
+          onSelectMobileSection={setActiveMobileSection}
+        />
 
         {/*
          * Each section already carries its own top margin/rule/padding
@@ -170,26 +135,39 @@ export function BrandKitView({
          * row above, which is the only flex context that matters here).
          */}
         <div className="min-w-0 flex-1 [&>section]:scroll-mt-8">
-          <section id="kit-identity" className="flex flex-col gap-5 border-b border-line pb-12">
+          <section
+            id="kit-identity"
+            className={`flex flex-col gap-5 border-b border-line pb-12 ${sectionClass("kit-identity")}`}
+          >
             <SectionHeader title="Identity" id="kit-identity-heading" />
             <IdentitySection brandKitId={brandKitId} practiceName={practiceName} tokens={canvasTokens} />
           </section>
 
-          <section id="kit-colors" className="mt-12 flex flex-col gap-5 border-b border-line pb-12">
+          <section
+            id="kit-colors"
+            className={`mt-12 flex flex-col gap-5 border-b border-line pb-12 max-lg:mt-6 ${sectionClass("kit-colors")}`}
+          >
             <SectionHeader title="Colors" id="kit-colors-heading" />
             <ColorsSection
               brandKitId={brandKitId}
               initialTokens={canvasTokens}
               initialContrast={canvasContrast}
+              colorLabels={colorLabels}
             />
           </section>
 
-          <section id="kit-type" className="mt-12 flex flex-col gap-5 border-b border-line pb-12">
+          <section
+            id="kit-type"
+            className={`mt-12 flex flex-col gap-5 border-b border-line pb-12 max-lg:mt-6 ${sectionClass("kit-type")}`}
+          >
             <SectionHeader title="Type" id="kit-type-heading" />
             <TypeSection direction={direction} tokens={canvasTokens} />
           </section>
 
-          <section id="kit-site" className="mt-12 flex flex-col gap-6 border-b border-line pb-12">
+          <section
+            id="kit-site"
+            className={`mt-12 flex flex-col gap-6 border-b border-line pb-12 max-lg:mt-6 ${sectionClass("kit-site")}`}
+          >
             <SectionHeader title="Your site" id="kit-site-heading" />
             <div className="w-site-mock max-w-full">
               <div className="overflow-hidden rounded-card border border-line shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]">
@@ -203,7 +181,10 @@ export function BrandKitView({
             <SiteCard brandKitId={brandKitId} model={model} builderLabel={siteBuilderLabel} />
           </section>
 
-          <section id="kit-words" className="mt-12 flex flex-col gap-5 border-b border-line pb-12">
+          <section
+            id="kit-words"
+            className={`mt-12 flex flex-col gap-5 border-b border-line pb-12 max-lg:mt-6 ${sectionClass("kit-words")}`}
+          >
             <SectionHeader
               title="Your words"
               id="kit-words-heading"
@@ -212,9 +193,18 @@ export function BrandKitView({
             <WordsSection voiceGuide={voiceGuide} tokens={canvasTokens} ethicsRules={ethicsRules} />
           </section>
 
-          <section id="kit-assets" className="mt-12 flex flex-col gap-5">
+          <section
+            id="kit-assets"
+            className={`mt-12 flex flex-col gap-5 max-lg:mt-6 ${sectionClass("kit-assets")}`}
+          >
             <SectionHeader title="Your assets" id="kit-assets-heading" />
-            <AssetsSection brandKitId={brandKitId} />
+            {assetStats ? (
+              <AssetsPreview brandKitId={brandKitId} manifest={assetStats.manifest} />
+            ) : (
+              <p className="text-body text-ink-2">
+                Your palette is still being set up. This section fills in as soon as it&rsquo;s ready.
+              </p>
+            )}
           </section>
         </div>
       </div>
@@ -231,7 +221,7 @@ export function BrandKitView({
       </div>
 
       {practiceName ? (
-        <div className="mt-12 max-w-[720px] border-t border-line pt-6">
+        <div id="kit-danger" className="mt-12 max-w-[720px] scroll-mt-8 border-t border-line pt-6">
           <DeleteKitSection brandKitId={brandKitId} practiceName={practiceName} />
         </div>
       ) : null}

@@ -151,6 +151,8 @@ export type SiteSpec = {
   about_excerpt: string;
   pages: SpecPage[];
   practice_details: PracticeDetails;
+  /** Six keys (primary/secondary/accent/paper/light_neutral/dark_neutral), one human colour name per role. Computed server-side, never patchable. */
+  color_labels: Record<string, string>;
   extra_instructions: string | null;
   seed_clamped: SeedClamped;
 };

@@ -25,10 +25,13 @@ export function ColorsSection({
   brandKitId,
   initialTokens,
   initialContrast,
+  colorLabels,
 }: {
   brandKitId: string;
   initialTokens: SitePreviewTokens | null;
   initialContrast: ContrastReport | null;
+  /** The human name alongside each role ("Ember" next to `primary`) -- an alias, never a replacement for the role. */
+  colorLabels: Record<string, string> | null;
 }) {
   const [tokens, setTokens] = useState(initialTokens);
   const [contrast, setContrast] = useState(initialContrast);
@@ -97,7 +100,8 @@ export function ColorsSection({
         <div className="mt-4 flex flex-col gap-2">
           {roles.map(({ key }) => (
             <p key={key} className="text-helper leading-prose text-ink-2">
-              <span className="text-ink">{ROLE_LABEL[key]}</span> — {ROLE_JOB[key]}
+              <span className="text-ink">{ROLE_LABEL[key]}</span>
+              {colorLabels?.[key] ? ` (${colorLabels[key]})` : ""} — {ROLE_JOB[key]}
             </p>
           ))}
         </div>

@@ -8,6 +8,7 @@ import { readSiteCatalog } from "@/lib/site/catalog";
 import { builderOf } from "@/lib/site/output";
 import { readCatalog } from "@/lib/catalog/read";
 import { loadLaunchProgress } from "@/lib/data/checklist";
+import { loadAssetStats } from "@/lib/data/asset-stats";
 import type { PracticeDetails } from "@/lib/kit/launch-copy";
 
 /*
@@ -55,12 +56,13 @@ export default async function BrandKitPage({
    * semé rend la carte sans nom de constructeur, ce qui est vrai. Faire échouer
    * le kit entier pour un libellé serait disproportionné.
    */
-  const [siteSpec, siteCatalog, catalog, launchProgress, compAccess] = await Promise.all([
+  const [siteSpec, siteCatalog, catalog, launchProgress, compAccess, assetStats] = await Promise.all([
     siteSpecGet(supabase, id),
     readSiteCatalog(supabase).catch(() => null),
     readCatalog(supabase).catch(() => null),
     loadLaunchProgress(supabase, id),
     isCompAccessActive(supabase),
+    loadAssetStats(supabase, kit),
   ]);
 
   // Same fields `lib/kit/asset-context.ts` reads from the site spec for the
@@ -103,6 +105,8 @@ export default async function BrandKitPage({
    */
   const canvasTokens = siteSpec.ok ? siteSpec.data.preview.tokens : null;
   const canvasContrast = siteSpec.ok ? siteSpec.data.contrast : null;
+  const colorLabels = siteSpec.ok ? siteSpec.data.spec.color_labels : null;
+  const sitePracticeDetails = siteSpec.ok ? siteSpec.data.spec.practice_details : null;
 
   return (
     <BrandKitView
@@ -116,6 +120,9 @@ export default async function BrandKitPage({
       siteBuilderLabel={siteBuilderLabel}
       canvasTokens={canvasTokens}
       canvasContrast={canvasContrast}
+      colorLabels={colorLabels}
+      sitePracticeDetails={sitePracticeDetails}
+      assetStats={assetStats}
       launchProgress={launchProgress}
       practitionerLine={kit.row.practitioner_line}
       practiceDetails={practiceDetails}

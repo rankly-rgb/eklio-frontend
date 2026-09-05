@@ -299,6 +299,21 @@ export type Database = {
         }
         Relationships: []
       }
+      color_names: {
+        Row: {
+          hex: string
+          name: string
+        }
+        Insert: {
+          hex: string
+          name: string
+        }
+        Update: {
+          hex?: string
+          name?: string
+        }
+        Relationships: []
+      }
       comp_grants: {
         Row: {
           created_at: string
@@ -1482,6 +1497,7 @@ export type Database = {
           body_font: string
           brand_kit_id: string
           change_marks: Json
+          color_labels: Json
           created_at: string
           cta_ink_hex: string
           dark_neutral_hex: string
@@ -1513,6 +1529,7 @@ export type Database = {
           body_font: string
           brand_kit_id: string
           change_marks?: Json
+          color_labels?: Json
           created_at?: string
           cta_ink_hex: string
           dark_neutral_hex: string
@@ -1544,6 +1561,7 @@ export type Database = {
           body_font?: string
           brand_kit_id?: string
           change_marks?: Json
+          color_labels?: Json
           created_at?: string
           cta_ink_hex?: string
           dark_neutral_hex?: string
@@ -1929,6 +1947,7 @@ export type Database = {
         Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
         Returns: boolean
       }
+      hex_rgb: { Args: { p_hex: string }; Returns: number[] }
       home_recent_activity: { Args: { p_brand_kit_id: string }; Returns: Json }
       list_deleted_brand_kits: { Args: never; Returns: Json }
       mark_brand_kit_delivered: {
@@ -1939,6 +1958,7 @@ export type Database = {
         Args: { p_brand_kit_id: string }
         Returns: boolean
       }
+      nearest_color_name: { Args: { p_hex: string }; Returns: string }
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_usp_options_valid: { Args: { p: Json }; Returns: boolean }

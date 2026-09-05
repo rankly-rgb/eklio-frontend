@@ -65,6 +65,14 @@ export const CLAY_AND_SAND: SiteSpecEnvelope = {
       email: "hello@elmandember.com",
       phone: "(503) 555-0123",
     },
+    color_labels: {
+      primary: "Terracotta",
+      secondary: "Ochre",
+      accent: "Ember",
+      paper: "Cream",
+      light_neutral: "Cream",
+      dark_neutral: "Ink",
+    },
     pages: [
       {
         key: "home",
