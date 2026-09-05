@@ -18,7 +18,7 @@ export type MonoTracking =
   | "18"
   | "hex"
   | "url";
-export type MonoTone = "ink" | "ink-2" | "ink-3" | "accent";
+export type MonoTone = "ink" | "ink-2" | "ink-3" | "accent" | "danger" | "warning";
 
 const TRACKING: Record<MonoTracking, string> = {
   "08": "tracking-mono-08",
@@ -43,6 +43,8 @@ const TONE: Record<MonoTone, string> = {
   "ink-2": "text-ink-2",
   "ink-3": "text-ink-3",
   accent: "text-accent",
+  danger: "text-danger",
+  warning: "text-warning",
 };
 
 export function MonoLabel({
