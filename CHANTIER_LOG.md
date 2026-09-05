@@ -3,6 +3,10 @@
 How the five post-purchase-v2 sessions talk to each other. Read this in full before doing anything else,
 in every session after the first.
 
+**The working branch is `claude/post-purchase-v2` in both repos**, as the brief always specified. Session
+1 pushed to a harness-assigned branch (`claude/nifty-dirac-7isjqb`) instead; Session 2 reconciled this
+before doing any other work — see its entry below for detail. Do not create or look for any other branch.
+
 ---
 
 ## 2026-09-05 — Session 1: the facts
