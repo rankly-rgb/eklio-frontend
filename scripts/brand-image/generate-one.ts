@@ -26,8 +26,10 @@
  *   OPENAI_API_KEY               in .env.local at the repo root (already
  *                                covered by .gitignore) or in the environment
  *   NEXT_PUBLIC_SUPABASE_URL     the project URL
- *   EKLIO_SESSION_ACCESS_TOKEN   a signed-in therapist's access token, so
- *   EKLIO_SESSION_REFRESH_TOKEN  every RPC runs as SHE would run it
+ *   EKLIO_SESSION_ACCESS_TOKEN   a signed-in therapist's session, so every RPC
+ *   EKLIO_SESSION_REFRESH_TOKEN  runs as SHE would run it. Get both from
+ *                                `session-token.ts` next to this file -- they
+ *                                are not meant to be dug out of cookies.
  *
  * It deliberately does NOT accept a service_role key. The whole point is to
  * exercise the caller's own session: `brand_kit_entitled()` and the
@@ -35,9 +37,6 @@
  * would prove nothing about either.
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../../types/supabase";
 import { IMAGE_SLOTS, isImageSlot, slotPriceCents, type ImageSlot } from "../../lib/images/config";
@@ -47,45 +46,7 @@ import { buildImagePrompt } from "../../lib/images/prompt";
 import { generateBrandImage } from "../../lib/images/generate";
 import { loadImageContext } from "../../lib/images/context";
 import { loadBrandKit } from "../../lib/data/brand-kit";
-
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-
-/** Minimal .env.local reader. Real process.env always wins. */
-function loadEnvLocal(): void {
-  const file = path.join(REPO_ROOT, ".env.local");
-  if (!existsSync(file)) return;
-  for (const rawLine of readFileSync(file, "utf8").split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const eq = line.indexOf("=");
-    if (eq === -1) continue;
-    const key = line.slice(0, eq).trim();
-    let value = line.slice(eq + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    if (!(key in process.env)) process.env[key] = value;
-  }
-}
-
-function arg(name: string): string | null {
-  const index = process.argv.indexOf(`--${name}`);
-  if (index === -1) return null;
-  const value = process.argv[index + 1];
-  return value && !value.startsWith("--") ? value : null;
-}
-
-function die(message: string): never {
-  console.error(`\n${message}\n`);
-  process.exit(1);
-}
-
-function required(name: string): string {
-  const value = process.env[name];
-  // The VALUE is never printed, here or anywhere — only whether it is set.
-  if (!value) die(`${name} is not set. See this file's header for what this script needs.`);
-  return value;
-}
+import { arg, die, loadEnvLocal, publishableKey, required } from "./shared";
 
 async function main(): Promise<void> {
   loadEnvLocal();
@@ -109,10 +70,10 @@ async function main(): Promise<void> {
   }
 
   const supabaseUrl = required("NEXT_PUBLIC_SUPABASE_URL");
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    die("Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or _ANON_KEY).");
+  // Refused by CONTENT, not by variable name -- see shared.ts. A service_role
+  // key bypasses RLS, so this run would prove nothing about the boundary it
+  // exists to exercise. The header above promised this; now it is true.
+  const anonKey = publishableKey();
 
   const supabase = createClient<Database>(supabaseUrl, anonKey);
   const session = await supabase.auth.setSession({

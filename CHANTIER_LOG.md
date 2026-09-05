@@ -570,6 +570,50 @@ others on is a deliberate edit in a later session.
 - **The ornament is cut**, and was cut in step 7A. Nothing was built, scaffolded or stubbed for it, and no
   slot is reserved for it.
 
+### FIRST, A SESSION TO RUN IT AS
+
+`generate-one.ts` runs every RPC as the therapist herself, because
+`brand_kit_entitled()` and the storage policies are the security boundary and a `service_role` run would
+prove nothing about either. That means it needs a real session — and nothing in the repo produced one, which
+made the command below unrunnable as documented. Digging tokens out of browser cookies by hand is not a
+procedure to ask anyone to follow.
+
+```
+npx tsx scripts/brand-image/session-token.ts --email her@example.com
+```
+
+It prompts for the password (not echoed, not even as bullets — the length is information too) and prints
+exactly three lines on **stdout**:
+
+```
+# access token expires 2026-09-05T22:11:40.000Z (in 60 minutes)
+EKLIO_SESSION_ACCESS_TOKEN=eyJhbGciOi...
+EKLIO_SESSION_REFRESH_TOKEN=v1.Mr8k...
+```
+
+Paste all three into `.env.local`. The `#` line is a comment the file's own reader skips, so **the expiry
+travels with the tokens it describes** — you can always see how long you have without re-running anything.
+The confirmation and the prompts go to stderr, so `| pbcopy` gives you exactly what belongs in the file.
+
+`--password` exists for a non-interactive run, but the prompt is the default because argv lands in shell
+history. It **never writes `.env.local` itself** — a script that edits the file holding your API key is a
+script you have to trust twice. The password is never printed, echoed or logged, and a failed sign-in says
+only that it failed, never which half was wrong.
+
+It needs `NEXT_PUBLIC_SUPABASE_URL` and the publishable key, nothing else. Access tokens are short-lived
+(an hour by default); when `generate-one.ts` reports it cannot restore the session, run this again.
+
+⚠ **Both scripts refuse a `service_role` key by CONTENT, not by variable name** — `sb_secret_…` prefixes
+and JWTs whose `role` claim is `service_role` are both caught, because a secret key pasted into a variable
+called `NEXT_PUBLIC_…` is exactly the mistake worth catching and exactly the one a name check misses. A key
+of an unrecognised shape passes: the refusal targets a known error, and blocking everything unfamiliar
+would break the procedure the day Supabase changes format without having protected anything. Five tests in
+`scripts/brand-image/__tests__/shared.test.ts` hold that behaviour.
+
+(`generate-one.ts`'s header claimed this refusal from the moment it was written; until this entry it was
+only true by omission — the script never read a `service_role` variable, but would have used one pasted
+into the publishable slot. `scripts/brand-image/shared.ts` now makes the claim real for both.)
+
 ### THE ONE COMMAND
 
 Run on a machine that can reach `api.openai.com`. It calls the same `generateBrandImage` the route handler
@@ -585,8 +629,8 @@ It needs, in `.env.local` at the repo root (already covered by `.gitignore`) or 
 OPENAI_API_KEY=...
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-EKLIO_SESSION_ACCESS_TOKEN=...      # a signed-in therapist's tokens, so every
-EKLIO_SESSION_REFRESH_TOKEN=...     # RPC runs as SHE would run it
+EKLIO_SESSION_ACCESS_TOKEN=...      # both from session-token.ts above, so
+EKLIO_SESSION_REFRESH_TOKEN=...     # every RPC runs as SHE would run it
 ```
 
 It deliberately refuses a `service_role` key. The point is to exercise the caller's own session:
