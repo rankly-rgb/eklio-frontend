@@ -3,6 +3,7 @@ import type { Database } from "@/types/supabase";
 import type { BrandKit } from "@/lib/data/brand-kit";
 import { siteSpecGet } from "@/lib/site/rpc";
 import { computeAssetFingerprint } from "@/lib/kit/asset-fingerprint";
+import type { AssetFingerprintInput } from "@/lib/kit/asset-fingerprint";
 import type { RenderContext } from "@/lib/kit/render/registry";
 
 /*
@@ -29,6 +30,15 @@ export type AssetContext =
       /** Everything a renderer needs EXCEPT `siteSetupMd` — callers that need it fetch it themselves. */
       ctx: Omit<RenderContext, "siteSetupMd">;
       fingerprint: string;
+      /**
+       * The exact object `fingerprint` was computed from — the same one, not
+       * a reconstruction. The rebuild path records it alongside the asset so
+       * the NEXT rebuild can say what moved
+       * (`lib/kit/asset-change-summary.ts`). Exposing it changes nothing
+       * about how the hash is computed; it just stops the inputs from being
+       * thrown away the moment they've been hashed.
+       */
+      fingerprintInputs: AssetFingerprintInput;
       /** The site spec's current builder target — the one extra piece `site_setup_md`/`brand_kit_zip` need beyond `ctx`. */
       target: string;
     }
@@ -57,7 +67,7 @@ export async function loadAssetContext(
     : null;
   const bookingUrl = siteSpec.data.spec.hero.cta_target_url || null;
 
-  const fingerprint = computeAssetFingerprint({
+  const fingerprintInputs: AssetFingerprintInput = {
     tokens: {
       primary: tokens.primary,
       secondary: tokens.secondary,
@@ -78,11 +88,14 @@ export async function loadAssetContext(
     practitionerLine: kit.row.practitioner_line,
     practiceDetails,
     bookingUrl,
-  });
+  };
+
+  const fingerprint = computeAssetFingerprint(fingerprintInputs);
 
   return {
     ok: true,
     fingerprint,
+    fingerprintInputs,
     target: siteSpec.data.spec.target,
     ctx: {
       tokens,

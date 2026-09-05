@@ -103,3 +103,17 @@ built around. One line each: what, where, why it matters.
   three legal/support pages isn't named by any lot in this chantier, so they render as inert mono labels
   rather than as links to a page that 404s. Matters because the footer now visibly promises three pages
   that don't exist; someone should decide whether to write them or drop them from the footer's own spec.
+
+- **There is no 30-day purge of superseded asset versions — the only 30-day purge in the product is
+  `app/api/cron/purge-deleted-kits`, which removes a SOFT-DELETED kit's storage objects and row 30 days
+  after `delete_brand_kit`.** Session 2b's brief described version history as "older ones downloadable
+  until the existing 30-day purge"; the existing purge only fires on a deleted kit, so on a live kit a
+  superseded version's bytes stay in storage indefinitely. `brand_assets.superseded_at`
+  (`20260905191203_asset_version_history.sql`) now records exactly when each version stopped being current,
+  which is the column such a retention job would key off — but no job reads it, and none was written: a
+  retention cron is its own piece of work with its own failure modes (an object removed while a signed URL
+  is still live, a re-render racing the purge), and widening the deleted-kits cron to also sweep live kits
+  would make its name and its documented contract wrong. Matters because storage grows with every palette
+  edit, and because the phrase "until the 30-day purge" is not true today. Someone should decide whether
+  superseded versions get a retention window at all, and if so, whether it lives in a new cron or in a
+  renamed general-purpose one.

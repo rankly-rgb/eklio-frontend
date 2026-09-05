@@ -16,12 +16,18 @@ import { ChevronGlyph } from "@/components/ui/glyphs";
  * same as every other route in this app) — no token to attach by hand.
  */
 
-type Rendition = { size?: number; format?: string };
+type Rendition = {
+  size?: number;
+  format?: string;
+  /** An older version's fingerprint. Served from storage, never re-rendered. */
+  version?: string;
+};
 
 function downloadUrl(brandKitId: string, assetKey: string, rendition?: Rendition): string {
   const params = new URLSearchParams({ intent: "download" });
   if (rendition?.size) params.set("size", String(rendition.size));
   if (rendition?.format) params.set("format", rendition.format);
+  if (rendition?.version) params.set("version", rendition.version);
   return `/api/brand-kits/${brandKitId}/assets/${assetKey}?${params.toString()}`;
 }
 
@@ -36,11 +42,14 @@ async function openDownload(url: string): Promise<boolean> {
 export function AssetDownloadButton({
   brandKitId,
   assetKey,
+  version,
   children,
   className = "",
 }: {
   brandKitId: string;
   assetKey: string;
+  /** Omit for the version she has now; pass a fingerprint for an older one. */
+  version?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -49,7 +58,7 @@ export function AssetDownloadButton({
   async function handleClick() {
     setState("working");
     try {
-      setState((await openDownload(downloadUrl(brandKitId, assetKey))) ? "idle" : "error");
+      setState((await openDownload(downloadUrl(brandKitId, assetKey, { version }))) ? "idle" : "error");
     } catch {
       setState("error");
     }

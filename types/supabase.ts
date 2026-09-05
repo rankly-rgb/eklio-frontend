@@ -96,9 +96,11 @@ export type Database = {
         Row: {
           brand_kit_id: string
           byte_size: number
+          change_summary: string
           created_at: string
           download_count: number
           fingerprint: string
+          fingerprint_inputs: Json
           format: string
           height: number | null
           id: string
@@ -106,15 +108,18 @@ export type Database = {
           kind: string
           size: number
           storage_path: string
+          superseded_at: string | null
           user_id: string
           width: number | null
         }
         Insert: {
           brand_kit_id: string
           byte_size: number
+          change_summary?: string
           created_at?: string
           download_count?: number
           fingerprint: string
+          fingerprint_inputs?: Json
           format?: string
           height?: number | null
           id?: string
@@ -122,15 +127,18 @@ export type Database = {
           kind: string
           size?: number
           storage_path: string
+          superseded_at?: string | null
           user_id: string
           width?: number | null
         }
         Update: {
           brand_kit_id?: string
           byte_size?: number
+          change_summary?: string
           created_at?: string
           download_count?: number
           fingerprint?: string
+          fingerprint_inputs?: Json
           format?: string
           height?: number | null
           id?: string
@@ -138,6 +146,7 @@ export type Database = {
           kind?: string
           size?: number
           storage_path?: string
+          superseded_at?: string | null
           user_id?: string
           width?: number | null
         }
@@ -1968,6 +1977,18 @@ export type Database = {
         Args: { p_brand_kit_id: string; p_current_fingerprint: string }
         Returns: Json
       }
+      get_brand_asset_previous_inputs: {
+        Args: { p_brand_kit_id: string; p_fingerprint: string; p_key: string }
+        Returns: Json
+      }
+      get_brand_asset_version_path: {
+        Args: { p_brand_kit_id: string; p_fingerprint: string; p_key: string }
+        Returns: Json
+      }
+      get_brand_asset_versions: {
+        Args: { p_brand_kit_id: string; p_key: string }
+        Returns: Json
+      }
       get_launch_progress: { Args: { p_brand_kit_id: string }; Returns: Json }
       grant_plan_allowance: {
         Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
@@ -2006,7 +2027,9 @@ export type Database = {
         Args: {
           p_brand_kit_id: string
           p_byte_size: number
+          p_change_summary?: string
           p_fingerprint: string
+          p_fingerprint_inputs?: Json
           p_format?: string
           p_height?: number
           p_key: string

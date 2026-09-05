@@ -11,10 +11,13 @@ import { siteOutputGet } from "@/lib/site/rpc";
 import { loadAssetContext } from "@/lib/kit/asset-context";
 import {
   getBrandAssetManifest,
+  getBrandAssetPreviousInputs,
+  getBrandAssetVersionPath,
   recordAssetDownload,
   recordBrandAsset,
   requestBrandAssetUpload,
 } from "@/lib/kit/asset-rpc";
+import { describeAssetChange } from "@/lib/kit/asset-change-summary";
 import { getRenderer } from "@/lib/kit/render/registry";
 import { renderVariant } from "@/lib/kit/render/variants";
 import { track } from "@/lib/analytics";
@@ -110,6 +113,38 @@ export async function POST(
       },
       { status: 402 }
     );
+  }
+
+  /*
+   * `?version=` hands back an OLDER version of this asset — the file she
+   * had before a colour moved. It is served from what was stored, never
+   * re-rendered: the inputs that produced it are gone by definition, so
+   * "re-render the old version" would silently produce the new one. No
+   * stored row means no version, and that is a 404 like any other.
+   *
+   * This runs before the site spec is even loaded: an old version needs no
+   * render context, and a request for one should not fail because the
+   * current spec is mid-edit.
+   */
+  const requestedVersion = request.nextUrl.searchParams.get("version");
+  if (requestedVersion) {
+    const version = await getBrandAssetVersionPath(supabase, id, key, requestedVersion);
+    if (!version.ok) {
+      return version.error.code === "not_found"
+        ? notFound()
+        : NextResponse.json({ error: version.error.message }, { status: 402 });
+    }
+    const signed = await supabase.storage
+      .from("brand-assets")
+      .createSignedUrl(version.data.storage_path, SIGNED_URL_TTL_SECONDS);
+    if (signed.error || !signed.data) {
+      return serverError("assets:sign-version", signed.error);
+    }
+    if (isDownload) {
+      await recordAssetDownload(supabase, id, key, requestedVersion);
+      track("asset_downloaded", { key, version: requestedVersion });
+    }
+    return NextResponse.json({ url: signed.data.signedUrl });
   }
 
   const renderer = getRenderer(key);
@@ -261,6 +296,23 @@ export async function POST(
     return serverError("assets:upload", put.error);
   }
 
+  /*
+   * THE REBUILD PATH — the one place that knows a new version is being
+   * made, and therefore the only place that can say why. It reads the
+   * inputs behind the version it is replacing and diffs them against the
+   * ones this render was fingerprinted from; the sentence and the inputs
+   * both go down with the row, so the NEXT rebuild has something to diff in
+   * turn. A first render has nothing to compare against and gets an empty
+   * summary, which the history shows as "Original".
+   *
+   * A failure here degrades to no summary rather than failing the render:
+   * she asked for a file, not for an explanation.
+   */
+  const previous = await getBrandAssetPreviousInputs(supabase, id, key, fingerprint);
+  const changeSummary = previous.ok
+    ? describeAssetChange(previous.data.inputs, assetContext.fingerprintInputs)
+    : "";
+
   const record = await recordBrandAsset(
     supabase,
     id,
@@ -269,7 +321,9 @@ export async function POST(
     upload.data.storage_path,
     rendered.bytes.byteLength,
     rendered.width,
-    rendered.height
+    rendered.height,
+    undefined,
+    { changeSummary, fingerprintInputs: assetContext.fingerprintInputs }
   );
   if (!record.ok) {
     return NextResponse.json({ error: record.error.message }, { status: 400 });

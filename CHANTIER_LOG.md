@@ -199,3 +199,110 @@ that step touched it.
 - Should "Download selected (.zip)" cap how many assets can be selected at once, given each uncached one
   triggers a real render? Capped informally at 34 (the whole catalog) via the request schema; no explicit
   UI-side warning for a large selection.
+
+---
+
+## 2026-09-05 — Session 2b: closing LOT 4
+
+Branch: `claude/post-purchase-v2`, both repos. Two commits per repo, steps 5b and 5c.
+
+### The two verifications, first
+
+- **The purge test from §Tests item 10 did not exist.** Written as
+  `app/__tests__/forbidden-metrics.test.ts` (commit `f426161`) — a GUARD, not a cleanup: none of the five
+  phrases has ever been in this repo, they live in the mockups, and Lot 1 found nothing to purge. Proven
+  to fail before being trusted: a canary component carrying one of the phrases turned it red, and its
+  removal turned it green again. The reading level stays permitted and the test says why — Flesch-Kincaid
+  is measured from the text, not scored.
+- **The `notifications` RLS test already existed** — `supabase/tests/20260905175222_notifications_and_
+  workspaces.test.sql:159-176` asserts a non-owner reads zero rows while the owner reads her own, and the
+  four policies ship in `20260905175222_notifications_and_workspaces.sql`, the migration that creates the
+  table. Nothing to write.
+
+### Step 5b — sizes and formats on demand
+
+`available_sizes int[]` and `available_formats text[]` on `asset_catalog`, seeded for the **ten** keys whose
+pixels come from a vector this repo can rebuild. Everything else stays empty on purpose: no encoder here
+makes webp or jpeg, and `business_card_*` / `monogram_png_512_*` return a Buffer with no SVG behind them —
+they would have to be re-laid-out, not re-rasterized. A menu entry that fails on click is worse than no
+menu entry.
+
+`brand_assets` gains `size`/`format` with `(0, '')` as the native sentinel — chosen over NULLs so the unique
+constraint and every `ON CONFLICT` stay plain column lists. The constraint widens to
+`(brand_kit_id, key, fingerprint, size, format)`: a width she asks for later lives **beside** the native one
+under the **same** fingerprint, because it is the same rendering. `asset_variant_path` is the single source
+of truth for the path and its native case resolves to exactly the pre-variant shape, so nothing already in
+storage becomes unreachable.
+
+The render-bomb guard is in `request_brand_asset_upload` and `record_brand_asset` — next to the paid check,
+not in a client that can be edited. `record_asset_download` increments exactly the rendition handed over;
+the manifest still returns one row per key (joined to the native alone) and SUMs `download_count` across
+renditions, so a file taken three times at 48px does not read "never downloaded".
+
+`lib/kit/render/variants.ts` re-rasterizes from the **same exported SVG function** each key's `registry.ts`
+entry already calls, so a variant and its native rendition cannot drift. **`registry.ts` is untouched.**
+
+`app/__tests__/download-is-never-a-generation.test.ts` enumerates the whole delivery path (asset, PDF,
+composition, manifest) and fails if any of it names `consume_generation_credit` in code. It strips comments
+— three files mention the call precisely to say they do not make it — and carries a positive control on the
+real generation route so the stripper cannot gut the thing it is searching. Proven to fail on a canary.
+
+### Step 5c — version history
+
+Built on the history that already existed rather than a new one: `brand_assets` is content-addressed by
+fingerprint, so a rebuild has always added a row. `superseded_at` and `change_summary` make it legible, and
+`fingerprint_inputs` keeps what the hash was computed from so the next rebuild can say what moved.
+
+`superseded_at` is decided inside `record_brand_asset`, in the same call that stores the file — never by a
+caller passing a flag. Recording a fingerprint makes it current and every other one for that key superseded;
+recording one that was superseded before makes it current again, so **putting a colour back leaves exactly
+one current version**, not zero. That case has its own assertion; it is the one this shape would most
+easily get wrong.
+
+`describeAssetChange` turns the two versions' inputs into one sentence ("Your primary color and heading font
+changed."), naming at most three fields before counting the rest. Its test moves **every** hashed field one
+at a time and fails if any produces the renderer-bump fallback — so a future session that adds a field to
+the fingerprint cannot leave it silently unexplained.
+
+An older version is served from what was stored and **never re-rendered**: the inputs behind it are gone, so
+a re-render would quietly hand her the new file under the old name.
+
+### Decisions taken without asking
+
+- **`available_formats` lists the asset's own kind alongside the alternatives** ("PNG / SVG") because that
+  is how the menu reads to her — and a follow-up migration normalizes a requested format back to `''` when
+  it equals that kind. Without it, picking "PNG" on a png-kind asset would have stored a second row pointing
+  at the native object: two rows, one file. The catalogue guard still runs first, so an asset offering
+  nothing does not accept its own kind by the back door.
+- **`fingerprint_inputs` records the inputs; it does not compute anything.** The brief said to stop rather
+  than change how fingerprints are computed. Recording what `computeAssetFingerprint` was handed is not
+  changing it — the same object is passed to the same function — and it is the only way to describe a diff
+  without re-deriving the hash in SQL. `loadAssetContext` now names that object instead of building it
+  inline, which also guarantees what gets recorded is exactly what was hashed.
+- **The split button lives only in the asset library's detail panel.** `AssetDownloadButton` stays as it is
+  in its four other call sites; a size menu on a kit-page card or in the delivery ceremony would be a
+  decision at a moment she is not making one.
+- **No "restore this version" button.** Putting an old file back would leave her kit saying one thing and
+  her assets another. The way back to an old look is to put the colour back; the asset follows.
+
+### What I did not do, and why
+
+- **No retention job for superseded versions** — see FINDINGS.md. The brief said older versions stay
+  downloadable "until the existing 30-day purge", but the only 30-day purge in the product is
+  `cron/purge-deleted-kits`, which fires on a soft-deleted kit. On a live kit, superseded bytes now stay
+  indefinitely. `superseded_at` is the column such a job would key off, and nothing reads it. Writing one
+  is its own piece of work (an object removed under a live signed URL, a re-render racing the sweep), and
+  widening the deleted-kits cron would make its documented contract wrong. **This is the one thing in
+  Session 2b that is described in the brief and not built.**
+- **No new lots.** LOT 5 is Session 3's. `direction_assets`, the reveal, and every content table were not
+  read, called, or touched — the diff contains none of them.
+
+### What the next session needs to know
+
+- **LOT 4 is now closed.** Both cut items are in.
+- **`lib/kit/render/variants.ts` is seeded to match `asset_catalog`, not the reverse.** Adding a width to
+  the catalogue without a source there produces a menu entry that 404s at render time. Add both, together.
+- **`app/__tests__/download-is-never-a-generation.test.ts` will fail any future code that puts
+  `consume_generation_credit` on the delivery path.** If a lot genuinely needs to charge for something in
+  `lib/kit`, that test is the conversation to have first — not the file to edit.
+- **`asset_variant_path` is the only place a storage path is built.** Do not construct one in TypeScript.

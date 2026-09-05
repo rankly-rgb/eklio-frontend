@@ -35,7 +35,10 @@ async function call<T>(
     | "get_brand_asset_manifest"
     | "request_brand_asset_upload"
     | "record_brand_asset"
-    | "record_asset_download",
+    | "record_asset_download"
+    | "get_brand_asset_versions"
+    | "get_brand_asset_version_path"
+    | "get_brand_asset_previous_inputs",
   args: Record<string, unknown>
 ): Promise<AssetRpcResult<T>> {
   const { data, error } = await supabase.rpc(fn, args as never);
@@ -147,7 +150,8 @@ export function recordBrandAsset(
   byteSize: number,
   width?: number,
   height?: number,
-  rendition: AssetRendition = NATIVE_RENDITION
+  rendition: AssetRendition = NATIVE_RENDITION,
+  version?: AssetVersionRecord
 ): Promise<AssetRpcResult<{ id: string; storage_path: string }>> {
   return call(supabase, "record_brand_asset", {
     p_brand_kit_id: brandKitId,
@@ -159,5 +163,76 @@ export function recordBrandAsset(
     p_height: height ?? null,
     p_size: rendition.size,
     p_format: rendition.format,
+    p_change_summary: version?.changeSummary ?? "",
+    p_fingerprint_inputs: version?.fingerprintInputs ?? {},
+  });
+}
+
+/*
+ * ── VERSION HISTORY ─────────────────────────────────────────────────────
+ *
+ * `brand_assets` has always kept every version — a rebuild adds a row under
+ * a new fingerprint rather than overwriting. These three read and write the
+ * part that was missing: which version is hers today, and what changed to
+ * produce each one.
+ *
+ * Recording the version's inputs is NOT computing the fingerprint.
+ * `computeAssetFingerprint` (lib/kit/asset-fingerprint.ts) stays the single
+ * definition of that hash; `fingerprintInputs` is the same object it was
+ * handed, kept so the next rebuild has something to diff against.
+ */
+export type AssetVersionRecord = {
+  /** One sentence, from `describeAssetChange`. Empty for a first version. */
+  changeSummary: string;
+  /** Exactly what `computeAssetFingerprint` was handed — never a reconstruction. */
+  fingerprintInputs: unknown;
+};
+
+export type AssetVersion = {
+  fingerprint: string;
+  created_at: string;
+  superseded_at: string | null;
+  change_summary: string;
+  byte_size: number;
+  download_count: number;
+  current: boolean;
+};
+
+export function getBrandAssetVersions(
+  supabase: Client,
+  brandKitId: string,
+  key: string
+): Promise<AssetRpcResult<AssetVersion[]>> {
+  return call(supabase, "get_brand_asset_versions", {
+    p_brand_kit_id: brandKitId,
+    p_key: key,
+  });
+}
+
+/** Where an older version's bytes live. Never re-renders: the inputs behind it are gone. */
+export function getBrandAssetVersionPath(
+  supabase: Client,
+  brandKitId: string,
+  key: string,
+  fingerprint: string
+): Promise<AssetRpcResult<{ storage_path: string }>> {
+  return call(supabase, "get_brand_asset_version_path", {
+    p_brand_kit_id: brandKitId,
+    p_key: key,
+    p_fingerprint: fingerprint,
+  });
+}
+
+/** The inputs behind the version a rebuild is about to replace — `{}` when there is none. */
+export function getBrandAssetPreviousInputs(
+  supabase: Client,
+  brandKitId: string,
+  key: string,
+  fingerprint: string
+): Promise<AssetRpcResult<{ inputs: Record<string, unknown> }>> {
+  return call(supabase, "get_brand_asset_previous_inputs", {
+    p_brand_kit_id: brandKitId,
+    p_key: key,
+    p_fingerprint: fingerprint,
   });
 }

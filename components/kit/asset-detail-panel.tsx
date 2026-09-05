@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { AssetThumbnail } from "@/components/kit/asset-thumbnail";
 import { AssetDownloadSplit } from "@/components/kit/asset-download-button";
+import { AssetVersionHistory } from "@/components/kit/asset-version-history";
 import { InSituSection } from "@/components/kit/in-situ/in-situ-panel";
 import { StatusChip } from "@/components/ui/status-chip";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -112,6 +113,8 @@ export function AssetDetailPanel({
         availableKeys={availableKeys}
         practiceName={practiceName}
       />
+
+      <AssetVersionHistory key={entry.key} brandKitId={brandKitId} assetKey={entry.key} />
 
       <AssetDownloadSplit
         brandKitId={brandKitId}
