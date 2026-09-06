@@ -105,3 +105,43 @@ describe("la liste des spécialités n'a pas dérivé du catalogue", () => {
     expect(source).toContain("2026-09-06");
   });
 });
+
+describe("un registre ne décrit jamais la lumière", () => {
+  /*
+   * Le maître possède la lumière : une seule, chaude, de fin d'après-midi,
+   * venant du haut à gauche, pour toutes les images. Un registre qui en
+   * mentionne une autre est le défaut 2 en miniature -- exactement ce qui a
+   * donné une fenêtre grise sous une dominante chaude.
+   *
+   * On ne balaye QUE les registres. Le tiers gauche du brief héros dit
+   * « plain sunlit wall » : c'est de la composition, pas un registre, et il
+   * reste mot pour mot.
+   */
+  const FORBIDDEN_VOCABULARY = [
+    "light", "lights", "lit", "sunlit", "backlit", "daylight", "sunlight", "lighting",
+    "bright", "dim", "shadow", "shadows", "sunny", "overcast", "cloudy", "weather",
+    "morning", "afternoon", "evening", "dusk", "dawn", "midday", "noon", "night",
+    "sunrise", "sunset", "hour", "lens", "camera", "bokeh", "aperture", "exposure",
+    "shutter", "focal", "grain", "vignette",
+  ];
+
+  const ALL_REGISTERS = [NEUTRAL_OBJECT_REGISTER, ...Object.values(OBJECT_REGISTER_BY_SPECIALTY)];
+
+  it.each(ALL_REGISTERS)("« %s » ne nomme ni lumière, ni heure, ni objectif", (register) => {
+    const words = register.toLowerCase().match(/[a-z]+/g) ?? [];
+    const offenders = words.filter((word) => FORBIDDEN_VOCABULARY.includes(word));
+    expect(
+      offenders,
+      "Un registre nomme des objets et des matières, jamais la lumière, l'heure,\n" +
+        "la météo, un objectif ni un appareil. La direction maîtresse s'en charge,\n" +
+        "et deux consignes de lumière dans un même prompt se contredisent."
+    ).toEqual([]);
+  });
+
+  it("l'énumération interdite est bien appliquée, pas vacuously vraie", () => {
+    // Témoin : une chaîne fautive DOIT être attrapée par la même règle.
+    const canary = "a folded linen cloth, early light across the wall";
+    const words = canary.toLowerCase().match(/[a-z]+/g) ?? [];
+    expect(words.filter((word) => FORBIDDEN_VOCABULARY.includes(word))).toEqual(["light"]);
+  });
+});

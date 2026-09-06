@@ -34,16 +34,20 @@ import { IMAGE_PROMPT_VERSION } from "@/lib/images/config";
  *
  * Applying that invariant is what removed three fields that used to be here:
  * `direction.id` and `direction.name` (identifiers, never prose — no renderer
- * ever sent them) and `palette.accent` (the palette rule places five roles;
- * two accents in one frame make a composition rather than an identity). It
- * also removed `city` and `state`, whose regional light register was the
- * thing fighting the master's single directional light, and which
- * "An American interior" already covers.
+ * ever sent them). It also removed `city` and `state`, whose regional light
+ * register was the thing fighting the master's single directional light, and
+ * which "An American interior" already covers.
+ *
+ * `palette.accent` briefly left too, and CAME BACK — not by preference, but
+ * because the palette rule now places it ("on one small detail only — a book
+ * spine, a glaze, a stem — never a surface"). That is the invariant working
+ * in the useful direction: the fix for a hashed-but-unprompted field is to
+ * decide whether the prompt should read it, and this one should.
  *
  * ── WHAT IS LEFT, AND WHY EACH ONE EARNS ITS PLACE ──────────────────────
  *
  *   toneKeywords  the mood clause. Her direction's own three words.
- *   palette       the five roles the palette rule places in objects.
+ *   palette       the six roles the palette rule places in objects.
  *   specialty     the object register — the one honest axis of variation
  *                 between one therapist's photographs and another's.
  *
@@ -57,6 +61,7 @@ export type ImageFingerprintInput = {
   palette: {
     primary: string;
     secondary: string;
+    accent: string;
     paper: string;
     light_neutral: string;
     dark_neutral: string;
@@ -102,6 +107,7 @@ export function computeImageFingerprint(input: ImageFingerprintInput): string {
     palette: {
       primary: input.palette.primary,
       secondary: input.palette.secondary,
+      accent: input.palette.accent,
       paper: input.palette.paper,
       light_neutral: input.palette.light_neutral,
       dark_neutral: input.palette.dark_neutral,

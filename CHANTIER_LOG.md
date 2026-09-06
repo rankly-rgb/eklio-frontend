@@ -700,6 +700,77 @@ master's "Warm late-afternoon daylight entering from the upper left". Used as wr
 instruction, and flagged here: it is the same shape as defect 2, on one specialty out of twelve.
 `self_esteem`'s "warm light across the wall" agrees with the master and is fine.
 
+### 2026-09-06 — the palette trace, and two more rulings
+
+#### The palette question: the code was right, my report was not
+
+The owner spotted that the prompt I printed carried six different hexes from the ones the first real
+generation carried, for the same kit. That is exactly the failure shape worth stopping for — a photograph
+in the wrong colours still looks warm and plausible, so nobody catches it by eye.
+
+**Traced from the database row to the string. `buildImagePrompt` reads the kit.**
+
+| source | primary | secondary | accent | paper | light | dark |
+| --- | --- | --- | --- | --- | --- | --- |
+| `site_specs` for the kit | #B4674A | #C08A3E | #6E3320 | #FAF6EE | #F4EEE3 | #2B2A27 |
+| first real generation | #B4674A | #C08A3E | #6E3320 | #FAF6EE | #F4EEE3 | #2B2A27 |
+| what I printed | #B4653F | #2E4E8A | — | #FAF7F2 | #E8E2D9 | #2B2724 |
+
+The path is `loadImageContext` → `siteSpecGet` → `siteSpec.data.preview.tokens` → `input.palette` → the
+palette rule. `grep '#[0-9A-Fa-f]{6}' lib/images/*.ts` returns **nothing**: there is no hardcoded hex
+anywhere in the image code.
+
+What I printed came from a throwaway harness in which I hardcoded the values from
+`lib/images/__tests__/fingerprint.test.ts` instead of loading the kit. **A reporting defect, and mine.**
+One correction to the owner's reading: `#B4653F` is not the marketing pack's terracotta — `scripts/brand-shots/`
+contains neither it nor `#2E4E8A`. It is this repo's own test-fixture value; the canonical sample terracotta
+is `#B4674A`, which is what the kit actually uses.
+
+**The fear was right even though the diagnosis was not**, so `lib/images/__tests__/palette-wiring.test.ts`
+now exists. It asserts against the kit's REAL values, captured from `site_specs` with the query to
+re-derive them, and its load-bearing clause is not "the prompt contains six hexes" but:
+
+- every role of the real kit appears, **and no other hex appears at all** — the clause that catches a
+  constant, a default or a fixture leaking into the path;
+- each role sits in ITS OWN sentence, so a swapped mapping (secondary ← accent) fails rather than passing
+  with six correct-looking values;
+- the five fixture hexes are named and asserted absent;
+- `loadImageContext`, given that same real `site_specs` row, returns the palette unchanged.
+
+The shared fixtures deliberately keep values the real kit does NOT have. A fixture equal to production data
+would let a hardcoded constant pass every test.
+
+#### Ruling — accent goes back in, via the rule
+
+The palette rule gains: `{accent} on one small detail only — a book spine, a glaze, a stem — never a
+surface.` In the six-role system accent is "small marks only"; that is its photographic equivalent. Because
+it now reaches the prompt, **the invariant returns it to the hash on its own** — which is the invariant
+working in the useful direction: the fix for a hashed-but-unprompted field is to decide whether the prompt
+should read it. `direction.id` and `direction.name` stay out, as ruled.
+
+#### Ruling — a register never describes light
+
+The master owns the light, and every register that also names light is defect 2 in miniature. Five registers
+carried that vocabulary and have had it removed:
+
+| register | removed |
+| --- | --- |
+| `anxiety` | "early light" |
+| `trauma` | "sunlit" |
+| `depression` | "bright… never dim" |
+| `self_esteem` | "warm light across the wall" |
+| `parenting` | "never bright primary plastic" → "never primary-coloured plastic" |
+
+Two of those AGREED with the master and went anyway: a rule that holds only where it is convenient is not a
+rule. `parenting` is the one where the banned word meant something else — "bright" described the PLASTIC,
+not the room — and the reword keeps that meaning exactly; a test cannot tell the two senses apart, and a
+carve-out for "but I meant it differently" is the carve-out the next author will also claim.
+
+The test scans **registers only**, with a canary proving the vocabulary list actually fires. The hero
+brief's "plain sunlit wall" is composition, not a register, and stays word for word.
+
+`IMAGE_PROMPT_VERSION` 3 → 4.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because

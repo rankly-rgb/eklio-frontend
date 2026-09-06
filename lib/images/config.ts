@@ -24,7 +24,7 @@ export const IMAGE_MODEL = "gpt-image-1" as const;
  * Deliberately separate from `RENDERER_VERSION`, which describes satori and
  * resvg and has nothing to do with photography.
  */
-export const IMAGE_PROMPT_VERSION = 3;
+export const IMAGE_PROMPT_VERSION = 4;
 
 export type ImageQuality = "low" | "medium" | "high";
 export type ImageSize = "1024x1024" | "1536x1024" | "1024x1536";

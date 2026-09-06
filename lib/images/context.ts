@@ -64,6 +64,7 @@ export async function loadImageContext(supabase: Client, kit: BrandKit): Promise
       palette: {
         primary: tokens.primary,
         secondary: tokens.secondary,
+        accent: tokens.accent,
         paper: tokens.paper,
         light_neutral: tokens.light_neutral,
         dark_neutral: tokens.dark_neutral,

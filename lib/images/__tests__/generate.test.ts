@@ -23,7 +23,7 @@ import type { ImageFingerprintInput } from "@/lib/images/fingerprint";
 const INPUT: ImageFingerprintInput = {
   toneKeywords: ["calm", "plain", "warm"],
   palette: {
-    primary: "#B4653F", secondary: "#2E4E8A",
+    primary: "#B4653F", secondary: "#2E4E8A", accent: "#7A8B6F",
     paper: "#FAF7F2", light_neutral: "#E8E2D9", dark_neutral: "#2B2724",
   },
   specialty: "anxiety",

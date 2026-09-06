@@ -6,7 +6,7 @@ import type { ImageFingerprintInput } from "@/lib/images/fingerprint";
 const BASE: ImageFingerprintInput = {
   toneKeywords: ["calm", "plain", "warm"],
   palette: {
-    primary: "#B4653F", secondary: "#2E4E8A",
+    primary: "#B4653F", secondary: "#2E4E8A", accent: "#7A8B6F",
     paper: "#FAF7F2", light_neutral: "#E8E2D9", dark_neutral: "#2B2724",
   },
   specialty: "self_esteem",
@@ -136,19 +136,16 @@ describe("le prompt est déterministe", () => {
     expect(buildImagePrompt("hero", BASE)).toBe(buildImagePrompt("hero", { ...BASE }));
   });
 
-  it("la palette nommée est celle qui peuple les objets", () => {
+  it("les six rôles peuplent les objets, chacun à sa place", () => {
     const prompt = buildImagePrompt("hero", BASE);
-    // Cinq rôles sont placés ; `accent` ne l'est pas, délibérément -- deux
-    // accents dans un même cadre en font une composition, pas une identité.
-    for (const hex of [
-      BASE.palette.primary,
-      BASE.palette.secondary,
-      BASE.palette.paper,
-      BASE.palette.light_neutral,
-      BASE.palette.dark_neutral,
-    ]) {
+    for (const hex of Object.values(BASE.palette)) {
       expect(prompt).toContain(hex);
     }
+    // `accent` est « marques discrètes seulement » dans le système à six
+    // rôles ; son équivalent photographique est UN petit objet, jamais une
+    // surface.
+    expect(prompt).toContain(`${BASE.palette.accent} on one small detail only`);
+    expect(prompt).toContain("never a surface");
   });
 
   it("le maître passe avant le brief d'emplacement, les exclusions après tout", () => {

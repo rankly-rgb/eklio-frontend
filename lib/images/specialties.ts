@@ -25,6 +25,32 @@
  * prompt's exclusion sentence, because a rule kept only in a comment is not
  * kept.
  *
+ * ── NEVER LIGHT, TIME, WEATHER, LENS OR CAMERA ──────────────────────────
+ *
+ * A register names OBJECTS AND MATERIALS ONLY. The master art direction owns
+ * the light — one warm late-afternoon rake from the upper left, for every
+ * image — and every register that also mentions light is a contradiction
+ * waiting to be generated. That is defect 2 in miniature: the per-state light
+ * register fighting the master is exactly how the first photograph ended up
+ * with a grey window under a warm cast.
+ *
+ * Five registers were written with that vocabulary in them and have had it
+ * removed: `anxiety` ("early light"), `trauma` ("sunlit"), `depression`
+ * ("bright… never dim"), `self_esteem` ("warm light across the wall") and
+ * `parenting` ("never bright primary plastic" → "never primary-coloured
+ * plastic"). Two of them AGREED with the master, and went anyway: a rule that
+ * holds only where it happens to be convenient is not a rule, and the next
+ * register written from the same instinct would not agree.
+ *
+ * `parenting` is the one where the banned word meant something else — "bright"
+ * described the PLASTIC, not the room. The reword keeps that meaning exactly.
+ * A test cannot tell the two senses apart, and a rule with a carve-out for
+ * "but I meant it differently" is the rule the next author will also claim.
+ *
+ * `lib/images/__tests__/specialties.test.ts` refuses any register carrying
+ * that vocabulary. It scans registers only — the hero brief's "plain sunlit
+ * wall" is composition, not a register, and it stays word for word.
+ *
  * ── KEYED ON THE CATALOGUE ID, NOT THE LABEL ────────────────────────────
  *
  * `self_esteem`, not `Self-esteem`. The id is stable, lowercase, and free of
@@ -65,29 +91,30 @@ export const BRIEF_SPECIALTY_IDS = [
  * What the photograph is OF, per specialty. Substituted into a slot's brief
  * wherever it carries the `{subject}` token.
  *
- * The eight registers the product owner wrote are used as written.
+ * The eight registers the product owner wrote are used as written, except
+ * where they named light — see the rule above. The other four are written to
+ * match their voice.
  */
 export const OBJECT_REGISTER_BY_SPECIALTY: Record<string, string> = {
-  anxiety:
-    "a linen throw folded over a bench arm, a stoneware cup, a single sprig in a bud vase, early light",
+  anxiety: "a linen throw folded over a bench arm, a stoneware cup, a single sprig in a bud vase",
   burnout:
     "a folded linen cloth over a windowsill, a stoneware mug set down beside it, a low bowl of smooth river stones",
   trauma:
-    "a plain sunlit plaster wall, a woven basket, one trailing plant; grounded, uncluttered, nothing sharp",
+    "a plain plaster wall, a woven basket, one trailing plant; grounded, uncluttered, nothing sharp",
   couples:
     "two stoneware cups on a wooden tray, two folded linen napkins; the pair implied, never depicted",
   grief:
     "a shelf edge with dried eucalyptus, a folded wool blanket, a small closed wooden box; restrained, never funereal",
   depression:
-    "a bright plaster wall with a jute mat, a ceramic pitcher holding one budding branch, a folded wool throw; warm and open, never dim",
+    "a plaster wall with a jute mat, a ceramic pitcher holding one budding branch, a folded wool throw; generous and open, never sparse",
   life_transitions:
     "a shelf half-arranged: a woven basket, a folded linen cloth, a small ceramic dish; unhurried, nothing in disarray",
   relationships:
     "a woven runner across a wooden surface, one shared stoneware bowl, two folded linen cloths at either end; the pair implied, never depicted",
   parenting:
-    "a low shelf of muted wooden blocks and a folded felt mat; never bright primary plastic",
+    "a low shelf of muted wooden blocks and a folded felt mat; never primary-coloured plastic",
   self_esteem:
-    "a mirror-free vanity corner: a ceramic dish, a folded linen cloth, a single stem in a bud vase, warm light across the wall",
+    "a mirror-free vanity corner: a ceramic dish, a folded linen cloth, a single stem in a bud vase",
   identity:
     "a shelf edge holding three small ceramic vessels of different heights, a folded textile, a single dried stem; distinct pieces at ease together",
   adhd: "an ordered desk corner, a ceramic pen cup, a closed notebook, generous negative space",

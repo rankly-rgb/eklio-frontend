@@ -11,6 +11,7 @@ const BASE: ImageFingerprintInput = {
   palette: {
     primary: "#B4653F",
     secondary: "#2E4E8A",
+    accent: "#7A8B6F",
     paper: "#FAF7F2",
     light_neutral: "#E8E2D9",
     dark_neutral: "#2B2724",
@@ -34,6 +35,7 @@ const MOVED: Array<[string, ImageFingerprintInput]> = [
   ["toneKeywords", { ...BASE, toneKeywords: ["stark", "cool", "spare"] }],
   ["palette.primary", { ...BASE, palette: { ...BASE.palette, primary: "#111111" } }],
   ["palette.secondary", { ...BASE, palette: { ...BASE.palette, secondary: "#111111" } }],
+  ["palette.accent", { ...BASE, palette: { ...BASE.palette, accent: "#111111" } }],
   ["palette.paper", { ...BASE, palette: { ...BASE.palette, paper: "#111111" } }],
   ["palette.light_neutral", { ...BASE, palette: { ...BASE.palette, light_neutral: "#111111" } }],
   ["palette.dark_neutral", { ...BASE, palette: { ...BASE.palette, dark_neutral: "#111111" } }],
@@ -82,7 +84,6 @@ describe("l'invariant : haché si et seulement si envoyé au modèle", () => {
       hero: { overline: "Therapy in Austin", headline: "Room to think it through" },
       city: "Austin",
       state: "TX",
-      accent: "#7A8B6F",
     } as ImageFingerprintInput;
     expect(computeImageFingerprint(wider)).toBe(computeImageFingerprint(BASE));
     expect(buildImagePrompt("hero", wider)).toBe(buildImagePrompt("hero", BASE));
