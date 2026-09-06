@@ -24,7 +24,7 @@ export const IMAGE_MODEL = "gpt-image-1" as const;
  * Deliberately separate from `RENDERER_VERSION`, which describes satori and
  * resvg and has nothing to do with photography.
  */
-export const IMAGE_PROMPT_VERSION = 2;
+export const IMAGE_PROMPT_VERSION = 3;
 
 export type ImageQuality = "low" | "medium" | "high";
 export type ImageSize = "1024x1024" | "1536x1024" | "1024x1536";
@@ -51,6 +51,9 @@ export type SlotConfig = {
    * What this slot is a photograph OF, as one closed brief. Never free text,
    * never anything she typed. Sits between the master art direction and the
    * palette line in the assembled prompt -- see lib/images/prompt.ts.
+   *
+   * May carry the token `{subject}`, which is replaced by the specialty's
+   * object register. A brief without it does not vary by specialty.
    */
   brief: string;
 };
@@ -64,19 +67,32 @@ export const IMAGE_SLOTS: Record<ImageSlot, SlotConfig> = {
   /*
    * The left-third rule is the one thing that worked first time, and it is
    * kept word for word. Everything else about this brief was rewritten: the
-   * subject is now a table and its objects, because furniture is never the
-   * subject -- a lone empty armchair is the most-used stock image in the
-   * therapy category and it reads melancholy rather than calm.
+   * subject is now `{subject}` -- the specialty's object register, from
+   * lib/images/specialties.ts -- because furniture is never the subject: a
+   * lone empty armchair is the most-used stock image in the therapy category
+   * and it reads melancholy rather than calm.
    */
   hero: {
     size: "1536x1024",
     quality: "high",
     enabled: true,
+    /*
+     * Two seam decisions where the owner's hero brief meets the owner's
+     * object registers, both legibility rather than direction:
+     *
+     *   - the join is an em dash, not the original colon, because a register
+     *     can carry its own colon ("a mirror-free vanity corner: a ceramic
+     *     dish, …") and two in one sentence read as a stutter;
+     *   - the original trailing clause ("with the shadow of the branches
+     *     falling across the wall behind") named branches, which only the
+     *     neutral register has. The master already asks for directional light
+     *     "enough to cast a soft-edged shadow across a wall" and for
+     *     "believable contact shadows", so the clause is dropped rather than
+     *     generalised into something vaguer than what the master already says.
+     */
     brief:
       "Wide horizontal composition. The left third is plain sunlit wall — empty, uncluttered, " +
-      "no object — so a headline can sit over it. The subject occupies the right third: the corner " +
-      "of a low wooden table carrying a matte ceramic vase of dried branches, two cloth-bound books, " +
-      "and a stoneware cup, with the shadow of the branches falling across the wall behind.",
+      "no object — so a headline can sit over it. The subject occupies the right third — {subject}.",
   },
   ambient_a: {
     size: "1024x1536",

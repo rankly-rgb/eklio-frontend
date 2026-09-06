@@ -1,67 +1,107 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createHash } from "node:crypto";
 import { computeImageFingerprint, type ImageFingerprintInput } from "@/lib/images/fingerprint";
+import { buildImagePrompt } from "@/lib/images/prompt";
+import { IMAGE_SLOT_KEYS } from "@/lib/images/config";
 import { computeAssetFingerprint, type AssetFingerprintInput } from "@/lib/kit/asset-fingerprint";
 
 const BASE: ImageFingerprintInput = {
-  direction: { id: "dir-1", name: "Quiet Clay", tone_keywords: ["calm", "plain", "warm"] },
+  toneKeywords: ["calm", "plain", "warm"],
   palette: {
     primary: "#B4653F",
     secondary: "#2E4E8A",
-    accent: "#7A8B6F",
     paper: "#FAF7F2",
     light_neutral: "#E8E2D9",
     dark_neutral: "#2B2724",
   },
-  specialty: "Anxiety",
-  city: "Austin",
-  state: "TX",
+  specialty: "self_esteem",
 };
 
-describe("l'empreinte d'image bouge sur ce que le prompt lit", () => {
-  it("est déterministe", () => {
-    expect(computeImageFingerprint(BASE)).toBe(computeImageFingerprint({ ...BASE }));
-    expect(computeImageFingerprint(BASE)).toMatch(/^[0-9a-f]{64}$/);
+/*
+ * ── THE INVARIANT, TESTED IN BOTH DIRECTIONS ────────────────────────────
+ *
+ *   A FIELD BELONGS IN `image_fingerprint` IF AND ONLY IF IT REACHES THE
+ *   PROMPT.
+ *
+ * Hashed but not prompted bills her for a regeneration that produces a
+ * byte-identical photograph. Prompted but not hashed serves a stale
+ * photograph forever. Neither announces itself, so both get a test.
+ *
+ * Every entry below moves ONE field and asserts BOTH halves at once.
+ */
+const MOVED: Array<[string, ImageFingerprintInput]> = [
+  ["toneKeywords", { ...BASE, toneKeywords: ["stark", "cool", "spare"] }],
+  ["palette.primary", { ...BASE, palette: { ...BASE.palette, primary: "#111111" } }],
+  ["palette.secondary", { ...BASE, palette: { ...BASE.palette, secondary: "#111111" } }],
+  ["palette.paper", { ...BASE, palette: { ...BASE.palette, paper: "#111111" } }],
+  ["palette.light_neutral", { ...BASE, palette: { ...BASE.palette, light_neutral: "#111111" } }],
+  ["palette.dark_neutral", { ...BASE, palette: { ...BASE.palette, dark_neutral: "#111111" } }],
+  ["specialty", { ...BASE, specialty: "grief" }],
+];
+
+/** Every leaf path of a sample input, so a NEW field cannot slip past the list above. */
+function leafPaths(value: unknown, prefix = ""): string[] {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return prefix ? [prefix] : [];
+  }
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
+    leafPaths(child, prefix ? `${prefix}.${key}` : key)
+  );
+}
+
+describe("l'invariant : haché si et seulement si envoyé au modèle", () => {
+  it("l'énumération couvre chaque champ du type, sans en oublier un", () => {
+    // La garde qui protège les deux tests suivants : ajouter un champ à
+    // `ImageFingerprintInput` sans l'ajouter ici casse ce test-ci d'abord,
+    // plutôt que de laisser passer un champ non vérifié.
+    expect(MOVED.map(([field]) => field).sort()).toEqual(leafPaths(BASE).sort());
   });
 
-  it.each([
-    ["primary", { ...BASE, palette: { ...BASE.palette, primary: "#111111" } }],
-    ["secondary", { ...BASE, palette: { ...BASE.palette, secondary: "#111111" } }],
-    ["accent", { ...BASE, palette: { ...BASE.palette, accent: "#111111" } }],
-    ["paper", { ...BASE, palette: { ...BASE.palette, paper: "#111111" } }],
-    ["light_neutral", { ...BASE, palette: { ...BASE.palette, light_neutral: "#111111" } }],
-    ["dark_neutral", { ...BASE, palette: { ...BASE.palette, dark_neutral: "#111111" } }],
-    ["direction", { ...BASE, direction: { ...BASE.direction, id: "dir-2" } }],
-    ["tone keywords", { ...BASE, direction: { ...BASE.direction, tone_keywords: ["stark", "cool", "spare"] } }],
-    ["specialty", { ...BASE, specialty: "Grief" }],
-    ["city", { ...BASE, city: "Dallas" }],
-    ["state", { ...BASE, state: "OR" }],
-  ] satisfies Array<[string, ImageFingerprintInput]>)("« %s » qui change la déplace", (_field, next) => {
+  it.each(MOVED)("« %s » déplace l'empreinte", (_field, next) => {
     expect(computeImageFingerprint(next)).not.toBe(computeImageFingerprint(BASE));
+  });
+
+  it.each(MOVED)("« %s » change AUSSI le prompt", (_field, next) => {
+    // Le sens inverse, et le plus coûteux à rater : un champ haché que le
+    // prompt ignore facture une régénération pour un résultat identique.
+    expect(buildImagePrompt("hero", next)).not.toBe(buildImagePrompt("hero", BASE));
+  });
+
+  it("un champ non déclaré ne change ni l'un ni l'autre", () => {
+    /*
+     * L'autre sens, tenu par CONSTRUCTION plutôt que par vigilance :
+     * `buildImagePrompt` et `computeImageFingerprint` ne reçoivent QUE
+     * `ImageFingerprintInput`, et l'empreinte projette ses champs
+     * explicitement. Un appelant qui passe un objet plus large -- un kit
+     * entier -- ne peut donc élargir ni le hachage ni le prompt.
+     */
+    const wider = {
+      ...BASE,
+      practiceName: "Elm & Ember Therapy",
+      hero: { overline: "Therapy in Austin", headline: "Room to think it through" },
+      city: "Austin",
+      state: "TX",
+      accent: "#7A8B6F",
+    } as ImageFingerprintInput;
+    expect(computeImageFingerprint(wider)).toBe(computeImageFingerprint(BASE));
+    expect(buildImagePrompt("hero", wider)).toBe(buildImagePrompt("hero", BASE));
+  });
+
+  it("aucun emplacement ne fait mentir l'invariant", () => {
+    // Les six emplacements désactivés n'ont pas de jeton `{subject}` : leur
+    // prompt ne varie donc pas avec la spécialité, ce qui est vrai et voulu
+    // jusqu'à l'étape 8. Le seul emplacement actif, lui, doit varier.
+    const other = { ...BASE, specialty: "grief" };
+    expect(buildImagePrompt("hero", other)).not.toBe(buildImagePrompt("hero", BASE));
+    expect(IMAGE_SLOT_KEYS).toContain("hero");
   });
 });
 
-describe("l'empreinte d'image ne bouge PAS sur la copie", () => {
-  /*
-   * L'autre moitié, et la plus chère à rater : un titre modifié ne doit pas
-   * coûter 0,25 $ pour rephotographier une pièce où ce titre n'a jamais été.
-   *
-   * Le type lui-même est la garantie -- il ne PORTE ni nom de cabinet ni
-   * titre. Ce test le vérifie par construction : on ajoute ces champs à
-   * l'entrée et l'empreinte ne bouge pas, parce qu'ils ne sont pas hachés.
-   */
-  it.each([
-    ["le nom du cabinet", { practiceName: "Elm & Ember Therapy" }],
-    ["le titre", { hero: { overline: "Therapy in Austin", headline: "Room to think it through" } }],
-    ["la ligne de titre professionnel", { practitionerLine: "Dana Whitfield, LCSW" }],
-    ["les modèles de posts", { socialTemplates: { statement: "One thing at a time." } }],
-    ["les polices", { fonts: { heading: "Fraunces", body: "Inter" } }],
-    ["le lien de réservation", { bookingUrl: "https://example.com/book" }],
-  ])("%s n'entre pas dans l'empreinte", (_label, extra) => {
-    const withCopy = { ...BASE, ...extra } as ImageFingerprintInput;
-    expect(computeImageFingerprint(withCopy)).toBe(computeImageFingerprint(BASE));
+describe("l'empreinte d'image", () => {
+  it("est déterministe et de la bonne forme", () => {
+    expect(computeImageFingerprint(BASE)).toBe(computeImageFingerprint({ ...BASE }));
+    expect(computeImageFingerprint(BASE)).toMatch(/^[0-9a-f]{64}$/);
   });
 });
 
@@ -75,10 +115,7 @@ describe("computeAssetFingerprint reste intact", () => {
    * côté, et n'a pas le droit d'avoir touché la première.
    */
   it("le fichier ne mentionne rien de la photographie", () => {
-    const source = readFileSync(
-      resolve(__dirname, "../../kit/asset-fingerprint.ts"),
-      "utf8"
-    );
+    const source = readFileSync(resolve(__dirname, "../../kit/asset-fingerprint.ts"), "utf8");
     for (const forbidden of ["IMAGE_PROMPT_VERSION", "lib/images", "brand_images", "gpt-image"]) {
       expect(source).not.toContain(forbidden);
     }
@@ -103,13 +140,6 @@ describe("computeAssetFingerprint reste intact", () => {
     };
     expect(computeAssetFingerprint(input)).toBe(
       "dad3d59478ded36a9619deaf4f4f7ccab94250baa399bfcaf7783e577342b402"
-    );
-  });
-
-  it("les deux empreintes sont bien différentes", () => {
-    // Même primitive, entrées différentes : elles ne doivent jamais coïncider.
-    expect(computeImageFingerprint(BASE)).not.toBe(
-      createHash("sha256").update("").digest("hex")
     );
   });
 });

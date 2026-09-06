@@ -1,5 +1,6 @@
 import { IMAGE_SLOTS, type ImageSlot } from "@/lib/images/config";
 import type { ImageFingerprintInput } from "@/lib/images/fingerprint";
+import { objectRegisterFor } from "@/lib/images/specialties";
 
 /*
  * ── THE DERIVED PROMPT ──────────────────────────────────────────────────
@@ -70,7 +71,8 @@ const MASTER_DIRECTION =
 const MASTER_EXCLUSIONS =
   "Strictly excluded: no people, no faces, no hands, no body parts, no text, no lettering, no " +
   "numbers, no logos, no signage, no watermarks, no brand names, no empty armchairs, no couches, " +
-  "no clipboards, no lotus flowers, brains, puzzle pieces or meditation imagery.";
+  "no clipboards, no lotus flowers, brains, puzzle pieces or meditation imagery, no pill bottles, " +
+  "no scales, no food, no bottles, no journals opened to writing, nothing that depicts a condition.";
 
 /**
  * Her palette, placed in OBJECTS. Never a grade.
@@ -104,58 +106,17 @@ function moodFrom(keywords: string[]): string {
 }
 
 /*
- * ── HASHED, BUT NOT CURRENTLY IN THE PROMPT ─────────────────────────────
+ * ── EVERY HASHED FIELD REACHES THIS FUNCTION, AND ONLY THOSE ────────────
  *
- * `specialty`, `city` and `state` are all part of `computeImageFingerprint`
- * — the owner named them — but none of them reaches the model today.
+ * `toneKeywords` become the mood clause, the five palette roles are placed in
+ * objects, and `specialty` chooses the object register. Nothing else is
+ * hashed, and nothing else is sent — see the invariant in
+ * `lib/images/fingerprint.ts`, which a test enforces in both directions.
  *
- *   specialty  was wired in, and did nothing. It chose a room SETTING via
- *              the map below, and no kit's label ever matched a key, so
- *              every kit fell through to a default that was itself defect 3
- *              (the lone armchair). The brief says specialty should choose
- *              the register of OBJECTS instead; that is not built yet and is
- *              the owner's call, so the map is kept here rather than deleted.
- *   state      chose a per-region light register, which is exactly what
- *              fought the grade and produced defect 2. The master now fixes
- *              one light for every image, so this map is dormant too.
- *   city       was never in the prompt at all: a named city invites a
- *              recognisable landmark, and a landmark is a photograph of
- *              somewhere that is not her practice.
- *
- * The live consequence, named rather than hidden: changing any of the three
- * moves the fingerprint and makes her stored photograph stale, even though
- * the prompt it would regenerate is identical. That costs one regeneration
- * in a rare case. Both maps are exported so this is visible to a reader
- * rather than dead weight, and so turning either back on is one edit.
+ * `city` and `state` are gone from both. The per-region light register they
+ * drove was the thing fighting the master's single directional light, and
+ * "An American interior" already covers what it was for.
  */
-
-/** Dormant. See the block above — kept for the owner's decision on specialty. */
-export const SETTING_BY_SPECIALTY: Record<string, string> = {
-  "couples therapy": "two armchairs angled slightly toward each other",
-  "family therapy": "a low table with seating arranged loosely around it",
-  "child therapy": "a low shelf of simple wooden objects beside a small rug",
-  trauma: "a deep armchair beside a window with a heavy curtain drawn half across",
-  anxiety: "an uncluttered chair beside a window with a long, calm view",
-  depression: "a chair in a room where the daylight is warm and even",
-  grief: "a quiet armchair beside a side table holding a single closed book",
-  adhd: "an orderly desk corner with everything squared away",
-  "eating disorders": "a plain, calm seating corner with soft textiles",
-  "substance use": "a steady armchair in a room with clear, open floor",
-};
-
-/** Dormant. The master art direction now fixes one light for every image. */
-export const LIGHT_BY_STATE: Record<string, string> = {
-  WA: "soft overcast daylight, cool and diffuse",
-  OR: "soft overcast daylight, cool and diffuse",
-  CA: "clear low afternoon light, warm and dry",
-  AZ: "bright dry light with long, defined shadows",
-  CO: "crisp high-altitude daylight, clean shadows",
-  TX: "warm hazy afternoon light",
-  MN: "pale even winter daylight",
-  IL: "plain even daylight, unremarkable and steady",
-  FL: "humid golden light, softened at the edges",
-  NY: "cool northern daylight, slightly grey",
-};
 
 /**
  * The prompt for one slot. Deterministic: the same input always produces the
@@ -167,11 +128,16 @@ export const LIGHT_BY_STATE: Record<string, string> = {
  * likely to be dropped.
  */
 export function buildImagePrompt(slot: ImageSlot, input: ImageFingerprintInput): string {
+  // A slot brief carries `{subject}` wherever the specialty's object register
+  // belongs. A brief without the token is unaffected -- the six disabled
+  // slots keep their own subjects until step 8 rewrites them.
+  const brief = IMAGE_SLOTS[slot].brief.replace("{subject}", objectRegisterFor(input.specialty));
+
   return [
     MASTER_DIRECTION,
-    IMAGE_SLOTS[slot].brief,
+    brief,
     paletteRule(input.palette),
-    `Mood: ${moodFrom(input.direction.tone_keywords)}.`,
+    `Mood: ${moodFrom(input.toneKeywords)}.`,
     MASTER_EXCLUSIONS,
   ]
     .join(" ")

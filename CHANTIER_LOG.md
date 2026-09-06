@@ -630,6 +630,76 @@ delete from brand_images where brand_kit_id = '<brand_kit_id>' and slot = 'hero'
 That is the intended friction, not a bug: outside this art-direction loop, refusing to re-spend on an image
 that already exists is exactly what should happen.
 
+### 2026-09-06 — three rulings: the object register, the invariant, and what left the hash
+
+Config plus the fingerprint's inputs. No migration, no route change.
+
+#### Ruling 1 — specialty is back, as an object register
+
+Not for variety's sake: a brand studio whose seven photographs are identical for every client is visibly a
+template, and the specialty is the one honest axis of variation the brief already asks about.
+
+`SETTING_BY_SPECIALTY` is gone. `lib/images/specialties.ts` carries
+`OBJECT_REGISTER_BY_SPECIALTY` — twelve still lifes, **no furniture as subject, never a chair of any
+kind**, and a neutral fallback that is itself a still life. The old map was six-tenths chairs and its
+fallback WAS the armchair; that is the rule made structural rather than remembered.
+
+**The coverage bug is fixed at its cause.** The old map was keyed on labels written from imagination —
+`couples therapy`, `eating disorders`, `substance use`, none of which the brief can emit — and was missing
+six real specialties. It is now keyed on the **catalogue id** (`self_esteem`, not `Self-esteem`: stable,
+lowercase, no punctuation to miss on), and `BRIEF_SPECIALTY_IDS` is the real twelve, taken from
+`public.specialties`. Three tests hold it: every brief specialty resolves to a mapped register, the map
+contains no key the brief cannot emit, and — whenever eklio-backend is checked out beside this repo — the
+list is parsed straight out of `20260827100000_catalog_reference_data.sql` and must match. In CI without
+the sibling repo that last one skips; the first two always run.
+
+**Never clinical.** No pill bottles, no scales, no food, no bottles, no journals opened to writing,
+nothing that depicts a condition — in the registers by construction, in the exclusion sentence by name,
+and asserted over every register value.
+
+#### Ruling 2 — `city` and `state` are out of the prompt and out of the hash
+
+The regional light register was the thing fighting the master's single directional light, and
+"An American interior" already covers what it was for. `city` never reached the prompt at all.
+
+#### Ruling 3 — the invariant, as a test
+
+> A field belongs in `image_fingerprint` if and only if it reaches the prompt.
+
+It is stated above `computeImageFingerprint`, both failure modes named: hashed-but-not-prompted bills a
+regeneration for a byte-identical photograph; prompted-but-not-hashed serves a stale one forever. The test
+moves each field once and asserts BOTH halves, plus a guard that the enumeration covers every leaf of the
+type — so a new field cannot be added without the test noticing first.
+
+⚠ **Applying the invariant removed three more fields than the ruling named.** They were hashed and never
+reached the prompt:
+
+| field | why it went |
+| --- | --- |
+| `direction.id` | an identifier, never prose — no renderer ever sent it |
+| `direction.name` | "Quiet Clay" never reached the model, and a test asserts it still does not |
+| `palette.accent` | the palette rule places five roles; the owner's verbatim wording does not include accent |
+
+`ImageFingerprintInput` is now `toneKeywords`, five palette roles, and `specialty`. If accent should
+matter to a photograph, the fix is to place it in the palette rule — not to re-add it to the hash.
+
+`IMAGE_PROMPT_VERSION` 2 → 3.
+
+#### Two seam decisions, flagged rather than buried
+
+Where the owner's hero brief meets the owner's registers, both legibility rather than direction:
+
+- the join is an em dash, not the original colon, because a register can carry its own colon
+  ("a mirror-free vanity corner: a ceramic dish, …") and two in one sentence read as a stutter;
+- the original trailing clause ("with the shadow of the branches falling across the wall behind") named
+  branches, which only the neutral register has. Dropped — the master already asks for light "directional
+  enough to cast a soft-edged shadow across a wall" and for "believable contact shadows".
+
+⚠ **One register contradicts the master's fixed light.** `anxiety` ends "…, early light", against the
+master's "Warm late-afternoon daylight entering from the upper left". Used as written, per the
+instruction, and flagged here: it is the same shape as defect 2, on one specialty out of twelve.
+`self_esteem`'s "warm light across the wall" agrees with the master and is fine.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because

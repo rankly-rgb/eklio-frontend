@@ -21,11 +21,14 @@ export type ImageContext =
   | { ok: false; reason: "no-direction" | "spec-not-ready" };
 
 /**
- * The practice's PRIMARY specialty label — the one with the lowest
- * `sort_order` in the catalogue, matching `lib/generation/scope-key.ts`'s
- * definition rather than `specialty_ids[0]`, which is a raw array with no
- * guaranteed order. Null when the brief named none, which photographs as the
- * neutral setting.
+ * The practice's PRIMARY specialty, as a catalogue ID — the one with the
+ * lowest `sort_order`, matching `lib/generation/scope-key.ts`'s definition
+ * rather than `specialty_ids[0]`, which is a raw array with no guaranteed
+ * order. Null when the brief named none, which photographs as the neutral
+ * object register.
+ *
+ * The ID, not the label: `self_esteem`, never `Self-esteem`. Keying the
+ * register on the label is what let a lookup miss silently.
  */
 async function primarySpecialty(supabase: Client, projectId: string): Promise<string | null> {
   const { data: brief } = await supabase
@@ -39,11 +42,11 @@ async function primarySpecialty(supabase: Client, projectId: string): Promise<st
 
   const { data: rows } = await supabase
     .from("specialties")
-    .select("id,label,sort_order")
+    .select("id,sort_order")
     .in("id", ids)
     .order("sort_order");
 
-  return rows?.[0]?.label ?? null;
+  return rows?.[0]?.id ?? null;
 }
 
 export async function loadImageContext(supabase: Client, kit: BrandKit): Promise<ImageContext> {
@@ -53,27 +56,19 @@ export async function loadImageContext(supabase: Client, kit: BrandKit): Promise
   if (!siteSpec.ok) return { ok: false, reason: "spec-not-ready" };
 
   const tokens = siteSpec.data.preview.tokens;
-  const details = siteSpec.data.spec.practice_details;
 
   return {
     ok: true,
     input: {
-      direction: {
-        id: kit.selectedDirection.id,
-        name: kit.selectedDirection.name,
-        tone_keywords: kit.selectedDirection.tone_keywords,
-      },
+      toneKeywords: kit.selectedDirection.tone_keywords,
       palette: {
         primary: tokens.primary,
         secondary: tokens.secondary,
-        accent: tokens.accent,
         paper: tokens.paper,
         light_neutral: tokens.light_neutral,
         dark_neutral: tokens.dark_neutral,
       },
       specialty: await primarySpecialty(supabase, kit.projectId),
-      city: details?.city ?? null,
-      state: details?.state ?? null,
     },
   };
 }

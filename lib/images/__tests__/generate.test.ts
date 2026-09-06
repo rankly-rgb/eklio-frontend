@@ -21,12 +21,12 @@ import type { ImageFingerprintInput } from "@/lib/images/fingerprint";
  */
 
 const INPUT: ImageFingerprintInput = {
-  direction: { id: "dir-1", name: "Quiet Clay", tone_keywords: ["calm", "plain", "warm"] },
+  toneKeywords: ["calm", "plain", "warm"],
   palette: {
-    primary: "#B4653F", secondary: "#2E4E8A", accent: "#7A8B6F",
+    primary: "#B4653F", secondary: "#2E4E8A",
     paper: "#FAF7F2", light_neutral: "#E8E2D9", dark_neutral: "#2B2724",
   },
-  specialty: "Anxiety", city: "Austin", state: "TX",
+  specialty: "anxiety",
 };
 
 const PATH = "kit-1/images/fp/hero.webp";
