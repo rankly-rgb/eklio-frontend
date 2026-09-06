@@ -115,6 +115,17 @@ export function AssetsPreview({
          * site, and the moment she needs that person she needs one page rather
          * than a tour of six cards.
          */}
+        {/*
+         * Her own files, beside the ones Eklio makes. They live on their own
+         * page because they follow a different rule: nothing here goes stale
+         * when the palette changes.
+         */}
+        <Link
+          href={`/app/brand-kits/${brandKitId}/uploads`}
+          className="text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+        >
+          Your own files →
+        </Link>
         <Link
           href={`/app/brand-kits/${brandKitId}/handoff`}
           className="text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"

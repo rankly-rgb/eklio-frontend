@@ -2052,6 +2052,47 @@ export type Database = {
         Relationships: []
       }
     }
+      user_uploads: {
+        Row: {
+          brand_kit_id: string
+          byte_size: number
+          created_at: string
+          id: string
+          kind: string
+          mime_type: string
+          original_name: string | null
+          storage_path: string
+        }
+        Insert: {
+          brand_kit_id: string
+          byte_size: number
+          created_at?: string
+          id?: string
+          kind: string
+          mime_type: string
+          original_name?: string | null
+          storage_path: string
+        }
+        Update: {
+          brand_kit_id?: string
+          byte_size?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          mime_type?: string
+          original_name?: string | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_uploads_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     Views: {
       workspaces: {
         Row: {
@@ -2211,6 +2252,7 @@ export type Database = {
         Returns: Json
       }
       delete_content_item: { Args: { p_id: string }; Returns: Json }
+      delete_user_upload: { Args: { p_id: string }; Returns: Json }
       direction_assets_claim: {
         Args: {
           p_brand_kit_id: string
@@ -2286,6 +2328,7 @@ export type Database = {
         Args: { p_brand_kit_id: string }
         Returns: Json
       }
+      list_user_uploads: { Args: { p_brand_kit_id: string }; Returns: Json }
       mark_content_posted: {
         Args: { p_channel?: string | null; p_id: string; p_posted: boolean }
         Returns: Json
@@ -2328,6 +2371,18 @@ export type Database = {
         }
         Returns: Json
       }
+      record_user_upload: {
+        Args: {
+          p_brand_kit_id: string
+          p_byte_size: number
+          p_id: string
+          p_kind: string
+          p_mime_type: string
+          p_original_name?: string | null
+          p_storage_path: string
+        }
+        Returns: Json
+      }
       record_purchase_status_event: {
         Args: {
           p_amount_cents?: number
@@ -2355,6 +2410,15 @@ export type Database = {
       }
       reserve_image_regeneration: {
         Args: { p_brand_kit_id: string; p_cost_cents: number }
+        Returns: Json
+      }
+      request_user_upload: {
+        Args: {
+          p_brand_kit_id: string
+          p_byte_size: number
+          p_kind: string
+          p_mime_type: string
+        }
         Returns: Json
       }
       restore_brand_kit: { Args: { p_brand_kit_id: string }; Returns: Json }

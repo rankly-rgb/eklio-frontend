@@ -27,6 +27,7 @@ const SOURCE = readFileSync(FILE, "utf8");
 const HAND_ADDED_TABLES: Record<string, string> = {
   content_items: "20260906155600_content_items",
   content_publications: "20260906155600_content_items",
+  user_uploads: "20260906164920_user_uploads",
 };
 
 /** Les RPC ajoutées à la main. Sans elles, `supabase.rpc(...)` n'est plus typé. */
@@ -38,6 +39,10 @@ const HAND_ADDED_FUNCTIONS = [
   "get_content_month",
   "get_content_item",
   "get_publishing_log",
+  "request_user_upload",
+  "record_user_upload",
+  "delete_user_upload",
+  "list_user_uploads",
 ];
 
 /** L'addendum manuel : quatre unions que le générateur écrase en `string`. */
