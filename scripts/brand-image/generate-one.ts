@@ -2,6 +2,7 @@
  * ── GENERATE EXACTLY ONE SLOT, THROUGH THE REAL PRODUCT PATH ────────────
  *
  *   npx tsx scripts/brand-image/generate-one.ts --kit <brand_kit_id> --slot hero
+ *   npx tsx scripts/brand-image/generate-one.ts --kit <brand_kit_id> --quality medium
  *
  * This is NOT the marketing CLI (`scripts/brand-shots/`). It calls the same
  * `generateBrandImage` the route handler calls, against the same RPCs, with
@@ -39,7 +40,14 @@
 
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../../types/supabase";
-import { IMAGE_SLOTS, isImageSlot, slotPriceCents, type ImageSlot } from "../../lib/images/config";
+import {
+  IMAGE_MODEL,
+  IMAGE_SLOTS,
+  isImageSlot,
+  priceCents,
+  type ImageQuality,
+  type ImageSlot,
+} from "../../lib/images/config";
 import { openAiImageClientFromEnv } from "../../lib/images/client";
 import { computeImageFingerprint } from "../../lib/images/fingerprint";
 import { buildImagePrompt } from "../../lib/images/prompt";
@@ -65,6 +73,23 @@ async function main(): Promise<void> {
     die(`"${slotArg}" is not a slot. Known slots: ${Object.keys(IMAGE_SLOTS).join(", ")}.`);
   }
   const slot: ImageSlot = slotArg;
+
+  /*
+   * --quality exists ONLY to iterate on art direction cheaply. 1536x1024 at
+   * medium is 6.3c against 25c at high, and it is more than enough to judge
+   * exposure, light direction and colour placement. Three medium tries cost
+   * less than one high one.
+   *
+   * It is not a product feature: no route reads it, and the slot's own
+   * configured quality is what ships. The reserved and recorded cost follow
+   * whatever is chosen here, so a cheap try is cheap in the ledger too.
+   */
+  const qualityArg = arg("quality");
+  if (qualityArg && !["low", "medium", "high"].includes(qualityArg)) {
+    die(`"${qualityArg}" is not a quality. Use low, medium, or high.`);
+  }
+  const qualityOverride = (qualityArg ?? null) as ImageQuality | null;
+  const quality = qualityOverride ?? IMAGE_SLOTS[slot].quality;
   if (!IMAGE_SLOTS[slot].enabled) {
     die(`The "${slot}" slot is not enabled in the prompt pack. Enabling it is a deliberate edit.`);
   }
@@ -97,9 +122,12 @@ async function main(): Promise<void> {
   console.log("");
   console.log(`  kit           ${kitId}`);
   console.log(`  slot          ${slot}`);
-  console.log(`  size/quality  ${IMAGE_SLOTS[slot].size} ${IMAGE_SLOTS[slot].quality}`);
+  console.log(
+    `  size/quality  ${IMAGE_SLOTS[slot].size} ${quality}` +
+      (qualityOverride ? `   (override; the slot ships at ${IMAGE_SLOTS[slot].quality})` : "")
+  );
   console.log(`  fingerprint   ${fingerprint}`);
-  console.log(`  price table   ${slotPriceCents(slot)} cents`);
+  console.log(`  price table   ${priceCents(IMAGE_MODEL, quality, IMAGE_SLOTS[slot].size)} cents`);
   console.log("");
   console.log("  prompt");
   console.log(`    ${prompt}`);
@@ -116,6 +144,7 @@ async function main(): Promise<void> {
     // Always false here: this script is for proving the initial path, and an
     // initial slot is part of what she bought. It never spends a credit.
     isRegeneration: false,
+    ...(qualityOverride ? { qualityOverride } : {}),
   });
 
   console.log("");

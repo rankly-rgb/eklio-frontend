@@ -266,6 +266,43 @@ describe("le repli", () => {
   });
 });
 
+describe("l'itération à bas coût", () => {
+  /*
+   * --quality n'existe que pour juger l'exposition, la direction de lumière
+   * et le placement de la couleur sans payer 25c la tentative. Ce qui compte
+   * ici : le coût RÉSERVÉ et le coût ENREGISTRÉ suivent la qualité effective.
+   * Un plafond nourri du mauvais prix n'est pas un plafond.
+   */
+  it("une surcharge medium réserve et enregistre 7 centimes, pas 25", async () => {
+    const supabase = stubSupabase();
+    const outcome = await run(supabase, stubClient(ok), { qualityOverride: "medium" });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.costCents).toBe(7);
+
+    const claim = supabase.calls.find((c) => c.fn === "brand_images_claim");
+    expect(claim?.args.p_cost_estimate_cents).toBe(7);
+    const ready = supabase.calls.find((c) => c.fn === "brand_images_mark_ready");
+    expect(ready?.args.p_cost_cents).toBe(7);
+    // Et la qualité réellement demandée est enregistrée, pas celle du pack.
+    expect(ready?.args.p_quality).toBe("medium");
+  });
+
+  it("sans surcharge, c'est la qualité du pack qui s'applique", async () => {
+    const supabase = stubSupabase();
+    const outcome = await run(supabase, stubClient(ok));
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.costCents).toBe(slotPriceCents("hero"));
+    const ready = supabase.calls.find((c) => c.fn === "brand_images_mark_ready");
+    expect(ready?.args.p_quality).toBe("high");
+  });
+
+  it("trois tentatives medium coûtent moins qu'une seule high", () => {
+    expect(7 * 3).toBeLessThan(slotPriceCents("hero"));
+  });
+});
+
 describe("le plafond demandé", () => {
   it("la réservation est le prix du tarif, pas zéro", async () => {
     const supabase = stubSupabase();

@@ -24,7 +24,7 @@ export const IMAGE_MODEL = "gpt-image-1" as const;
  * Deliberately separate from `RENDERER_VERSION`, which describes satori and
  * resvg and has nothing to do with photography.
  */
-export const IMAGE_PROMPT_VERSION = 1;
+export const IMAGE_PROMPT_VERSION = 2;
 
 export type ImageQuality = "low" | "medium" | "high";
 export type ImageSize = "1024x1024" | "1536x1024" | "1024x1536";
@@ -47,9 +47,12 @@ export type SlotConfig = {
    * deliberate act, not a config drive-by.
    */
   enabled: boolean;
-  /** The closed vocabulary this slot's prompt is built from. Never free text. */
-  subject: string;
-  composition: string;
+  /**
+   * What this slot is a photograph OF, as one closed brief. Never free text,
+   * never anything she typed. Sits between the master art direction and the
+   * palette line in the assembled prompt -- see lib/images/prompt.ts.
+   */
+  brief: string;
 };
 
 /*
@@ -58,55 +61,58 @@ export type SlotConfig = {
  * over them, where "high" buys detail nobody will ever see.
  */
 export const IMAGE_SLOTS: Record<ImageSlot, SlotConfig> = {
+  /*
+   * The left-third rule is the one thing that worked first time, and it is
+   * kept word for word. Everything else about this brief was rewritten: the
+   * subject is now a table and its objects, because furniture is never the
+   * subject -- a lone empty armchair is the most-used stock image in the
+   * therapy category and it reads melancholy rather than calm.
+   */
   hero: {
     size: "1536x1024",
     quality: "high",
     enabled: true,
-    subject: "an empty, softly lit interior corner of a private consulting room",
-    composition:
-      "wide editorial photograph, the left third open and uncluttered so text can sit over it, shallow depth of field",
+    brief:
+      "Wide horizontal composition. The left third is plain sunlit wall — empty, uncluttered, " +
+      "no object — so a headline can sit over it. The subject occupies the right third: the corner " +
+      "of a low wooden table carrying a matte ceramic vase of dried branches, two cloth-bound books, " +
+      "and a stoneware cup, with the shadow of the branches falling across the wall behind.",
   },
   ambient_a: {
     size: "1024x1536",
     quality: "medium",
     enabled: false,
-    subject: "a quiet still life of everyday objects on a side table, no people present",
-    composition: "vertical editorial photograph, generous negative space at the top",
+    brief: "a quiet still life of everyday objects on a side table, no people present. vertical editorial photograph, generous negative space at the top.",
   },
   ambient_b: {
     size: "1024x1536",
     quality: "medium",
     enabled: false,
-    subject: "daylight falling across a plain wall and a plant, no people present",
-    composition: "vertical editorial photograph, soft gradient of light across the frame",
+    brief: "daylight falling across a plain wall and a plant, no people present. vertical editorial photograph, soft gradient of light across the frame.",
   },
   post_bg_1: {
     size: "1024x1024",
     quality: "medium",
     enabled: false,
-    subject: "an out-of-focus interior background, no people present",
-    composition: "square, evenly lit, deliberately unremarkable so type reads over it",
+    brief: "an out-of-focus interior background, no people present. square, evenly lit, deliberately unremarkable so type reads over it.",
   },
   post_bg_2: {
     size: "1024x1024",
     quality: "medium",
     enabled: false,
-    subject: "an out-of-focus natural background of foliage and light, no people present",
-    composition: "square, evenly lit, deliberately unremarkable so type reads over it",
+    brief: "an out-of-focus natural background of foliage and light, no people present. square, evenly lit, deliberately unremarkable so type reads over it.",
   },
   post_bg_3: {
     size: "1024x1024",
     quality: "medium",
     enabled: false,
-    subject: "an out-of-focus fabric and paper surface, no people present",
-    composition: "square, evenly lit, deliberately unremarkable so type reads over it",
+    brief: "an out-of-focus fabric and paper surface, no people present. square, evenly lit, deliberately unremarkable so type reads over it.",
   },
   texture: {
     size: "1024x1024",
     quality: "medium",
     enabled: false,
-    subject: "a close macro of a plain matte surface — paper grain, raw plaster, or woven linen",
-    composition: "square, flat and even, filling the frame edge to edge",
+    brief: "a close macro of a plain matte surface — paper grain, raw plaster, or woven linen. square, flat and even, filling the frame edge to edge.",
   },
 };
 

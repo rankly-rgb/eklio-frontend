@@ -570,6 +570,66 @@ others on is a deliberate edit in a later session.
 - **The ornament is cut**, and was cut in step 7A. Nothing was built, scaffolded or stubbed for it, and no
   slot is reserved for it.
 
+### 2026-09-06 — the art direction revision (config only)
+
+The first real generation validated the pipeline and failed the art direction. Cost, fingerprint, webp,
+storage path: all correct. The photograph: four defects, all of them mine, all of them in the prompt pack.
+**No schema change, no route change, no migration.** `lib/images/config.ts` and `lib/images/prompt.ts`, plus
+one flag on the script.
+
+| # | defect | the line that caused it | the fix |
+| --- | --- | --- | --- |
+| 1 | whole frame sunk in brown, underexposed, nowhere near her warm off-white `paper` | "colour grade the image toward this palette" — it TINTED instead of PLACING | that instruction is gone; the palette now lives in objects and the rule ends "Do not tint the image." |
+| 2 | light contradicted itself — grey overcast window under a warm grade, no direction, no cast shadow | a per-state light register fighting the grade | one light for every image: warm late-afternoon, upper left, hard enough to cast a soft-edged shadow |
+| 3 | a lone empty armchair — the therapy category's most-used stock image, and it reads melancholy | `DEFAULT_SETTING`, which every unmapped specialty fell through to | furniture is never the subject; "no empty armchairs" and "no couches" are explicit exclusions |
+| 4 | a European room: panel radiator, tilt-turn window | nothing said otherwise | "An American interior: no wall-mounted panel radiators, no tilt-turn windows, no European fittings" |
+
+The master art direction, the palette rule and the hero brief are the owner's words. **One positional
+change, no editorial one:** the master's own exclusion sentence is held in its own constant so it can be
+assembled LAST — after the slot brief and the palette — where a long instruction is least likely to be
+dropped. Every word survives, in its own order.
+
+**The left-third rule is untouched, word for word.** It is the one part of the pack that worked first time,
+and a test asserts the exact sentence still reaches the model.
+
+Four tests now hold the four defects so a future session cannot reintroduce them by rewriting the pack:
+no grading language, one directional light with no regional register left to contradict it, no lone
+armchair and the stock vocabulary excluded, and the American interior stated. `PROMPT_EXCLUSIONS` is now
+DERIVED from the sentence the model actually receives, so the guard and the prompt cannot drift apart.
+
+`SlotConfig.subject` and `.composition` collapsed into one `brief`, because the hero brief is a single
+piece of prose and splitting it would have reordered the owner's words. The six disabled slots carry their
+old two sentences joined; **rewriting them against the new master is step 8's, not this revision's.**
+
+⚠ `IMAGE_PROMPT_VERSION` is bumped 1 → 2. The prompt's output changed, so every stored photograph is now
+correctly stale and the gradient returns until something regenerates.
+
+#### Iterating cheaply
+
+`--quality` renders at something other than the slot's configured quality. **For art direction only** — no
+route reads it, and `high` is still what ships.
+
+```
+npx tsx scripts/brand-image/generate-one.ts --kit <brand_kit_id> --quality medium
+```
+
+1536x1024 at `medium` is 6.3c against 25c at `high`, and it is more than enough to judge exposure, light
+direction and colour placement. Three medium tries cost less than one high one, and a test says so.
+
+The reserved AND recorded cost follow the **effective** quality — a medium try books 7c and records 7c. A
+ceiling fed the wrong price is not a ceiling.
+
+⚠ **A second try at the same fingerprint returns `already_ready`.** Quality is deliberately not part of
+`image_fingerprint` — it is a spend decision, not a brand one — so a successful try occupies the slot. To
+iterate again on the same brand, clear the row first:
+
+```sql
+delete from brand_images where brand_kit_id = '<brand_kit_id>' and slot = 'hero';
+```
+
+That is the intended friction, not a bug: outside this art-direction loop, refusing to re-spend on an image
+that already exists is exactly what should happen.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because

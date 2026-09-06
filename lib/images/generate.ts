@@ -6,7 +6,8 @@ import {
   IMAGE_MODEL,
   IMAGE_SLOTS,
   MAX_ATTEMPTS,
-  slotPriceCents,
+  priceCents,
+  type ImageQuality,
   type ImageSlot,
 } from "@/lib/images/config";
 import {
@@ -96,6 +97,18 @@ export type GenerateInput = {
   userId: string;
   /** True only when she asked for a NEW image of a slot she already has. */
   isRegeneration: boolean;
+  /**
+   * Renders at a quality other than the slot's configured one. FOR ITERATING
+   * ON ART DIRECTION ONLY: judging exposure, light direction and colour
+   * placement does not need `high`, and 1536x1024 at `medium` is 6.3c against
+   * 25c. Three medium tries cost less than one high one.
+   *
+   * The route never passes this — only `scripts/brand-image/generate-one.ts`
+   * does, from `--quality`. The reserved and recorded cost follow the
+   * EFFECTIVE quality, so a cheap try books a cheap reservation and records a
+   * cheap `cost_cents`; a ceiling fed the wrong price is not a ceiling.
+   */
+  qualityOverride?: ImageQuality;
 };
 
 type Classified = {
@@ -123,6 +136,7 @@ function classify(err: unknown): Classified {
 export async function generateBrandImage(input: GenerateInput): Promise<GenerateOutcome> {
   const { supabase, client, brandKitId, slot, fingerprintInput, userId, isRegeneration } = input;
   const config = IMAGE_SLOTS[slot];
+  const quality = input.qualityOverride ?? config.quality;
 
   // A slot that is off cannot be claimed, so it cannot be spent on by
   // accident. Six of the seven are off in this session, deliberately.
@@ -141,7 +155,8 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
   }
 
   const imageFingerprint = computeImageFingerprint(fingerprintInput);
-  const costCents = slotPriceCents(slot);
+  // Priced on the EFFECTIVE quality, never on the configured one.
+  const costCents = priceCents(IMAGE_MODEL, quality, config.size);
 
   const claim = await claimBrandImage(
     supabase,
@@ -177,7 +192,7 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
       generated = await client.generate({
         prompt,
         size: config.size,
-        quality: config.quality,
+        quality,
         user: userId,
       });
       break;
@@ -218,7 +233,7 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
     generated.bytes.byteLength,
     costCents,
     IMAGE_MODEL,
-    config.quality,
+    quality,
     config.size
   );
   if (!settled.ok) {
