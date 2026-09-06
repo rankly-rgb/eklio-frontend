@@ -42,6 +42,14 @@ export type AnalyticsEvent =
   | "extra_instructions_used"
   | "site_spec_reset"
   | "checklist_item_completed"
+  /* ── Check (LOT 7) ────────────────────────────────────────────────────
+   * `check_scanned` and `check_rewritten` carry RULE IDS and counts only —
+   * six fixed strings out of `ethics_rules`. Never the text she pasted,
+   * never an excerpt of it, not even truncated. That is the whole rule for
+   * this surface and it is kept here as well as in the routes.
+   */
+  | "check_scanned"
+  | "check_rewritten"
   | "unlock_opened"
   | "email_sent"
   /* ── Positionnement USP (§2.5) ────────────────────────────────────────

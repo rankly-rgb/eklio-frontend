@@ -53,10 +53,13 @@ export function AppHeader({
       href: brandKitId ? "/app/content" : null,
       active: pathname.startsWith("/app/content"),
     },
-    // /app/check doesn't exist yet -- it's LOT 7, a later session. The nav
-    // slot is real now (per this lot's chrome spec); it stays inert until
-    // that route ships, same treatment as "no kit yet" above.
-    { label: "Check", href: null, active: pathname.startsWith("/app/check") },
+    // LOT 7 shipped: the slot is live. It still needs a kit, like Content --
+    // Check reads the six rules against her copy inside the paid space.
+    {
+      label: "Check",
+      href: brandKitId ? "/app/check" : null,
+      active: pathname.startsWith("/app/check"),
+    },
   ];
 
   return (
