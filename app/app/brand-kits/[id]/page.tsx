@@ -8,6 +8,7 @@ import { readSiteCatalog } from "@/lib/site/catalog";
 import { builderOf } from "@/lib/site/output";
 import { readCatalog } from "@/lib/catalog/read";
 import { loadLaunchProgress } from "@/lib/data/checklist";
+import { bookingUrlFrom, practiceDetailsFrom } from "@/lib/kit/launch-context";
 import { loadAssetStats } from "@/lib/data/asset-stats";
 import { loadImageContext } from "@/lib/images/context";
 import { computeImageFingerprint } from "@/lib/images/fingerprint";
@@ -71,16 +72,10 @@ export default async function BrandKitPage({
   // Same fields `lib/kit/asset-context.ts` reads from the site spec for the
   // asset renderers — reused here rather than re-fetched, since this page
   // already loaded `siteSpec` for the "Your site" card.
-  const practiceDetails: PracticeDetails | null = siteSpec.ok && siteSpec.data.spec.practice_details
-    ? {
-        practitionerName: siteSpec.data.spec.practice_details.practitioner_name ?? null,
-        licenseLabel: siteSpec.data.spec.practice_details.license_label ?? null,
-        licenseNumber: siteSpec.data.spec.practice_details.license_number ?? null,
-        city: siteSpec.data.spec.practice_details.city ?? null,
-        state: siteSpec.data.spec.practice_details.state ?? null,
-      }
-    : null;
-  const bookingUrl = siteSpec.ok ? siteSpec.data.spec.hero.cta_target_url || null : null;
+  const practiceDetails: PracticeDetails | null = practiceDetailsFrom(
+    siteSpec.ok ? siteSpec.data.spec : null
+  );
+  const bookingUrl = bookingUrlFrom(siteSpec.ok ? siteSpec.data.spec : null);
 
   const siteBuilderLabel =
     siteSpec.ok && siteCatalog

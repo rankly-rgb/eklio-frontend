@@ -42,7 +42,12 @@ export function ChecklistCard({
       </MonoLabel>
 
       <div className="mt-4">
-        <LaunchChecklist brandKitId={brandKit.row.id} initial={progress} context={context} />
+        <LaunchChecklist
+          brandKitId={brandKit.row.id}
+          initial={progress}
+          context={context}
+          guidedHref="/app/launch"
+        />
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { ChevronGlyph } from "@/components/ui/glyphs";
 import { ButtonLink } from "@/components/ui/button";
@@ -42,10 +43,13 @@ export function LaunchChecklist({
   brandKitId,
   initial,
   context,
+  guidedHref,
 }: {
   brandKitId: string;
   initial: LaunchProgress;
   context: LaunchStepContext;
+  /** Where the one-screen-per-step version of this list lives, if it is offered here. */
+  guidedHref?: string;
 }) {
   const [items, setItems] = useState(initial.items);
   const [expanded, setExpanded] = useState<LaunchStepKey | null>(null);
@@ -153,7 +157,7 @@ export function LaunchChecklist({
                     </p>
                   ) : null}
 
-                  <StepDetail step={item.key} context={context} />
+                  <LaunchStepDetail step={item.key} context={context} />
 
                   <div className="flex items-center gap-5">
                     {item.status === "done" ? (
@@ -202,6 +206,21 @@ export function LaunchChecklist({
         })}
       </ul>
 
+      {guidedHref ? (
+        /*
+         * The same seven steps, one screen at a time. The accordion is for
+         * someone glancing at where she is; the guided flow is for someone
+         * sitting down to do one. Same rows, same writes, same RPC -- only
+         * the amount of room differs.
+         */
+        <Link
+          href={guidedHref}
+          className="self-start text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+        >
+          Take them one at a time
+        </Link>
+      ) : null}
+
       {error ? (
         <p role="alert" className="border-l border-accent pl-3 text-helper leading-prose text-ink">
           {error}
@@ -227,7 +246,13 @@ function StatusDot({ status }: { status: LaunchStep["status"] }) {
  * an honest "not yet" where it doesn't. Never generic advice standing in
  * for a missing field.
  */
-function StepDetail({ step, context }: { step: LaunchStepKey; context: LaunchStepContext }) {
+export function LaunchStepDetail({
+  step,
+  context,
+}: {
+  step: LaunchStepKey;
+  context: LaunchStepContext;
+}) {
   switch (step) {
     case "site_setup":
       return (
