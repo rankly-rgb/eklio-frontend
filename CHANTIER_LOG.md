@@ -771,6 +771,39 @@ brief's "plain sunlit wall" is composition, not a register, and stays word for w
 
 `IMAGE_PROMPT_VERSION` 3 → 4.
 
+### 2026-09-06 — secondary gets its own job back
+
+The owner's own correction to the palette rule. The first wording read
+"{secondary} as one small accent", which put secondary and accent in competition for the same job while
+secondary's real one went unsaid. In the six-role system secondary is "supporting headings and surfaces"
+and accent is "small marks only", so photographically they are a MATERIAL and ONE SMALL OBJECT — different
+amounts of the frame, which is the whole point of having six roles.
+
+| role | asks for |
+| --- | --- |
+| primary | once, on a single soft furnishing or ceramic |
+| **secondary** | **a supporting material presence — a wood tone, a woven textile, a second ceramic — never the dominant surface** |
+| accent | on one small detail only — a book spine, a glaze, a stem — never a surface |
+| paper + light_neutral | the wall and the daylight, dominating the frame |
+| dark_neutral | only in shadow |
+
+The accent clause is unchanged. A test now asserts the two clauses ask for different things and that
+"as one small accent" appears nowhere.
+
+`IMAGE_PROMPT_VERSION` 4 → 5.
+
+#### A standing rule for the rest of this chantier
+
+**Any example printed for the owner comes from the production path, or is labelled a fixture in the same
+breath.** Earned the hard way: a direction was nearly judged, and money nearly spent, on a prompt printed
+from a throwaway harness carrying test-fixture colours.
+
+The print harness now goes through `loadImageContext` and `buildImagePrompt` — the production loader and
+the production builder — with only the Supabase round trip stubbed, and stubbed with the row read live
+from `site_specs` immediately before printing. It echoes the palette and specialty as they come OUT of
+`loadImageContext`, so the mapping step that could mis-wire a role is visible in the output rather than
+assumed.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because

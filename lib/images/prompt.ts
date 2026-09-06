@@ -81,17 +81,24 @@ const MASTER_EXCLUSIONS =
  * ("colour grade the image toward this palette") tinted the entire frame
  * brown and buried her paper white. Colour belongs to things in the room.
  *
- * Six roles, each with a different amount of the frame. `accent` is the
- * six-role system's "small marks only", and its photographic equivalent is
- * ONE SMALL OBJECT, never a surface — a book spine, a glaze, a stem. It
- * reaching the prompt is also what puts it back in the fingerprint: the
- * invariant in `fingerprint.ts` decides that, not a preference.
+ * Six roles, each with a different AMOUNT of the frame, and no two asking for
+ * the same amount. That is the correction the first wording missed: it read
+ * "{secondary} as one small accent", which made secondary and accent compete
+ * for the same job while secondary's real one — a second material presence —
+ * went unsaid. In the six-role system secondary is "supporting headings and
+ * surfaces" and accent is "small marks only", so photographically secondary
+ * is a MATERIAL (a wood tone, a woven textile, a second ceramic) and accent
+ * is ONE SMALL OBJECT (a book spine, a glaze, a stem).
+ *
+ * `accent` reaching the prompt is also what puts it back in the fingerprint:
+ * the invariant in `fingerprint.ts` decides that, not a preference.
  */
 function paletteRule(palette: ImageFingerprintInput["palette"]): string {
   return (
     "The palette appears in the objects and never as a grade over the image: " +
     `${palette.primary} once, on a single soft furnishing or ceramic; ` +
-    `${palette.secondary} as one small accent; ` +
+    `${palette.secondary} as a supporting material presence — a wood tone, a woven textile, a second ` +
+    `ceramic — never the dominant surface; ` +
     `${palette.accent} on one small detail only — a book spine, a glaze, a stem — never a surface; ` +
     `${palette.paper} and ${palette.light_neutral} are the wall and the daylight and dominate the frame; ` +
     `${palette.dark_neutral} only in shadow. Do not tint the image.`

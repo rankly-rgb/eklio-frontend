@@ -78,6 +78,23 @@ describe("le prompt porte la palette du kit, et rien d'autre", () => {
     expect(prompt).not.toContain(hex);
   });
 
+  it("secondary et accent ne demandent PAS la même chose", () => {
+    /*
+     * La correction que le premier libellé ratait : « {secondary} as one small
+     * accent » mettait secondary et accent en concurrence sur le même rôle,
+     * pendant que le vrai travail de secondary -- une seconde présence
+     * matérielle -- restait non dit. Dans le système à six rôles, secondary
+     * est « titres et surfaces de soutien » et accent « petites marques
+     * seulement » : photographiquement, une MATIÈRE contre UN petit objet.
+     */
+    expect(prompt).toContain("as a supporting material presence");
+    expect(prompt).toContain("never the dominant surface");
+    expect(prompt).toContain("on one small detail only");
+    expect(prompt).toContain("never a surface");
+    // Aucun des deux ne demande « one small accent » : ce libellé est parti.
+    expect(prompt).not.toContain("as one small accent");
+  });
+
   it("chaque rôle est placé à SA place, pas à celle d'un autre", () => {
     /*
      * Une inversion de rôles -- secondary reçoit accent, par exemple -- rend
@@ -85,7 +102,7 @@ describe("le prompt porte la palette du kit, et rien d'autre", () => {
      * contre la phrase qui la gouverne.
      */
     expect(prompt).toContain(`${REAL_KIT.primary} once, on a single soft furnishing or ceramic`);
-    expect(prompt).toContain(`${REAL_KIT.secondary} as one small accent`);
+    expect(prompt).toContain(`${REAL_KIT.secondary} as a supporting material presence`);
     expect(prompt).toContain(`${REAL_KIT.accent} on one small detail only`);
     expect(prompt).toContain(
       `${REAL_KIT.paper} and ${REAL_KIT.light_neutral} are the wall and the daylight`
