@@ -951,11 +951,21 @@ only the ones whose brief changed. After this bump the hero and the two approved
 `current` and the kit renders gradients for them until they are re-run. Re-running the three approved
 slots at `medium` is 7c + 7c + 7c = **21c** on top of the four being fixed (5+5+5+5 = 20c).
 
-**The proper fix is a per-slot prompt version**, so editing one brief invalidates one slot. It was NOT done
-here: it changes the shape of the fingerprint (one per kit today) and the signature of
-`get_brand_images(kit, fingerprint)`, and the fingerprint is load-bearing enough that it is the owner's
-call, not a change to make while executing a bounded correction. Recorded here as the obvious next
-decision, because this iteration loop will keep recurring.
+The cost consequence above stands and is accepted. The structural fix was proposed and **declined** — see
+the deferred decision below, which is the ruling on it.
+
+#### DEFERRED DECISION — per-slot image fingerprint
+
+> Per-slot image fingerprint — deferred by the owner on 5 September. Today one per-kit fingerprint means
+> any prompt edit invalidates all seven slots. The proposed fix was to hash the exact prompt string plus
+> model and size, which makes invalidation exact per slot and removes IMAGE_PROMPT_VERSION entirely. Not
+> built: it reshapes get_brand_images and every caller, and at current volume the waste is cents. Revisit
+> when the kit count makes a full sweep expensive.
+
+**To sessions 4 and 5: this is a decision that has already been taken, not an open finding.** Do not start
+this change on your own. No prompt hashing, no reshaping of `computeImageFingerprint`, no touching
+`get_brand_images`. `IMAGE_PROMPT_VERSION` stays at 7 and stays the invalidation lever. The condition for
+revisiting it is named in the ruling — kit count, not annoyance — and revisiting is the owner's call.
 
 ### FIRST, A SESSION TO RUN IT AS
 
