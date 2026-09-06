@@ -8,6 +8,7 @@ import {
   objectRegisterFor,
 } from "@/lib/images/specialties";
 import { IMAGE_SLOTS, IMAGE_SLOT_KEYS } from "@/lib/images/config";
+import { buildImagePrompt } from "@/lib/images/prompt";
 
 /*
  * ── LA COUVERTURE, ET POURQUOI CE TEST EXISTE ───────────────────────────
@@ -198,25 +199,72 @@ describe("la composition suit l'endroit où va le texte", () => {
   });
 
   it.each(["post_bg_1", "post_bg_2", "post_bg_3"] as const)(
-    "« %s » garde ses deux tiers SUPÉRIEURS calmes et pose l'objet en bas",
+    "« %s » pose une CONTRAINTE GÉOMÉTRIQUE, pas une préférence",
     (slot) => {
+      /*
+       * « At or below the lower third » a produit des objets qui montaient
+       * jusqu'au milieu du cadre. Une intention se négocie ; une géométrie,
+       * non. Les trois phrases ci-dessous se recoupent volontairement : le
+       * quart bas dit où est le sujet, la médiane dit ce qu'il ne franchit
+       * pas, et la moitié haute dit ce qui doit y être à la place.
+       */
       const brief = IMAGE_SLOTS[slot].brief;
-      expect(brief).toContain("The upper two thirds");
-      expect(brief).toContain("at or below the lower third");
+      expect(brief).toContain("occupies the bottom quarter of the frame");
+      expect(brief).toContain("nothing rises above the horizontal midline");
+      expect(brief).toContain("the entire upper half is");
+      expect(brief).toContain("so a headline can sit over it");
+      // Et plus aucune trace de la formulation qui n'a pas tenu.
+      expect(brief).not.toContain("at or below the lower third");
       expect(IMAGE_SLOTS[slot].size).toBe("1024x1024");
     }
   );
 
-  it("les trois fonds de post sont trois groupes d'objets DISTINCTS", () => {
-    // « Three distinct object groups, not three angles on one. »
+  it("les trois fonds de post sont trois SUJETS distincts", () => {
+    // « Three distinct object groups, not three angles on one. » Les trois
+    // premiers rendus étaient trois angles sur le même décor.
     const subjects = (["post_bg_1", "post_bg_2", "post_bg_3"] as const).map((slot) =>
-      IMAGE_SLOTS[slot].brief.slice(IMAGE_SLOTS[slot].brief.indexOf("lower third:"))
+      IMAGE_SLOTS[slot].brief.slice(IMAGE_SLOTS[slot].brief.indexOf("The subject:"))
     );
     expect(new Set(subjects).size).toBe(3);
+    for (const subject of subjects) expect(subject).toContain("Nothing else in frame");
   });
 
-  it("texture est un fond, pas une scène", () => {
-    expect(IMAGE_SLOTS.texture.brief).toContain("No object, no horizon, no room");
-    expect(IMAGE_SLOTS.texture.brief).toContain("a ground, not a scene");
+  it.each(["post_bg_1", "post_bg_2", "post_bg_3"] as const)(
+    "« %s » refuse NOMMÉMENT le mobilier des autres photographies",
+    (slot) => {
+      // Nommer trois sujets différents n'a pas suffi : le mobilier du héros
+      // revenait quand même. Il fallait le refuser par son nom.
+      const exclusions = IMAGE_SLOTS[slot].slotExclusions ?? "";
+      for (const banned of ["seating", "cushion", "side table", "dried grasses"]) {
+        expect(exclusions).toContain(banned);
+      }
+    }
+  );
+
+  it("texture est du tissu et rien d'autre", () => {
+    // Il a bel et bien généré -- status ready, une tentative -- et il a rendu
+    // une pièce. Le brief ne tenait pas, donc il reçoit le même traitement :
+    // une contrainte dure, plus une exclusion nommée pour cet emplacement.
+    expect(IMAGE_SLOTS.texture.brief).toContain("filled edge to edge by folded and draped cloth alone");
+    expect(IMAGE_SLOTS.texture.brief).toContain("The cloth IS the frame");
+    const exclusions = IMAGE_SLOTS.texture.slotExclusions ?? "";
+    for (const banned of ["no room", "no wall", "no floor", "no horizon line"]) {
+      expect(exclusions).toContain(banned);
+    }
+  });
+
+  it("les exclusions d'emplacement atteignent bien le prompt, en dernier", () => {
+    const prompt = buildImagePrompt("post_bg_1", {
+      toneKeywords: ["calm", "plain", "warm"],
+      palette: {
+        primary: "#B4674A", secondary: "#C08A3E", accent: "#6E3320",
+        paper: "#FAF6EE", light_neutral: "#F4EEE3", dark_neutral: "#2B2A27",
+      },
+      specialty: "self_esteem",
+    });
+    expect(prompt).toContain("no side table");
+    expect(prompt.indexOf("Strictly excluded:")).toBeLessThan(prompt.indexOf("In this frame specifically:"));
+    // Un emplacement sans exclusion propre n'en gagne pas une vide.
+    expect(prompt.trim()).toBe(prompt);
   });
 });

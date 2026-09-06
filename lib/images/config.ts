@@ -24,7 +24,7 @@ export const IMAGE_MODEL = "gpt-image-1" as const;
  * Deliberately separate from `RENDERER_VERSION`, which describes satori and
  * resvg and has nothing to do with photography.
  */
-export const IMAGE_PROMPT_VERSION = 6;
+export const IMAGE_PROMPT_VERSION = 7;
 
 export type ImageQuality = "low" | "medium" | "high";
 export type ImageSize = "1024x1024" | "1536x1024" | "1024x1536";
@@ -55,6 +55,19 @@ export type SlotConfig = {
    * object register. A brief without it does not vary by specialty.
    */
   brief: string;
+  /**
+   * Exclusions that apply to THIS SLOT ONLY, appended after the master's own
+   * exclusion sentence.
+   *
+   * The master's list is what no Eklio photograph may ever contain. This is
+   * different: it is what belongs to OTHER slots. The three post backgrounds
+   * kept rendering the hero's set-up from three angles — seating on the left,
+   * a side table on the right, a vase of dried grasses — which on an
+   * Instagram grid reads as a template rather than three photographs. Naming
+   * three different subjects was not enough on its own; the furniture had to
+   * be refused by name.
+   */
+  slotExclusions?: string;
 };
 
 /*
@@ -150,35 +163,52 @@ export const IMAGE_SLOTS: Record<ImageSlot, SlotConfig> = {
     quality: "medium",
     enabled: true,
     brief:
-      "Square composition. The upper two thirds are plain wall, unbroken and even, so a headline " +
-      "can sit over them. The subject sits low, at or below the lower third: a stoneware bowl and a " +
-      "folded cloth on a wooden ledge, cropped by the bottom edge.",
+      "Square composition. The subject occupies the bottom quarter of the frame and is cropped by " +
+      "the bottom edge; nothing rises above the horizontal midline; the entire upper half is plain " +
+      "wall, so a headline can sit over it. The subject: two cloth-bound books stacked flat and a " +
+      "stoneware bowl on a wooden ledge. Nothing else in frame.",
+    slotExclusions:
+      "In this frame specifically: no seating of any kind, no cushion, no side table, no dried " +
+      "grasses. Those belong to other photographs in this set.",
   },
   post_bg_2: {
     size: "1024x1024",
     quality: "medium",
     enabled: true,
     brief:
-      "Square composition. The upper two thirds fall away into soft-focus depth, uninterrupted, so " +
-      "a headline can sit over them. The subject sits low, at or below the lower third: the rim of " +
-      "a woven basket and one trailing plant, cropped by the bottom edge.",
+      "Square composition. The subject occupies the bottom quarter of the frame and is cropped by " +
+      "the bottom edge; nothing rises above the horizontal midline; the entire upper half is wall " +
+      "falling away into soft-focus depth, so a headline can sit over it. The subject: the rim of a " +
+      "woven basket and one trailing plant, seen close. Nothing else in frame.",
+    slotExclusions:
+      "In this frame specifically: no seating of any kind, no cushion, no side table, no dried " +
+      "grasses. Those belong to other photographs in this set.",
   },
   post_bg_3: {
     size: "1024x1024",
     quality: "medium",
     enabled: true,
     brief:
-      "Square composition. The upper two thirds are plain wall, unbroken and even, so a headline " +
-      "can sit over them. The subject sits low, at or below the lower third: two cloth-bound books " +
-      "stacked flat beside a small ceramic dish on a wooden surface, cropped by the bottom edge.",
+      "Square composition. The subject occupies the bottom quarter of the frame and is cropped by " +
+      "the bottom edge; nothing rises above the horizontal midline; the entire upper half is plain " +
+      "wall, so a headline can sit over it. The subject: a folded linen cloth over the edge of a " +
+      "wooden surface beside a single shallow ceramic dish. Nothing else in frame.",
+    slotExclusions:
+      "In this frame specifically: no seating of any kind, no cushion, no side table, no dried " +
+      "grasses. Those belong to other photographs in this set.",
   },
   texture: {
     size: "1024x1024",
     quality: "medium",
     enabled: true,
     brief:
-      "Square composition, filled edge to edge: folded and draped cloth, the folds running " +
-      "diagonally across the frame. No object, no horizon, no room — a ground, not a scene.",
+      "Square composition, filled edge to edge by folded and draped cloth alone, seen close enough " +
+      "that the weave is visible and the folds run diagonally across the frame. The cloth IS the " +
+      "frame: it reaches every edge and continues past all four of them.",
+    slotExclusions:
+      "In this frame specifically: no room, no wall, no floor, no ceiling, no furniture, no " +
+      "objects, no horizon line, no depth beyond the cloth itself. This is a surface photographed " +
+      "flat-on, not a scene that contains a surface.",
   },
 };
 

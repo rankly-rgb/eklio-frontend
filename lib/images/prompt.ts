@@ -166,6 +166,10 @@ export function buildImagePrompt(
     paletteRule(input.palette),
     `Mood: ${moodFrom(input.toneKeywords)}.`,
     MASTER_EXCLUSIONS,
+    // Slot exclusions land after the master's, still last in the prompt. The
+    // master's list is what NO Eklio photograph may contain; this one is what
+    // belongs to a different slot in the same set.
+    IMAGE_SLOTS[slot].slotExclusions ?? "",
   ]
     .join(" ")
     .replace(/\s+/g, " ")

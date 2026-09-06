@@ -909,6 +909,54 @@ At production quality the same kit is 59c recorded, $0.544 actual.
 
 `generate-one.ts` still refuses more than one slot per run, deliberately — seven invocations, one per slot.
 
+### 2026-09-06 — the three squares, and the texture that rendered a room
+
+Bounded to the square briefs. The master, the palette rule, the registers, the hero and the ambients are
+untouched — the set already reads as one shoot, and that test passes.
+
+#### `texture` DID generate
+
+Answering the question directly, from `brand_images`: `status = ready`, one attempt, 98,816 bytes, no
+failure reason, same fingerprint as the other six. It was neither refused nor failed. **It rendered a room
+while its brief said "no room"** — so per the conditional instruction it gets the same treatment as the
+three squares. That is why four briefs changed here, not three.
+
+#### Two corrections
+
+**1. Three angles on one set-up became three subjects.** All three squares had rendered seating on the
+left and a side table on the right with a vase of dried grasses — the hero's set-up, three times. On a grid
+that reads as a template. Each now names its own subject and ends "Nothing else in frame".
+
+Naming different subjects was **not enough on its own**, so `SlotConfig` gains `slotExclusions`, appended
+after the master's exclusion sentence: *"In this frame specifically: no seating of any kind, no cushion, no
+side table, no dried grasses. Those belong to other photographs in this set."* The distinction is worth
+keeping straight — the master's list is what NO Eklio photograph may contain; a slot exclusion is what
+belongs to a DIFFERENT slot in the same set.
+
+**2. "At or below the lower third" was an intention; it is now a geometry.** It produced objects reaching
+the middle of the frame. Replaced by three overlapping statements that leave nothing to negotiate: the
+subject occupies the **bottom quarter** and is cropped by the bottom edge; **nothing rises above the
+horizontal midline**; the **entire upper half** is plain wall or soft-focus depth. A test asserts all three
+are present and that the old phrasing is gone.
+
+`texture` gets the same shape: the cloth IS the frame, reaching every edge and continuing past all four,
+plus a slot exclusion refusing room, wall, floor, ceiling, furniture, objects and horizon by name.
+
+`IMAGE_PROMPT_VERSION` 6 → 7.
+
+#### ⚠ THE BUMP INVALIDATES ALL SEVEN, NOT FOUR
+
+`IMAGE_PROMPT_VERSION` is part of the ONE per-kit fingerprint, so bumping it makes every slot stale, not
+only the ones whose brief changed. After this bump the hero and the two approved ambients stop being
+`current` and the kit renders gradients for them until they are re-run. Re-running the three approved
+slots at `medium` is 7c + 7c + 7c = **21c** on top of the four being fixed (5+5+5+5 = 20c).
+
+**The proper fix is a per-slot prompt version**, so editing one brief invalidates one slot. It was NOT done
+here: it changes the shape of the fingerprint (one per kit today) and the signature of
+`get_brand_images(kit, fingerprint)`, and the fingerprint is load-bearing enough that it is the owner's
+call, not a change to make while executing a bounded correction. Recorded here as the obvious next
+decision, because this iteration loop will keep recurring.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because
