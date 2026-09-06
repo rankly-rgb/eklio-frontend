@@ -1091,6 +1091,100 @@ nothing in these three lots can cause an image to be made. `lib/images` was not 
 - **The per-slot image fingerprint was not started**, per the owner's deferred decision recorded above.
 - **`monthly_presence_content` and its two functions were not dropped**, see FINDINGS.md.
 
+## 2026-09-06 — Session 5: steps 10, 12, 14, 15, and two rulings. The chantier closes.
+
+### The two rulings, first
+
+**Ruling 1 — the month is unified.** The home screen counted
+`monthly_presence_content` through `calendar_summary` while `/app/content` rendered `content_items`. The
+owner was right that moving it changes what the card counts, and right that that is the point: the old
+table holds zero rows, so the number home showed was not merely different, it was nothing. `loadHome` now
+reads `get_content_month`. `/api/calendar`, `/api/content/[id]/unlock`, `lib/data/calendar.ts` and the
+locked-tile machinery went with it — those belonged to content generated FOR her behind a subscription,
+and `content_items` are her own words, so nothing there is withheld.
+`app/__tests__/one-month-model.test.ts` fails if any file outside one named exemption touches the old
+model again.
+
+⚠ **The exemption is the monthly cron**, which still writes the old table and **has never been turned on**.
+It must not be enabled as it stands: it would write rows nothing reads. Porting it means deciding how a
+paid, generated item lives in a table she can edit — `content_items` has no `locked` state, deliberately.
+That is a product decision and it is named inside the test so it cannot be forgotten quietly.
+
+**Ruling 2 — the typegen trap is loud now.** `types/__tests__/generated-types-drift.test.ts` fails when the
+three hand-added tables, the eleven hand-added RPCs, or the four manual status unions go missing from
+`types/supabase.ts`. The warning is also at the top of the file itself, because whoever regenerates reads
+the file before the tests.
+
+### Step 10 — LOT 7: Check v2
+
+Built around the re-scan, because that is the step. A model asked to remove a guarantee produces a softer
+guarantee — "heals your anxiety" becomes "will help you heal your anxiety" — and a rewrite returned
+unchecked is worse than no rewrite, because she trusts it more for having come from Eklio. The model's
+output goes back through the same deterministic scanner, always; when it still trips a rule that is shown,
+not hidden.
+
+The money, in order: availability checked before the call, the credit consumed after and **only when the
+rewrite resolved**. A model that fails its one job is Eklio's cost. Text already clean never reaches the
+model at all, which is structural rather than a condition in a route.
+
+No score, no percentage, no "compliant" — a score is a number Eklio cannot compute and "compliant" is a
+legal conclusion about six regular expressions. Her text is never stored, anywhere, and only rule ids are
+tracked.
+
+`lib/check/review.ts` (free, deterministic) is split from `lib/check/rewrite.ts` (the model) because
+`max-duration.test.ts` correctly flagged the scan route and the page as generation surfaces through a
+transitive import of the Anthropic client.
+
+### Step 12 — LOT 9: uploads and the portrait path
+
+**The rule the whole lot exists to keep: a file she uploaded never carries a brand fingerprint and is never
+invalidated by a colour change.** `brand_assets` are derived from her tokens; her portrait is derived from
+nothing. `user_uploads` has no fingerprint column, no `superseded_at`, no `current` flag, and a migration
+guard rail fails if one appears — as does any function there referencing the derived-asset machinery.
+
+Bytes, not extensions: `lib/uploads/sniff.ts` reads signatures, and the claim survives only to tell her it
+disagreed. A PNG containing "<svg" stays a PNG. `lib/uploads/svg.ts` strips what makes an SVG a document
+and refuses entity declarations outright. Quotas live in the RPC, re-checked at record time.
+
+### Step 14 — LOT 11
+
+The route enumeration now covers everything this chantier added, and the roots list is itself checked
+against the real tree: a new directory under `app/api` or `app/app` fails the suite until someone says
+whether it is paid or gated otherwise, with a reason. Mobile: the month grid becomes a list below the
+medium breakpoint. Accessibility: the dialog closes on Escape and takes focus, every fetch surface
+announces its errors, and no glyph-only button ships without a name.
+
+### The measured cost of one kit's photography
+
+From `brand_images` on the live project, kit `45de0dac…`, seven slots, all `ready`, all `medium`:
+
+| | recorded | actual |
+|---|---|---|
+| The one real kit, at `--quality medium` | **41c** | **$0.357** |
+| The same seven at their configured production quality | **59c** | **$0.544** |
+
+`brand_image_daily_spend` for 2026-09-06 reads **86c actual, 0c reserved** — 41c of current slots plus
+45c of superseded runs from the art-direction iterations, and every reservation released cleanly.
+
+⚠ Both numbers are **Eklio's own price-table arithmetic**, not an invoice. Nothing in either repo reads
+OpenAI billing, and the price table carries its retrieval date (2026-09-05) precisely because it will go
+stale without anything noticing.
+
+### What the next chantier inherits
+
+Everything is in `FINDINGS.md`. The five that will actually cost someone time:
+
+1. **The monthly cron is parked on a dead table** and must not be switched on as it stands.
+2. **The image regeneration meter is the DIRECTIONS meter.** `plans.image_budget_cents` exists for
+   photographs, but `consume_generation_credit` is still what a direction regeneration and the Check
+   rewrite share. Someone should decide whether photographs get their own allowance.
+3. **There is no post-purchase refund primitive**, which is why every paid path is check-then-consume and
+   why a bounded one-credit race exists in two places.
+4. **The SVG sanitiser is a scrubber, not a parser**, and its acceptability rests on three other controls
+   named in its header. Do not relax one without reading it.
+5. **Two image systems still exist** — `direction_assets` dormant, `brand_images` live — and the per-slot
+   image fingerprint stays deferred by the owner until kit count makes a full sweep expensive.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because

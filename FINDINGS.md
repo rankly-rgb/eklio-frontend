@@ -3,12 +3,11 @@
 Things seen while working the post-purchase chantier that are outside its scope. Recorded, not fixed, not
 built around. One line each: what, where, why it matters.
 
-- `monthly_presence_content` is a fully-coded feature that was never turned on: the table exists with
-  owner-only RLS, `lib/data/calendar.ts` and `components/home/content-grid.tsx` are fully built against it,
-  and no RPC or route anywhere writes to it — it has zero rows in production. Matters because "This month,
-  in your brand" and the Content page have always been rendering an empty state that looks like a bug
-  rather than a deliberately-unlaunched pipeline; someone should decide when/how the generator gets built.
-  (`POST_PURCHASE_INVENTORY.md` §4 has the full detail.)
+- `monthly_presence_content` was a fully-coded feature that was never turned on. **Superseded 2026-09-06
+  by the entry below** — `lib/data/calendar.ts` and the old `content-grid.tsx` no longer exist, the home
+  screen and the calendar both read `content_items`, and the only remaining reference to the old table is
+  the monthly cron, which has still never been turned on. Kept here because the original observation is
+  what the decision rests on, not because it is still the current state.
 
 - Font acquisition for every rendered asset depends on undocumented Google Fonts behavior: which font-file
   format the CSS2 API's `@font-face src` points to is branched on User-Agent, and there is no published rule
@@ -177,3 +176,49 @@ built around. One line each: what, where, why it matters.
   requires deciding how a PAID, GENERATED item lives in a table she can edit — `content_items` has no
   `locked` state, deliberately. That decision belongs to whoever picks up Monthly Presence, and it is
   named in the exemption list inside the test so it cannot be forgotten quietly.
+---
+
+## Added in Session 5, and left open
+
+- **The Check rewrite can spend one extra credit under a race.** Availability is checked before the model
+  call (`brand_kit_has_generation_credit`) and the credit is consumed after, only when the rewrite actually
+  resolved. Two rewrites started at the same moment can both pass the advisory check and both consume. It
+  costs at most one extra credit and never money, and the alternative — consume-then-refund — is worse,
+  because `release_generation_credit` only refunds while `brand_kits.directions` is still null, which is
+  never true after delivery. The same shape already exists in the image pipeline and is recorded above.
+  Someone should decide whether a real post-purchase refund primitive is worth having; it would close both.
+
+- **The SVG sanitiser is a scrubber, not a parser.** `lib/uploads/svg.ts` strips scripts, event handlers,
+  embedded HTML, SMIL attribute setters, remote `@import` and external references with regular expressions,
+  and refuses entity declarations outright. That is weaker than parse-and-serialize, and the file says so.
+  What makes it acceptable today is three other controls: the file is served from a private bucket, through
+  a signed URL that expires in five minutes, and is never inlined into a page of ours or rendered as HTML.
+  **If any of those three change, this is not enough** and the honest fix is a real XML parser. Nobody
+  should relax one of the three without reading that file first.
+
+- **Check gates on the kit's entitlement, not on a per-use meter.** The scan is free and deterministic;
+  only the rewrite spends. A practitioner with an exhausted allowance can still scan as much as she likes,
+  which is deliberate — refusing to tell someone their copy breaks an advertising rule because they ran out
+  of credits would be the wrong product. Worth revisiting only if scanning ever becomes expensive.
+
+- **Uploads have a per-kit quota but no account-level one.** Twenty-four files and 50 MB per brand kit, in
+  `app_settings`. Someone with many kits multiplies that, and nothing today counts across kits. Fine at
+  current volume, and the ceilings move without a deploy; it becomes a real question if kits per account
+  ever stops being roughly one.
+
+- **`brand_images` and `direction_assets` are still two image systems.** Unchanged since Session 3:
+  `direction_assets` is free, pre-purchase, per direction, and dormant; `brand_images` is paid,
+  post-purchase, per slot, and live. Unifying them is a decision, not a refactor, and nobody has made it.
+
+- **The per-slot image fingerprint is deferred by the owner** (5 September, recorded in `CHANTIER_LOG.md`).
+  One per-kit fingerprint means any prompt edit invalidates all seven slots. Revisit when the kit count
+  makes a full sweep expensive — not before.
+
+- **A named `slotExclusion` in an image prompt is advisory, not enforced.** `post_bg_2` rendered the
+  cushion its own exclusion forbade by name. Only the master's hard constraints — no people, no faces, no
+  hands, no text — held across every generation made. Anything that needs a guaranteed absence must get it
+  from cropping, compositing or review, never from a sentence in a prompt.
+
+- **`texture` renders entirely in the primary colour**, against a palette rule that says paper and light
+  neutral dominate. Accepted as a ground rather than a scene. Type over it has to be light;
+  `solveScrimOpacity` measures rather than assumes and reports `meetsTarget: false` honestly.
