@@ -190,6 +190,31 @@ built around. One line each: what, where, why it matters.
 
 ## Added in Session 5, and left open
 
+### 1. The first thing the next chantier inherits: porting the monthly generator
+
+**Deciding how a paid, generated item lives in a table she can edit, when `content_items` deliberately has
+no `locked` state, is a chantier of its own.** That sentence is the reason this was not done here, and it is
+the whole of it.
+
+The state as of 2026-09-06: the home screen and the calendar both read `content_items`.
+`app/api/cron/monthly/route.ts` still writes `monthly_presence_content` through `ensure_month_skeleton`, and
+that table is read by nothing. **Its Vercel cron entry has been removed** — the owner's decision, taken
+because leaving a schedule armed in production that pays a model to write rows nobody reads is not
+something to carry to 1 October. The route still exists and still works; it is simply no longer scheduled,
+and re-adding four lines to `vercel.json` reverses that.
+
+So the inheritance is a decision, not a repair:
+
+- `content_items` is HER authoring space. Every row is writable by her, and there is no paywalled state —
+  that absence is deliberate, and it is what makes the publishing log trustworthy.
+- Monthly Presence delivers content generated FOR her, behind a subscription, which needs exactly the
+  state `content_items` refuses to have.
+- Reconciling those two is a product design question with a schema consequence, and neither half should be
+  bent quietly to fit the other.
+
+Until it is answered, Monthly Presence does not run. That is a smaller problem than it running into a void.
+
+
 - **The Check rewrite can spend one extra credit under a race.** Availability is checked before the model
   call (`brand_kit_has_generation_credit`) and the credit is consumed after, only when the rewrite actually
   resolved. Two rewrites started at the same moment can both pass the advisory check and both consume. It

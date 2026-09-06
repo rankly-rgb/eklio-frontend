@@ -1181,9 +1181,13 @@ stale without anything noticing.
 
 Everything is in `FINDINGS.md`. The five that will actually cost someone time:
 
-1. **The monthly cron is ALREADY SCHEDULED and writes a dead table.** `vercel.json` fires
-   `/api/cron/monthly` on the 1st of each month; nothing reads what it writes any more. Remove the entry or
-   port the generator — this is the first decision, not a later one.
+1. **Porting the monthly generator onto `content_items`.** The cron's `vercel.json` entry was REMOVED on
+   6 September by the owner's decision — it was scheduled for the 1st of each month and wrote a table
+   nothing reads any more, paying a model to do it. The route still exists and still works; it is simply no
+   longer scheduled. What is inherited is the decision behind it: deciding how a paid, generated item lives
+   in a table she can edit, when `content_items` deliberately has no `locked` state, is a chantier of its
+   own. Until it is answered, Monthly Presence does not run — which is a smaller problem than it running
+   into a void.
 2. **The image regeneration meter is the DIRECTIONS meter.** `plans.image_budget_cents` exists for
    photographs, but `consume_generation_credit` is still what a direction regeneration and the Check
    rewrite share. Someone should decide whether photographs get their own allowance.
