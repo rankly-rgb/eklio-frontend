@@ -1,146 +1,95 @@
-import Link from "next/link";
 import { MonoLabel } from "@/components/ui/mono-label";
-import { SectionHeader } from "@/components/ui/section-header";
 import { ButtonLink } from "@/components/ui/button";
 import { BrandPreview } from "@/components/preview/brand-preview";
-import { ChecklistCard } from "@/components/home/checklist-card";
+import { PracticeHeader } from "@/components/home/practice-header";
+import { BrandCanvas } from "@/components/home/brand-canvas";
+import { NextCard } from "@/components/home/next-card";
+import { WeekStrip } from "@/components/home/week-strip";
+import { LaunchRingCard } from "@/components/home/launch-ring-card";
 import { MonthlyPresenceCard } from "@/components/home/monthly-presence-card";
-import { ContentGrid } from "@/components/home/content-grid";
 import { SinceYouWereHere } from "@/components/home/since-you-were-here";
 import { RecentlyDeletedSection } from "@/components/home/recently-deleted-section";
 import { StartBriefButton } from "@/components/brief/start-brief-button";
-import { previewModelFromDirection } from "@/lib/brand/shapes";
 import { SAMPLE_PREVIEW } from "@/lib/brand/sample";
-import { greeting, type HomeModel } from "@/lib/data/home";
+import type { HomeCanvas, HomeModel } from "@/lib/data/home";
+import { greeting, homeAsOfDate, homeHeaderDate } from "@/lib/data/home";
 
 /*
- * L'accueil de rétention (Écran 7).
+ * The home screen — "your practice this week."
  *
- * AU PLUS UN NUDGE. La priorité vit dans `lib/data/home.ts` : ce qui gagne
- * s'affiche, et rien d'autre. Trois cartes qui réclament l'attention en même
- * temps, c'est un tableau de bord — exactement ce que ce produit n'est pas.
+ * Replaces the greeting-as-hero, the static "Your brand" thumbnail, and the
+ * always-on nudge banner with six pieces built from data that already
+ * exists: the header (date + practice name), her real site hero rendered at
+ * full fidelity with her generated photograph, one rule-chosen next action,
+ * a week glance, "since you were here" from her notifications, and the
+ * launch ring / Monthly Presence swap.
+ *
+ * A kit whose direction isn't chosen yet has none of that to render (no site,
+ * no checklist, no month), so it keeps the earlier, simpler prompt below --
+ * unchanged in spirit from before this rewrite, just under the same header.
  */
-export function HomeView({ home }: { home: HomeModel }) {
+export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas | null }) {
   const kit = home.brandKit;
-  const direction = kit?.selectedDirection ?? kit?.directions?.[0] ?? null;
 
   if (!home.projectId) return <EmptyHome />;
 
-  const model = direction
-    ? previewModelFromDirection(direction, kit?.practiceName ?? null)
-    : null;
+  const now = new Date();
+  const dateLabel = homeHeaderDate(now);
+  const practiceName = kit?.practiceName ?? "Your practice";
 
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)] max-md:pt-10">
-      <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
-        {greeting(home.firstName)}
-      </h1>
+      <PracticeHeader dateLabel={dateLabel} practiceName={practiceName} />
 
-      {home.nudge ? (
-        <div className="mt-4 flex items-center gap-8 rounded-card border border-line bg-card p-[20px_24px] max-md:flex-col max-md:items-stretch max-md:gap-4">
-          <p className="min-w-0 flex-1 text-body text-ink">
-            {home.nudge.message}
-          </p>
-          <ButtonLink
-            href={home.nudge.href}
-            variant="primary"
-            className="flex-none max-md:h-11 max-md:w-full"
-          >
-            {home.nudge.cta}
-          </ButtonLink>
-        </div>
-      ) : null}
-
-      <div className="mt-5 grid grid-cols-[2fr_1fr] gap-6 max-lg:grid-cols-1">
-        {model && kit ? (
-          <section
-            aria-labelledby="your-brand"
-            className="box-border flex flex-col rounded-card border border-line p-[22px_24px]"
-          >
-            <MonoLabel tracking="16" as="h2" id="your-brand">
-              Your brand
-            </MonoLabel>
-
-            <div className="mt-4">
-              <BrandPreview model={model} variant="thumbnail" shape="site" />
-            </div>
-
-            <div className="mt-5 flex items-end gap-6 max-md:flex-col max-md:items-start max-md:gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-display text-section font-medium tracking-card-title text-ink">
-                  {kit.practiceName ?? "Your practice"}
-                </p>
-                <MonoLabel tracking="16" className="mt-2 block">
-                  {direction?.name ?? "Not chosen yet"}
-                </MonoLabel>
-              </div>
-              <div className="flex flex-none items-center gap-4">
-                <ButtonLink
-                  href={`/app/brand-kits/${kit.row.id}`}
-                  variant="secondary"
-                >
-                  Open brand kit
-                </ButtonLink>
-                <Link
-                  href={`/app/briefs/${home.projectId}/review`}
-                  className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
-                >
-                  Edit your brief
-                </Link>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="box-border flex flex-col justify-between gap-6 rounded-card border border-line p-[22px_24px]">
-            <MonoLabel tracking="16" as="h2">
-              Your brand
-            </MonoLabel>
-            <p className="max-w-[420px] text-helper leading-prose text-ink-2">
-              Your brief is where it starts. About seven minutes, and you can
-              stop and come back at any step.
-            </p>
-            <ButtonLink
-              href={`/app/briefs/${home.projectId}`}
-              variant="secondary"
-              className="self-start"
-            >
-              Open my brief
-            </ButtonLink>
-          </section>
-        )}
-
-        {home.brandKit && home.checklist.total > 0 ? (
-          home.checklist.resolvedCount === home.checklist.total ? (
-            <MonthlyPresenceCard
-              month={home.month}
-              entitled={home.entitled}
-              monthLabel={home.monthLabel}
+      {kit && canvas ? (
+        <>
+          <div className="mt-6">
+            <BrandCanvas
+              practiceName={kit.practiceName}
+              tokens={canvas.tokens}
+              hero={canvas.hero}
+              photoUrl={canvas.heroPhotoUrl}
+              pages={canvas.pages}
             />
-          ) : (
-            <ChecklistCard brandKit={home.brandKit} progress={home.checklist} />
-          )
-        ) : null}
-      </div>
+          </div>
+          <MonoLabel tracking="14" tone="ink-3" className="mt-2.5 block">
+            {`${practiceName} · ${kit.selectedDirection?.name ?? ""} · AS OF ${homeAsOfDate(now)}`}
+          </MonoLabel>
 
-      <SinceYouWereHere activity={home.activity} />
+          <div className="mt-6 grid grid-cols-[2fr_1fr] gap-6 max-lg:grid-cols-1">
+            <div className="flex flex-col">
+              <NextCard
+                brandKitId={kit.row.id}
+                next={canvas.next}
+                primaryColor={canvas.tokens.primary}
+                ctaInk={canvas.tokens.cta_ink}
+              />
+              <WeekStrip days={canvas.week} primaryColor={canvas.tokens.primary} />
+            </div>
 
-      {kit && direction && home.month.items.length > 0 ? (
-        <section className="mt-7 flex flex-col gap-5">
-          <SectionHeader title="This month's content" mono={home.monthLabel} />
-          <ContentGrid
-            items={home.month.items.slice(0, 5)}
-            palette={direction.palette}
-            typography={direction.typography}
-            monthLabel={home.monthLabel}
-          />
-          <Link
-            href="/app/content"
-            className="self-start text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
-          >
-            See the whole month
-          </Link>
-        </section>
-      ) : null}
+            {home.checklist.total > 0 ? (
+              home.checklist.resolvedCount === home.checklist.total ? (
+                <div className="flex flex-col gap-5">
+                  <p className="text-ui leading-body text-ink">
+                    Your brand is live in seven places.
+                  </p>
+                  <MonthlyPresenceCard
+                    month={home.month}
+                    entitled={home.entitled}
+                    monthLabel={home.monthLabel}
+                  />
+                </div>
+              ) : (
+                <LaunchRingCard progress={home.checklist} />
+              )
+            ) : null}
+          </div>
+
+          <SinceYouWereHere rows={canvas.since} />
+        </>
+      ) : (
+        <StartingOut home={home} />
+      )}
 
       <RecentlyDeletedSection kits={home.deletedKits} />
     </main>
@@ -148,9 +97,60 @@ export function HomeView({ home }: { home: HomeModel }) {
 }
 
 /*
+ * The state before a canvas has anything to render: no kit yet, or a kit
+ * with no direction chosen. `home.nudge` only ever produces `resume-brief` or
+ * `choose-direction` here -- `site-ready` and `month-ready` both require a
+ * chosen direction, which is exactly the condition that routes past this
+ * branch.
+ */
+function StartingOut({ home }: { home: HomeModel }) {
+  const kit = home.brandKit;
+
+  if (kit?.directions && !kit.selectedDirection) {
+    return (
+      <div className="mt-6 flex items-center gap-8 rounded-card border border-line bg-card p-[20px_24px] max-md:flex-col max-md:items-stretch max-md:gap-4">
+        <p className="min-w-0 flex-1 text-body text-ink">
+          Three directions are ready. One of them sounds like you.
+        </p>
+        <ButtonLink
+          href={`/app/brand-kits/${kit.row.id}/reveal`}
+          variant="primary"
+          className="flex-none max-md:h-11 max-md:w-full"
+        >
+          See them
+        </ButtonLink>
+      </div>
+    );
+  }
+
+  return (
+    <section className="mt-6 box-border flex flex-col justify-between gap-6 rounded-card border border-line p-[22px_24px]">
+      <MonoLabel tracking="16" as="h2">
+        Your brand
+      </MonoLabel>
+      <p className="max-w-[420px] text-helper leading-prose text-ink-2">
+        Your brief is where it starts. About seven minutes, and you can stop and
+        come back at any step.
+      </p>
+      <ButtonLink
+        href={home.projectId ? `/app/briefs/${home.projectId}` : "/app"}
+        variant="secondary"
+        className="self-start"
+      >
+        Open my brief
+      </ButtonLink>
+    </section>
+  );
+}
+
+/*
  * L'état vide : une seule carte large, la maquette d'exemple, et le point
  * d'entrée. Elle MONTRE ce qu'on obtient plutôt que de le décrire — c'est le
  * même argument que le rail du brief, appliqué avant qu'il n'existe.
+ *
+ * Unchanged by this rewrite on purpose: items 1-7 describe "your practice
+ * this week", which presumes a practice. There is nothing here yet to make a
+ * week of, so the earlier greeting-led screen stays exactly as it was.
  */
 function EmptyHome() {
   return (

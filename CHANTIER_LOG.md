@@ -1198,6 +1198,70 @@ Everything is in `FINDINGS.md`. The five that will actually cost someone time:
 5. **Two image systems still exist** — `direction_assets` dormant, `brand_images` live — and the per-slot
    image fingerprint stays deferred by the owner until kit count makes a full sweep expensive.
 
+## 2026-09-06 — the home page, rewritten as "your practice this week"
+
+Never one of the twelve lots — the chrome around it changed five times across this chantier and its body
+never did. Composition only: no migration, no new table, no model call, `lib/images` untouched except
+through its already-exported read functions (`loadImageContext`, `computeImageFingerprint`,
+`getBrandImages`), called exactly the way the images route and the content item page already call them.
+
+### The six pieces
+
+**The header.** The greeting is no longer the largest thing on the screen. A mono date line, then the
+practice name at its own size. `greeting()` itself is untouched and still backs `GET /api/home` and its own
+test — only the page stopped rendering it as an h1.
+
+**The hero — `<BrandCanvas>`.** Full fidelity means the REAL site tokens (`SitePreviewTokens`, `--s-*`,
+`siteTokenVariables` — the same custom properties `components/site/mockup.tsx` sets) and the real hero copy
+from `site_specs`, not the five-role palette the pre-purchase preview uses. The sizes and color roles match
+`mockup-section.tsx`'s own `Hero()` — headline on `--s-dark`, subhead at 0.86 opacity, the button on
+`--s-primary` with `--s-cta-ink` — so it reads as the same site rather than a second opinion of it. The
+nav's page labels are her real, enabled pages (`preview.pages`), not invented placeholders. What the real
+site doesn't have is a photograph — that's the one thing this canvas adds, through `<PhotoSlot slot="hero">`,
+the seam everywhere else in the product already uses; a kit with no current photo renders the gradient, same
+as every other photo surface in this chantier.
+
+**"Next" — exactly one thing, chosen by rule.** `pickNextAction` in `lib/data/home.ts`: the first launch step
+that is neither done nor skipped (same order `/app/launch` itself walks), else the nearest content item
+scheduled within three days that she hasn't posted, else nothing. The launch-step branch reuses
+`LaunchStepDetail` and `LaunchStepActions` WHOLE — the same copy blocks and the same Mark done / Skip for
+now write `/app/launch/[stepKey]` uses, kept in the product's own ink-black button styling on purpose (it is
+the identical button; recoloring it only here would make the two disagree). The content-item branch is new
+to this card, and its one action — "Open it" — is styled in her primary colour with `cta_ink` for the label:
+`buttonClasses("primary")`'s shape with the two colors overridden inline.
+
+**The week strip.** Seven day letters, a dot under any day carrying a content item (read `scheduled_for` off
+the already-loaded month — the one line of composition the brief asked for), today underlined in her
+primary.
+
+**"Since you were here" — now from the notifications table.** At most three rows, a hairline between them,
+each a real link. The retired "Your site instructions are ready" top banner folds in as the first row, under
+the exact condition that used to raise it, so the hero no longer competes with a full-width bar above the
+fold. `content_ready`'s `payload.item_id` was checked before trusting it as a link target — see FINDINGS.md,
+it references a table this chantier made dead — so that kind routes to the calendar, never to the id.
+
+**The right column — the launch ring.** A read-only summary, deliberately not the interactive accordion:
+the one actionable step already lives in "Next," so this card is a glance at the rest, not a second place to
+click Mark done. When all seven are done or skipped, the ring is replaced by the quiet line and the Monthly
+Presence card takes its position, unchanged from before this rewrite.
+
+### Two more named exceptions to "her brand colour only inside canvases"
+
+The brief's own item 3 and item 4 explicitly asked for them: the Next card's stand-alone button on a content
+item, and the week strip's today-underline. Both commented at the call site. Recorded in FINDINGS.md so a
+later session reads them as ratified rather than drift to "fix."
+
+### What did not change
+
+`EmptyHome` (no project yet) is untouched — items 1-7 describe "your practice this week," which presumes a
+practice, and there is nothing to make a week of before one exists. The two intermediate states (a project
+with no kit yet; a kit with no direction chosen) keep the same prompt cards as before, under the new header.
+
+`loadHome`/`HomeModel` stay the shared aggregate `GET /api/home` and five other routes read for `brandKit`
+alone — the new site-spec/photo/notifications/next-action/week-strip composition lives in a SEPARATE
+function, `loadHomeCanvas`, called only from `/app` itself, so those five routes don't pay for what only the
+home screen needs. "The screen and the route cannot diverge" was about `loadHome`; this doesn't touch that.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because

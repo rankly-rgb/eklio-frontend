@@ -257,3 +257,38 @@ Until it is answered, Monthly Presence does not run. That is a smaller problem t
 - **`texture` renders entirely in the primary colour**, against a palette rule that says paper and light
   neutral dominate. Accepted as a ground rather than a scene. Type over it has to be light;
   `solveScrimOpacity` measures rather than assumes and reports `meetsTarget: false` honestly.
+
+---
+
+## Added while rewriting the home page ("your practice this week")
+
+- **A `content_ready` notification's `payload.item_id` still points at `monthly_presence_content`, a table
+  Session 5 made dead.** `sync_notifications` (backend, `20260905175222`) was written before `content_items`
+  existed; its `content_ready` insert selects from `monthly_presence_content`, which now has zero rows and
+  no live writer (the monthly cron that fed it lost its schedule the same session). A `content_ready`
+  notification can therefore only exist for a row synced before Session 5 — but if one does, treating
+  `item_id` as a `content_items` id would 404. The home page's "Since you were here" routes this kind to
+  `/app/content` rather than to the specific item, and `lib/data/__tests__/home-canvas.test.ts` asserts the
+  id is never used in the href. Not fixed at the source: that is the same backend migration the disarmed
+  cron lives in, and reshaping `sync_notifications` to read `content_items` is a small but real change to a
+  function this lot did not otherwise need to touch.
+
+- **`loadHomeActivity` / `HomeActivity` (`lib/data/brand-kit.ts`) are now unreferenced.** The home screen's
+  "Since you were here" moved from that asset/content-activity feed to the notifications table (per the
+  redesign). The function and its backing RPC (`home_recent_activity`) are untouched and still work; nothing
+  calls them any more. Left in place rather than deleted, since deleting an exported function from a file
+  this lot did not otherwise need to touch is a bigger footprint than the situation calls for — but it is
+  genuinely dead code now, and a future cleanup pass should know that before "helpfully" re-wiring it.
+
+- **The week strip undercounts near a month boundary.** `buildWeekStrip` (`lib/data/home.ts`) reads
+  `hasContent` off `home.month`, which is scoped to the calendar month containing today
+  (`get_content_month`). A week that spans two months can therefore miss a day or two that belong to the
+  adjacent month's own fetch. Documented in code rather than fixed with a second `get_content_month` call,
+  which this lot's brief did not ask for ("one line of code" — composition over what was already loaded).
+
+- **Two more named exceptions to "her brand colour only inside canvases."** The home redesign's own brief
+  explicitly asked for two: the Next card's stand-alone "Open it" button on a content item (her primary,
+  `--s-cta-ink` label), and the week strip's today-underline (her primary). Both are commented at the call
+  site and both are deliberate, not drift. The pre-existing "single primary button" framing undercounts
+  them by one; recorded here so a later session reads it as ratified, not as something to quietly "fix"
+  back to a neutral tone.
