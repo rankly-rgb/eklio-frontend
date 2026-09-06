@@ -6,7 +6,7 @@ import {
   type ImageResult,
 } from "@/lib/images/client";
 import { generateBrandImage } from "@/lib/images/generate";
-import { slotPriceCents } from "@/lib/images/config";
+import { IMAGE_SLOTS, slotPriceCents } from "@/lib/images/config";
 import type { ImageFingerprintInput } from "@/lib/images/fingerprint";
 
 /*
@@ -62,8 +62,8 @@ function stubSupabase(overrides: Record<string, unknown> = {}) {
     brand_images_path: PATH,
     brand_images_mark_ready: { ok: true, reason: "ready" },
     brand_images_mark_failed: { ok: true, reason: "failed" },
-    brand_kit_has_generation_credit: true,
-    consume_generation_credit: true,
+    reserve_image_regeneration: { ok: true, reason: "reserved" },
+    settle_image_regeneration: { ok: true, reason: "settled" },
     ...overrides,
   };
   const uploads: { path: string }[] = [];
@@ -122,29 +122,45 @@ describe("le chemin heureux", () => {
     expect(ready?.args.p_cost_cents).not.toBe(100);
   });
 
-  it("un slot initial ne consomme AUCUN crédit", async () => {
+  it("un slot initial ne coûte RIEN à son budget", async () => {
     const supabase = stubSupabase();
     await run(supabase, stubClient(ok));
-    expect(supabase.calls.map((c) => c.fn)).not.toContain("consume_generation_credit");
-    expect(supabase.calls.map((c) => c.fn)).not.toContain("brand_kit_has_generation_credit");
+    for (const fn of ["consume_generation_credit", "reserve_image_regeneration"]) {
+      expect(supabase.calls.map((c) => c.fn)).not.toContain(fn);
+    }
   });
 });
 
-describe("les crédits", () => {
-  it("une régénération vérifie AVANT et ne consomme qu'APRÈS l'enregistrement", async () => {
+describe("le budget de régénération", () => {
+  /*
+   * Une régénération tire sur `plans.image_budget_cents`, JAMAIS sur
+   * `consume_generation_credit` -- dont le compteur est l'échelle des
+   * DIRECTIONS et n'a rien à voir avec des pixels. Cf. FINDINGS.md.
+   */
+  it("ne touche jamais le compteur des directions", async () => {
+    const supabase = stubSupabase();
+    await run(supabase, stubClient(ok), { isRegeneration: true });
+    expect(supabase.calls.map((c) => c.fn)).not.toContain("consume_generation_credit");
+    expect(supabase.calls.map((c) => c.fn)).not.toContain("brand_kit_has_generation_credit");
+  });
+
+  it("réserve AVANT l'appel et règle APRÈS l'enregistrement", async () => {
     const supabase = stubSupabase();
     await run(supabase, stubClient(ok), { isRegeneration: true });
     const order = supabase.calls.map((c) => c.fn);
-    expect(order.indexOf("brand_kit_has_generation_credit")).toBeLessThan(
-      order.indexOf("brand_images_claim")
-    );
-    expect(order.indexOf("consume_generation_credit")).toBeGreaterThan(
+    expect(order.indexOf("reserve_image_regeneration")).toBeLessThan(order.indexOf("brand_images_claim"));
+    expect(order.lastIndexOf("settle_image_regeneration")).toBeGreaterThan(
       order.indexOf("brand_images_mark_ready")
     );
+    const settle = supabase.calls.filter((c) => c.fn === "settle_image_regeneration").at(-1);
+    expect(settle?.args.p_succeeded).toBe(true);
+    expect(settle?.args.p_cost_cents).toBe(slotPriceCents("hero"));
   });
 
-  it("sans crédit, rien n'est réservé et rien n'est appelé", async () => {
-    const supabase = stubSupabase({ brand_kit_has_generation_credit: false });
+  it("budget épuisé : rien n'est réservé et le modèle n'est pas appelé", async () => {
+    const supabase = stubSupabase({
+      reserve_image_regeneration: { ok: false, reason: "budget_exhausted" },
+    });
     const client = stubClient(ok);
     const outcome = await run(supabase, client, { isRegeneration: true });
     expect(outcome.ok).toBe(false);
@@ -154,12 +170,21 @@ describe("les crédits", () => {
     expect(supabase.calls.map((c) => c.fn)).not.toContain("brand_images_claim");
   });
 
-  it("une régénération qui ÉCHOUE ne consomme aucun crédit", async () => {
+  it("une régénération qui ÉCHOUE LIBÈRE sa réservation", async () => {
+    // Elle n'est jamais facturée pour une photographie qu'elle n'a pas reçue.
     const supabase = stubSupabase();
     const client = stubClient(() => Promise.reject(new ImageTransientError("upstream 503")));
     const outcome = await run(supabase, client, { isRegeneration: true });
     expect(outcome.ok).toBe(false);
-    expect(supabase.calls.map((c) => c.fn)).not.toContain("consume_generation_credit");
+    const settle = supabase.calls.filter((c) => c.fn === "settle_image_regeneration").at(-1);
+    expect(settle?.args.p_succeeded).toBe(false);
+  });
+
+  it("une PREMIÈRE génération ne réserve rien du tout", async () => {
+    const supabase = stubSupabase();
+    await run(supabase, stubClient(ok));
+    expect(supabase.calls.map((c) => c.fn)).not.toContain("reserve_image_regeneration");
+    expect(supabase.calls.map((c) => c.fn)).not.toContain("settle_image_regeneration");
   });
 });
 
@@ -230,6 +255,15 @@ describe("les refus de la base sont transmis tels quels", () => {
 
 describe("le repli", () => {
   it("un slot désactivé ne réserve rien et n'appelle rien", async () => {
+    /*
+     * Les sept emplacements sont activés depuis l'étape 8, donc plus aucune
+     * configuration de production n'atteint cette branche -- et c'est
+     * précisément pourquoi elle a besoin d'un test : le jour où l'on
+     * désactive un emplacement pour arrêter une dépense, il faut que le garde
+     * fonctionne encore. On le désactive ici, et on le remet.
+     */
+    const restore = IMAGE_SLOTS.texture.enabled;
+    IMAGE_SLOTS.texture.enabled = false;
     const supabase = stubSupabase();
     const client = stubClient(ok);
     const outcome = await generateBrandImage({
@@ -246,6 +280,7 @@ describe("le repli", () => {
     expect(outcome.reason).toBe("slot_disabled");
     expect(client.calls).toBe(0);
     expect(supabase.calls).toEqual([]);
+    IMAGE_SLOTS.texture.enabled = restore;
   });
 
   it("un envoi qui échoue règle la réservation plutôt que de la laisser pendre", async () => {

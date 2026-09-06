@@ -7,6 +7,7 @@ import {
   OBJECT_REGISTER_BY_SPECIALTY,
   objectRegisterFor,
 } from "@/lib/images/specialties";
+import { IMAGE_SLOTS, IMAGE_SLOT_KEYS } from "@/lib/images/config";
 
 /*
  * ── LA COUVERTURE, ET POURQUOI CE TEST EXISTE ───────────────────────────
@@ -143,5 +144,79 @@ describe("un registre ne décrit jamais la lumière", () => {
     const canary = "a folded linen cloth, early light across the wall";
     const words = canary.toLowerCase().match(/[a-z]+/g) ?? [];
     expect(words.filter((word) => FORBIDDEN_VOCABULARY.includes(word))).toEqual(["light"]);
+  });
+});
+
+describe("un brief d'emplacement nomme composition et objets, rien d'autre", () => {
+  /*
+   * Même règle que les registres, et pour la même raison : le maître possède
+   * la lumière, la famille de matières, la géographie et les exclusions. Un
+   * brief qui en rouvre une est une seconde voix qui contredit la première.
+   *
+   * `hero` est exempté NOMMÉMENT. « plain sunlit wall » est la phrase
+   * verbatim du propriétaire, déclarée intouchable deux fois et depuis
+   * ratifiée par une photographie qu'il a validée. C'est une exemption
+   * décidée par lui, pas une commodité trouvée par nous -- la différence
+   * exacte avec le « bright » de `parenting`, qui, lui, a été réécrit.
+   */
+  const FORBIDDEN_VOCABULARY = [
+    "light", "lights", "lit", "sunlit", "backlit", "daylight", "sunlight", "lighting",
+    "bright", "dim", "sunny", "overcast", "cloudy", "weather",
+    "morning", "afternoon", "evening", "dusk", "dawn", "midday", "noon", "night",
+    "sunrise", "sunset", "hour", "lens", "camera", "bokeh", "aperture", "exposure",
+    "shutter", "focal", "vignette",
+  ];
+
+  const REWRITTEN = IMAGE_SLOT_KEYS.filter((slot) => slot !== "hero");
+
+  it("les six briefs réécrits sont bien six", () => {
+    // Garde anti-vert-à-vide : si l'énumération se vide, le test suivant ne
+    // vérifierait plus rien.
+    expect(REWRITTEN).toHaveLength(6);
+  });
+
+  it.each(REWRITTEN)("« %s » ne nomme ni lumière, ni heure, ni objectif", (slot) => {
+    const words = IMAGE_SLOTS[slot].brief.toLowerCase().match(/[a-z]+/g) ?? [];
+    expect(words.filter((word) => FORBIDDEN_VOCABULARY.includes(word))).toEqual([]);
+  });
+
+  it("hero est la seule exemption, et elle est nommée", () => {
+    const words = IMAGE_SLOTS.hero.brief.toLowerCase().match(/[a-z]+/g) ?? [];
+    expect(words.filter((word) => FORBIDDEN_VOCABULARY.includes(word))).toEqual(["sunlit"]);
+  });
+});
+
+describe("la composition suit l'endroit où va le texte", () => {
+  it("hero réserve son tiers gauche", () => {
+    expect(IMAGE_SLOTS.hero.brief).toContain("The left third is plain sunlit wall");
+  });
+
+  it.each(["ambient_a", "ambient_b"] as const)("« %s » ne réserve RIEN", (slot) => {
+    // Ces deux-là sont posés À CÔTÉ du texte, jamais dessous.
+    expect(IMAGE_SLOTS[slot].brief).toContain("no area reserved for text");
+    expect(IMAGE_SLOTS[slot].size).toBe("1024x1536");
+  });
+
+  it.each(["post_bg_1", "post_bg_2", "post_bg_3"] as const)(
+    "« %s » garde ses deux tiers SUPÉRIEURS calmes et pose l'objet en bas",
+    (slot) => {
+      const brief = IMAGE_SLOTS[slot].brief;
+      expect(brief).toContain("The upper two thirds");
+      expect(brief).toContain("at or below the lower third");
+      expect(IMAGE_SLOTS[slot].size).toBe("1024x1024");
+    }
+  );
+
+  it("les trois fonds de post sont trois groupes d'objets DISTINCTS", () => {
+    // « Three distinct object groups, not three angles on one. »
+    const subjects = (["post_bg_1", "post_bg_2", "post_bg_3"] as const).map((slot) =>
+      IMAGE_SLOTS[slot].brief.slice(IMAGE_SLOTS[slot].brief.indexOf("lower third:"))
+    );
+    expect(new Set(subjects).size).toBe(3);
+  });
+
+  it("texture est un fond, pas une scène", () => {
+    expect(IMAGE_SLOTS.texture.brief).toContain("No object, no horizon, no room");
+    expect(IMAGE_SLOTS.texture.brief).toContain("a ground, not a scene");
   });
 });

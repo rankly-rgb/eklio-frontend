@@ -47,9 +47,9 @@ describe("le pack de prompts", () => {
     expect(Object.keys(PRICE_USD)).toEqual([IMAGE_MODEL]);
   });
 
-  it("un seul emplacement est activé dans cette session", () => {
+  it("les sept emplacements sont activés depuis l'étape 8", () => {
     const enabled = IMAGE_SLOT_KEYS.filter((slot) => IMAGE_SLOTS[slot].enabled);
-    expect(enabled).toEqual(["hero"]);
+    expect(enabled).toEqual([...IMAGE_SLOT_KEYS]);
   });
 
   it("le héros est le seul en « high »", () => {

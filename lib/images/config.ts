@@ -24,7 +24,7 @@ export const IMAGE_MODEL = "gpt-image-1" as const;
  * Deliberately separate from `RENDERER_VERSION`, which describes satori and
  * resvg and has nothing to do with photography.
  */
-export const IMAGE_PROMPT_VERSION = 5;
+export const IMAGE_PROMPT_VERSION = 6;
 
 export type ImageQuality = "low" | "medium" | "high";
 export type ImageSize = "1024x1024" | "1536x1024" | "1024x1536";
@@ -41,10 +41,9 @@ export type SlotConfig = {
   size: ImageSize;
   quality: ImageQuality;
   /**
-   * Whether this slot may be generated at all. Six of the seven are off:
-   * Session 3 proves ONE slot end to end, and a slot that cannot be claimed
-   * cannot be spent on by accident. Flipping these is a later session's
-   * deliberate act, not a config drive-by.
+   * Whether this slot may be generated at all. All seven are on since step 8;
+   * a disabled slot is still refused before a claim, a client, or a
+   * reservation, so this stays the cheapest possible kill switch per slot.
    */
   enabled: boolean;
   /**
@@ -62,6 +61,40 @@ export type SlotConfig = {
  * Quality is a spend decision, not a taste one. The hero is the only image
  * ever shown large and full-bleed; the other six sit under a scrim with type
  * over them, where "high" buys detail nobody will ever see.
+ *
+ * ── COMPOSITION FOLLOWS WHERE THE TEXT GOES ─────────────────────────────
+ *
+ * That is the whole logic of these seven briefs, and the only thing that
+ * makes them different from one another:
+ *
+ *   hero        text sits OVER the left third, so the left third is empty.
+ *   ambient_*   these sit BESIDE text in the launch flow's editorial column,
+ *               never under it — so they reserve nothing and may be fuller.
+ *   post_bg_*   a headline sits over the UPPER TWO THIRDS behind a scrim, so
+ *               the calm area is the TOP: the object sits at or below the
+ *               lower third. Three distinct object groups, not three angles
+ *               on one.
+ *   texture     a ground, not a scene: no object, no horizon, no room.
+ *
+ * ── A BRIEF NAMES COMPOSITION AND OBJECTS. NOTHING ELSE. ────────────────
+ *
+ * Same rule as the object registers. The master art direction owns the light,
+ * the material family, the geography and the exclusions, and a brief that
+ * restates any of them is a second voice arguing with the first — which is
+ * how the very first photograph got a grey window under a warm cast.
+ *
+ * Concretely naming an object ("a stoneware bowl") is not naming a material
+ * family: the registers do exactly that and the owner ratified them. What a
+ * brief may not do is re-open what the master already settled.
+ *
+ * One deliberate omission from the owner's own wording for `texture`: it read
+ * "folded or draped material in raking light". The light is dropped, because
+ * the master already rakes it — the same call the owner made on `anxiety`'s
+ * "early light", applied consistently.
+ *
+ * `hero` is the one brief exempt from the vocabulary test, by name and with a
+ * reason: "plain sunlit wall" is the owner's verbatim sentence, ruled
+ * untouchable twice and since ratified by a photograph they approved.
  */
 export const IMAGE_SLOTS: Record<ImageSlot, SlotConfig> = {
   /*
@@ -97,38 +130,55 @@ export const IMAGE_SLOTS: Record<ImageSlot, SlotConfig> = {
   ambient_a: {
     size: "1024x1536",
     quality: "medium",
-    enabled: false,
-    brief: "a quiet still life of everyday objects on a side table, no people present. vertical editorial photograph, generous negative space at the top.",
+    enabled: true,
+    brief:
+      "Vertical composition, filled edge to edge, with no area reserved for text. A closer, fuller " +
+      "view of {subject}, seen from slightly above, the pieces overlapping so the arrangement reads " +
+      "as one group rather than a row.",
   },
   ambient_b: {
     size: "1024x1536",
     quality: "medium",
-    enabled: false,
-    brief: "daylight falling across a plain wall and a plant, no people present. vertical editorial photograph, soft gradient of light across the frame.",
+    enabled: true,
+    brief:
+      "Vertical composition, filled edge to edge, with no area reserved for text. A quieter corner " +
+      "of the same room: the edge of a plaster wall meeting a wooden surface, a folded cloth over " +
+      "that edge, one ceramic vessel set to the side, and the rest of the frame left empty.",
   },
   post_bg_1: {
     size: "1024x1024",
     quality: "medium",
-    enabled: false,
-    brief: "an out-of-focus interior background, no people present. square, evenly lit, deliberately unremarkable so type reads over it.",
+    enabled: true,
+    brief:
+      "Square composition. The upper two thirds are plain wall, unbroken and even, so a headline " +
+      "can sit over them. The subject sits low, at or below the lower third: a stoneware bowl and a " +
+      "folded cloth on a wooden ledge, cropped by the bottom edge.",
   },
   post_bg_2: {
     size: "1024x1024",
     quality: "medium",
-    enabled: false,
-    brief: "an out-of-focus natural background of foliage and light, no people present. square, evenly lit, deliberately unremarkable so type reads over it.",
+    enabled: true,
+    brief:
+      "Square composition. The upper two thirds fall away into soft-focus depth, uninterrupted, so " +
+      "a headline can sit over them. The subject sits low, at or below the lower third: the rim of " +
+      "a woven basket and one trailing plant, cropped by the bottom edge.",
   },
   post_bg_3: {
     size: "1024x1024",
     quality: "medium",
-    enabled: false,
-    brief: "an out-of-focus fabric and paper surface, no people present. square, evenly lit, deliberately unremarkable so type reads over it.",
+    enabled: true,
+    brief:
+      "Square composition. The upper two thirds are plain wall, unbroken and even, so a headline " +
+      "can sit over them. The subject sits low, at or below the lower third: two cloth-bound books " +
+      "stacked flat beside a small ceramic dish on a wooden surface, cropped by the bottom edge.",
   },
   texture: {
     size: "1024x1024",
     quality: "medium",
-    enabled: false,
-    brief: "a close macro of a plain matte surface — paper grain, raw plaster, or woven linen. square, flat and even, filling the frame edge to edge.",
+    enabled: true,
+    brief:
+      "Square composition, filled edge to edge: folded and draped cloth, the folds running " +
+      "diagonally across the frame. No object, no horizon, no room — a ground, not a scene.",
   },
 };
 

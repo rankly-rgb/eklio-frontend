@@ -24,10 +24,21 @@ import { join, resolve } from "node:path";
  */
 
 const ROOT = resolve(__dirname, "../..");
-const NATIVE_PACKAGES = ["satori", "@resvg/resvg-js"];
+/*
+ * `sharp` joined the list with Lot 5.7's composition layer: it is a native
+ * binary with exactly the same hazard as the other two, and the guard would
+ * otherwise have been silent about the first module to import it.
+ */
+const NATIVE_PACKAGES = ["satori", "@resvg/resvg-js", "sharp"];
 const SERVER_ONLY_RENDER_PATH = "lib/kit/render/";
 
-const SKIP_DIRS = new Set(["node_modules", ".next", ".git"]);
+/*
+ * `__tests__` is skipped: a test file is never bundled for a browser, and a
+ * fixture that builds a webp with `sharp` is exactly the kind of legitimate
+ * direct import this guard would otherwise forbid for no benefit. What the
+ * guard protects is shipped code.
+ */
+const SKIP_DIRS = new Set(["node_modules", ".next", ".git", "__tests__"]);
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

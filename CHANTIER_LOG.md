@@ -804,6 +804,111 @@ from `site_specs` immediately before printing. It echoes the palette and special
 `loadImageContext`, so the mapping step that could mis-wire a role is visible in the output rather than
 assumed.
 
+### 2026-09-06 — step 8: LOT 5.6 and 5.7
+
+#### ⚠ The stored hero for kit `45de0dac…` is a `medium` test render
+
+Not the `high` the config specifies for production. It was generated during the art-direction loop with
+`--quality medium` (6.3c against 25c) to judge exposure, light direction and colour placement cheaply. It is
+correctly stale-able — `IMAGE_PROMPT_VERSION` has moved since — and the next production render at `high`
+will replace it. **If it looks softer than it should, that is why.**
+
+#### 5.6 — the six briefs, rewritten before anything was enabled
+
+Not "enable": the six still carried their pre-master sentences joined with a full stop. Every one is
+rewritten, and the rule is the registers' rule — **a brief names composition and objects only.** The master
+owns the light, the material family, the geography and the exclusions, and a brief that reopens one of them
+is a second voice arguing with the first.
+
+**Composition follows where the text goes**, which is the only reason the seven differ:
+
+| slot | text sits | so the brief |
+| --- | --- | --- |
+| hero | over the left third | leaves the left third empty — unchanged, word for word |
+| ambient_a, ambient_b | beside it, never under | reserves nothing and may be fuller |
+| post_bg_1/2/3 | over the upper two thirds, behind a scrim | keeps the TOP calm; object at or below the lower third |
+| texture | nowhere | a ground: no object, no horizon, no room |
+
+`ambient_a` is a closer, fuller frame of the same object register as the hero — deliberately, because a
+real editorial shoot photographs one set-up more than once, and "one shoot, not seven stock photos" is the
+brief. `ambient_b` is a different corner. The three post backgrounds are three DISTINCT object groups, and
+a test asserts their subject clauses are not equal.
+
+One deliberate omission from the owner's own wording: `texture` read "folded or draped material in raking
+light". The light is dropped — the master already rakes it, and this is the same call the owner made on
+`anxiety`'s "early light". `hero` is the ONE brief exempt from the vocabulary test, by name and with its
+reason recorded: "plain sunlit wall" is the owner's sentence, ruled untouchable twice and since ratified by
+a photograph they approved. That is an exemption they granted, not one found for convenience — the exact
+difference from `parenting`'s "bright", which was rewritten.
+
+All seven are now `enabled`. `IMAGE_PROMPT_VERSION` 5 → 6.
+
+#### 5.7 — the composition layer, where the scrim is solved rather than chosen
+
+**The opacity is computed from the measured mean luminance of the region the text actually occupies.** Not a
+fixed value: a fixed opacity passes on an average photograph and fails at both ends — the text disappears on
+a bright frame, and the scrim buries a photograph she paid for on a dark one.
+
+`lib/kit/render/luminance.ts` decodes the stored webp with `sharp`, extracts the text region (fractions of
+the frame, so it survives any output size), downsamples, **linearizes** each pixel and averages. `stats()`
+would have been one call and would have averaged GAMMA-ENCODED channels — the mean of encoded values is not
+the encoded mean luminance, and it overstates dark regions badly. A test pins `#808080` at ≈0.216, not 0.5.
+
+The opacity then climbs in 1% steps until the headline clears **4.5:1**, and the ratio actually achieved is
+reported in the spec line. A climb rather than a bisection because blending is not monotonic for every
+palette: a `dark_neutral` lighter than the photograph makes raising the scrim *reduce* contrast, and that
+case is reported honestly (`meetsTarget: false`) rather than pretended past.
+
+**Tested against two deliberately extreme fixtures**, `#FAFAFA` and `#0A0A0A`, because a test on an
+average-luminance image proves nothing and would pass while the feature is broken. The bright frame needs
+>60% scrim, the dark frame <15%, and a test asserts the two opacities are **not equal** — which is exactly
+what a fixed value would make them.
+
+The four variations are four arrangements of two inputs: `full` (photo + scrim + headline + wordmark),
+`text` (colour ground + headline + wordmark), `photo` (photo + wordmark), `logo` (colour ground + monogram).
+`full` reports a solved ratio, `text` a computed one, and the two headline-free variations report **nothing**
+— a contrast ratio for a mark nobody reads as type would be a number reported about nothing. `text` also
+CHOOSES its ink, whichever of paper and dark_neutral reads better on her primary, the way `cta_ink` already
+works elsewhere.
+
+**The headline comes from satori. Ever, only, always.** A test greps this module for any image-client import
+and fails if one appears.
+
+Both modules live in `lib/kit/render/`, not `lib/images/`, because that is where every module touching a
+native binary belongs — and `sharp` was added to `renderer-not-in-client-bundle.test.ts`'s native list,
+which had been silent about it. `__tests__` is now skipped by that scan: a test file is never bundled, and a
+fixture that builds a webp is a legitimate direct import.
+
+`sharp` is now an explicit dependency rather than a transitive hoist from `next`. Without a decoder,
+"measured luminance" is not implementable.
+
+#### Regeneration — four buttons, a money budget, and the meter finally separated
+
+`plans.image_budget_cents` (starter 100c, practice 250c, signature 500c), reserved before the call in one
+conditional UPDATE and **released on failure** — she is never charged for a photograph she did not receive.
+
+**It no longer touches `consume_generation_credit`.** FINDINGS.md flagged that the two meters were
+conflated; an image regeneration was spending a DIRECTION regeneration, which is priced completely
+differently. Two tests hold the separation, one in SQL and one against the stub.
+
+A **money** budget, not a count, because a hero is 25c and a texture 5c: `regenerationsRemaining()` divides
+by the price of the slot she is looking at, so "4 left" on the hero and "20 left" on the texture are both
+true at once.
+
+Four bounded nudges — Lighter, Warmer, Fewer objects, Different framing — each appending one closed clause.
+**No free-text field anywhere in the paid space**; a free-text prompt would be a channel from her keyboard
+to an external model in a product that has spent this whole chantier keeping her words out of one. The
+clauses name no light either, same rule, same test. A variation is deliberately **not** hashed: it asks for
+a different photograph of the same brand, and hashing it would mint a permanent new identity for the slot
+every time she nudged it.
+
+#### Costs for the full-kit run
+
+At `--quality medium`: hero 7c + ambient ×2 at 7c + squares ×4 at 5c = **41c recorded, $0.357 actual**.
+At production quality the same kit is 59c recorded, $0.544 actual.
+
+`generate-one.ts` still refuses more than one slot per run, deliberately — seven invocations, one per slot.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because

@@ -644,6 +644,8 @@ export type Database = {
           directions_generated: number
           has_paid: boolean
           id: string
+          image_cents_reserved: number
+          image_cents_used: number
           plan_tier: string
           project_id: string
           regenerations_used: number
@@ -654,6 +656,8 @@ export type Database = {
           directions_generated?: number
           has_paid?: boolean
           id?: string
+          image_cents_reserved?: number
+          image_cents_used?: number
           plan_tier?: string
           project_id: string
           regenerations_used?: number
@@ -664,6 +668,8 @@ export type Database = {
           directions_generated?: number
           has_paid?: boolean
           id?: string
+          image_cents_reserved?: number
+          image_cents_used?: number
           plan_tier?: string
           project_id?: string
           regenerations_used?: number
@@ -1065,6 +1071,7 @@ export type Database = {
         Row: {
           created_at: string
           directions_limit: number
+          image_budget_cents: number
           label: string
           price_cents: number
           regenerations_limit: number
@@ -1075,6 +1082,7 @@ export type Database = {
         Insert: {
           created_at?: string
           directions_limit: number
+          image_budget_cents?: number
           label: string
           price_cents: number
           regenerations_limit: number
@@ -1085,6 +1093,7 @@ export type Database = {
         Update: {
           created_at?: string
           directions_limit?: number
+          image_budget_cents?: number
           label?: string
           price_cents?: number
           regenerations_limit?: number
@@ -2135,6 +2144,10 @@ export type Database = {
         Args: { p_brand_kit_id: string; p_image_fingerprint: string }
         Returns: Json
       }
+      get_image_regeneration_budget: {
+        Args: { p_brand_kit_id: string }
+        Returns: Json
+      }
       get_launch_progress: { Args: { p_brand_kit_id: string }; Returns: Json }
       grant_plan_allowance: {
         Args: { p_grant_key?: string; p_project_id: string; p_tier: string }
@@ -2210,6 +2223,10 @@ export type Database = {
         }
         Returns: Json
       }
+      reserve_image_regeneration: {
+        Args: { p_brand_kit_id: string; p_cost_cents: number }
+        Returns: Json
+      }
       restore_brand_kit: { Args: { p_brand_kit_id: string }; Returns: Json }
       section_type_fields_valid: { Args: { p: Json }; Returns: boolean }
       seed_launch_checklist: {
@@ -2219,6 +2236,14 @@ export type Database = {
       seed_site_spec: { Args: { p_brand_kit_id: string }; Returns: number }
       set_launch_step: {
         Args: { p_brand_kit_id: string; p_key: string; p_status: string }
+        Returns: Json
+      }
+      settle_image_regeneration: {
+        Args: {
+          p_brand_kit_id: string
+          p_cost_cents: number
+          p_succeeded: boolean
+        }
         Returns: Json
       }
       show_limit: { Args: never; Returns: number }

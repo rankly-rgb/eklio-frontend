@@ -156,25 +156,69 @@ export async function brandImagesPath(
   return (data as unknown as string) ?? null;
 }
 
-/** Advisory only. `consume_generation_credit` is what actually spends one. */
-export async function hasGenerationCredit(supabase: Client, brandKitId: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc("brand_kit_has_generation_credit", {
+/*
+ * ── THE REGENERATION BUDGET ─────────────────────────────────────────────
+ *
+ * `plans.image_budget_cents`, never `consume_generation_credit`. The latter's
+ * meter is the DIRECTIONS ladder — a model call over text — and spending it on
+ * a photograph would charge her a direction regeneration for something priced
+ * completely differently. See FINDINGS.md.
+ *
+ * Reserved before the call, released on failure. She is never charged for a
+ * photograph she did not receive.
+ */
+export async function reserveImageRegeneration(
+  supabase: Client,
+  brandKitId: string,
+  costCents: number
+): Promise<{ ok: boolean; reason: string }> {
+  const { data, error } = await supabase.rpc("reserve_image_regeneration", {
     p_brand_kit_id: brandKitId,
+    p_cost_cents: costCents,
   } as never);
   if (error) {
-    console.error("[images] brand_kit_has_generation_credit", error);
-    return false;
+    console.error("[images] reserve_image_regeneration", error);
+    return { ok: false, reason: "rpc_error" };
   }
-  return data === true;
+  return data as unknown as { ok: boolean; reason: string };
 }
 
-export async function consumeGenerationCredit(supabase: Client, brandKitId: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc("consume_generation_credit", {
+export async function settleImageRegeneration(
+  supabase: Client,
+  brandKitId: string,
+  costCents: number,
+  succeeded: boolean
+): Promise<{ ok: boolean; reason: string }> {
+  const { data, error } = await supabase.rpc("settle_image_regeneration", {
+    p_brand_kit_id: brandKitId,
+    p_cost_cents: costCents,
+    p_succeeded: succeeded,
+  } as never);
+  if (error) {
+    console.error("[images] settle_image_regeneration", error);
+    return { ok: false, reason: "rpc_error" };
+  }
+  return data as unknown as { ok: boolean; reason: string };
+}
+
+export type ImageBudget = {
+  budget_cents: number;
+  reserved_cents: number;
+  used_cents: number;
+  remaining_cents: number;
+};
+
+export async function getImageRegenerationBudget(
+  supabase: Client,
+  brandKitId: string
+): Promise<ImageBudget | null> {
+  const { data, error } = await supabase.rpc("get_image_regeneration_budget", {
     p_brand_kit_id: brandKitId,
   } as never);
   if (error) {
-    console.error("[images] consume_generation_credit", error);
-    return false;
+    console.error("[images] get_image_regeneration_budget", error);
+    return null;
   }
-  return data === true;
+  if (data && typeof data === "object" && "error" in (data as object)) return null;
+  return data as unknown as ImageBudget;
 }

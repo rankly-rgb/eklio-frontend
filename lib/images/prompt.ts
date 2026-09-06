@@ -141,7 +141,19 @@ function moodFrom(keywords: string[]): string {
  * it applies to; the exclusions land last, where a long instruction is least
  * likely to be dropped.
  */
-export function buildImagePrompt(slot: ImageSlot, input: ImageFingerprintInput): string {
+export function buildImagePrompt(
+  slot: ImageSlot,
+  input: ImageFingerprintInput,
+  /*
+   * A bounded regeneration nudge, appended after the slot brief. Deliberately
+   * NOT part of `ImageFingerprintInput`, and so deliberately not hashed: a
+   * variation is a one-off request for a DIFFERENT photograph of the same
+   * brand, not a change to what the brand is. Hashing it would mean every
+   * nudge minted a new permanent identity for the slot, and the row she ends
+   * up with would stop matching her kit's fingerprint the moment she used one.
+   */
+  variationClause = ""
+): string {
   // A slot brief carries `{subject}` wherever the specialty's object register
   // belongs. A brief without the token is unaffected -- the six disabled
   // slots keep their own subjects until step 8 rewrites them.
@@ -150,6 +162,7 @@ export function buildImagePrompt(slot: ImageSlot, input: ImageFingerprintInput):
   return [
     MASTER_DIRECTION,
     brief,
+    variationClause,
     paletteRule(input.palette),
     `Mood: ${moodFrom(input.toneKeywords)}.`,
     MASTER_EXCLUSIONS,

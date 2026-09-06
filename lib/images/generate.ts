@@ -21,11 +21,12 @@ import { buildImagePrompt } from "@/lib/images/prompt";
 import {
   brandImagesPath,
   claimBrandImage,
-  consumeGenerationCredit,
-  hasGenerationCredit,
   markBrandImageFailed,
   markBrandImageReady,
+  reserveImageRegeneration,
+  settleImageRegeneration,
 } from "@/lib/images/rpc";
+import { variationClause, type ImageVariation } from "@/lib/images/variations";
 
 /*
  * ── ONE SLOT, END TO END ────────────────────────────────────────────────
@@ -42,15 +43,13 @@ import {
  * reconciled at settle time by the database, which clamps whatever this file
  * asks for against its own bound.
  *
- * CREDITS. The initial seven are part of what she bought and consume nothing.
- * A regeneration consumes one, and the brief asks for it to be "checked
- * before the call and not charged on failure". There is no post-purchase
- * refund primitive (release_generation_credit only works while
- * brand_kits.directions is still null), so those two clauses are met as:
- * an advisory check BEFORE any money is spent, and the atomic consume only
- * AFTER the image is recorded. The window between them is real — two
- * concurrent regenerations could both pass the advisory check — and it is
- * bounded by the per-slot claim lock and the daily ceiling.
+ * BUDGET. The initial seven are part of what she bought and draw on nothing.
+ * A REGENERATION draws on `plans.image_budget_cents` — never on
+ * `consume_generation_credit`, whose meter is the DIRECTIONS ladder and has
+ * nothing to do with pixels. The reservation is booked BEFORE the model call
+ * and released on failure, so she is never charged for a photograph she did
+ * not receive, and two concurrent regenerations cannot both pass an
+ * under-budget check.
  */
 
 type Client = SupabaseClient<Database>;
@@ -98,6 +97,11 @@ export type GenerateInput = {
   /** True only when she asked for a NEW image of a slot she already has. */
   isRegeneration: boolean;
   /**
+   * Which of the four bounded nudges she picked. Null on a first generation.
+   * There is no free-text alternative, here or anywhere in the paid space.
+   */
+  variation?: ImageVariation | null;
+  /**
    * Renders at a quality other than the slot's configured one. FOR ITERATING
    * ON ART DIRECTION ONLY: judging exposure, light direction and colour
    * placement does not need `high`, and 1536x1024 at `medium` is 6.3c against
@@ -144,19 +148,30 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
     return { ok: false, slot, reason: "slot_disabled", message: `The ${slot} slot is not enabled.` };
   }
 
-  // Checked BEFORE the call, per the brief — nothing has cost anything yet.
-  if (isRegeneration && !(await hasGenerationCredit(supabase, brandKitId))) {
-    return {
-      ok: false,
-      slot,
-      reason: "no_credit",
-      message: "You have used every regeneration included with this kit.",
-    };
-  }
-
   const imageFingerprint = computeImageFingerprint(fingerprintInput);
   // Priced on the EFFECTIVE quality, never on the configured one.
   const costCents = priceCents(IMAGE_MODEL, quality, config.size);
+
+  // Reserved BEFORE the call, and released below on any failure.
+  if (isRegeneration) {
+    const reserved = await reserveImageRegeneration(supabase, brandKitId, costCents);
+    if (!reserved.ok) {
+      return {
+        ok: false,
+        slot,
+        reason: "no_credit",
+        message:
+          reserved.reason === "budget_exhausted"
+            ? "You have used the photograph budget included with this kit."
+            : "That regeneration could not be started.",
+      };
+    }
+  }
+
+  /** Releases a regeneration reservation on any path that does not deliver an image. */
+  const release = async (): Promise<void> => {
+    if (isRegeneration) await settleImageRegeneration(supabase, brandKitId, costCents, false);
+  };
 
   const claim = await claimBrandImage(
     supabase,
@@ -168,6 +183,7 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
   );
 
   if (!claim.claimed || !claim.image_id || !claim.claim_token) {
+    await release();
     // A refusal that reports "claimed" or "reclaimed" without an id or token
     // is a contradiction, and `invalid_field` is our bug rather than a state
     // she can be in. Both are reported as a plain failure rather than leaking
@@ -181,7 +197,7 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
 
   const imageId = claim.image_id;
   const claimToken = claim.claim_token;
-  const prompt = buildImagePrompt(slot, fingerprintInput);
+  const prompt = buildImagePrompt(slot, fingerprintInput, variationClause(input.variation ?? null));
 
   // One retry, transient only. Never a loop: MAX_ATTEMPTS is 2 and the loop
   // breaks on anything that is not transient.
@@ -205,12 +221,14 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
   if (!generated) {
     const { status, reason, message } = classify(lastError);
     await markBrandImageFailed(supabase, imageId, claimToken, status, message);
+    await release();
     return { ok: false, slot, reason, message };
   }
 
   const storagePath = await brandImagesPath(supabase, brandKitId, imageFingerprint, slot);
   if (!storagePath) {
     await markBrandImageFailed(supabase, imageId, claimToken, "failed", "could not resolve a storage path");
+    await release();
     return { ok: false, slot, reason: "failed", message: "Could not resolve a storage path." };
   }
 
@@ -222,6 +240,7 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
   });
   if (upload.error) {
     await markBrandImageFailed(supabase, imageId, claimToken, "failed", `upload failed: ${upload.error.message}`);
+    await release();
     return { ok: false, slot, reason: "upload_failed", message: upload.error.message };
   }
 
@@ -238,13 +257,14 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
   );
   if (!settled.ok) {
     // A reclaim beat us. The winner's row stands; ours is not an error to her.
+    await release();
     return { ok: false, slot, reason: "stale_claim", message: "Another run finished this image first." };
   }
 
-  // Only now, and only for a regeneration: the image exists, so the credit is
-  // for something she actually received.
+  // Only now, and only for a regeneration: the image exists, so the
+  // reservation becomes real spend.
   if (isRegeneration) {
-    await consumeGenerationCredit(supabase, brandKitId);
+    await settleImageRegeneration(supabase, brandKitId, costCents, true);
   }
 
   return {
