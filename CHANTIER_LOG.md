@@ -996,6 +996,101 @@ primary ground will not clear 4.5:1. `solveScrimOpacity` in `lib/kit/render/lumi
 rather than assumes, and it reports `meetsTarget: false` honestly rather than pretending — that is the
 mechanism to trust here, not an eyeballed choice of ink.
 
+## 2026-09-06 — Session 4: steps 9, 11 and 13 (LOTS 6, 8 and 10)
+
+Three lots, three commits per repo where a repo was touched, suite green before each. No model call
+anywhere in this session, and nothing in these three lots reaches `consume_generation_credit` or
+`plans.image_budget_cents` — that is enforced by a test and by a migration guard rail, not by this
+paragraph.
+
+### Step 9 — LOT 6: content
+
+**`content_items` is new, and `monthly_presence_content` was left exactly as it is.** The brief's own
+contingency, taken on the facts carried in: that table refuses every client write by policy, holds zero
+rows, and lacks six of the columns the editor writes. It was not dropped, not altered, not renamed — a
+drop has no undo and nothing here needed it gone.
+
+⚠ **"Dead" is precise, and a later session should read it precisely.** No NEW surface reads or writes it,
+but `calendar_summary` is still called by `lib/data/calendar.ts`, and the home screen's `ContentGrid`
+still renders from it. So there are two month models in the product right now: the home card's
+sixteen-tile summary over the old table, and `/app/content` over the new one. Recorded in FINDINGS.md
+with the decision left open — moving the home card across is a real change to what that card counts, not
+a rename.
+
+**The log IS the publication state.** `content_items` has no `published_at` and no `published` status.
+Whether an item is posted is derived from the last row of the append-only `content_publications`, which
+clients cannot write at all. There is no second copy of the fact to drift from, un-posting leaves a
+history rather than overwriting one, and `mark_content_posted` is idempotent so a double click cannot
+invent a publication.
+
+**`update_content_item` takes a jsonb patch, not nine nullable arguments.** Only a patch can tell "leave
+the title alone" (key absent) from "clear the title" (key present, value null), and autosave needs that
+distinction to avoid overwriting a field edited in another tab. An unknown key is REFUSED rather than
+dropped: dropping it is what lets a renamed field autosave into nothing for a whole release.
+
+**`content_kit_access` holds the refusal ordering in one place.** `not_found` is decided first and alone,
+so a stranger's kit can never answer `payment_required` — a refusal code that confirms existence is a
+leak, and this is the only function that decides it.
+
+**`types/supabase.ts` was hand-edited, not regenerated.** Regeneration wipes the manual addendum block
+(four status unions) that has had to be re-applied four times already, and the schema addition here is
+two tables and seven functions. If a later session regenerates, re-apply the addendum.
+
+### Step 11 — LOT 8: the guided launch flow
+
+`/app/launch` and `/app/launch/[stepKey]`, over the SAME `launch_checklist_items` rows and the same two
+RPCs the home accordion uses. No second table, no second endpoint, no progress number recomputed. The
+per-step detail is `LaunchStepDetail`, the same component the accordion renders in its expanded row,
+exported rather than copied — two versions of the board-safe statement would mean one of them never gets
+reviewed when the ethics rules change.
+
+The step actions here are deliberately NOT optimistic, unlike the accordion's: this screen shows one
+step and its state is the whole point of the screen.
+
+An unknown step key, and a key with no row, are both 404. A key with no row would otherwise render an
+empty screen with a working "Mark done" underneath it.
+
+### Step 13 — LOT 10: handoff
+
+`/app/brand-kits/[id]/handoff`: a plain-text brief she pastes into an email, plus the files she already
+owns, plus what must never appear — the real `ethics_rules` rows verbatim, because that is the part a
+web designer breaks without knowing and it has a licensing board behind it.
+
+⚠ **There is no share URL, and there must not be one.** This page is precisely where "Eklio never hosts,
+publishes or shares" erodes first, one convenience at a time. The absence is a test: the three surfaces
+are scanned for `navigator.share`, copy-link, `shareUrl` and `getPublicUrl`, with a canary proving the
+scan bites. A handoff is something she forwards herself, which is also why the recipient needs no
+account.
+
+### Photography, and why every photo surface is a gradient
+
+Expected, and correct. Photographs exist for one test kit only, at `medium`, and those rows are stale
+against `IMAGE_PROMPT_VERSION` 7. `<PhotoSlot>` renders its deterministic block for all of them. The item
+editor READS `brand_images` to supply a source when one is current — reading is not generating — and
+nothing in these three lots can cause an image to be made. `lib/images` was not modified.
+
+### Decisions taken without asking
+
+- **Content is gated on the KIT's entitlement, not on a Monthly Presence subscription.** Planning her own
+  posts is part of the brand she bought; Monthly Presence is about content generated FOR her, which this
+  lot does not build. If that is wrong it is a one-line change in three places, all of them named
+  `isBrandKitEntitled`.
+- **Item routes live at `/api/content-items/[id]`, not `/api/content/[id]`.** `/api/content/[id]/unlock`
+  already exists and takes a `monthly_presence_content` id; two id spaces under one path would make the
+  same URL mean two things depending on which table the uuid happened to live in.
+- **The launch flow is reachable from the home checklist card, not from a fifth nav slot.** The chrome
+  spec fixes four (Home, Brand kit, Content, Check) and adding one is a chrome decision, not a lot
+  decision.
+- **`content_items` carries no `user_id`.** Ownership runs through `brand_kit_id -> projects.user_id`,
+  the one path `brand_images` uses. A second column recording the same fact is a second column that can
+  be wrong.
+
+### Not done, and deliberately
+
+- **Steps 10 and 12 were not started.** They are Session 5.
+- **The per-slot image fingerprint was not started**, per the owner's deferred decision recorded above.
+- **`monthly_presence_content` and its two functions were not dropped**, see FINDINGS.md.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because
