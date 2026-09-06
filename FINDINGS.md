@@ -169,13 +169,23 @@ built around. One line each: what, where, why it matters.
   unlock modal went with it: those belonged to content generated FOR her behind a subscription, and
   `content_items` are her own words, so nothing there is withheld.
 
-  ⚠ **THE ONE REMAINING WRITER, AND WHAT IT MEANS.** `app/api/cron/monthly/route.ts` still writes the old
-  table through `ensure_month_skeleton`. It has never been turned on — that is why the table is empty, and
-  it is the same "built, never turned on" state the September findings recorded. **It must not be enabled
-  as it stands: it would write rows nothing reads.** Porting it is not a mechanical move, because it
-  requires deciding how a PAID, GENERATED item lives in a table she can edit — `content_items` has no
-  `locked` state, deliberately. That decision belongs to whoever picks up Monthly Presence, and it is
-  named in the exemption list inside the test so it cannot be forgotten quietly.
+  ⚠ **THE ONE REMAINING WRITER, AND I WAS WRONG ABOUT IT (corrected 2026-09-06).**
+  `app/api/cron/monthly/route.ts` still writes the old table through `ensure_month_skeleton`. I recorded it
+  as "built, never turned on", inferring that from the empty table and from the September inventory's note
+  that no generator calls `ensure_month_skeleton` in production. **That inference was wrong.**
+  `vercel.json` — on `main`, since Lot 9, well before this chantier — schedules
+  `/api/cron/monthly` at `0 5 1 * *`. It is armed. Why the table is nonetheless empty is not something this
+  repo can answer: no production deployment, no kit at the last firing, or a firing that failed all look
+  identical from here, and nothing records a run.
+
+  What this means now that the home screen and the calendar read `content_items`: **if that cron fires, it
+  calls a model, spends real money, and writes rows into a table no surface reads.** It was already armed
+  before this chantier; what changed is that its output is now invisible. Two ways to close it, and the
+  choice is a product one: remove the entry from `vercel.json` (one line, reversible, and it matches
+  "monthly_presence_content stays dead"), or port the generator onto `content_items` — which means deciding
+  how a PAID, GENERATED item lives in a table she can edit, since `content_items` has no `locked` state,
+  deliberately. **Nobody should leave it as it is.** It is named in the exemption list inside
+  `app/__tests__/one-month-model.test.ts` so it cannot be forgotten quietly.
 ---
 
 ## Added in Session 5, and left open

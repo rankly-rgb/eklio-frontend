@@ -1105,10 +1105,17 @@ and `content_items` are her own words, so nothing there is withheld.
 `app/__tests__/one-month-model.test.ts` fails if any file outside one named exemption touches the old
 model again.
 
-⚠ **The exemption is the monthly cron**, which still writes the old table and **has never been turned on**.
-It must not be enabled as it stands: it would write rows nothing reads. Porting it means deciding how a
-paid, generated item lives in a table she can edit — `content_items` has no `locked` state, deliberately.
-That is a product decision and it is named inside the test so it cannot be forgotten quietly.
+⚠ **The exemption is the monthly cron, and I got its status wrong — corrected while merging.** I wrote
+that it "has never been turned on", inferring that from the empty table. `vercel.json` on `main` has
+scheduled `/api/cron/monthly` at `0 5 1 * *` since Lot 9, long before this chantier: **it is armed**. Why
+the table is empty anyway cannot be answered from this repo — no production deployment, no kit at the last
+firing, or a failed firing all look the same from here.
+
+So the real state is worse than logged: if it fires it calls a model, spends money, and writes rows nothing
+reads. It was already armed before this chantier; what changed is that its output is now invisible. Either
+remove the entry from `vercel.json` (one line, reversible, and it matches "stays dead") or port the
+generator onto `content_items` — which means deciding how a paid, generated item lives in a table she can
+edit. It is named inside the test so it cannot be forgotten quietly, but it should not be left as it is.
 
 **Ruling 2 — the typegen trap is loud now.** `types/__tests__/generated-types-drift.test.ts` fails when the
 three hand-added tables, the eleven hand-added RPCs, or the four manual status unions go missing from
@@ -1174,7 +1181,9 @@ stale without anything noticing.
 
 Everything is in `FINDINGS.md`. The five that will actually cost someone time:
 
-1. **The monthly cron is parked on a dead table** and must not be switched on as it stands.
+1. **The monthly cron is ALREADY SCHEDULED and writes a dead table.** `vercel.json` fires
+   `/api/cron/monthly` on the 1st of each month; nothing reads what it writes any more. Remove the entry or
+   port the generator — this is the first decision, not a later one.
 2. **The image regeneration meter is the DIRECTIONS meter.** `plans.image_budget_cents` exists for
    photographs, but `consume_generation_credit` is still what a direction regeneration and the Check
    rewrite share. Someone should decide whether photographs get their own allowance.
