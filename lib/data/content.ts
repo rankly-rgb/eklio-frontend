@@ -325,6 +325,21 @@ export function firstWeekday(key: string): number {
   return new Date(`${key}T12:00:00Z`).getUTCDay();
 }
 
+/** The month with nothing in it. Home degrades to this rather than failing. */
+export const EMPTY_CONTENT_MONTH: ContentMonth = {
+  month: "1970-01-01",
+  items: [],
+  unscheduled: [],
+  counts: { scheduled: 0, ready: 0, posted: 0 },
+};
+
+/** `2026-09-01` → `SEPTEMBER`, for a section header's mono label. */
+export function contentMonthMono(key: string): string {
+  return new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" })
+    .format(new Date(`${key}T12:00:00Z`))
+    .toUpperCase();
+}
+
 export const ARCHETYPE_LABELS: Record<ContentArchetype, string> = {
   statement: "Statement",
   question: "Question",

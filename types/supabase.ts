@@ -1,3 +1,27 @@
+/* ---------------------------------------------------------------------------
+ * ⚠ THIS FILE IS NOT SAFELY REGENERABLE. READ THIS BEFORE RUNNING TYPEGEN.
+ *
+ * `supabase gen types` OVERWRITES this file completely, and two things in it
+ * are not generated:
+ *
+ *   1. THE MANUAL ADDENDUM at the bottom — ProjectStatus, SubscriptionStatus,
+ *      PurchaseStatus, MonthlyPresenceStatus. Those columns are `text` with a
+ *      CHECK, not Postgres enums, so typegen renders them as `string` and the
+ *      unions vanish. They have had to be re-applied four times already.
+ *   2. THE HAND-WRITTEN ADDITIONS for tables and RPCs added by a session that
+ *      did not regenerate — `content_items`, `content_publications` and the
+ *      seven content RPCs among them.
+ *
+ * The loss is SILENT: the file still compiles, `Database` is still a valid
+ * type, and the first thing that breaks is a call that was typed yesterday and
+ * is `any` today.
+ *
+ * `types/__tests__/generated-types-drift.test.ts` fails when any of that is
+ * missing, so a regeneration turns the suite red instead of quietly widening
+ * the gap between these types and the database. If you DO regenerate: run it,
+ * read what it names, and put each piece back.
+ * ------------------------------------------------------------------------ */
+
 export type Json =
   | string
   | number
