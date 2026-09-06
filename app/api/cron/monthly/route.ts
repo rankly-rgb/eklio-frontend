@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { authorizeCron } from "@/lib/api/cron";
 import { readCatalog } from "@/lib/catalog/read";
 import { parseDirections, parseVoiceGuide } from "@/lib/data/brand-kit";
-import { monthKey, monthLabel } from "@/lib/data/calendar";
+import { contentMonthKey, contentMonthMono } from "@/lib/data/content";
 import { isEntitledToMonthlyPresence } from "@/lib/billing/entitlements";
 import { planMonth, type MonthlySlot } from "@/lib/generation/monthly";
 import { monthReadyEmail } from "@/lib/email/templates";
@@ -46,8 +46,8 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   const admin = createAdminClient();
-  const month = monthKey(new Date());
-  const label = monthLabel(month);
+  const month = contentMonthKey(new Date());
+  const label = contentMonthMono(month);
 
   const catalog = await readCatalog(admin);
 

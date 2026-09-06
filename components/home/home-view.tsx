@@ -112,7 +112,7 @@ export function HomeView({ home }: { home: HomeModel }) {
         {home.brandKit && home.checklist.total > 0 ? (
           home.checklist.resolvedCount === home.checklist.total ? (
             <MonthlyPresenceCard
-              calendar={home.calendar}
+              month={home.month}
               entitled={home.entitled}
               monthLabel={home.monthLabel}
             />
@@ -124,14 +124,13 @@ export function HomeView({ home }: { home: HomeModel }) {
 
       <SinceYouWereHere activity={home.activity} />
 
-      {kit && direction && home.calendar.items.length > 0 ? (
+      {kit && direction && home.month.items.length > 0 ? (
         <section className="mt-7 flex flex-col gap-5">
           <SectionHeader title="This month's content" mono={home.monthLabel} />
           <ContentGrid
-            items={home.calendar.items.slice(0, 5)}
+            items={home.month.items.slice(0, 5)}
             palette={direction.palette}
             typography={direction.typography}
-            lockedCount={home.calendar.locked_count}
             monthLabel={home.monthLabel}
           />
           <Link

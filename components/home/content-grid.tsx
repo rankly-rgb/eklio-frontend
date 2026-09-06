@@ -1,158 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { MonoLabel } from "@/components/ui/mono-label";
-import { Button } from "@/components/ui/button";
-import { PadlockGlyph } from "@/components/ui/glyphs";
 import { PlaceholderLines } from "@/components/ui/placeholder-lines";
-import { MonthlyPresenceModal } from "@/components/home/monthly-presence-modal";
 import type { Palette, Typography } from "@/lib/brand/shapes";
-import type { CalendarItem } from "@/lib/data/calendar";
+import { ARCHETYPE_LABELS, type ContentItem } from "@/lib/data/content";
 
 /*
- * La grille de contenu du mois (Écran 7).
+ * ── ONE MONTH MODEL, AND THIS IS IT ─────────────────────────────────────
  *
- * LOT 8 — la tuile verrouillée n'est plus floutée : le §9 accessible existe
- * déjà (le titre en clair, dessous), donc le flou par-dessus n'ajoutait
- * qu'une couche décorative que le brief demande de supprimer purement et
- * simplement — "Delete every blurred card in the product." Elle rend
- * maintenant en LISIBLE et sobre : date, type (Post/Story), le titre réel en
- * ses polices, à opacité réduite, avec un petit cadenas — jamais un rendu
- * flou faisant semblant de cacher quelque chose.
+ * This grid used to read `monthly_presence_content` through `calendar_summary`
+ * while `/app/content` read `content_items`. Two models for the same month is
+ * the failure this repo keeps producing: the home says one number, the
+ * calendar shows another, and nothing errors. The old table holds zero rows,
+ * so the number home showed was not merely different — it was nothing.
+ *
+ * WHAT WENT WITH IT: the locked tile, the "N more locked" row, and the unlock
+ * modal. Those belonged to content generated FOR her behind a subscription.
+ * `content_items` are HERS — she wrote them — so nothing here is withheld and
+ * there is nothing to unlock. Monthly Presence is still sold, by
+ * `MonthlyPresenceSubscriptionCard`, which is a card about a subscription
+ * rather than a lock drawn over her own words.
  */
 
 export function ContentGrid({
   items,
   palette,
   typography,
-  lockedCount,
   monthLabel,
   columns = 5,
 }: {
-  items: CalendarItem[];
+  items: ContentItem[];
   palette: Palette;
   typography: Typography;
-  lockedCount: number;
   monthLabel: string;
   columns?: 5 | 4;
 }) {
-  const [modal, setModal] = useState<{
-    open: boolean;
-    title: string | null;
-    checkoutUrl: string | null;
-  }>({ open: false, title: null, checkoutUrl: null });
-
-  async function unlock(item: CalendarItem) {
-    setModal({ open: true, title: item.title, checkoutUrl: null });
-
-    try {
-      const response = await fetch(`/api/content/${item.id}/unlock`, {
-        method: "POST",
-      });
-      const body = (await response.json().catch(() => null)) as
-        | { checkoutUrl?: string | null; entitled?: boolean }
-        | null;
-
-      setModal((current) => ({
-        ...current,
-        checkoutUrl: body?.checkoutUrl ?? null,
-      }));
-    } catch {
-      setModal((current) => ({ ...current, checkoutUrl: null }));
-    }
-  }
-
   return (
-    <>
-      <div
-        className={`grid gap-5 ${
-          columns === 5 ? "grid-cols-5" : "grid-cols-4"
-        } max-lg:grid-cols-3 max-md:grid-cols-2`}
-      >
-        {items.map((item) =>
-          item.status === "locked" ? (
-            <LockedTile
-              key={item.id}
-              item={item}
-              typography={typography}
-              onOpen={() => void unlock(item)}
-            />
-          ) : (
-            <OpenTile
-              key={item.id}
-              item={item}
-              palette={palette}
-              typography={typography}
-            />
-          )
-        )}
-      </div>
-
-      {lockedCount > 0 ? (
-        <div className="mt-4 flex items-center gap-8">
-          <MonoLabel tracking="16" tone="ink-3">
-            {`${lockedCount} more locked`}
-          </MonoLabel>
-          <div className="flex-1" />
-          <Button
-            variant="tertiary"
-            onClick={() =>
-              void unlock(
-                items.find((entry) => entry.status === "locked") ?? items[0]
-              )
-            }
-          >
-            {`Unlock the rest of ${titleCase(monthLabel)}.`}
-          </Button>
-        </div>
-      ) : null}
-
-      <MonthlyPresenceModal
-        open={modal.open}
-        title={modal.title}
-        checkoutUrl={modal.checkoutUrl}
-        onClose={() => setModal({ open: false, title: null, checkoutUrl: null })}
-      />
-    </>
+    <div
+      className={`grid gap-5 ${
+        columns === 5 ? "grid-cols-5" : "grid-cols-4"
+      } max-lg:grid-cols-3 max-md:grid-cols-2`}
+    >
+      {items.map((item) => (
+        <ItemTile
+          key={item.id}
+          item={item}
+          palette={palette}
+          typography={typography}
+          monthLabel={monthLabel}
+        />
+      ))}
+    </div>
   );
 }
 
-function titleCase(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase();
-}
-
-/** `2026-09-01` + `3` → `Sep 3`, for the locked row's date column. */
-function shortDate(month: string, dayOfMonth: number): string {
-  const date = new Date(`${month}T12:00:00Z`);
-  const monthAbbrev = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(date);
-  return `${monthAbbrev} ${dayOfMonth}`;
-}
-
-function downloadCaption(item: CalendarItem) {
-  const title = item.title ?? "Untitled";
-  const text = item.caption ? `${title}\n\n${item.caption}` : title;
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `${title.replace(/[^\w\s-]/g, "").trim().slice(0, 60) || "post"}.txt`;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-function OpenTile({
+function ItemTile({
   item,
   palette,
   typography,
 }: {
-  item: CalendarItem;
+  item: ContentItem;
   palette: Palette;
   typography: Typography;
+  monthLabel: string;
 }) {
   const ready = item.status === "ready";
 
   return (
-    <div>
+    <Link
+      href={`/app/content/${item.id}`}
+      className="group block rounded-preview focus-visible:outline-none"
+    >
       <div
         className="box-border flex h-[138px] items-end rounded-preview p-[18px]"
         style={{ background: ready ? palette.primary : palette.light }}
@@ -168,72 +87,21 @@ function OpenTile({
             color: ready ? palette.light : palette.dark,
           }}
         >
-          {item.title ?? "Coming this month"}
+          {item.title ?? "Untitled"}
         </span>
       </div>
 
-      {/* La légende est longue : la tuile en montre le RYTHME, pas le texte. */}
-      <PlaceholderLines
-        className="mt-3.5"
-        widths={[92, 80, 56]}
-        height={4}
-        gap={6}
-        opacity={0.5}
-      />
+      {/* The caption is long: the tile shows its RHYTHM, never its text. */}
+      <PlaceholderLines className="mt-3.5" widths={[92, 80, 56]} height={4} gap={6} opacity={0.5} />
+
       <div className="mt-3 flex items-center justify-between gap-3">
-        <MonoLabel tracking="14" tone={ready ? "accent" : "ink-3"}>
-          {ready ? "Ready" : item.status === "published" ? "Published" : "Draft"}
+        <MonoLabel tracking="14" tone={item.posted ? "accent" : ready ? "accent" : "ink-3"}>
+          {item.posted ? "Posted" : ready ? "Ready" : "Draft"}
         </MonoLabel>
-        {item.caption ? (
-          <button
-            type="button"
-            onClick={() => downloadCaption(item)}
-            className="text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
-          >
-            Download
-          </button>
-        ) : null}
-      </div>
-      {item.caption ? <span className="sr-only">{item.caption}</span> : null}
-    </div>
-  );
-}
-
-function LockedTile({
-  item,
-  typography,
-  onOpen,
-}: {
-  item: CalendarItem;
-  typography: Typography;
-  onOpen: () => void;
-}) {
-  const title = item.title ?? "A post for later this month";
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`Unlock “${title}”`}
-      className="box-border flex h-[138px] w-full flex-col justify-between rounded-preview border border-line p-[18px] text-left opacity-50 transition-opacity hover:opacity-70"
-    >
-      <div className="flex w-full items-center justify-between gap-2">
-        <MonoLabel tracking="12" tone="ink-3">
-          {`${shortDate(item.month, item.day_of_month)} · ${item.type === "post" ? "Post" : "Story"}`}
+        <MonoLabel tracking="14" tone="ink-3">
+          {ARCHETYPE_LABELS[item.archetype]}
         </MonoLabel>
-        <PadlockGlyph size="sm" />
       </div>
-      <span
-        className="text-pretty"
-        style={{
-          fontFamily: `"${typography.heading_font}", Georgia, serif`,
-          fontWeight: 500,
-          fontSize: 17,
-          lineHeight: 1.2,
-        }}
-      >
-        {title}
-      </span>
-    </button>
+    </Link>
   );
 }

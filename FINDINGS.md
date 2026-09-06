@@ -156,18 +156,24 @@ built around. One line each: what, where, why it matters.
   daily image ceiling, and it costs at most one extra credit, never money. Someone should decide whether a
   genuine post-purchase refund primitive is worth having.
 
-- **`monthly_presence_content` is now dead.** LOT 6 built `content_items` (migration `20260906155600`)
-  rather than reshaping it, because that table refuses every client write by policy
-  (`insert with check (false)`, `update using (false)`, `delete using (false)`), holds zero rows on the
-  live project, and lacks `archetype`, `tags`, `alt_text`, `category`, `image_slot` and `scheduled_for` —
-  six of the columns the editor writes. Making it usable would have meant widening its CHECKs, inverting
-  its RLS posture from deny-all to owner-write and bolting on those columns, at which point it is not the
-  same table any more, only the same name. The brief's own contingency said to create `content_items`, and
-  that is what was done. **The old table was deliberately not dropped, not altered and not renamed**: a
-  drop has no undo and the new work did not need it gone. What is now true is that nothing reads it —
-  `ensure_month_skeleton` and `calendar_summary` are still defined and still work, and `lib/data/calendar.ts`
-  and the home screen's `ContentGrid` still call the second one, so it is dead in the sense that no new
-  surface writes or reads it, not in the sense that every caller is gone yet. Someone should decide
-  whether the home screen's month grid moves onto `content_items` (it is the same information, counted
-  differently) and, once it has, whether the old table, its two functions and its four policies get
-  dropped in one migration that says so.
+- **`monthly_presence_content` is dead, and the month is unified. RESOLVED 2026-09-06.** LOT 6 built
+  `content_items` (migration `20260906155600`) rather than reshaping it, because that table refuses every
+  client write by policy, holds zero rows on the live project, and lacks six of the columns the editor
+  writes. The old table was deliberately not dropped, not altered and not renamed, and a guard rail in
+  that migration fails if its four policies ever change.
+
+  Session 4 left one thing open: the home screen still counted the old table through `calendar_summary`
+  while `/app/content` rendered the new one. The owner ruled that shut — the home now reads
+  `get_content_month`, the same rows the calendar shows, and `app/__tests__/one-month-model.test.ts`
+  fails if any file outside one named exemption touches `monthly_presence_content`,
+  `calendar_summary` or `ensure_month_skeleton` again. The locked tile, the "N more locked" row and the
+  unlock modal went with it: those belonged to content generated FOR her behind a subscription, and
+  `content_items` are her own words, so nothing there is withheld.
+
+  ⚠ **THE ONE REMAINING WRITER, AND WHAT IT MEANS.** `app/api/cron/monthly/route.ts` still writes the old
+  table through `ensure_month_skeleton`. It has never been turned on — that is why the table is empty, and
+  it is the same "built, never turned on" state the September findings recorded. **It must not be enabled
+  as it stands: it would write rows nothing reads.** Porting it is not a mechanical move, because it
+  requires deciding how a PAID, GENERATED item lives in a table she can edit — `content_items` has no
+  `locked` state, deliberately. That decision belongs to whoever picks up Monthly Presence, and it is
+  named in the exemption list inside the test so it cannot be forgotten quietly.

@@ -10,12 +10,12 @@ import {
 } from "@/lib/data/brand-kit";
 import { loadLaunchProgress, type LaunchProgress } from "@/lib/data/checklist";
 import {
-  EMPTY_CALENDAR,
-  loadCalendar,
-  monthKey,
-  monthLabel,
-  type CalendarSummary,
-} from "@/lib/data/calendar";
+  EMPTY_CONTENT_MONTH,
+  contentMonthKey,
+  contentMonthMono,
+  getContentMonth,
+  type ContentMonth,
+} from "@/lib/data/content";
 import {
   getSubscription,
   isEntitledToMonthlyPresence,
@@ -50,7 +50,8 @@ export type HomeModel = {
   briefProgressStep: number | null;
   briefStarted: boolean;
   checklist: LaunchProgress;
-  calendar: CalendarSummary;
+  /** Her own editorial month, the SAME rows /app/content renders. */
+  month: ContentMonth;
   monthKey: string;
   monthLabel: string;
   subscription: Subscription | null;
@@ -69,7 +70,7 @@ export async function loadHome(
   userId: string,
   now: Date = new Date()
 ): Promise<HomeModel> {
-  const month = monthKey(now);
+  const month = contentMonthKey(now);
 
   const [{ data: profile }, { data: project }, subscription, deletedKits] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
@@ -103,9 +104,9 @@ export async function loadHome(
       briefProgressStep: null,
       briefStarted: false,
       checklist: { items: [], resolvedCount: 0, total: 0 },
-      calendar: EMPTY_CALENDAR,
+      month: EMPTY_CONTENT_MONTH,
       monthKey: month,
-      monthLabel: monthLabel(month),
+      monthLabel: contentMonthMono(month),
       subscription,
       entitled,
       nudge: null,
@@ -123,11 +124,21 @@ export async function loadHome(
     loadBrandKitByProject(supabase, project.id, userId),
   ]);
 
-  const [checklist, calendar, activity] = await Promise.all([
+  const [checklist, contentMonth, activity] = await Promise.all([
     brandKit
       ? loadLaunchProgress(supabase, brandKit.row.id)
       : Promise.resolve({ items: [], resolvedCount: 0, total: 0 }),
-    brandKit ? loadCalendar(supabase, userId, month) : Promise.resolve(EMPTY_CALENDAR),
+    /*
+     * The one month model. A refusal -- an unpaid kit, a kit that is not hers
+     * -- degrades to the empty month rather than failing home: the rest of
+     * this screen is still true, and the checkout offer lives on the cards
+     * that sell it.
+     */
+    brandKit
+      ? getContentMonth(supabase, brandKit.row.id, month).then((result) =>
+          result.ok ? result.data : EMPTY_CONTENT_MONTH
+        )
+      : Promise.resolve(EMPTY_CONTENT_MONTH),
     /*
      * `home_recent_activity` ADVANCES its own marker on every call — reading
      * it is not free of side effects, so this only ever runs from the real
@@ -145,12 +156,12 @@ export async function loadHome(
     briefProgressStep: brief?.progress_step ?? null,
     briefStarted: (brief?.completed_steps?.length ?? 0) > 0,
     checklist,
-    calendar,
+    month: contentMonth,
     monthKey: month,
-    monthLabel: monthLabel(month),
+    monthLabel: contentMonthMono(month),
     subscription,
     entitled,
-    nudge: pickNudge({ project, brief, brandKit, calendar }),
+    nudge: pickNudge({ project, brief, brandKit, month: contentMonth }),
     activity,
     deletedKits,
   };
@@ -160,12 +171,12 @@ function pickNudge({
   project,
   brief,
   brandKit,
-  calendar,
+  month,
 }: {
   project: { id: string };
   brief: { progress_step: number; completed_steps: number[] } | null;
   brandKit: BrandKit | null;
-  calendar: CalendarSummary;
+  month: ContentMonth;
 }): Nudge | null {
   // 1. Un brief commencé et pas fini prime sur tout : c'est la seule chose qui
   //    manque pour avoir une marque.
@@ -201,7 +212,7 @@ function pickNudge({
    *    La condition est l'exact complément de celle du nudge suivant : les deux
    *    ne peuvent pas se disputer l'écran, et AU PLUS UN nudge reste la règle.
    */
-  if (brandKit?.selectedDirection && calendar.ready_count === 0) {
+  if (brandKit?.selectedDirection && month.counts.ready === 0) {
     return {
       kind: "site-ready",
       message: "Your site instructions are ready. Shape them before you paste.",
@@ -211,13 +222,20 @@ function pickNudge({
   }
 
   // 4. Du contenu prêt ce mois-ci.
-  if (brandKit && calendar.ready_count > 0) {
-    const waiting = calendar.locked_count;
+  if (brandKit && month.counts.ready > 0) {
+    /*
+     * `locked_count` is gone with the old model: nothing in `content_items` is
+     * withheld from her. What is worth naming instead is what is still in
+     * draft -- a number she can act on, and one the database counted.
+     */
+    const drafts =
+      month.items.filter((item) => item.status === "draft").length +
+      month.unscheduled.filter((item) => item.status === "draft").length;
     return {
       kind: "month-ready",
       message:
-        waiting > 0
-          ? `This month's post is ready — ${spell(waiting)} more are waiting.`
+        drafts > 0
+          ? `${spell(month.counts.ready)} ready to post, ${spell(drafts)} still in draft.`
           : "This month's content is ready.",
       href: "/app/content",
       cta: "See this month",

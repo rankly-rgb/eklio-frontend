@@ -1,27 +1,28 @@
 import { MonoLabel } from "@/components/ui/mono-label";
 import { ButtonLink } from "@/components/ui/button";
 import { MonthlyPresenceSubscriptionCard } from "@/components/presence/subscription-card";
-import type { CalendarItem, CalendarSummary } from "@/lib/data/calendar";
+import type { ContentMonth } from "@/lib/data/content";
 
 /*
- * Monthly Presence's card on home (Lot 8) — takes the launch checklist's
- * slot once "Your first week" fully resolves (Lot 6's decision: that
- * transition is when the subscription gets sold, not the day she paid).
+ * Monthly Presence's card on home — takes the launch checklist's slot once
+ * "Your first week" fully resolves.
  *
- * Same honesty rule as the content page: zero rows is today's reality for
- * every kit (the monthly cron hasn't run yet for a kit bought mid-month),
- * and it says so plainly rather than showing anything invented.
+ * It now counts `content_items`, the same rows `/app/content` renders, so the
+ * two surfaces cannot disagree. Every number here is counted by the database
+ * over her own rows: nothing is estimated, and "your first month is being
+ * prepared" is said only when there is genuinely nothing, rather than
+ * standing in for a count we could not compute.
  */
 export function MonthlyPresenceCard({
-  calendar,
+  month,
   entitled,
   monthLabel,
 }: {
-  calendar: CalendarSummary;
+  month: ContentMonth;
   entitled: boolean;
   monthLabel: string;
 }) {
-  const hasContent = calendar.items.length > 0;
+  const items = [...month.items, ...month.unscheduled];
 
   return (
     <div className="flex flex-col gap-5">
@@ -33,14 +34,14 @@ export function MonthlyPresenceCard({
           Monthly Presence
         </MonoLabel>
 
-        {hasContent ? (
+        {items.length > 0 ? (
           <>
             <p className="mt-4 text-ui leading-prose text-ink">
-              {`${calendar.ready_count} of ${calendar.items.length} ready for ${titleCase(monthLabel)}.`}
+              {`${month.counts.ready} of ${items.length} ready for ${titleCase(monthLabel)}.`}
             </p>
-            {nextItem(calendar) ? (
+            {nextItem(items) ? (
               <p className="mt-2 text-helper leading-prose text-ink-2">
-                {nextItemLine(nextItem(calendar)!)}
+                {nextItemLine(nextItem(items)!)}
               </p>
             ) : null}
             <ButtonLink href="/app/content" variant="secondary" className="mt-5 self-start">
@@ -48,9 +49,14 @@ export function MonthlyPresenceCard({
             </ButtonLink>
           </>
         ) : (
-          <p className="mt-4 text-ui leading-prose text-ink">
-            Your first month is being prepared.
-          </p>
+          <>
+            <p className="mt-4 text-ui leading-prose text-ink">
+              Nothing planned for {titleCase(monthLabel)} yet.
+            </p>
+            <ButtonLink href="/app/content" variant="secondary" className="mt-5 self-start">
+              Open the calendar
+            </ButtonLink>
+          </>
         )}
       </section>
 
@@ -63,15 +69,20 @@ function titleCase(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase();
 }
 
-/** The next item still ahead of her — not yet published — in calendar order. */
-function nextItem(calendar: CalendarSummary): CalendarItem | null {
-  return calendar.items.find((item) => item.status !== "published") ?? null;
+/** The next thing still ahead of her: not posted, earliest first. */
+function nextItem(items: ContentItem[]): ContentItem | null {
+  return items.find((item) => !item.posted) ?? null;
 }
 
-function nextItemLine(item: CalendarItem): string {
-  const date = new Date(`${item.month}T12:00:00Z`);
-  const monthAbbrev = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(date);
-  const kind = item.type === "post" ? "post" : "story";
-  const label = item.status === "locked" ? "Next" : item.title ?? "Next";
-  return `${label} — ${monthAbbrev} ${item.day_of_month}, ${kind}.`;
+function nextItemLine(item: ContentItem): string {
+  const label = item.title ?? "Untitled";
+  if (!item.scheduled_for) return `${label} — no date yet.`;
+  const date = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${item.scheduled_for}T12:00:00Z`));
+  return `${label} — ${date}.`;
 }
+
+type ContentItem = ContentMonth["items"][number];
