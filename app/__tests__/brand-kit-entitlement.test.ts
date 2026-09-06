@@ -160,6 +160,7 @@ const KIT_PAGES = [
   "app/app/brand-kits/[id]/site/page.tsx",
   "app/app/brand-kits/[id]/delivered/page.tsx",
   "app/app/brand-kits/[id]/assets/page.tsx",
+  "app/app/brand-kits/[id]/handoff/page.tsx",
 ];
 
 /**

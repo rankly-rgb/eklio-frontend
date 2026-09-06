@@ -110,6 +110,17 @@ export function AssetsPreview({
         >
           View all assets →
         </Link>
+        {/*
+         * The way out of Eklio, on purpose. Someone else is going to build the
+         * site, and the moment she needs that person she needs one page rather
+         * than a tour of six cards.
+         */}
+        <Link
+          href={`/app/brand-kits/${brandKitId}/handoff`}
+          className="text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+        >
+          Hand off to a designer →
+        </Link>
       </div>
     </div>
   );
