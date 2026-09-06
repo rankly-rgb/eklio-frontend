@@ -463,6 +463,94 @@ export type Database = {
         }
         Relationships: []
       }
+      content_items: {
+        Row: {
+          alt_text: string | null
+          archetype: string
+          brand_kit_id: string
+          caption: string | null
+          category: string | null
+          created_at: string
+          id: string
+          image_slot: string | null
+          scheduled_for: string | null
+          status: string
+          tags: string[]
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          alt_text?: string | null
+          archetype: string
+          brand_kit_id: string
+          caption?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_slot?: string | null
+          scheduled_for?: string | null
+          status?: string
+          tags?: string[]
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alt_text?: string | null
+          archetype?: string
+          brand_kit_id?: string
+          caption?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_slot?: string | null
+          scheduled_for?: string | null
+          status?: string
+          tags?: string[]
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_items_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_publications: {
+        Row: {
+          action: string
+          channel: string | null
+          content_item_id: string
+          id: string
+          occurred_at: string
+        }
+        Insert: {
+          action: string
+          channel?: string | null
+          content_item_id: string
+          id?: string
+          occurred_at?: string
+        }
+        Update: {
+          action?: string
+          channel?: string | null
+          content_item_id?: string
+          id?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_publications_item_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       direction_asset_daily_spend: {
         Row: {
           actual_cents: number
@@ -2094,6 +2182,11 @@ export type Database = {
         Returns: boolean
       }
       delete_brand_kit: { Args: { p_brand_kit_id: string }; Returns: Json }
+      create_content_item: {
+        Args: { p_archetype: string; p_brand_kit_id: string; p_scheduled_for?: string | null }
+        Returns: Json
+      }
+      delete_content_item: { Args: { p_id: string }; Returns: Json }
       direction_assets_claim: {
         Args: {
           p_brand_kit_id: string
@@ -2144,8 +2237,17 @@ export type Database = {
         Args: { p_brand_kit_id: string; p_image_fingerprint: string }
         Returns: Json
       }
+      get_content_item: { Args: { p_id: string }; Returns: Json }
+      get_content_month: {
+        Args: { p_brand_kit_id: string; p_month: string }
+        Returns: Json
+      }
       get_image_regeneration_budget: {
         Args: { p_brand_kit_id: string }
+        Returns: Json
+      }
+      get_publishing_log: {
+        Args: { p_brand_kit_id: string; p_limit?: number }
         Returns: Json
       }
       get_launch_progress: { Args: { p_brand_kit_id: string }; Returns: Json }
@@ -2158,6 +2260,10 @@ export type Database = {
       list_deleted_brand_kits: { Args: never; Returns: Json }
       mark_brand_kit_delivered: {
         Args: { p_brand_kit_id: string }
+        Returns: Json
+      }
+      mark_content_posted: {
+        Args: { p_channel?: string | null; p_id: string; p_posted: boolean }
         Returns: Json
       }
       mark_notifications_read: {
@@ -2455,6 +2561,7 @@ export type Database = {
         }
         Returns: Json
       }
+      update_content_item: { Args: { p_id: string; p_patch: Json }; Returns: Json }
       usp_fingerprint_confirm: {
         Args: { p_brief_id: string; p_statement: string }
         Returns: string

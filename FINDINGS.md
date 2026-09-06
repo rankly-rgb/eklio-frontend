@@ -155,3 +155,19 @@ built around. One line each: what, where, why it matters.
   could both pass the advisory check and both consume. It is bounded by the per-slot claim lock and by the
   daily image ceiling, and it costs at most one extra credit, never money. Someone should decide whether a
   genuine post-purchase refund primitive is worth having.
+
+- **`monthly_presence_content` is now dead.** LOT 6 built `content_items` (migration `20260906155600`)
+  rather than reshaping it, because that table refuses every client write by policy
+  (`insert with check (false)`, `update using (false)`, `delete using (false)`), holds zero rows on the
+  live project, and lacks `archetype`, `tags`, `alt_text`, `category`, `image_slot` and `scheduled_for` —
+  six of the columns the editor writes. Making it usable would have meant widening its CHECKs, inverting
+  its RLS posture from deny-all to owner-write and bolting on those columns, at which point it is not the
+  same table any more, only the same name. The brief's own contingency said to create `content_items`, and
+  that is what was done. **The old table was deliberately not dropped, not altered and not renamed**: a
+  drop has no undo and the new work did not need it gone. What is now true is that nothing reads it —
+  `ensure_month_skeleton` and `calendar_summary` are still defined and still work, and `lib/data/calendar.ts`
+  and the home screen's `ContentGrid` still call the second one, so it is dead in the sense that no new
+  surface writes or reads it, not in the sense that every caller is gone yet. Someone should decide
+  whether the home screen's month grid moves onto `content_items` (it is the same information, counted
+  differently) and, once it has, whether the old table, its two functions and its four policies get
+  dropped in one migration that says so.
