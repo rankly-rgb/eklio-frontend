@@ -967,6 +967,35 @@ this change on your own. No prompt hashing, no reshaping of `computeImageFingerp
 `get_brand_images`. `IMAGE_PROMPT_VERSION` stays at 7 and stays the invalidation lever. The condition for
 revisiting it is named in the ruling — kit count, not annoyance — and revisiting is the owner's call.
 
+### 2026-09-06 — Session 3 closed: two observations from the delivered set
+
+Both are the owner's, from looking at the seven photographs he actually generated. Both are **accepted as
+they stand** — neither is a defect to fix, and neither is an invitation for a later session to go back into
+`lib/images`.
+
+#### A named `slotExclusion` is ADVISORY, not enforced
+
+`post_bg_2` rendered the terracotta cushion that its own exclusion forbade **by name**. The mechanism added
+in `9d68caa` reduces the odds; it does not guarantee absence.
+
+**The rule a future session must not get wrong:** naming a thing in an exclusion is not a constraint the
+system can hold you to. Only the master's hard constraints — no people, no faces, no hands, no text — held
+reliably across every generation made today. Anything built on top of "the exclusion says it will not be
+there" is built on sand. If absence ever has to be guaranteed, it has to be guaranteed by cropping,
+compositing or review, not by a sentence in a prompt.
+
+#### `texture` renders entirely in the primary colour
+
+The palette rule says `paper` and `light_neutral` are the wall and the daylight and dominate the frame.
+`texture` does not obey it: the whole frame is `primary`. **Accepted, because it is a ground rather than a
+scene** — a full-bleed surface behind type is a different job from a room with a subject in it, and the
+rule was written for the room.
+
+**The consequence for whoever puts type over it: the ink must be light.** A dark headline on a saturated
+primary ground will not clear 4.5:1. `solveScrimOpacity` in `lib/kit/render/luminance.ts` already measures
+rather than assumes, and it reports `meetsTarget: false` honestly rather than pretending — that is the
+mechanism to trust here, not an eyeballed choice of ink.
+
 ### FIRST, A SESSION TO RUN IT AS
 
 `generate-one.ts` runs every RPC as the therapist herself, because
