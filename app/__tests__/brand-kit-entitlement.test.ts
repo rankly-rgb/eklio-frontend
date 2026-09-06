@@ -62,6 +62,20 @@ const EXPLICIT_CHECK = /\bisBrandKitEntitled\s*\(/;
  */
 const DB_REFUSED = [
   /\bselectDirection\s*\(/,
+  /* LOT 6, 7 et 9 : toutes passent par `kit_paid_access` en base, qui répond
+     `not_found` avant `payment_required`. La route ne décide rien, elle rend
+     le refus — d'où l'exigence de `SURFACES_REFUSAL` juste en dessous. */
+  /\bgetContentMonth\s*\(/,
+  /\bgetContentItem\s*\(/,
+  /\bcreateContentItem\s*\(/,
+  /\bupdateContentItem\s*\(/,
+  /\bdeleteContentItem\s*\(/,
+  /\bmarkContentPosted\s*\(/,
+  /\bgetPublishingLog\s*\(/,
+  /\blistUserUploads\s*\(/,
+  /\brequestUserUpload\s*\(/,
+  /\brecordUserUpload\s*\(/,
+  /\bdeleteUserUpload\s*\(/,
   /\bsiteSpecGet\s*\(/,
   /\bsiteSpecPatch\s*\(/,
   /\bsiteSpecReset\s*\(/,
@@ -78,7 +92,14 @@ const DB_REFUSED = [
  * réponse elle-même doit écrire le code. Sans cette seconde assertion, une
  * route pourrait se réclamer du refus de la base et l'avaler en 500.
  */
-const SURFACES_REFUSAL = [/\bsiteResponse\s*\(/, /\b402\b/];
+const SURFACES_REFUSAL = [
+  /\bsiteResponse\s*\(/,
+  /* `contentResponse` traduit le code en statut (404, 402, 400) en un seul
+     endroit ; `refusal` fait la même chose pour les uploads. */
+  /\bcontentResponse\s*\(/,
+  /\brefusal\s*\(/,
+  /\b402\b/,
+];
 
 function routeFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -213,6 +234,151 @@ describe("les pages du kit sont gardées", () => {
           "Ajoute-le à l'une des deux listes, explicitement."
       ).toBe(true);
     }
+  });
+});
+
+/*
+ * ── LOT 11 : L'ÉNUMÉRATION S'ÉTEND À TOUT CE QUE CE CHANTIER A AJOUTÉ ────
+ *
+ * Les deux blocs ci-dessus ne couvrent que `app/api/brand-kits/**` et
+ * `app/app/brand-kits/[id]/**`. Ce chantier a ajouté des surfaces AILLEURS —
+ * le contenu, le lancement guidé, Check, les uploads — et une surface payante
+ * hors de l'arbre balayé est exactement le trou que ce fichier existe pour
+ * fermer. Le mode de défaillance est identique : personne ne décide rien,
+ * personne ne voit rien.
+ *
+ * Trois exigences, et la troisième est celle qui tient dans le temps :
+ *
+ *   1. Chaque route et chaque page sous ces racines est gardée.
+ *   2. Une page EMMÈNE au checkout ; elle ne rend pas un écran vide.
+ *   3. La LISTE DES RACINES elle-même est vérifiée contre l'arborescence
+ *      réelle : un nouveau répertoire sous `app/api` ou `app/app` fait échouer
+ *      la suite tant que quelqu'un n'a pas dit à quelle catégorie il appartient.
+ */
+
+/** Les surfaces payantes ajoutées par ce chantier, hors des deux arbres déjà couverts. */
+const CHANTIER_ROOTS = [
+  "app/api/check",
+  "app/api/content-items",
+  "app/app/check",
+  "app/app/content",
+  "app/app/launch",
+];
+
+function entryPoints(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return entryPoints(full);
+    return entry.name === "route.ts" || entry.name === "page.tsx" ? [full] : [];
+  });
+}
+
+const CHANTIER_FILES = CHANTIER_ROOTS.flatMap((root) => entryPoints(join(ROOT, root)));
+
+describe("les surfaces ajoutées hors de brand-kits sont gardées aussi", () => {
+  it("l'énumération trouve bien quelque chose", () => {
+    // Sans cette garde, une racine renommée rendrait tout le bloc vacuously
+    // true — et c'est un bloc sur le paiement.
+    expect(CHANTIER_FILES.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it.each(CHANTIER_FILES.map((file) => [relative(file), file] as const))(
+    "%s",
+    (path, file) => {
+      const source = code(file);
+      const checked = EXPLICIT_CHECK.test(source);
+      const refused = DB_REFUSED.some((pattern) => pattern.test(source));
+
+      expect(
+        checked || refused,
+        `${path} ne vérifie pas le droit.\n` +
+          "Cette surface est dans l'espace payant : soit elle appelle\n" +
+          "`isBrandKitEntitled`, soit elle passe par une RPC que la base refuse\n" +
+          "elle-même via `kit_paid_access`."
+      ).toBe(true);
+
+      if (path.endsWith("page.tsx")) {
+        /*
+         * Une PAGE ne rend pas un 402 : elle emmène au checkout. Lui demander
+         * `SURFACES_REFUSAL` serait exiger un code HTTP d'une chose qui n'en
+         * rend pas — la garde équivalente pour une page est la redirection.
+         */
+        expect(source).toMatch(/\bredirect\(/);
+        expect(source).toContain("/app/checkout");
+      } else if (refused && !checked) {
+        expect(
+          SURFACES_REFUSAL.some((pattern) => pattern.test(source)),
+          `${path} s'appuie sur le refus de la base mais ne le rend pas.\n` +
+            "Un refus avalé en 500 est un cul-de-sac ; en 402 c'est une offre."
+        ).toBe(true);
+      }
+    }
+  );
+});
+
+/*
+ * La liste des racines est écrite à la main, comme `KIT_PAGES` l'était — et
+ * comme elle, elle cesserait de garder le jour où quelqu'un ajoute un
+ * répertoire sans y penser. On vérifie donc l'arborescence RÉELLE contre trois
+ * listes exhaustives : payant, gardé autrement, public. Un répertoire qui
+ * n'est dans aucune des trois fait échouer la suite.
+ */
+const OTHER_GATE: Record<string, string> = {
+  "app/api/cron": "Signed cron secret via authorizeCron, not a user session at all.",
+  "app/api/stripe": "Stripe signature verification; the caller is Stripe, not a practitioner.",
+  "app/api/unsubscribe": "A signed one-click link from an email, by design reachable without a session.",
+  "app/api/briefs": "The pre-purchase funnel: the brief is free and is what gets bought.",
+  "app/api/jobs": "Generation job status for the pre-purchase funnel, user-scoped by loadBrief.",
+  "app/api/catalog": "Public reference data -- palettes, fonts, specialties. Nothing kit-specific.",
+  "app/api/home": "The home aggregate, user-scoped; it shows a kit's existence, never its deliverables.",
+  "app/api/search": "Searches only rows the caller's own RLS already returns.",
+  "app/api/settings": "Account settings, user-scoped and unrelated to any kit.",
+  "app/api/notifications": "The caller's own notifications, RLS-scoped.",
+  "app/api/monthly-presence": "Opens a subscription checkout; refusing it to an unpaid user would refuse the sale.",
+  "app/api/checklist": "set_launch_step resolves ownership through brand_kits itself.",
+  "app/app/briefs": "The pre-purchase brief. Free on purpose: it is the thing being sold.",
+  "app/app/checkout": "The checkout itself. Gating it on having paid would be a closed loop.",
+  "app/app/settings": "Account settings, user-scoped and unrelated to any kit.",
+};
+
+describe("aucune surface n'échappe au classement", () => {
+  const directoriesUnder = (parent: string) =>
+    readdirSync(join(ROOT, parent), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `${parent}/${entry.name}`);
+
+  it("chaque répertoire de `app/api` et `app/app` est classé", () => {
+    const real = [...directoriesUnder("app/api"), ...directoriesUnder("app/app")];
+    const classified = new Set([
+      ...CHANTIER_ROOTS,
+      ...Object.keys(OTHER_GATE),
+      // Déjà couverts par les deux blocs du haut de ce fichier.
+      "app/api/brand-kits",
+      "app/app/brand-kits",
+    ]);
+
+    for (const dir of real) {
+      expect(
+        classified.has(dir),
+        `${dir} n'est classé nulle part.\n` +
+          "Ajoute-le à CHANTIER_ROOTS s'il est dans l'espace payant, ou à\n" +
+          "OTHER_GATE avec la raison pour laquelle il est gardé autrement.\n" +
+          "Une surface payante hors de l'énumération est exactement le trou que\n" +
+          "ce fichier existe pour fermer."
+      ).toBe(true);
+    }
+  });
+
+  it("chaque exemption porte une vraie raison, pas un nom", () => {
+    for (const [dir, reason] of Object.entries(OTHER_GATE)) {
+      expect(reason.length, `${dir} : la raison est trop courte`).toBeGreaterThan(30);
+    }
+  });
+
+  it("aucune exemption ne survit au répertoire qu'elle exemptait", () => {
+    // Une entrée périmée couvrira le prochain répertoire à porter ce nom.
+    const real = new Set([...directoriesUnder("app/api"), ...directoriesUnder("app/app")]);
+    for (const dir of Object.keys(OTHER_GATE)) expect(real).toContain(dir);
   });
 });
 

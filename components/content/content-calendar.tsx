@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -125,7 +125,13 @@ export function ContentCalendar({
         </p>
       ) : null}
 
-      <div className="mt-8 grid grid-cols-7 gap-px overflow-hidden rounded-card border border-line bg-line">
+      {/*
+       * Seven columns need seven columns' worth of room. Below the medium
+       * breakpoint the month becomes a LIST of the days that actually carry
+       * something -- the same rows, ordered the same way, without a grid squeezed
+       * to 40px cells that nobody can read or tap.
+       */}
+      <div className="mt-8 hidden grid-cols-7 gap-px overflow-hidden rounded-card border border-line bg-line md:grid">
         {WEEKDAYS.map((day) => (
           <div key={day} className="bg-paper px-3 py-2">
             <MonoLabel tracking="16">{day}</MonoLabel>
@@ -147,6 +153,34 @@ export function ContentCalendar({
             />
           )
         )}
+      </div>
+
+      <ol className="mt-8 flex flex-col md:hidden">
+        {model.items.length === 0 ? (
+          <li className="text-helper leading-prose text-ink-2">
+            Nothing scheduled this month yet.
+          </li>
+        ) : (
+          model.items.map((item) => (
+            <li key={item.id} className="border-b border-line first:border-t">
+              <Link href={`/app/content/${item.id}`} className="flex items-baseline gap-4 py-3">
+                <MonoLabel tracking="14" className="w-10 flex-none">
+                  {String(dayOf(item) ?? 0).padStart(2, "0")}
+                </MonoLabel>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-ui text-ink">{item.title ?? "Untitled"}</span>
+                  <ItemMeta item={item} />
+                </span>
+              </Link>
+            </li>
+          ))
+        )}
+      </ol>
+
+      <div className="mt-6 md:hidden">
+        <Button variant="secondary" onClick={() => setPicker({ date: null })}>
+          New item
+        </Button>
       </div>
 
       <section className="mt-10">
@@ -279,13 +313,31 @@ function ArchetypePicker({
   onCancel: () => void;
   onChoose: (archetype: ContentArchetype) => void;
 }) {
+  const panel = useRef<HTMLDivElement>(null);
+
+  /*
+   * Escape closes it, and focus moves into it when it opens. A dialog that
+   * traps a keyboard user behind it is not a dialog, it is a wall -- and the
+   * only way out of this one otherwise is a mouse.
+   */
+  useEffect(() => {
+    panel.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/20 p-6">
       <div
+        ref={panel}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Choose a kind of post"
-        className="w-full max-w-[420px] rounded-card border border-line bg-paper p-6"
+        className="w-full max-w-[420px] rounded-card border border-line bg-paper p-6 focus:outline-none"
       >
         <MonoLabel tracking="16">
           {date ? `New item, ${date}` : "New item, no date yet"}
