@@ -29,6 +29,9 @@ const SURFACES = [
   "components/launch",
   "components/kit/uploads-view.tsx",
   "components/kit/handoff-view.tsx",
+  "components/kit/kit-rail.tsx",
+  "components/kit/kit-header-band.tsx",
+  "components/kit/asset-library-view.tsx",
   "components/home/content-grid.tsx",
 ];
 
@@ -41,6 +44,11 @@ const PAGES = [
   "app/app/check/page.tsx",
   "app/app/brand-kits/[id]/handoff/page.tsx",
   "app/app/brand-kits/[id]/uploads/page.tsx",
+  /*
+   * Le shell des sections du kit, et pas ses sept pages : c'est LUI qui porte
+   * la gouttière, une fois, pour toutes les sections qu'il enveloppe.
+   */
+  "app/app/brand-kits/[id]/(sections)/layout.tsx",
 ];
 
 function walk(path: string): string[] {
@@ -61,7 +69,7 @@ function source(path: string): string {
 describe("l'énumération elle-même", () => {
   it("trouve les surfaces et les pages", () => {
     expect(FILES.length).toBeGreaterThanOrEqual(6);
-    expect(PAGES.length).toBe(8);
+    expect(PAGES.length).toBe(9);
     for (const page of PAGES) expect(source(page).length).toBeGreaterThan(200);
   });
 });

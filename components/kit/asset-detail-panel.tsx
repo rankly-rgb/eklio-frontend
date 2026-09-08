@@ -24,8 +24,11 @@ function formatDate(iso: string): string {
  * `asset` search param. Traps focus and returns it on close, same pattern
  * `components/site/reset-section.tsx`'s ConfirmReset already established.
  *
- * "Also see it in place" (the in-situ frame strip) is Lot 4's next step —
- * this panel's slot for it is wired up there, not here.
+ * Below 900px it is a SHEET rather than a block pushed under the grid: at
+ * that width the panel is taller than the viewport, and appending it to the
+ * page meant her tap on a thumbnail appeared to do nothing until she
+ * scrolled. A sheet arrives where she is looking, and Escape — already wired
+ * above, and the reason this stayed a `role="dialog"` — closes it.
  */
 export function AssetDetailPanel({
   brandKitId,
@@ -60,74 +63,85 @@ export function AssetDetailPanel({
   }, []);
 
   return (
-    <div
-      ref={panelRef}
-      tabIndex={-1}
-      role="dialog"
-      aria-label={entry.label}
-      className="route-enter sticky top-6 flex w-[520px] flex-none flex-col gap-5 rounded-card border border-line p-5 max-lg:static max-lg:w-full"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-body text-ink">{entry.label}</p>
-          {status ? <StatusChip status={status} className="mt-1.5" /> : null}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="flex size-8 flex-none items-center justify-center rounded-pill text-ink-2 hover:bg-card hover:text-ink"
-        >
-          ×
-        </button>
-      </div>
-
-      <AssetThumbnail brandKitId={brandKitId} assetKey={entry.key} className="aspect-square w-full rounded-card" />
-
-      <table className="text-ui text-ink-2">
-        <tbody>
-          <SpecRow label="File type" value={entry.kind.toUpperCase()} />
-          {entry.width && entry.height ? (
-            <SpecRow label="Dimensions" value={`${entry.width}×${entry.height}`} />
-          ) : null}
-          {entry.asset ? (
-            <>
-              <SpecRow label="File size" value={formatBytes(entry.asset.byte_size)} />
-              <SpecRow label="Added" value={formatDate(entry.asset.created_at)} />
-              <SpecRow label="Downloads" value={String(entry.asset.download_count)} />
-            </>
-          ) : null}
-        </tbody>
-      </table>
-
-      {entry.description ? (
-        <div>
-          <MonoLabel tracking="10">Usage guidelines</MonoLabel>
-          <p className="mt-1.5 text-helper leading-prose text-ink-2">{entry.description}</p>
-        </div>
-      ) : null}
-
-      <InSituSection
-        brandKitId={brandKitId}
-        assetKey={entry.key}
-        availableKeys={availableKeys}
-        practiceName={practiceName}
+    <>
+      {/* The sheet's backdrop, below 900px only. Tapping it closes, same as
+          Escape — a sheet whose only exit is a small × is a trap. */}
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="fixed inset-0 z-40 hidden bg-ink/25 max-[900px]:block"
       />
 
-      <AssetVersionHistory key={entry.key} brandKitId={brandKitId} assetKey={entry.key} />
-
-      <AssetDownloadSplit
-        brandKitId={brandKitId}
-        assetKey={entry.key}
-        kind={entry.kind}
-        availableSizes={entry.available_sizes}
-        availableFormats={entry.available_formats}
-        nativeWidth={entry.width}
-        className="self-start rounded-pill bg-ink px-[26px] py-2.5 text-ui font-semibold text-bg hover:bg-ink-2"
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-label={entry.label}
+        className="route-enter sticky top-6 flex w-[520px] flex-none flex-col gap-5 rounded-card border border-line bg-bg p-5 max-[900px]:fixed max-[900px]:inset-x-0 max-[900px]:bottom-0 max-[900px]:top-auto max-[900px]:z-50 max-[900px]:max-h-[85vh] max-[900px]:w-auto max-[900px]:overflow-y-auto max-[900px]:rounded-b-none"
       >
-        Download
-      </AssetDownloadSplit>
-    </div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-body text-ink">{entry.label}</p>
+            {status ? <StatusChip status={status} className="mt-1.5" /> : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex size-8 flex-none items-center justify-center rounded-pill text-ink-2 hover:bg-card hover:text-ink"
+          >
+            ×
+          </button>
+        </div>
+
+        <AssetThumbnail brandKitId={brandKitId} assetKey={entry.key} className="aspect-square w-full rounded-card" />
+
+        <table className="text-ui text-ink-2">
+          <tbody>
+            <SpecRow label="File type" value={entry.kind.toUpperCase()} />
+            {entry.width && entry.height ? (
+              <SpecRow label="Dimensions" value={`${entry.width}×${entry.height}`} />
+            ) : null}
+            {entry.asset ? (
+              <>
+                <SpecRow label="File size" value={formatBytes(entry.asset.byte_size)} />
+                <SpecRow label="Added" value={formatDate(entry.asset.created_at)} />
+                <SpecRow label="Downloads" value={String(entry.asset.download_count)} />
+              </>
+            ) : null}
+          </tbody>
+        </table>
+
+        {entry.description ? (
+          <div>
+            <MonoLabel tracking="10">Usage guidelines</MonoLabel>
+            <p className="mt-1.5 text-helper leading-prose text-ink-2">{entry.description}</p>
+          </div>
+        ) : null}
+
+        <InSituSection
+          brandKitId={brandKitId}
+          assetKey={entry.key}
+          availableKeys={availableKeys}
+          practiceName={practiceName}
+        />
+
+        <AssetVersionHistory key={entry.key} brandKitId={brandKitId} assetKey={entry.key} />
+
+        <AssetDownloadSplit
+          brandKitId={brandKitId}
+          assetKey={entry.key}
+          kind={entry.kind}
+          availableSizes={entry.available_sizes}
+          availableFormats={entry.available_formats}
+          nativeWidth={entry.width}
+          className="self-start rounded-pill bg-ink px-[26px] py-2.5 text-ui font-semibold text-bg hover:bg-ink-2"
+        >
+          Download
+        </AssetDownloadSplit>
+      </div>
+    </>
   );
 }
 
