@@ -73,6 +73,14 @@ export type KitPage = {
   compAccess: boolean;
   /** The hero photograph's signed URL, or null for <PhotoSlot>'s gradient. */
   heroImageUrl: string | null;
+  /**
+   * A SECOND photograph, for the rail's card — never the hero.
+   *
+   * The Overview shows the hero full-bleed; repeating it 200px lower in the
+   * rail would read as a bug rather than as an editorial choice. Null is the
+   * normal answer today and the gradient is the correct rendering of it.
+   */
+  railImageUrl: string | null;
 };
 
 /**
@@ -146,32 +154,48 @@ export const requireKitPage = cache(async function requireKitPage(
     assetStats,
     launchProgress,
     compAccess,
-    heroImageUrl: await loadHeroImageUrl(supabase, kit),
+    ...(await loadKitImages(supabase, kit)),
   };
 });
 
 /**
- * The hero photograph for a kit, or null.
+ * The two photographs the kit's shell can show, each or both null.
  *
  * Null is the normal answer, not an error: a kit renders the gradient until
  * something has been generated for its CURRENT fingerprint, and a kit whose
  * brand has since moved renders the gradient again rather than a photograph
  * of colours she no longer uses. `get_brand_images` decides that -- `current`
  * is `ready` AND at this fingerprint, never one or the other.
+ *
+ * One RPC for both: the rows come back together, so picking a second slot
+ * costs one extra signed URL and no extra query.
  */
-async function loadHeroImageUrl(
+async function loadKitImages(
   supabase: Awaited<ReturnType<typeof createClient>>,
   kit: BrandKit
-): Promise<string | null> {
+): Promise<{ heroImageUrl: string | null; railImageUrl: string | null }> {
+  const none = { heroImageUrl: null, railImageUrl: null };
+
   const context = await loadImageContext(supabase, kit);
-  if (!context.ok) return null;
+  if (!context.ok) return none;
 
   const rows = await getBrandImages(supabase, kit.row.id, computeImageFingerprint(context.input));
-  const hero = rows.find((row) => row.slot === "hero" && row.current && row.storage_path);
-  if (!hero?.storage_path) return null;
+  const usable = rows.filter((row) => row.current && row.storage_path);
 
-  const signed = await supabase.storage
-    .from("brand-assets")
-    .createSignedUrl(hero.storage_path, 300);
-  return signed.data?.signedUrl ?? null;
+  const hero = usable.find((row) => row.slot === "hero");
+  // Prefer the calmer of the two ambients, then anything that isn't the hero.
+  const rail =
+    usable.find((row) => row.slot === "ambient_a") ??
+    usable.find((row) => row.slot !== "hero");
+
+  const sign = async (path: string | null | undefined): Promise<string | null> => {
+    if (!path) return null;
+    const signed = await supabase.storage.from("brand-assets").createSignedUrl(path, 300);
+    return signed.data?.signedUrl ?? null;
+  };
+
+  return {
+    heroImageUrl: await sign(hero?.storage_path),
+    railImageUrl: await sign(rail?.storage_path),
+  };
 }

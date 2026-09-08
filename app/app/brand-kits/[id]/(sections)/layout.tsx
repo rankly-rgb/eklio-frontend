@@ -30,10 +30,14 @@ export default async function KitSectionsLayout({
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-6 max-md:px-[var(--gutter-sm)]">
       <KitHeaderBand model={model} />
 
-      <div className="mt-8 flex items-start gap-10 max-[900px]:mt-6 max-[900px]:flex-col max-[900px]:gap-5">
-        <div className="sticky top-6 flex w-[212px] flex-none flex-col gap-6 self-start max-[900px]:static max-[900px]:w-full">
-          <KitRail brandKitId={id} />
-        </div>
+      <div className="mt-8 flex items-start gap-10 max-[900px]:mt-4 max-[900px]:flex-col max-[900px]:gap-6">
+        <KitRail
+          brandKitId={id}
+          practiceName={model.kit.practiceName}
+          directionName={model.kit.selectedDirection?.name ?? ""}
+          tokens={model.tokens}
+          photoUrl={model.railImageUrl}
+        />
 
         <div className="min-w-0 flex-1">{children}</div>
       </div>
