@@ -29,7 +29,7 @@ export function ChecklistCard({
     practiceDetails: null,
     bookingUrl: null,
     assetsHref: `/app/brand-kits/${brandKit.row.id}#kit-assets`,
-    siteHref: `/app/brand-kits/${brandKit.row.id}/site`,
+    siteHref: `/app/brand-kits/${brandKit.row.id}/site-editor`,
   };
 
   return (

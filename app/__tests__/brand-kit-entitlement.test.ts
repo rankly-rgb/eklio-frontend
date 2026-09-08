@@ -177,13 +177,57 @@ describe("chaque route de brand-kits est gardée", () => {
  * une page qui rend le livrable est une surface comme une autre.
  */
 const KIT_PAGES = [
-  "app/app/brand-kits/[id]/page.tsx",
-  "app/app/brand-kits/[id]/site/page.tsx",
+  "app/app/brand-kits/[id]/(sections)/page.tsx",
+  "app/app/brand-kits/[id]/(sections)/identity/page.tsx",
+  "app/app/brand-kits/[id]/(sections)/colors/page.tsx",
+  "app/app/brand-kits/[id]/(sections)/type/page.tsx",
+  "app/app/brand-kits/[id]/(sections)/site/page.tsx",
+  "app/app/brand-kits/[id]/(sections)/words/page.tsx",
+  "app/app/brand-kits/[id]/(sections)/assets/page.tsx",
+  "app/app/brand-kits/[id]/site-editor/page.tsx",
   "app/app/brand-kits/[id]/delivered/page.tsx",
-  "app/app/brand-kits/[id]/assets/page.tsx",
   "app/app/brand-kits/[id]/handoff/page.tsx",
   "app/app/brand-kits/[id]/uploads/page.tsx",
 ];
+
+/**
+ * Le TROISIÈME mécanisme de garde, et il n'existe que pour les sections.
+ *
+ * Les sept routes de section partagent `requireKitPage`, qui pose la question
+ * du droit UNE fois : 404 avant `payment_required`, puis redirection vers le
+ * checkout. Sept pages qui re-dérivent cet ordre, c'est sept occasions de
+ * l'inverser — et l'inverser confirme à un inconnu qu'un kit existe.
+ *
+ * Une garde partagée ne vaut que si l'énumération la vérifie AUSSI : le bloc
+ * ci-dessous exige donc que `lib/data/kit-page.ts` porte lui-même la
+ * vérification explicite et la redirection. Sans ça, ce motif dirait « gardée »
+ * dès qu'une page appelle une fonction au bon nom.
+ */
+const SHARED_GUARD = /\brequireKitPage\s*\(/;
+const SHARED_GUARD_FILE = "lib/data/kit-page.ts";
+
+describe("la garde partagée des sections est une vraie garde", () => {
+  const source = code(join(ROOT, SHARED_GUARD_FILE));
+
+  it("elle pose la question du droit", () => {
+    expect(EXPLICIT_CHECK.test(source)).toBe(true);
+  });
+
+  it("elle emmène au checkout plutôt que de rendre un refus", () => {
+    expect(source).toMatch(/\bredirect\(/);
+    expect(source).toContain("/app/checkout");
+  });
+
+  it("elle répond 404 AVANT de parler d'argent", () => {
+    // L'ordre est la garde : un 402 rendu à un inconnu confirmerait que le kit
+    // existe et que sa propriétaire n'a pas payé.
+    const notFoundAt = source.indexOf("notFound()");
+    const entitledAt = source.search(EXPLICIT_CHECK);
+    expect(notFoundAt).toBeGreaterThan(-1);
+    expect(entitledAt).toBeGreaterThan(-1);
+    expect(notFoundAt).toBeLessThan(entitledAt);
+  });
+});
 
 /**
  * `KIT_PAGES` above is hand-maintained, unlike `ROUTES` — and a hand-
@@ -207,14 +251,21 @@ describe("les pages du kit sont gardées", () => {
     const source = code(join(ROOT, path));
     const checked = EXPLICIT_CHECK.test(source);
     const refused = DB_REFUSED.some((pattern) => pattern.test(source));
+    const shared = SHARED_GUARD.test(source);
 
-    expect(checked || refused).toBe(true);
+    expect(checked || refused || shared).toBe(true);
+
     // Une page ne rend pas un 402 : elle EMMÈNE au checkout. Un écran vide se
     // lirait comme une panne plutôt que comme une offre. L'adresse est parfois
     // composée dans une variable, d'où les deux assertions plutôt qu'un motif
     // qui exigerait de l'écrire en toutes lettres dans l'appel.
-    expect(source).toMatch(/\bredirect\(/);
-    expect(source).toContain("/app/checkout");
+    //
+    // Une page qui délègue à `requireKitPage` ne les écrit pas elle-même : la
+    // redirection est dans la garde partagée, vérifiée par le bloc au-dessus.
+    if (!shared) {
+      expect(source).toMatch(/\bredirect\(/);
+      expect(source).toContain("/app/checkout");
+    }
   });
 
   it("la révélation, elle, reste libre — et c'est le point de vente", () => {

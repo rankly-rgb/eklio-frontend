@@ -213,7 +213,7 @@ function pickNudge({
     return {
       kind: "site-ready",
       message: "Your site instructions are ready. Shape them before you paste.",
-      href: `/app/brand-kits/${brandKit.row.id}/site`,
+      href: `/app/brand-kits/${brandKit.row.id}/site-editor`,
       cta: "Open my site",
     };
   }
@@ -360,7 +360,7 @@ export async function loadHomeCanvas(
     practiceDetails: practiceDetailsFrom(spec),
     bookingUrl: bookingUrlFrom(spec),
     assetsHref: `/app/brand-kits/${kit.row.id}/assets`,
-    siteHref: `/app/brand-kits/${kit.row.id}/site`,
+    siteHref: `/app/brand-kits/${kit.row.id}/site-editor`,
   };
 
   const todayKey = nyDateKey(now);
@@ -505,7 +505,7 @@ export function buildSinceRows(params: {
   if (params.kit.selectedDirection && params.month.counts.ready === 0) {
     rows.push({
       id: "site-ready",
-      href: `/app/brand-kits/${params.kit.row.id}/site`,
+      href: `/app/brand-kits/${params.kit.row.id}/site-editor`,
       text: "Your site instructions are ready. Shape them before you paste.",
     });
   }
@@ -542,7 +542,7 @@ export function hrefForNotification(brandKitId: string, notification: Notificati
         : `/app/brand-kits/${brandKitId}/assets`;
     }
     case "site_stale":
-      return `/app/brand-kits/${brandKitId}/site`;
+      return `/app/brand-kits/${brandKitId}/site-editor`;
     case "content_ready":
       return "/app/content";
     default:

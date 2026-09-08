@@ -42,11 +42,11 @@ export function SiteCard({
       </div>
 
       <div className="flex flex-none items-center gap-5">
-        <ButtonLink href={`/app/brand-kits/${brandKitId}/site`} variant="primary">
+        <ButtonLink href={`/app/brand-kits/${brandKitId}/site-editor`} variant="primary">
           Edit your site
         </ButtonLink>
         <Link
-          href={`/app/brand-kits/${brandKitId}/site`}
+          href={`/app/brand-kits/${brandKitId}/site-editor`}
           className="whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
         >
           See the instructions

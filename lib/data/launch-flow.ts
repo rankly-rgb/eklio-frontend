@@ -53,7 +53,7 @@ export async function loadLaunchFlow(
       practiceDetails: practiceDetailsFrom(spec),
       bookingUrl: bookingUrlFrom(spec),
       assetsHref: `/app/brand-kits/${brandKitId}/assets`,
-      siteHref: `/app/brand-kits/${brandKitId}/site`,
+      siteHref: `/app/brand-kits/${brandKitId}/site-editor`,
     },
   };
 }

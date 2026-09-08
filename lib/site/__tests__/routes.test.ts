@@ -94,7 +94,7 @@ const SITE_ENTRY_POINTS = [
   ...findFiles(join(APP_DIR, "api/brand-kits/[id]"), (name) => name === "route.ts").filter(
     (file) => /\/site-(spec|output)\//.test(file) || /\/site-(spec|output)\/route\.ts$/.test(file)
   ),
-  join(APP_DIR, "app/brand-kits/[id]/site/page.tsx"),
+  join(APP_DIR, "app/brand-kits/[id]/site-editor/page.tsx"),
 ];
 
 function relative(file: string): string {

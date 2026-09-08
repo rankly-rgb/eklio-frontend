@@ -1,11 +1,14 @@
 /*
- * Les trois seuls glyphes de l'application — la coche, le chevron et le
- * cadenas. Aucune bibliothèque d'icônes, aucun fichier SVG : chacun est
- * dessiné en divs bordées, exactement comme dans `design/reference/`.
+ * Les glyphes de l'application — la coche, le chevron, le cadenas, et les
+ * sept marques du rail de sections. Aucune bibliothèque d'icônes, aucun
+ * fichier SVG : chacun est dessiné en divs bordées, exactement comme dans
+ * `design/reference/`.
  *
  * Une implémentation par glyphe, et une seule. Si un écran a besoin d'une
  * autre taille, elle s'ajoute ici en variante nommée.
  */
+
+import type { KitSectionId } from "@/lib/kit/sections";
 
 /**
  * Coche : boîte tournée à −45°, bordures gauche et basse.
@@ -82,6 +85,139 @@ export function ChevronGlyph({ color = "var(--bg)" }: { color?: string }) {
         transform: "rotate(45deg) translateY(-1px)",
       }}
     />
+  );
+}
+
+/**
+ * Les sept marques du rail de sections — 14×14, trait 1.25px, `currentColor`.
+ *
+ * Elles ne remplacent pas le libellé : chacune est `aria-hidden`, posée à
+ * gauche d'un mot qui dit la même chose. C'est de la reconnaissance de
+ * forme dans une liste de sept, pas une icône à déchiffrer.
+ *
+ * Dessinées en divs comme les trois autres. Pas de SVG, pas de dépendance :
+ * sept marques géométriques (grille, disque, trois pastilles, un T, une
+ * fenêtre, trois lignes, un cadre) tiennent très bien en bordures.
+ */
+export function SectionGlyph({ section }: { section: KitSectionId }) {
+  const stroke = "1.25px solid currentColor";
+  const box = { display: "block", boxSizing: "border-box" } as const;
+
+  const marks: Record<KitSectionId, React.ReactNode> = {
+    // Grille 2×2 — la vue d'ensemble.
+    overview: (
+      <span className="grid grid-cols-2 gap-[2px]">
+        {[0, 1, 2, 3].map((cell) => (
+          <span key={cell} style={{ ...box, width: 5, height: 5, border: stroke }} />
+        ))}
+      </span>
+    ),
+    // Disque évidé portant un point — une marque dans son cadre.
+    identity: (
+      <span
+        style={{ ...box, width: 12, height: 12, border: stroke, borderRadius: 999 }}
+        className="flex items-center justify-center"
+      >
+        <span style={{ ...box, width: 4, height: 4, background: "currentColor", borderRadius: 999 }} />
+      </span>
+    ),
+    // Trois pastilles qui se chevauchent — une palette.
+    colors: (
+      <span className="flex items-center">
+        {[0, 1, 2].map((disc) => (
+          <span
+            key={disc}
+            style={{
+              ...box,
+              width: 7,
+              height: 7,
+              border: stroke,
+              borderRadius: 999,
+              marginLeft: disc === 0 ? 0 : -2.5,
+              background: "var(--bg)",
+            }}
+          />
+        ))}
+      </span>
+    ),
+    // Un T — la lettre, pas le mot.
+    type: (
+      <span className="flex flex-col items-center">
+        <span style={{ ...box, width: 12, height: 0, borderTop: stroke }} />
+        <span style={{ ...box, width: 0, height: 11, borderLeft: stroke }} />
+      </span>
+    ),
+    // Une fenêtre de navigateur — barre de titre pleine, corps évidé.
+    site: (
+      <span style={{ ...box, width: 13, height: 11, border: stroke, borderRadius: 2 }}>
+        <span style={{ ...box, width: "100%", height: 3, borderBottom: stroke }} />
+      </span>
+    ),
+    // Trois lignes de longueurs inégales — un paragraphe.
+    words: (
+      <span className="flex flex-col gap-[3px]">
+        {[13, 9, 11].map((width, index) => (
+          <span key={index} style={{ ...box, width, height: 0, borderTop: stroke }} />
+        ))}
+      </span>
+    ),
+    // Un cadre portant un disque — un fichier image.
+    assets: (
+      <span
+        style={{ ...box, width: 13, height: 11, border: stroke, borderRadius: 2 }}
+        className="flex items-end justify-end p-[2px]"
+      >
+        <span style={{ ...box, width: 4, height: 4, background: "currentColor", borderRadius: 999 }} />
+      </span>
+    ),
+  };
+
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-[14px] flex-none items-center justify-center"
+    >
+      {marks[section]}
+    </span>
+  );
+}
+
+/**
+ * Flèche de téléchargement — un trait vertical sous une pointe. Elle
+ * n'apparaît qu'à côté du mot « Download », jamais seule : c'est un
+ * renfort, pas une étiquette.
+ */
+export function DownloadGlyph({ color = "currentColor" }: { color?: string }) {
+  return (
+    <span aria-hidden="true" className="flex size-[13px] flex-col items-center justify-center gap-[2px]">
+      <span
+        style={{
+          display: "block",
+          width: 0,
+          height: 6,
+          borderLeft: `1.5px solid ${color}`,
+        }}
+      />
+      <span
+        style={{
+          display: "block",
+          width: 5,
+          height: 5,
+          borderRight: `1.5px solid ${color}`,
+          borderBottom: `1.5px solid ${color}`,
+          transform: "rotate(45deg) translate(-3px, -3px)",
+        }}
+      />
+      <span
+        style={{
+          display: "block",
+          width: 11,
+          height: 0,
+          borderTop: `1.5px solid ${color}`,
+          marginTop: -2,
+        }}
+      />
+    </span>
   );
 }
 

@@ -29,7 +29,7 @@ const CONTEXT: LaunchStepContext = {
   practiceDetails: null,
   bookingUrl: null,
   assetsHref: "/app/brand-kits/k1/assets",
-  siteHref: "/app/brand-kits/k1/site",
+  siteHref: "/app/brand-kits/k1/site-editor",
 };
 
 function step(key: LaunchStepKey, status: "todo" | "done" | "skipped") {
@@ -241,7 +241,7 @@ describe("hrefForNotification", () => {
       read_at: null,
       created_at: "2026-09-06T00:00:00Z",
     };
-    expect(hrefForNotification(KIT, n)).toBe("/app/brand-kits/k1/site");
+    expect(hrefForNotification(KIT, n)).toBe("/app/brand-kits/k1/site-editor");
   });
 
   it("⚠ content_ready mène au calendrier, JAMAIS à payload.item_id", () => {
@@ -270,7 +270,7 @@ describe("buildSinceRows", () => {
     const rows = buildSinceRows({ kit: KIT, month: month([], 0), notifications: [] });
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe("site-ready");
-    expect(rows[0].href).toBe("/app/brand-kits/k1/site");
+    expect(rows[0].href).toBe("/app/brand-kits/k1/site-editor");
   });
 
   it("ne replie rien dès qu'un item est prêt ce mois-ci", () => {

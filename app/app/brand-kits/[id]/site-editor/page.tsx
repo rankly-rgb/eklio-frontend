@@ -25,14 +25,14 @@ import { track } from "@/lib/analytics";
  */
 export default async function SiteEditorPage({
   params,
-}: PageProps<"/app/brand-kits/[id]/site">) {
+}: PageProps<"/app/brand-kits/[id]/site-editor">) {
   const { id } = await params;
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=/app/brand-kits/${id}/site`);
+  if (!user) redirect(`/login?next=/app/brand-kits/${id}/site-editor`);
 
   const kit = await loadBrandKit(supabase, id, user.id);
   if (!kit) notFound();
