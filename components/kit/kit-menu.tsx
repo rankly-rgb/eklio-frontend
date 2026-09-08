@@ -4,10 +4,15 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 /*
- * The kit header's `···` menu — every app control that isn't her direction
- * name: the tier/comp-access indicator, Switch direction, Edit your brief,
- * Delete this brand kit. Nothing but the direction name sits under her
- * practice name in the header itself (Lot 3).
+ * The band's `···` menu — everything that is a real thing to do with a kit
+ * but is not the one thing she came for.
+ *
+ * It used to hold three items and read as an afterthought beside a header
+ * whose own buttons did the work. It now holds what the band's single
+ * primary action deliberately does NOT: the PDF (a different artifact from
+ * the zip, and a smaller ask), the designer handoff (the way out of Eklio,
+ * on purpose), her brief, the direction switch, and deletion. Filled, not
+ * decorative.
  */
 export function KitMenu({
   brandKitId,
@@ -65,6 +70,33 @@ export function KitMenu({
             </p>
           ) : null}
 
+          <a
+            href={`/api/brand-kits/${brandKitId}/pdf`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="block rounded-check px-3 py-2 text-ui text-ink-2 hover:bg-card hover:text-ink"
+          >
+            Download PDF
+          </a>
+          <Link
+            href={`/app/brand-kits/${brandKitId}/handoff`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="block rounded-check px-3 py-2 text-ui text-ink-2 hover:bg-card hover:text-ink"
+          >
+            Hand off to a designer
+          </Link>
+          <Link
+            href={`/app/briefs/${projectId}/review`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="block rounded-check px-3 py-2 text-ui text-ink-2 hover:bg-card hover:text-ink"
+          >
+            Edit my brief
+          </Link>
+
+          <div className="my-2 border-t border-line" />
+
           <Link
             href={`/app/brand-kits/${brandKitId}/reveal`}
             role="menuitem"
@@ -73,25 +105,20 @@ export function KitMenu({
           >
             Switch direction
           </Link>
+          {/*
+           * The delete section lives on the Overview, which is not
+           * necessarily the section she is on — so this is a full address
+           * with a fragment, never the bare `#kit-danger` it was when there
+           * was only one page to be on.
+           */}
           <Link
-            href={`/app/briefs/${projectId}/review`}
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className="block rounded-check px-3 py-2 text-ui text-ink-2 hover:bg-card hover:text-ink"
-          >
-            Edit your brief
-          </Link>
-
-          <div className="my-2 border-t border-line" />
-
-          <a
-            href="#kit-danger"
+            href={`/app/brand-kits/${brandKitId}#kit-danger`}
             role="menuitem"
             onClick={() => setOpen(false)}
             className="block rounded-check px-3 py-2 text-ui text-ink-2 hover:bg-card hover:text-ink"
           >
             Delete this brand kit
-          </a>
+          </Link>
         </div>
       ) : null}
     </div>
