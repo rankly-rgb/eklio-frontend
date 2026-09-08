@@ -26,7 +26,9 @@ type Sort = (typeof SORTS)[number];
 const SORT_LABEL: Record<Sort, string> = {
   newest: "Newest first",
   name: "Name",
-  downloads: "Most downloaded",
+  // Same fingerprint scope as the panel's spec row: the counter this
+  // sorts on is per-rendering, not per-file-for-all-time.
+  downloads: "Most downloaded (this version)",
 };
 
 function assetStatus(entry: AssetManifestEntry, staleKeys: Set<string>): StatusKey | null {

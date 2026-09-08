@@ -21,6 +21,8 @@ import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
 
 const ROOT = resolve(__dirname, "../..");
 const BAND = join(ROOT, "components/kit/kit-header-band.tsx");
+const LIBRARY = join(ROOT, "components/kit/asset-library-view.tsx");
+const PANEL = join(ROOT, "components/kit/asset-detail-panel.tsx");
 
 function entry(overrides: Partial<AssetManifestEntry> = {}): AssetManifestEntry {
   return {
@@ -156,5 +158,71 @@ describe("la bande ne porte aucun nombre écrit à la main", () => {
     // La maquette en posait un au milieu de ses propres chiffres. Placé là,
     // il se lit comme une promesse de résultat faite par son cabinet.
     expect(source).not.toMatch(/freer futures/i);
+  });
+});
+
+/*
+ * ── DEUX NOMBRES VOISINS DISENT CE QU'ILS EXCLUENT ───────────────────────
+ *
+ * La bande compte les fichiers rendus et à jour sous l'empreinte courante.
+ * La bibliothèque, une section plus bas, ouvre sur « All assets (N) », qui
+ * compte TOUTES les clés du catalogue — y compris celles jamais rendues et
+ * celles devenues périmées, parce que la grille les montre aussi, avec leur
+ * pastille d'état. Les deux diffèrent dès qu'un kit a l'une ou l'autre.
+ *
+ * « Total » à côté de « All » ne laissait aucun moyen de savoir lequel
+ * excluait quelque chose. C'est le lecteur qui devinait, et deviner sur un
+ * compte de fichiers est exactement ce que ce chantier a passé son temps à
+ * retirer.
+ */
+describe("la bande et la bibliothèque ne se disputent pas le mot « tous »", () => {
+  const band = stripComments(readFileSync(BAND, "utf8"));
+  const library = stripComments(readFileSync(LIBRARY, "utf8"));
+
+  it("les deux nombres viennent bien de deux ensembles différents", () => {
+    // Si ça cessait d'être vrai, un seul nom suffirait -- et il faudrait
+    // alors le rendre commun plutôt que de garder deux étiquettes.
+    expect(band).toContain("stats.currentCount");
+    expect(library).toContain("count={manifest.length}");
+  });
+
+  it("la bande nomme ce qu'elle exclut", () => {
+    expect(band).toContain('<StateTile label="Assets ready">');
+    expect(band).not.toContain('label="Total assets"');
+  });
+
+  it("la bibliothèque garde « All assets », qui est vrai de son côté", () => {
+    expect(library).toContain('label="All assets"');
+  });
+});
+
+/*
+ * ── UN COMPTEUR DIT SUR QUOI IL COMPTE ───────────────────────────────────
+ *
+ * `brand_assets.download_count` est porté par la ligne d'asset, et la ligne
+ * est cadrée par empreinte. Le nombre est donc « les téléchargements de CE
+ * rendu », et il repart de zéro au prochain changement de palette. C'est une
+ * donnée honnête sous son vrai nom et un mensonge sous le nom « Downloads ».
+ */
+describe("les deux surfaces du compteur portent leur portée", () => {
+  const panel = stripComments(readFileSync(PANEL, "utf8"));
+  const library = stripComments(readFileSync(LIBRARY, "utf8"));
+
+  it("la fiche de l'asset", () => {
+    expect(panel).toContain('label="Downloads of this version"');
+    expect(panel).not.toMatch(/label="Downloads"/);
+  });
+
+  it("le tri de la bibliothèque", () => {
+    expect(library).toContain('downloads: "Most downloaded (this version)"');
+    expect(library).not.toMatch(/downloads: "Most downloaded"/);
+  });
+
+  it("⚠ et toujours aucun cumul « depuis toujours » nulle part", () => {
+    // Il n'en existe pas : il faudrait une table d'événements, pas un
+    // entier plus grand.
+    for (const source of [panel, library, stripComments(readFileSync(BAND, "utf8"))]) {
+      expect(source).not.toMatch(/Total downloads|Lifetime downloads/i);
+    }
   });
 });

@@ -45,9 +45,23 @@ export default async function KitOverviewPage({
       />
 
       {/*
-       * The one state tile left after the counts moved into the band. It is
-       * the only one that was never a count: it names something she can act
-       * on, and it links to the filter that shows her what.
+       * The one state tile left after the counts moved into the band — the
+       * only one that was never a count.
+       *
+       * ⚠ IT CAN SAY MORE THAN "UP TO DATE", which is what earns it its
+       * place. `staleKeys` is non-empty whenever a file was rendered under a
+       * fingerprint that is no longer current, and the fingerprint is a hash
+       * of her thirteen colour and font tokens, her practice name, her hero
+       * headline, her social templates, her practitioner line, her practice
+       * details and her booking link — every one of which the site editor
+       * lets her change. It is empty across production today only because no
+       * kit has edited any of them yet.
+       *
+       * ⚠ AND IT NO LONGER SAYS SHE HAS WORK TO DO. "N assets need
+       * rebuilding" read as a chore with no button: nothing here rebuilds
+       * anything, and nothing needs to — `ensureAssetRendered` re-renders a
+       * stale key the next time it is downloaded, at no cost to her and with
+       * no credit consumed. The copy now names what is actually happening.
        */}
       <div className="max-w-[300px]">
         <StateTile label="Status">
@@ -56,10 +70,12 @@ export default async function KitOverviewPage({
               href={`/app/brand-kits/${id}/assets?status=needs-rebuild`}
               className="text-ink underline decoration-[var(--accent)] underline-offset-4 hover:text-accent"
             >
-              {stale.length} {stale.length === 1 ? "asset" : "assets"} need rebuilding
+              Your brand moved — {stale.length}{" "}
+              {stale.length === 1 ? "file rebuilds" : "files rebuild"} next time
+              you download {stale.length === 1 ? "it" : "them"}
             </Link>
           ) : (
-            "Up to date"
+            "Every file matches your brand as it stands now"
           )}
         </StateTile>
       </div>

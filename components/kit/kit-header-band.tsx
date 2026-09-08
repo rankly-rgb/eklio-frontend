@@ -85,9 +85,16 @@ export function KitHeaderBand({ model }: { model: KitPage }) {
 
       {/*
        * Three counts, and every one of them is a `select` away from a stored
-       * row: how many assets exist at her current fingerprint, how many
-       * distinct groups those same rows fall into, and the newest of their
-       * timestamps. There is no fourth.
+       * row: how many assets are rendered and current at her fingerprint,
+       * how many distinct groups those same rows fall into, and the newest
+       * of their timestamps. There is no fourth.
+       *
+       * ⚠ `Assets ready`, not `Total assets`. The library one section over
+       * opens on `All assets (N)`, which counts every key in the catalogue —
+       * including keys never rendered and keys gone stale, because the grid
+       * shows those too, with a status chip. The two numbers differ on any
+       * kit that has either, and `Total` beside `All` gave the reader no way
+       * to tell which one excluded something. `ready` names the exclusion.
        *
        * ⚠ THERE IS NO `TOTAL DOWNLOADS` TILE, and the reason is not that the
        * number is hard to get. `brand_assets.download_count` is an integer
@@ -98,7 +105,7 @@ export function KitHeaderBand({ model }: { model: KitPage }) {
        * number this product cannot honestly show.
        */}
       <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
-        <StateTile label="Total assets">{stats ? stats.currentCount : "—"}</StateTile>
+        <StateTile label="Assets ready">{stats ? stats.currentCount : "—"}</StateTile>
         <StateTile label="Asset categories">{stats ? stats.categoryCount : "—"}</StateTile>
         <StateTile label="Last updated">{stats ? formatDate(stats.lastUpdated) : "—"}</StateTile>
       </div>

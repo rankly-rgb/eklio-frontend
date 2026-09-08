@@ -297,38 +297,39 @@ Until it is answered, Monthly Presence does not run. That is a smaller problem t
 
 ## Added while splitting the brand kit into a section switcher
 
-- **`brand_assets.download_count` cannot support a lifetime download total.** It is an integer on the asset
-  row, and the row is keyed by `(brand_kit_id, key, fingerprint)` — so the first time she changes a colour,
-  every current asset becomes a NEW row with a count of zero, and any "downloads so far" figure silently
-  restarts. The header band therefore ships three counts, not four (the brief allowed a `Total downloads`
-  tile only if a download were stored as a row when it happens; a fingerprint-scoped counter is not that).
-  Two places still surface the counter and both are per-render rather than per-lifetime: the detail panel's
-  `Downloads` spec row, and the library's `Most downloaded` sort. Both are defensible readings of "this
-  file, this version" — but neither says so in its label, and someone will eventually read the panel's
-  number as a lifetime total. If a real total is ever wanted, it needs an events table, not a bigger
-  integer.
+*Four of the entries first written here were closed by the closing pass on 8 September and have been
+replaced by what remains true. What follows is the residue, not the original list.*
 
-- **`app/app/brand-kits/[id]/loading.tsx` is a kit-shaped skeleton served to four screens that are not the
-  kit.** It sits at the `[id]` segment, so it covers `reveal/`, `delivered/`, `handoff/`, `uploads/` and the
-  site editor as well as the sections — and it draws a 520px mockup block and a five-cell palette strip,
-  which is a bad guess for all five. It predates this lot and this lot did not need to touch it. Moving it
-  into `(sections)/` and giving the outliers their own is a small, obvious improvement that nothing forced.
-
-- **`AssetDetailPanel` carries `role="dialog"` without `aria-modal`.** That is correct on desktop, where it
-  is a sticky side panel and the rest of the page stays usable, and arguably wrong below 900px, where this
-  lot made it a sheet over a backdrop. The attribute cannot be conditioned on a media query from the
-  server, and `mobile-and-a11y.test.ts` requires `aria-modal="true"` of every `role="dialog"` in its
-  enumeration — which is why that file is deliberately NOT in the enumeration. Resolving it properly means
-  either two components or a client-side viewport read; neither was in this lot.
-
-- **Two honest numbers with confusingly similar names sit on the assets section.** The band says
-  `Total assets`, counting rows that are rendered and current at the kit's fingerprint. The library's first
-  chip says `All assets (N)`, counting every catalogue key the grid can show — including keys never
-  rendered and keys gone stale, which is right, because the grid shows them with a `needs-rebuild` chip. The
-  two will differ on any kit with stale or unrendered keys, and nothing on screen explains why.
+- **A lifetime download total is not available from this schema, and labelling is the whole of the fix
+  that was possible.** `brand_assets.download_count` is an integer on the asset row, and the row is keyed
+  by `(brand_kit_id, key, fingerprint)` — so every current asset becomes a new row with a count of zero
+  the first time she changes a colour. The two surfaces that show it now name their own scope
+  (`Downloads of this version` on the asset's fiche, `Most downloaded (this version)` in the library's
+  sort), and the header band ships no downloads tile at all. That makes the number true; it does not make
+  a lifetime total possible. A real one needs an events table — one row per download, with a timestamp —
+  not a bigger integer, and nobody has asked for one.
 
 - **The kit's "Your site" section renders `BrandPreview`, which is the five-role `--p-*` preview model, one
-  scroll away from a section whose editor renders the thirteen-field `--s-*` token set.** Same brand, two
+  click away from an editor that renders the thirteen-field `--s-*` token set.** Same brand, two
   fidelities, and the preview one has no `cta_ink`, no `primary_text` and no `accent_text`. This is the
-  known two-token-system split, seen here from a new angle: the split now shows up WITHIN one route family
-  rather than between two distant screens, which makes it easier to notice and no easier to justify.
+  known two-token-system split, seen from a new angle: it now shows up WITHIN one route family rather than
+  between two distant screens, which makes it easier to notice and no easier to justify.
+
+- **`needs-rebuild` is the status vocabulary's word for something that needs nothing from her.**
+  `lib/status`'s nine-status system is settled and was not this lot's to change, so the library's chip and
+  its `?status=needs-rebuild` filter still use it. The Overview's tile no longer does — it says the files
+  rebuild the next time she downloads them, which is what `ensureAssetRendered` actually does, free and
+  without consuming a credit. The two now describe the same state in different registers. Worth unifying
+  the day the status vocabulary is opened for another reason.
+
+- **No stored value anywhere points at an app route — verified, not assumed.** The site editor's move from
+  `/app/brand-kits/[id]/site` to `/site-editor` raised the question, because `content_ready`'s
+  `payload.item_id` is a live example of this repo persisting a reference that later went stale. A scan of
+  all 217 text/jsonb columns across every base table in `public` found zero rows containing
+  `/app/brand-kits` or a `brand-kits/…/site` path, and the static picture agrees: no migration writes an
+  app path, `launch_checklist_items` stores a label and a description with the hrefs built in the frontend
+  (`LaunchStepContext`), `site_stale` notifications carry `'{}'::jsonb`, `calendar_summary` returns no
+  href, and the three email `ctaHref`s point at `/app/briefs/:id`, `/app/brand-kits/:id/reveal` and
+  `/app/content`. **App routes are a frontend concern in this system and nothing outside the frontend
+  depends on one.** That is worth knowing before the next rename — and worth re-checking rather than
+  trusting, since it is a property nothing enforces.

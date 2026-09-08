@@ -32,6 +32,7 @@ const SURFACES = [
   "components/kit/kit-rail.tsx",
   "components/kit/kit-header-band.tsx",
   "components/kit/asset-library-view.tsx",
+  "components/kit/asset-detail-panel.tsx",
   "components/home/content-grid.tsx",
 ];
 
@@ -64,6 +65,18 @@ const FILES = SURFACES.flatMap((path) => (/\.tsx$/.test(path) ? [path] : walk(pa
 
 function source(path: string): string {
   return readFileSync(join(ROOT, path), "utf8");
+}
+
+/*
+ * On lit du CODE, pas de la prose — la même règle que
+ * `brand-kit-entitlement.test.ts`. Un fichier qui EXPLIQUE en commentaire
+ * pourquoi il ne pose pas `role="dialog"` se faisait compter comme en posant
+ * un, et devait alors prouver un `aria-modal` qu'il a raison de ne pas avoir.
+ */
+function code(path: string): string {
+  return source(path)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
 }
 
 describe("l'énumération elle-même", () => {
@@ -102,7 +115,7 @@ describe("une page respire sur un téléphone", () => {
 });
 
 describe("une boîte de dialogue se ferme au clavier", () => {
-  const dialogs = FILES.filter((path) => source(path).includes('role="dialog"'));
+  const dialogs = FILES.filter((path) => code(path).includes('role="dialog"'));
 
   it("il y en a au moins une à vérifier", () => {
     // Sinon ce bloc ne dit rien, et c'est le genre de test qui reste vert
@@ -111,7 +124,7 @@ describe("une boîte de dialogue se ferme au clavier", () => {
   });
 
   it.each(dialogs)("%s", (path) => {
-    const body = source(path);
+    const body = code(path);
     expect(body).toContain('aria-modal="true"');
     expect(
       body.includes('"Escape"'),
@@ -122,7 +135,7 @@ describe("une boîte de dialogue se ferme au clavier", () => {
 });
 
 describe("une erreur est annoncée, pas seulement affichée", () => {
-  const fetching = FILES.filter((path) => source(path).includes("await fetch("));
+  const fetching = FILES.filter((path) => code(path).includes("await fetch("));
 
   it("il y a bien des surfaces qui appellent le réseau", () => {
     expect(fetching.length).toBeGreaterThanOrEqual(3);
@@ -130,7 +143,7 @@ describe("une erreur est annoncée, pas seulement affichée", () => {
 
   it.each(fetching)("%s", (path) => {
     expect(
-      source(path).includes('role="alert"'),
+      code(path).includes('role="alert"'),
       `${path} peut échouer sans rien annoncer. Une erreur qui n'existe que\n` +
         "visuellement n'existe pas pour un lecteur d'écran."
     ).toBe(true);

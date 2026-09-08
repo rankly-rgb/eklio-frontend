@@ -1381,3 +1381,92 @@ select * from brand_image_daily_spend where spend_date = current_date;
   bumping it leaves every stored photograph claiming to be current when it is not.
 - **The price table has a retrieval date in its comment.** Re-verify it before trusting the 100-kit number
   again; OpenAI can change prices at any time, and nothing in this repo will notice.
+
+---
+
+## 2026-09-08 — the brand kit, split into a section switcher
+
+`/app/brand-kits/[id]` shipped as one long scrolling page with a floating anchor list. It is now a shell —
+a header band and a persistent left rail — around one section at a time. Composition and routing only: no
+migration, no new table, no model call, `lib/images` untouched except through its already-exported read
+functions.
+
+### The route family
+
+Seven routes under `app/app/brand-kits/[id]/(sections)/` — Overview (`page.tsx`), `identity/`, `colors/`,
+`type/`, `site/`, `words/`, `assets/`. **The parentheses add nothing to the URL**: `page.tsx` is still
+`/app/brand-kits/[id]`, `colors/` still `/app/brand-kits/[id]/colors`. The group exists so
+`(sections)/layout.tsx` wraps the sections and nothing else — `reveal/`, `delivered/`, `handoff/`,
+`uploads/` and the site editor are siblings outside it, and each has its own reason not to carry a
+paid-kit rail.
+
+`lib/data/kit-page.ts` is the aggregate. `React.cache`d, and it takes **the kit id and nothing else** — a
+Supabase client passed in is a new object per call, would key every caller differently, and would silently
+double every query inside it. The entitlement guard lives there once, in the order that matters: 404
+before `payment_required`, because a 402 shown to a stranger confirms the kit exists and that its owner
+has not paid. `brand-kit-entitlement.test.ts` gained a third guard mechanism for it and asserts the shared
+guard is itself real rather than trusting a function name.
+
+The assets route reads its manifest from that aggregate rather than calling `loadAssetStats` again: the
+band already needed it for the counts, so folding it in removed a round trip and costs nothing.
+
+The floating scroll-spy list is **deleted, not adapted**. `KIT_SECTIONS` in `lib/kit/sections.ts` is the
+one list; the rail reads the active item from `useSelectedLayoutSegment()`, holds no state of its own, and
+an unknown segment marks nothing rather than falling back to Overview.
+
+### The site editor moved, and this is the thing to know
+
+**`/app/brand-kits/[id]/site` is now the kit's "Your site" SECTION. The editor is
+`/app/brand-kits/[id]/site-editor`.** The section list needed the name `site/`, and the editor could not
+be squeezed into the shell: its own layout law is a 360px control rail beside a 900px mockup, breaking at
+1100px, which a 212px section rail does not survive. Ten internal links were retargeted (home, the
+checklist card, the launch flow, `hrefForNotification`, the site card, the kit's own Overview).
+
+Verified afterwards, and worth not re-verifying blind: **nothing outside the frontend stores an app
+route.** All 217 text/jsonb columns in `public` were scanned for `/app/brand-kits` — zero rows. See
+FINDINGS.md for the static half of that check. No redirect was added because nothing needs one.
+
+### The tile that did not ship
+
+The band carries three counts, not four. There is **no `Total downloads` tile**, and the reason is not
+that the number is hard to get. `brand_assets.download_count` is an integer on the asset row, and the row
+is keyed by fingerprint — the first time she changes a colour, every current asset becomes a new row with
+a count of zero and any lifetime total silently restarts. A figure that resets when she edits her palette
+is not one this product can show. **Do not "add it back"; it needs an events table, not a bigger integer.**
+
+`BRAND ASSETS 28` and `DOWNLOADABLE FILES 28` were the same number by construction (one file per catalogue
+key), so `downloadableFileCount` is gone. `Asset categories` replaces it, derived from the same rows — the
+library had been computing that from `GROUP_ORDER.length`, a flat six, whatever the kit contained.
+
+The band's tile is labelled **`Assets ready`**, not `Total assets`, because the library one section over
+opens on `All assets (N)` which counts every catalogue key including the unrendered and the stale. The two
+differ on any kit that has either, and `Total` beside `All` gave the reader no way to tell which one
+excluded something.
+
+### The four production defects, and the closing pass
+
+`YOUR FIRST WEEK` drew its bar and count twice when expanded — and the two could disagree, because
+`LaunchChecklist` counts its own optimistic state while the summary row read a server prop. The Colors
+canvas had two independent causes, not one (a `top-full` tag needs the flow to leave it room; a wide tag
+centred on a narrow pill overflows into an `overflow-hidden` edge). The account chip's name now falls
+through `full_name → practice name → first name from the brief → email local part`, and the avatar
+initials follow the same resolved name. The wrong-highlight defect died with the route split, confirmed
+rather than assumed.
+
+The closing pass then: scoped both download-count labels to the version they count; moved the kit-shaped
+loading skeleton down into `(sections)/` (it had been at `[id]/`, flashing a header band and a rail at
+five screens that are not the kit); gave `AssetDetailPanel` **two different answers at two widths** — a
+labelled `region` beside the grid above 900px, a real `role="dialog" aria-modal="true"` with a focus trap
+and a backdrop below it, because one answer is necessarily wrong at one of the two; and rewrote the
+Overview's `Status` tile, which had said "N assets need rebuilding" — a chore with no button, when
+`ensureAssetRendered` rebuilds a stale file on the next download at no cost and no credit.
+
+### What a later session should not undo
+
+- **The aggregate takes an id, not a client.** Adding the client back to the signature breaks the memoisation
+  invisibly.
+- **The guard lives in `requireKitPage`, once.** Seven pages re-deriving 404-before-402 is seven chances to
+  invert it.
+- **`Assets ready` and `All assets (N)` are two different sets on purpose.** They are not a bug to reconcile.
+- **The rail holds no state.** `useState` in `kit-rail.tsx` is what the scroll-spy defect was.
+- **The site editor is at `/site-editor`.** `/site` is the section.

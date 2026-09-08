@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AssetThumbnail } from "@/components/kit/asset-thumbnail";
 import { AssetDownloadSplit } from "@/components/kit/asset-download-button";
 import { AssetVersionHistory } from "@/components/kit/asset-version-history";
@@ -19,16 +19,60 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/*
- * The asset library's detail panel — 520px, right side, driven by the
- * `asset` search param. Traps focus and returns it on close, same pattern
- * `components/site/reset-section.tsx`'s ConfirmReset already established.
+/**
+ * The width below which this stops being a panel and becomes a sheet.
  *
- * Below 900px it is a SHEET rather than a block pushed under the grid: at
- * that width the panel is taller than the viewport, and appending it to the
- * page meant her tap on a thumbnail appeared to do nothing until she
- * scrolled. A sheet arrives where she is looking, and Escape — already wired
- * above, and the reason this stayed a `role="dialog"` — closes it.
+ * ⚠ IT IS WRITTEN TWICE and it has to be: Tailwind's `max-[900px]:` classes
+ * are compiled strings and cannot read a constant, so the layout half lives
+ * in the class list and the semantic half lives here. A test asserts the two
+ * agree, because a sheet that looks modal and does not announce itself as
+ * one is worse than either.
+ */
+const SHEET_MAX_WIDTH = 900;
+
+/** What the browser will move focus to with Tab, in DOM order. */
+const FOCUSABLE =
+  'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+/**
+ * Whether this is currently the sheet rather than the panel.
+ *
+ * Starts `false` on the server AND on the first client render, so hydration
+ * matches; the effect corrects it on mount. That first frame is the desktop
+ * reading, which is the safe one to be briefly wrong about — claiming
+ * `aria-modal` for a beat costs nothing, claiming it forever on a panel that
+ * is not modal is the bug this exists to avoid.
+ */
+function useIsSheet(): boolean {
+  const [isSheet, setIsSheet] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia(`(max-width: ${SHEET_MAX_WIDTH}px)`);
+    const sync = () => setIsSheet(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+
+  return isSheet;
+}
+
+/*
+ * The asset library's detail panel — driven by the `asset` search param.
+ *
+ * ⚠ IT IS TWO DIFFERENT THINGS AT TWO WIDTHS, and the accessibility tree has
+ * to say which one. Above 900px it is a 520px rail sitting BESIDE the grid:
+ * the grid is still there, still readable, still clickable, so it is a
+ * labelled `region` and claiming `role="dialog"` would be a lie — it would
+ * tell a screen reader the rest of the page had gone away when it had not.
+ * Below 900px it is a sheet OVER the grid, behind a backdrop: that one is a
+ * real modal, and a modal without `aria-modal` and without a focus trap
+ * walks a keyboard or screen-reader user straight into the grid underneath
+ * it, invisible and unreachable, with no way back.
+ *
+ * So: role, `aria-modal`, the backdrop and the trap are all conditional on
+ * the same measurement. Escape and focus-return are unconditional — they are
+ * correct for both.
  */
 export function AssetDetailPanel({
   brandKitId,
@@ -47,6 +91,7 @@ export function AssetDetailPanel({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
+  const isSheet = useIsSheet();
 
   useEffect(() => {
     triggerRef.current = document.activeElement;
@@ -62,21 +107,67 @@ export function AssetDetailPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- open/close transition only, not every entry change
   }, []);
 
+  /*
+   * The trap, and ONLY when it is the sheet. Trapping focus in the desktop
+   * rail would be the mirror-image bug: she could tab into the panel and
+   * never tab back out to the grid it belongs to.
+   */
+  useEffect(() => {
+    if (!isSheet) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+
+      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+        (element) => element.offsetParent !== null
+      );
+      if (items.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+
+      if (!panel.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isSheet]);
+
   return (
     <>
-      {/* The sheet's backdrop, below 900px only. Tapping it closes, same as
-          Escape — a sheet whose only exit is a small × is a trap. */}
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={onClose}
-        className="fixed inset-0 z-40 hidden bg-ink/25 max-[900px]:block"
-      />
+      {/* The sheet's backdrop. Tapping it closes, same as Escape — a sheet
+          whose only exit is a small × is a trap. Rendered only when it is
+          actually a sheet, so the desktop rail has no phantom sibling. */}
+      {isSheet ? (
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-ink/25"
+        />
+      ) : null}
 
       <div
         ref={panelRef}
         tabIndex={-1}
-        role="dialog"
+        role={isSheet ? "dialog" : "region"}
+        aria-modal={isSheet ? true : undefined}
         aria-label={entry.label}
         className="route-enter sticky top-6 flex w-[520px] flex-none flex-col gap-5 rounded-card border border-line bg-bg p-5 max-[900px]:fixed max-[900px]:inset-x-0 max-[900px]:bottom-0 max-[900px]:top-auto max-[900px]:z-50 max-[900px]:max-h-[85vh] max-[900px]:w-auto max-[900px]:overflow-y-auto max-[900px]:rounded-b-none"
       >
@@ -107,7 +198,19 @@ export function AssetDetailPanel({
               <>
                 <SpecRow label="File size" value={formatBytes(entry.asset.byte_size)} />
                 <SpecRow label="Added" value={formatDate(entry.asset.created_at)} />
-                <SpecRow label="Downloads" value={String(entry.asset.download_count)} />
+                {/*
+                  * ⚠ THE SCOPE IS IN THE LABEL, and it has to be.
+                  * `download_count` lives on the asset ROW, and the row is
+                  * keyed by (kit, key, fingerprint) -- so this number is the
+                  * downloads of THIS rendering, and it starts again at zero
+                  * the next time her palette moves and the file is rebuilt.
+                  * Labelled `Downloads` it read as a lifetime total and was
+                  * quietly wrong; labelled this way it is simply true.
+                  */}
+                <SpecRow
+                  label="Downloads of this version"
+                  value={String(entry.asset.download_count)}
+                />
               </>
             ) : null}
           </tbody>
