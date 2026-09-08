@@ -166,7 +166,15 @@ export function ColorsSection({
 function LabeledRegionCanvas({ tokens }: { tokens: SitePreviewTokens }) {
   return (
     <BrandCanvas tokens={tokens} className="w-site-mock max-w-full overflow-hidden">
-      <div style={{ background: "var(--brand-paper)" }} className="relative p-6">
+      {/*
+       * ⚠ THE TAGS NEED THEIR OWN ROOM. Every `top-full` tag below hangs
+       * BELOW the thing it names, out of the normal flow — so the flow has
+       * to leave a gap for it, or the tag lands on whatever comes next. It
+       * did: `Primary fill · CTA ink text` sat on top of `Body copy sits in
+       * dark neutral, on paper.` Hence the bottom padding here and the wider
+       * `mt-` on each element that follows a tagged one.
+       */}
+      <div style={{ background: "var(--brand-paper)" }} className="relative p-6 pb-14">
         <RegionTag label="Paper — page background" className="right-3 top-3" />
         <div
           className="relative rounded-[10px] p-5"
@@ -185,13 +193,13 @@ function LabeledRegionCanvas({ tokens }: { tokens: SitePreviewTokens }) {
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-4">
+        <div className="mt-5 mb-9 flex flex-wrap items-center gap-4">
           <span
             className="relative flex h-10 items-center whitespace-nowrap rounded-pill px-5"
             style={{ background: "var(--brand-primary)", color: "var(--brand-cta-ink)", fontFamily: "var(--brand-body)", fontWeight: 700, fontSize: 13 }}
           >
             Book a consult
-            <RegionTag label="Primary fill · CTA ink text" className="left-1/2 top-full mt-1 -translate-x-1/2" />
+            <RegionTag label="Primary fill · CTA ink text" className="left-0 top-full mt-1.5" />
           </span>
 
           <span
@@ -205,13 +213,13 @@ function LabeledRegionCanvas({ tokens }: { tokens: SitePreviewTokens }) {
             className="relative h-3 w-3 flex-none rounded-full"
             style={{ background: "var(--brand-accent)" }}
           >
-            <RegionTag label="Accent — small marks only" className="left-1/2 top-full mt-1 -translate-x-1/2" />
+            <RegionTag label="Accent — small marks only" className="left-0 top-full mt-1.5" />
           </span>
         </div>
 
-        <p className="relative mt-5 max-w-[380px]" style={{ fontFamily: "var(--brand-body)", fontSize: 14, lineHeight: 1.6, color: "var(--brand-dark)" }}>
+        <p className="relative mt-6 max-w-[380px]" style={{ fontFamily: "var(--brand-body)", fontSize: 14, lineHeight: 1.6, color: "var(--brand-dark)" }}>
           Body copy sits in dark neutral, on paper.
-          <RegionTag label="Dark neutral — body text" className="left-0 top-full mt-1" />
+          <RegionTag label="Dark neutral — body text" className="left-0 top-full mt-1.5" />
         </p>
       </div>
     </BrandCanvas>

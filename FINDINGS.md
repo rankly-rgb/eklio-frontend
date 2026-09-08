@@ -292,3 +292,43 @@ Until it is answered, Monthly Presence does not run. That is a smaller problem t
   site and both are deliberate, not drift. The pre-existing "single primary button" framing undercounts
   them by one; recorded here so a later session reads it as ratified, not as something to quietly "fix"
   back to a neutral tone.
+
+---
+
+## Added while splitting the brand kit into a section switcher
+
+- **`brand_assets.download_count` cannot support a lifetime download total.** It is an integer on the asset
+  row, and the row is keyed by `(brand_kit_id, key, fingerprint)` — so the first time she changes a colour,
+  every current asset becomes a NEW row with a count of zero, and any "downloads so far" figure silently
+  restarts. The header band therefore ships three counts, not four (the brief allowed a `Total downloads`
+  tile only if a download were stored as a row when it happens; a fingerprint-scoped counter is not that).
+  Two places still surface the counter and both are per-render rather than per-lifetime: the detail panel's
+  `Downloads` spec row, and the library's `Most downloaded` sort. Both are defensible readings of "this
+  file, this version" — but neither says so in its label, and someone will eventually read the panel's
+  number as a lifetime total. If a real total is ever wanted, it needs an events table, not a bigger
+  integer.
+
+- **`app/app/brand-kits/[id]/loading.tsx` is a kit-shaped skeleton served to four screens that are not the
+  kit.** It sits at the `[id]` segment, so it covers `reveal/`, `delivered/`, `handoff/`, `uploads/` and the
+  site editor as well as the sections — and it draws a 520px mockup block and a five-cell palette strip,
+  which is a bad guess for all five. It predates this lot and this lot did not need to touch it. Moving it
+  into `(sections)/` and giving the outliers their own is a small, obvious improvement that nothing forced.
+
+- **`AssetDetailPanel` carries `role="dialog"` without `aria-modal`.** That is correct on desktop, where it
+  is a sticky side panel and the rest of the page stays usable, and arguably wrong below 900px, where this
+  lot made it a sheet over a backdrop. The attribute cannot be conditioned on a media query from the
+  server, and `mobile-and-a11y.test.ts` requires `aria-modal="true"` of every `role="dialog"` in its
+  enumeration — which is why that file is deliberately NOT in the enumeration. Resolving it properly means
+  either two components or a client-side viewport read; neither was in this lot.
+
+- **Two honest numbers with confusingly similar names sit on the assets section.** The band says
+  `Total assets`, counting rows that are rendered and current at the kit's fingerprint. The library's first
+  chip says `All assets (N)`, counting every catalogue key the grid can show — including keys never
+  rendered and keys gone stale, which is right, because the grid shows them with a `needs-rebuild` chip. The
+  two will differ on any kit with stale or unrendered keys, and nothing on screen explains why.
+
+- **The kit's "Your site" section renders `BrandPreview`, which is the five-role `--p-*` preview model, one
+  scroll away from a section whose editor renders the thirteen-field `--s-*` token set.** Same brand, two
+  fidelities, and the preview one has no `cta_ink`, no `primary_text` and no `accent_text`. This is the
+  known two-token-system split, seen here from a new angle: the split now shows up WITHIN one route family
+  rather than between two distant screens, which makes it easier to notice and no easier to justify.

@@ -7,12 +7,20 @@ import { LaunchChecklist, type LaunchStepContext } from "@/components/checklist/
 import type { LaunchProgress } from "@/lib/data/checklist";
 
 /*
- * The compact progress row on the kit page (Lot 6) — collapsed to a bar and
- * an "X of 7" by default, expands in place to the same `LaunchChecklist`
- * home's card renders. One shared brain, two chromes: home's card is always
- * open (it has the room and nothing else on that slot); this row starts
- * closed, because the kit page already has six sections' worth to scroll
- * through and a launch checklist isn't why she's here.
+ * The compact progress row on the kit's Overview (Lot 6) — collapsed to a
+ * bar and an "X of 7" by default, expands in place to the same
+ * `LaunchChecklist` home's card renders. One shared brain, two chromes:
+ * home's card is always open (it has the room and nothing else on that
+ * slot); this row starts closed, because the launch checklist isn't why
+ * she opened her kit.
+ *
+ * ⚠ THE BAR AND THE COUNT DISAPPEAR WHEN IT OPENS, and that is a fix rather
+ * than a preference. `LaunchChecklist` draws its own bar and its own
+ * "X of Y", so an expanded row showed both — twice on one card. Worse, the
+ * two could DISAGREE: the checklist counts its own optimistic `items`
+ * state, which moves the instant she ticks a step, while the count here
+ * comes from the server prop and does not. The list owns the number because
+ * the list owns the state.
  */
 export function LaunchProgressRow({
   brandKitId,
@@ -52,15 +60,21 @@ export function LaunchProgressRow({
         <MonoLabel tracking="16" className="flex-none">
           Your first week
         </MonoLabel>
-        <div className="h-0.5 flex-1 overflow-hidden rounded-pill bg-line">
-          <div
-            className="h-0.5 bg-accent transition-[width] duration-[var(--dur-select)]"
-            style={{ width: `${(progress.resolvedCount / progress.total) * 100}%` }}
-          />
-        </div>
-        <MonoLabel tracking="14" className="flex-none">
-          {`${progress.resolvedCount} of ${progress.total}`}
-        </MonoLabel>
+        {open ? (
+          <span className="flex-1" />
+        ) : (
+          <>
+            <div className="h-0.5 flex-1 overflow-hidden rounded-pill bg-line">
+              <div
+                className="h-0.5 bg-accent transition-[width] duration-[var(--dur-select)]"
+                style={{ width: `${(progress.resolvedCount / progress.total) * 100}%` }}
+              />
+            </div>
+            <MonoLabel tracking="14" className="flex-none">
+              {`${progress.resolvedCount} of ${progress.total}`}
+            </MonoLabel>
+          </>
+        )}
         <span
           className={`block flex-none p-1 transition-transform duration-[var(--dur-select)] ${open ? "rotate-180" : ""}`}
         >
