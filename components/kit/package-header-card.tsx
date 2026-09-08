@@ -1,7 +1,6 @@
 "use client";
 
 import { BrandCanvas } from "@/components/kit/brand-canvas";
-import { PhotoSlot } from "@/components/kit/photo-slot";
 import { useBrandFont } from "@/components/preview/use-brand-font";
 import type { PracticeDetails, SitePreviewTokens } from "@/lib/site/types";
 
@@ -29,6 +28,14 @@ const ROLE_ORDER = [
  * The four state tiles that used to sit here moved up into that band — three
  * of them were counts, and a count belongs where it is true on every
  * section, not on the one section that happens to be scrolled to.
+ *
+ * ⚠ THERE IS NO PHOTOGRAPH BAND HERE ANY MORE. Roughly 800px of `hero` slot
+ * used to sit above this card, full-bleed, pushing every actionable element
+ * below the fold — and a real photograph would have done that more
+ * beautifully rather than less. The `hero` slot itself is untouched and
+ * still generated: the home screen renders it inside a browser frame at a
+ * sane size, which is where an image of her brand belongs. This is the
+ * removal of one band, not of a photograph.
  */
 export function PackageHeaderCard({
   practiceName,
@@ -36,7 +43,6 @@ export function PackageHeaderCard({
   colorLabels,
   practiceDetails,
   bookingUrl,
-  heroImageUrl,
   siteEditorHref,
 }: {
   practiceName: string | null;
@@ -44,7 +50,6 @@ export function PackageHeaderCard({
   colorLabels: Record<string, string> | null;
   practiceDetails: PracticeDetails | null;
   bookingUrl: string | null;
-  heroImageUrl: string | null;
   siteEditorHref: string;
 }) {
   useBrandFont(tokens?.google_fonts_url ?? null);
@@ -53,20 +58,6 @@ export function PackageHeaderCard({
     <div className="flex flex-col gap-6">
       {tokens ? (
         <>
-          {/*
-           * The hero band — the one image ever shown large and full-bleed.
-           * Gradient until a photograph exists for the current fingerprint,
-           * photograph after, and the transition between them is
-           * <PhotoSlot>'s own cross-fade from the same block rather than
-           * from empty space.
-           */}
-          <PhotoSlot
-            tokens={tokens}
-            src={heroImageUrl}
-            alt={heroImageUrl ? `A photograph in ${practiceName ?? "your"} brand's colors` : ""}
-            className="aspect-[3/2] w-full rounded-card max-md:aspect-[4/3]"
-          />
-
           <BrandCanvas
             tokens={tokens}
             className="flex flex-col items-center gap-3 px-8 py-16 text-center"

@@ -18,6 +18,14 @@ import { KitRail } from "@/components/kit/kit-rail";
  * read are the same read. This layout does NOT re-render when she moves
  * between sections — that is the whole point of putting it here rather than
  * repeating it in seven pages.
+ *
+ * ⚠ TWO COLUMNS, AND THE BAND IS IN THE RIGHT-HAND ONE. The band used to run
+ * full width above everything, with a rule under it, and the rail started
+ * below that — which made the rail look like a consequence of the header
+ * rather than the page's spine. The rail now begins directly under the app
+ * header, and the band is simply the main column's first row. The full-width
+ * rule is gone with it: the rail's own edge is the only division at that
+ * height, and a horizontal rule across the viewport would cut through it.
  */
 export default async function KitSectionsLayout({
   children,
@@ -28,18 +36,27 @@ export default async function KitSectionsLayout({
 
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-6 max-md:px-[var(--gutter-sm)]">
-      <KitHeaderBand model={model} />
+      {/*
+       * `items-stretch`, so the rail's right border runs the full height of
+       * the row rather than stopping where the rail's own content ends. The
+       * sticky positioning lives inside <KitRail>, on a child of this
+       * stretched cell.
+       */}
+      <div className="flex items-stretch max-[900px]:flex-col">
+        <div className="w-[236px] flex-none border-r border-line pr-8 max-[900px]:w-full max-[900px]:border-r-0 max-[900px]:pr-0">
+          <KitRail
+            brandKitId={id}
+            practiceName={model.kit.practiceName}
+            directionName={model.kit.selectedDirection?.name ?? ""}
+            tokens={model.tokens}
+            photoUrl={model.railImageUrl}
+          />
+        </div>
 
-      <div className="mt-8 flex items-start gap-10 max-[900px]:mt-4 max-[900px]:flex-col max-[900px]:gap-6">
-        <KitRail
-          brandKitId={id}
-          practiceName={model.kit.practiceName}
-          directionName={model.kit.selectedDirection?.name ?? ""}
-          tokens={model.tokens}
-          photoUrl={model.railImageUrl}
-        />
-
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="flex min-w-0 flex-1 flex-col gap-10 pl-8 max-[900px]:gap-8 max-[900px]:pl-0 max-[900px]:pt-6">
+          <KitHeaderBand model={model} />
+          {children}
+        </div>
       </div>
     </main>
   );

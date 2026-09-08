@@ -1,8 +1,7 @@
 import { MonoLabel } from "@/components/ui/mono-label";
-import { DownloadGlyph } from "@/components/ui/glyphs";
+import { DownloadGlyph, StatGlyph } from "@/components/ui/glyphs";
 import { AssetDownloadButton } from "@/components/kit/asset-download-button";
 import { KitMenu } from "@/components/kit/kit-menu";
-import { StateTile } from "@/components/kit/state-tile";
 import type { KitPage } from "@/lib/data/kit-page";
 
 function formatDate(iso: string | null): string {
@@ -15,9 +14,10 @@ function formatDate(iso: string | null): string {
 }
 
 /*
- * The band above the sections — who this kit belongs to, what she can take
- * away with her, and the state of it. True on every section, so it lives in
- * the layout rather than on one of them.
+ * The kit's header band — the first row of the MAIN COLUMN, beside the rail
+ * rather than above it. There is no full-width rule under it: the rail's own
+ * edge is the only vertical division at this height, and a horizontal one
+ * across the whole viewport would cut the rail in half.
  *
  * ⚠ THE KIT NAME IS SET IN EKLIO'S OWN DISPLAY FACE, never in the
  * therapist's brand font. Her typography appears inside `<BrandCanvas>` and
@@ -39,10 +39,52 @@ export function KitHeaderBand({ model }: { model: KitPage }) {
   const stats = model.assetStats;
   const hasZip = stats?.manifest.some((entry) => entry.key === "brand_kit_zip") ?? false;
 
+  /*
+   * ⚠ ONE STRIP, THREE CELLS, AND THEY ARE DATA.
+   *
+   * They were three separate bordered cards, which read as three unrelated
+   * facts rather than one line of state. Writing them as an array and
+   * mapping once is not a style preference: it is what makes "three
+   * siblings" impossible to reintroduce by accident, and
+   * `kit-band-counts.test.ts` asserts against this array rather than against
+   * the markup.
+   *
+   * Every value is a `select` away from a stored row — never a constant,
+   * never a length of a hard-coded list. `Asset categories` had exactly that
+   * bug in the library this replaces (`GROUP_ORDER.length`, a flat six,
+   * whatever the kit contained).
+   *
+   * ⚠ THERE IS NO FOURTH CELL. `brand_assets.download_count` is an integer on
+   * the asset row, and the row is keyed by fingerprint — the moment she
+   * changes a colour the old rows stop being current and any lifetime total
+   * silently falls back to zero. A count that resets when she edits her
+   * palette is not one this product can honestly show.
+   *
+   * ⚠ `Assets ready`, not `Total assets`. The library one section over opens
+   * on `All assets (N)`, which counts every key in the catalogue including
+   * the never-rendered and the stale. The two differ on any kit with either,
+   * and `Total` beside `All` gave the reader no way to tell which one
+   * excluded something.
+   */
+  const cells = [
+    { id: "ready", glyph: "files", label: "Assets ready", value: stats ? stats.currentCount : "—" },
+    { id: "categories", glyph: "categories", label: "Asset categories", value: stats ? stats.categoryCount : "—" },
+    { id: "updated", glyph: "clock", label: "Last updated", value: stats ? formatDate(stats.lastUpdated) : "—" },
+  ] as const;
+
   return (
-    <div className="flex flex-col gap-6 border-b border-line pb-6">
-      <div className="flex items-start justify-between gap-8 max-lg:flex-col max-lg:gap-5">
-        <div className="min-w-0">
+    <div className="flex flex-col gap-6">
+      {/* ── The title row ────────────────────────────────────────────────
+       *
+       * Title, then the explainer, then the action. The sentence used to sit
+       * under the button in two right-aligned lines, where it read as a
+       * caption FOR the button rather than a description of what the button
+       * hands over. It belongs on this row, in Eklio's display face, italic —
+       * a voice, not a label. Below 1100px it may wrap onto a second line;
+       * it never goes back under the button.
+       */}
+      <div className="flex items-center gap-8 max-[1100px]:gap-5 max-md:flex-col max-md:items-start max-md:gap-4">
+        <div className="min-w-0 flex-none">
           <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink">
             {model.kit.practiceName ?? "Your brand"}
           </h1>
@@ -51,29 +93,28 @@ export function KitHeaderBand({ model }: { model: KitPage }) {
           </MonoLabel>
         </div>
 
-        <div className="flex flex-none items-start gap-4 max-lg:w-full">
-          <div className="flex min-w-0 flex-col items-end gap-2 max-lg:items-start">
-            {hasZip ? (
-              <AssetDownloadButton
-                brandKitId={model.brandKitId}
-                assetKey="brand_kit_zip"
-                className="inline-flex h-11 items-center gap-2.5 rounded-pill bg-ink px-[30px] text-ui font-semibold text-bg hover:bg-ink-2"
-              >
-                <DownloadGlyph color="var(--bg)" />
-                Download everything
-              </AssetDownloadButton>
-            ) : null}
-            {/*
-             * Verified against the renderer, not assumed:
-             * `lib/kit/render/registry.ts` pushes `README.txt` into
-             * `brand_kit_zip`'s entries alongside every other file. The
-             * sentence and the archive agree.
-             */}
-            <p className="max-w-[340px] text-right text-helper leading-prose text-ink-2 max-lg:text-left">
-              Everything, zipped — every file in your brand kit, in one
-              download, with a README.
-            </p>
-          </div>
+        {/*
+         * Verified against the renderer, not assumed:
+         * `lib/kit/render/registry.ts` pushes `README.txt` into
+         * `brand_kit_zip`'s entries alongside every other file. The sentence
+         * and the archive agree.
+         */}
+        <p className="min-w-0 flex-1 font-display text-helper italic leading-prose text-ink-2 max-md:w-full">
+          Everything, zipped — every file in your brand kit, in one download,
+          with a README.
+        </p>
+
+        <div className="flex flex-none items-center gap-3 max-md:w-full">
+          {hasZip ? (
+            <AssetDownloadButton
+              brandKitId={model.brandKitId}
+              assetKey="brand_kit_zip"
+              className="inline-flex h-11 items-center gap-2.5 rounded-pill bg-ink px-[30px] text-ui font-semibold text-bg hover:bg-ink-2"
+            >
+              <DownloadGlyph color="var(--bg)" />
+              Download everything
+            </AssetDownloadButton>
+          ) : null}
 
           <KitMenu
             brandKitId={model.brandKitId}
@@ -83,31 +124,24 @@ export function KitHeaderBand({ model }: { model: KitPage }) {
         </div>
       </div>
 
-      {/*
-       * Three counts, and every one of them is a `select` away from a stored
-       * row: how many assets are rendered and current at her fingerprint,
-       * how many distinct groups those same rows fall into, and the newest
-       * of their timestamps. There is no fourth.
-       *
-       * ⚠ `Assets ready`, not `Total assets`. The library one section over
-       * opens on `All assets (N)`, which counts every key in the catalogue —
-       * including keys never rendered and keys gone stale, because the grid
-       * shows those too, with a status chip. The two numbers differ on any
-       * kit that has either, and `Total` beside `All` gave the reader no way
-       * to tell which one excluded something. `ready` names the exclusion.
-       *
-       * ⚠ THERE IS NO `TOTAL DOWNLOADS` TILE, and the reason is not that the
-       * number is hard to get. `brand_assets.download_count` is an integer
-       * on the asset row, incremented when a signed URL is issued — and the
-       * row is keyed by fingerprint, so the moment she changes a colour the
-       * old rows stop being current and the total silently falls back to
-       * zero. A lifetime count that resets when she edits her palette is a
-       * number this product cannot honestly show.
-       */}
-      <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
-        <StateTile label="Assets ready">{stats ? stats.currentCount : "—"}</StateTile>
-        <StateTile label="Asset categories">{stats ? stats.categoryCount : "—"}</StateTile>
-        <StateTile label="Last updated">{stats ? formatDate(stats.lastUpdated) : "—"}</StateTile>
+      {/* ── The counts, as one strip ─────────────────────────────────────── */}
+      <div className="flex overflow-hidden rounded-card border border-line max-md:flex-col">
+        {cells.map((cell, index) => (
+          <div
+            key={cell.id}
+            className={`flex min-w-0 flex-1 items-start gap-3 p-4 ${
+              index > 0 ? "border-l border-line max-md:border-l-0 max-md:border-t" : ""
+            }`}
+          >
+            <span className="mt-0.5 text-ink-3">
+              <StatGlyph stat={cell.glyph} />
+            </span>
+            <span className="flex min-w-0 flex-col gap-1">
+              <MonoLabel tracking="10">{cell.label}</MonoLabel>
+              <span className="truncate text-body text-ink">{cell.value}</span>
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -71,14 +71,13 @@ export type KitPage = {
   assetStats: AssetStats | null;
   launchProgress: LaunchProgress;
   compAccess: boolean;
-  /** The hero photograph's signed URL, or null for <PhotoSlot>'s gradient. */
-  heroImageUrl: string | null;
   /**
-   * A SECOND photograph, for the rail's card — never the hero.
-   *
-   * The Overview shows the hero full-bleed; repeating it 200px lower in the
-   * rail would read as a bug rather than as an editorial choice. Null is the
-   * normal answer today and the gradient is the correct rendering of it.
+   * The one photograph this route family renders — the rail card's, through
+   * `<PhotoSlot>`. Never the `hero` slot: the full-bleed hero band is gone
+   * from the kit (it pushed every actionable element below the fold), and
+   * the home screen renders `hero` inside a browser frame instead, which is
+   * where an image of her brand belongs. Null is the normal answer today,
+   * and the gradient is the correct rendering of it.
    */
   railImageUrl: string | null;
 };
@@ -159,7 +158,7 @@ export const requireKitPage = cache(async function requireKitPage(
 });
 
 /**
- * The two photographs the kit's shell can show, each or both null.
+ * The rail card's photograph, or null.
  *
  * Null is the normal answer, not an error: a kit renders the gradient until
  * something has been generated for its CURRENT fingerprint, and a kit whose
@@ -167,35 +166,29 @@ export const requireKitPage = cache(async function requireKitPage(
  * of colours she no longer uses. `get_brand_images` decides that -- `current`
  * is `ready` AND at this fingerprint, never one or the other.
  *
- * One RPC for both: the rows come back together, so picking a second slot
- * costs one extra signed URL and no extra query.
+ * ⚠ NEVER THE `hero` SLOT. The kit no longer has anywhere to put it: the
+ * full-bleed band above the package card is gone, and `hero` is the home
+ * screen's image, shown there inside a browser frame at a sane size. Asking
+ * for it here would be asking for a picture with no wall to hang it on.
  */
 async function loadKitImages(
   supabase: Awaited<ReturnType<typeof createClient>>,
   kit: BrandKit
-): Promise<{ heroImageUrl: string | null; railImageUrl: string | null }> {
-  const none = { heroImageUrl: null, railImageUrl: null };
-
+): Promise<{ railImageUrl: string | null }> {
   const context = await loadImageContext(supabase, kit);
-  if (!context.ok) return none;
+  if (!context.ok) return { railImageUrl: null };
 
   const rows = await getBrandImages(supabase, kit.row.id, computeImageFingerprint(context.input));
   const usable = rows.filter((row) => row.current && row.storage_path);
 
-  const hero = usable.find((row) => row.slot === "hero");
-  // Prefer the calmer of the two ambients, then anything that isn't the hero.
+  // The calmer of the two ambients first, then anything that is not the hero.
   const rail =
     usable.find((row) => row.slot === "ambient_a") ??
     usable.find((row) => row.slot !== "hero");
+  if (!rail?.storage_path) return { railImageUrl: null };
 
-  const sign = async (path: string | null | undefined): Promise<string | null> => {
-    if (!path) return null;
-    const signed = await supabase.storage.from("brand-assets").createSignedUrl(path, 300);
-    return signed.data?.signedUrl ?? null;
-  };
-
-  return {
-    heroImageUrl: await sign(hero?.storage_path),
-    railImageUrl: await sign(rail?.storage_path),
-  };
+  const signed = await supabase.storage
+    .from("brand-assets")
+    .createSignedUrl(rail.storage_path, 300);
+  return { railImageUrl: signed.data?.signedUrl ?? null };
 }

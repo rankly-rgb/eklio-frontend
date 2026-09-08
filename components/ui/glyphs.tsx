@@ -1,6 +1,6 @@
 /*
- * Les glyphes de l'application — la coche, le chevron, le cadenas, et les
- * sept marques du rail de sections. Aucune bibliothèque d'icônes, aucun
+ * Les glyphes de l'application — la coche, le chevron, le cadenas, les six
+ * marques du rail de sections et les trois de la bande de comptes. Aucune bibliothèque d'icônes, aucun
  * fichier SVG : chacun est dessiné en divs bordées, exactement comme dans
  * `design/reference/`.
  *
@@ -89,29 +89,21 @@ export function ChevronGlyph({ color = "var(--bg)" }: { color?: string }) {
 }
 
 /**
- * Les sept marques du rail de sections — 14×14, trait 1.25px, `currentColor`.
+ * Les six marques du rail de sections — 14×14, trait 1.25px, `currentColor`.
  *
  * Elles ne remplacent pas le libellé : chacune est `aria-hidden`, posée à
  * gauche d'un mot qui dit la même chose. C'est de la reconnaissance de
- * forme dans une liste de sept, pas une icône à déchiffrer.
+ * forme dans une liste de six, pas une icône à déchiffrer.
  *
  * Dessinées en divs comme les trois autres. Pas de SVG, pas de dépendance :
- * sept marques géométriques (grille, disque, trois pastilles, un T, une
- * fenêtre, trois lignes, un cadre) tiennent très bien en bordures.
+ * six marques géométriques (un disque, trois pastilles, un T, une fenêtre,
+ * trois lignes, un cadre) tiennent très bien en bordures.
  */
 export function SectionGlyph({ section }: { section: KitSectionId }) {
   const stroke = "1.25px solid currentColor";
   const box = { display: "block", boxSizing: "border-box" } as const;
 
   const marks: Record<KitSectionId, React.ReactNode> = {
-    // Grille 2×2 — la vue d'ensemble.
-    overview: (
-      <span className="grid grid-cols-2 gap-[2px]">
-        {[0, 1, 2, 3].map((cell) => (
-          <span key={cell} style={{ ...box, width: 5, height: 5, border: stroke }} />
-        ))}
-      </span>
-    ),
     // Disque évidé portant un point — une marque dans son cadre.
     identity: (
       <span
@@ -178,6 +170,68 @@ export function SectionGlyph({ section }: { section: KitSectionId }) {
       className="flex size-[14px] flex-none items-center justify-center"
     >
       {marks[section]}
+    </span>
+  );
+}
+
+/**
+ * Les trois marques de la bande de comptes — mêmes dimensions et même trait
+ * que celles du rail, dessinées de la même façon.
+ *
+ * Elles ne sont pas une sous-famille de `SectionGlyph` : une bande de
+ * chiffres et une liste de sections ne nomment pas les mêmes choses, et
+ * réutiliser la marque d'une section pour un compte ferait croire à un lien
+ * entre les deux. La grille 2×2, elle, MIGRE ici — elle disait « vue
+ * d'ensemble » dans un rail qui n'a plus cette ligne, et elle dit
+ * « catégories » très bien.
+ */
+export function StatGlyph({ stat }: { stat: "files" | "categories" | "clock" }) {
+  const stroke = "1.25px solid currentColor";
+  const box = { display: "block", boxSizing: "border-box" } as const;
+
+  const marks: Record<typeof stat, React.ReactNode> = {
+    // Deux feuilles décalées — des fichiers.
+    files: (
+      <span className="relative block size-[13px]">
+        <span
+          style={{ ...box, width: 9, height: 11, border: stroke, borderRadius: 1.5 }}
+          className="absolute bottom-0 left-0"
+        />
+        <span
+          style={{ ...box, width: 9, height: 11, border: stroke, borderRadius: 1.5, background: "var(--bg)" }}
+          className="absolute right-0 top-0"
+        />
+      </span>
+    ),
+    // Grille 2×2 — des ensembles.
+    categories: (
+      <span className="grid grid-cols-2 gap-[2px]">
+        {[0, 1, 2, 3].map((cell) => (
+          <span key={cell} style={{ ...box, width: 5, height: 5, border: stroke }} />
+        ))}
+      </span>
+    ),
+    // Un cadran et une aiguille — une date.
+    clock: (
+      <span
+        style={{ ...box, width: 13, height: 13, border: stroke, borderRadius: 999 }}
+        className="relative"
+      >
+        <span
+          style={{ ...box, width: 0, height: 4, borderLeft: stroke }}
+          className="absolute left-1/2 top-[2px]"
+        />
+        <span
+          style={{ ...box, width: 3, height: 0, borderTop: stroke }}
+          className="absolute left-1/2 top-1/2"
+        />
+      </span>
+    ),
+  };
+
+  return (
+    <span aria-hidden="true" className="flex size-[14px] flex-none items-center justify-center">
+      {marks[stat]}
     </span>
   );
 }

@@ -40,7 +40,6 @@ export default async function KitOverviewPage({
         colorLabels={model.colorLabels}
         practiceDetails={model.sitePracticeDetails}
         bookingUrl={model.bookingUrl}
-        heroImageUrl={model.heroImageUrl}
         siteEditorHref={`/app/brand-kits/${id}/site-editor`}
       />
 

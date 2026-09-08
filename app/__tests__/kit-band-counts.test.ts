@@ -104,46 +104,78 @@ function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
-/** Le contenu de chaque `<StateTile …>…</StateTile>` de la bande. */
-function tileBodies(source: string): string[] {
-  return [...stripComments(source).matchAll(/<StateTile[^>]*>([\s\S]*?)<\/StateTile>/g)].map(
-    (match) => match[1]
-  );
+/**
+ * Les cellules déclarées par la bande, une entrée de tableau par cellule.
+ *
+ * ⚠ ON LIT LE TABLEAU, PAS LE JSX, et c'est le fond du sujet. Les comptes
+ * étaient trois cartes bordées côte à côte — trois faits sans rapport plutôt
+ * qu'une ligne d'état. Les écrire en données et les rendre par UN `map` est
+ * ce qui rend « trois frères » impossible à réintroduire par distraction, et
+ * c'est donc contre les données que ce fichier assère.
+ */
+function cellEntries(source: string): string[] {
+  const body = stripComments(source);
+  const start = body.indexOf("const cells = [");
+  if (start === -1) return [];
+  const end = body.indexOf("] as const;", start);
+  return body
+    .slice(start + "const cells = [".length, end)
+    .split(/\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("{"));
 }
 
 describe("la bande ne porte aucun nombre écrit à la main", () => {
   const source = readFileSync(BAND, "utf8");
-  const bodies = tileBodies(source);
+  const cells = cellEntries(source);
 
-  it("l'énumération trouve bien les tuiles", () => {
-    // Sans cette garde, un composant renommé rendrait le bloc vacuously
+  it("l'énumération trouve bien les cellules", () => {
+    // Sans cette garde, un tableau renommé rendrait le bloc vacuously
     // true — et c'est un bloc sur l'honnêteté des chiffres affichés.
-    expect(bodies.length).toBe(3);
+    expect(cells.length).toBe(3);
   });
 
-  it.each(bodies.map((body, index) => [index, body] as const))(
-    "la tuile %i tire sa valeur d'une ligne stockée",
-    (_index, body) => {
+  it.each(cells.map((cell, index) => [index, cell] as const))(
+    "la cellule %i tire sa valeur d'une ligne stockée",
+    (_index, cell) => {
       /*
        * Deux exigences, et il faut les deux : la valeur passe par `stats.`
        * (donc par `loadAssetStats`, donc par une requête), et aucun chiffre
-       * n'apparaît dans le corps de la tuile. Le tiret de l'état « pas
-       * encore de spec » est du texte, pas un nombre, et reste permis.
+       * n'apparaît dans la déclaration. Le tiret de l'état « pas encore de
+       * spec » est du texte, pas un nombre, et reste permis.
        */
-      expect(body).toMatch(/\bstats\./);
-      expect(body).not.toMatch(/\d/);
+      expect(cell).toMatch(/value: .*\bstats\./);
+      expect(cell).not.toMatch(/\d/);
     }
   );
 
-  it("⚠ le canari : une tuile en dur ferait bien échouer ce test", () => {
-    const canary = `<StateTile label="Total downloads">1284</StateTile>`;
-    const [body] = tileBodies(canary);
-    expect(body).toBe("1284");
-    expect(/\bstats\./.test(body)).toBe(false);
-    expect(/\d/.test(body)).toBe(true);
+  it("⚠ le canari : une cellule en dur ferait bien échouer ce test", () => {
+    const canary = 'const cells = [\n  { id: "d", label: "Total downloads", value: 1284 },\n] as const;';
+    const [cell] = cellEntries(canary);
+    expect(cell).toContain("1284");
+    expect(/value: .*\bstats\./.test(cell)).toBe(false);
+    expect(/\d/.test(cell)).toBe(true);
   });
 
-  it("il n'y a PAS de quatrième tuile « Total downloads »", () => {
+  it("⚠ c'est UNE bande, pas trois cartes : un seul conteneur, un seul `map`", () => {
+    /*
+     * La forme qu'on quitte : trois `<StateTile>` frères dans une grille.
+     * Un seul `cells.map(` garantit un seul conteneur ; l'absence de
+     * `<StateTile` garantit qu'aucune n'a été réécrite à la main à côté.
+     */
+    const body = stripComments(source);
+    expect([...body.matchAll(/cells\.map\(/g)]).toHaveLength(1);
+    expect(body).not.toContain("<StateTile");
+    expect(body).toContain("flex overflow-hidden rounded-card border border-line");
+  });
+
+  it("les cellules sont séparées par un filet, pas par un écart", () => {
+    // « cellules séparées par des filets » : la première n'en porte pas, les
+    // suivantes portent une bordure gauche.
+    expect(stripComments(source)).toContain('index > 0 ? "border-l border-line');
+  });
+
+  it("il n'y a PAS de quatrième cellule « Total downloads »", () => {
     /*
      * `brand_assets.download_count` est un compteur porté par la ligne
      * d'asset, et la ligne est cadrée par empreinte : au premier changement
@@ -187,8 +219,8 @@ describe("la bande et la bibliothèque ne se disputent pas le mot « tous »", (
   });
 
   it("la bande nomme ce qu'elle exclut", () => {
-    expect(band).toContain('<StateTile label="Assets ready">');
-    expect(band).not.toContain('label="Total assets"');
+    expect(band).toContain('label: "Assets ready"');
+    expect(band).not.toContain('label: "Total assets"');
   });
 
   it("la bibliothèque garde « All assets », qui est vrai de son côté", () => {
