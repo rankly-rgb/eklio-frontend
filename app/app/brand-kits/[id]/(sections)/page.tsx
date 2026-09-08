@@ -49,18 +49,20 @@ export default async function KitOverviewPage({
        * the only one that was never a count: it names something she can act
        * on, and it links to the filter that shows her what.
        */}
-      <StateTile label="Status">
-        {stale.length > 0 ? (
-          <Link
-            href={`/app/brand-kits/${id}/assets?status=needs-rebuild`}
-            className="text-ink underline decoration-[var(--accent)] underline-offset-4 hover:text-accent"
-          >
-            {stale.length} {stale.length === 1 ? "asset" : "assets"} need rebuilding
-          </Link>
-        ) : (
-          "Up to date"
-        )}
-      </StateTile>
+      <div className="max-w-[300px]">
+        <StateTile label="Status">
+          {stale.length > 0 ? (
+            <Link
+              href={`/app/brand-kits/${id}/assets?status=needs-rebuild`}
+              className="text-ink underline decoration-[var(--accent)] underline-offset-4 hover:text-accent"
+            >
+              {stale.length} {stale.length === 1 ? "asset" : "assets"} need rebuilding
+            </Link>
+          ) : (
+            "Up to date"
+          )}
+        </StateTile>
+      </div>
 
       <LaunchProgressRow
         brandKitId={id}
