@@ -7,13 +7,22 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import type { Workspace } from "@/lib/data/workspaces";
 
 /*
- * Account menu — her name, "Your workspace" beneath it, a chevron. Opens
- * onto: the workspace switcher (one entry today, from `workspaces`),
- * Settings, Help & support, Sign out.
+ * Account menu — her initials, her name, a chevron. Opens onto: the
+ * workspace switcher (one entry today, from `workspaces`), Settings,
+ * Help & support, Sign out.
  *
- * Built as a real switcher with one row rather than a single "Your
- * workspace" line, so the Practice offer adds a second row here later
- * without this component, or the trigger, changing shape.
+ * ⚠ THE TRIGGER SHOWS THE PERSON, AND ONLY WHAT DISAMBIGUATES. It used to
+ * read `EC · Ember consulting / YOUR WORKSPACE`: the practice name, three
+ * inches from the page title that already said it, over a second line naming
+ * the one workspace there was. Neither told her anything. The name now comes
+ * from `displayNameFrom`, which puts HER before her practice, and the
+ * workspace line renders only when there is more than one workspace to tell
+ * apart — which is exactly when a workspace name becomes information.
+ *
+ * The switcher itself is unchanged, and stays built as a real one with one
+ * row: this is about what the trigger DISPLAYS, not about what the menu
+ * does. The Practice offer adds a second row later without either changing
+ * shape — and, on the day it does, the second line comes back on its own.
  */
 export function AccountMenu({
   initials,
@@ -46,6 +55,7 @@ export function AccountMenu({
   }, [open]);
 
   const current = workspaces.find((w) => w.isCurrent) ?? workspaces[0];
+  const workspaceIsAmbiguous = workspaces.length > 1;
 
   return (
     <div ref={container} className="relative">
@@ -64,9 +74,11 @@ export function AccountMenu({
         </span>
         <span className="flex flex-col items-start leading-tight max-sm:hidden">
           <span className="text-ui text-ink">{displayName || "Your account"}</span>
-          <span className="text-mono font-mono uppercase tracking-mono-08 text-ink-3">
-            {current?.name ?? "Your workspace"}
-          </span>
+          {workspaceIsAmbiguous ? (
+            <span className="text-mono font-mono uppercase tracking-mono-08 text-ink-3">
+              {current?.name}
+            </span>
+          ) : null}
         </span>
         <ChevronGlyph color="var(--ink-2)" />
       </button>

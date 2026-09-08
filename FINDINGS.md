@@ -333,3 +333,33 @@ replaced by what remains true. What follows is the residue, not the original lis
   `/app/content`. **App routes are a frontend concern in this system and nothing outside the frontend
   depends on one.** That is worth knowing before the next rename — and worth re-checking rather than
   trusting, since it is a property nothing enforces.
+
+---
+
+## Added while closing the gap to the mockup (second pass on the shell)
+
+- **The kit shell and the site editor now disagree about where a rail goes.** The kit's rail begins under
+  the app header with the header band beside it; the site editor, one click away at `/site-editor`, still
+  puts its own controls in a 360px rail with its own internal header above the fold. Two paid screens in
+  the same route family, two rail idioms. Neither is wrong on its own and the editor's layout law is
+  settled, so nothing was changed — but the inconsistency is now visible in a way it was not when the kit
+  had no rail at that height.
+
+- **`initialsFrom` is one function serving two different jobs, and only one of them is an avatar.** The
+  account chip uses it on a person's name (`Dana Whitfield` → `DW`); the kit rail uses it on a practice
+  name to draw her monogram (`Elm & Ember Therapy` → `ET`). A monogram is a brand mark with typographic
+  rules of its own — the rendered `monogram_svg` asset does not derive itself this way — and the two will
+  eventually want different answers. They share an implementation today because they happen to agree on
+  "first letter of the first and last word".
+
+- **The header's search field and the modal's search field are two inputs bound to one `query`.** That is
+  deliberate and tested (a character typed in the header must survive the modal taking focus a frame
+  later), but it means both are visible and identical while the modal is open, one behind the overlay.
+  Nobody has looked at whether that reads as a duplicate or as continuity; it was not worth a second
+  component to find out.
+
+- **The `Status` tile is now the only bordered card in the Overview's first screen**, since the counts
+  became a strip in the band above it. It reads as a leftover of the pattern it used to belong to. It is
+  still the right information — see the entry above about what `staleKeys` can say — but its container is
+  now the odd one out, and folding it into the band would put a sentence among three numbers, which the
+  no-aphorism ruling exists to prevent.

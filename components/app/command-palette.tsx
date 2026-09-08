@@ -9,6 +9,19 @@ import type { SearchAssetResult, SearchLaunchStepResult } from "@/app/api/search
  * labelled accordingly. One RPC (app_search), no client-side full scan --
  * this component only ever renders what the server already filtered.
  *
+ * ⚠ THE HEADER AFFORDANCE IS A FIELD, NOT A PILL. It was a small
+ * `Search ⌘K` button, which says "there is a search somewhere" rather than
+ * "type here". A real input, ~320px, carrying the placeholder already
+ * written for the page she is on -- `Search assets, files, or anything…` in
+ * the kit, `Search posts, captions, tags…` in the content calendar -- says
+ * what she can look for before she has to guess.
+ *
+ * The MECHANISM is unchanged: the same modal, the same RPC, the same ⌘K.
+ * The header field and the modal's field share one `query` state, so a
+ * character typed in the header is not lost when the modal takes focus a
+ * frame later. Below md the field does not fit, and the icon button is what
+ * remains.
+ *
  * Focus-trap / Escape / focus-return follows the same pattern already
  * established for this app's other modal (`components/site/reset-
  * section.tsx`'s ConfirmReset).
@@ -88,35 +101,58 @@ export function CommandPalette({ brandKitId }: { brandKitId: string | null }) {
 
   if (!brandKitId) {
     return (
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        aria-label="Search"
-        className="flex size-8 items-center justify-center rounded-pill border border-line text-ink-3 max-md:size-8 md:h-8 md:w-auto md:px-3"
+      <div
+        aria-hidden="true"
+        className="flex h-9 w-[320px] items-center gap-2 rounded-pill border border-line px-3 text-ui text-ink-3 max-lg:w-[220px] max-md:size-9 max-md:w-9 max-md:justify-center max-md:px-0"
       >
         <SearchGlyph />
         <span className="max-md:hidden">Search</span>
-      </button>
+      </div>
     );
+  }
+
+  function openFromHeader() {
+    triggerRef.current = document.activeElement as HTMLElement | null;
+    setOpen(true);
   }
 
   return (
     <>
+      {/*
+       * The field. Clicking it or typing into it opens the modal; the modal's
+       * own input takes focus and reads the same `query`, so nothing typed
+       * here is dropped. Focus alone does NOT open it -- tabbing through the
+       * header should not throw a modal at her.
+       */}
+      <label className="relative flex h-9 w-[320px] items-center rounded-pill border border-line text-ui focus-within:border-ink-3 max-lg:w-[220px] max-md:hidden">
+        <span className="pointer-events-none absolute left-3 flex text-ink-3">
+          <SearchGlyph />
+        </span>
+        <input
+          type="text"
+          value={query}
+          aria-label="Search"
+          placeholder={placeholder}
+          onMouseDown={openFromHeader}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            openFromHeader();
+          }}
+          className="h-full w-full min-w-0 rounded-pill bg-transparent pl-9 pr-12 text-ink outline-none placeholder:text-ink-3"
+        />
+        <span className="pointer-events-none absolute right-3 font-mono text-mono-sm uppercase tracking-mono-08 text-ink-3">
+          ⌘K
+        </span>
+      </label>
+
+      {/* Below md the field does not fit beside the wordmark and the nav. */}
       <button
         type="button"
         aria-label="Search"
-        onClick={() => {
-          triggerRef.current = document.activeElement as HTMLElement | null;
-          setOpen(true);
-        }}
-        className="flex h-8 items-center gap-2 rounded-pill border border-line px-2 text-ui text-ink-2 hover:bg-card hover:text-ink md:px-3"
+        onClick={openFromHeader}
+        className="flex size-9 items-center justify-center rounded-pill border border-line text-ink-2 hover:bg-card hover:text-ink md:hidden"
       >
         <SearchGlyph />
-        <span className="max-md:hidden">Search</span>
-        <span className="font-mono text-mono-sm uppercase tracking-mono-08 text-ink-3 max-md:hidden">
-          ⌘K
-        </span>
       </button>
 
       {open ? (

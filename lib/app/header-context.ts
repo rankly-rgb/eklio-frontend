@@ -33,17 +33,20 @@ export function initialsFrom(
 /**
  * Le nom que porte la pastille de compte, dans l'ordre.
  *
- * ⚠ CE QUE CE CLASSEMENT CORRIGE. Il n'y en avait que deux, `full_name` puis
- * la partie locale de l'email — et `full_name` est vide pour toute personne
- * inscrite sans le renseigner. La pastille affichait donc
- * « contactnsocialmediaonline » à l'endroit exact où un nom est attendu, sur
- * tous les écrans de l'application. Ce n'est pas un défaut d'affichage : la
- * donnée existait, elle n'était simplement pas demandée.
+ * ⚠ CE QUE CE CLASSEMENT CORRIGE, PREMIER TEMPS. Il n'y avait que deux
+ * sources, `full_name` puis la partie locale de l'email — et `full_name` est
+ * vide pour toute personne inscrite sans le renseigner. La pastille affichait
+ * donc « contactnsocialmediaonline » à l'endroit exact où un nom est attendu,
+ * sur tous les écrans. La donnée existait ; elle n'était pas demandée.
  *
- * Le nom de la practice passe avant le prénom de la praticienne, et c'est
- * voulu : elle a choisi ce nom, il est écrit sur son site, et c'est
- * l'identité que l'application encadre. La partie locale de l'email reste,
- * en dernier — ce n'est pas un nom, c'est mieux que rien.
+ * ⚠ DEUXIÈME TEMPS, ET IL RENVERSE LE PREMIER. Le nom de la practice passait
+ * alors avant celui de la praticienne. Résultat : la pastille répétait le
+ * titre de la page à huit centimètres de lui — « Ember consulting » au-dessus
+ * de « Ember consulting » — ce qui n'apprend rien à personne. LA PASTILLE DE
+ * COMPTE MONTRE LA PERSONNE, pas le kit. Le nom de la practice reste en
+ * secours, parce qu'il vaut mieux qu'une adresse email ; la partie locale de
+ * l'email reste en dernier, parce que ce n'est pas un nom, mais c'est mieux
+ * que rien.
  */
 export function displayNameFrom(sources: {
   fullName?: string | null;
@@ -54,12 +57,14 @@ export function displayNameFrom(sources: {
   const fullName = (sources.fullName ?? "").trim();
   if (fullName) return fullName;
 
+  // Son nom, pas son titre : « Dana Whitfield », pas « Dana Whitfield, LCSW ».
+  // Le diplôme appartient à sa signature et à son site, pas à une pastille de
+  // 200px — et il fausserait les initiales de l'avatar.
+  const practitionerName = (sources.practitionerName ?? "").split(",")[0].trim();
+  if (practitionerName) return practitionerName;
+
   const practiceName = (sources.practiceName ?? "").trim();
   if (practiceName) return practiceName;
-
-  // Le PRÉNOM, pas la ligne complète : « Dana », pas « Dana Whitfield, LCSW ».
-  const firstName = (sources.practitionerName ?? "").trim().split(/\s+/)[0] ?? "";
-  if (firstName) return firstName;
 
   return (sources.email ?? "").split("@")[0] || "";
 }
