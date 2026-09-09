@@ -23,8 +23,8 @@ import {
   claimBrandImage,
   markBrandImageFailed,
   markBrandImageReady,
-  reserveImageRegeneration,
-  settleImageRegeneration,
+  reserveImageSpend,
+  settleImageSpend,
 } from "@/lib/images/rpc";
 import { variationClause, type ImageVariation } from "@/lib/images/variations";
 
@@ -43,13 +43,18 @@ import { variationClause, type ImageVariation } from "@/lib/images/variations";
  * reconciled at settle time by the database, which clamps whatever this file
  * asks for against its own bound.
  *
- * BUDGET. The initial seven are part of what she bought and draw on nothing.
- * A REGENERATION draws on `plans.image_budget_cents` — never on
- * `consume_generation_credit`, whose meter is the DIRECTIONS ladder and has
- * nothing to do with pixels. The reservation is booked BEFORE the model call
- * and released on failure, so she is never charged for a photograph she did
- * not receive, and two concurrent regenerations cannot both pass an
- * under-budget check.
+ * BUDGET. EVERY image — the first seven and every regeneration alike — draws
+ * on `plans.image_budget_cents`, never on `consume_generation_credit`, whose
+ * meter is the DIRECTIONS ladder and has nothing to do with pixels. The
+ * reservation is booked BEFORE the model call and released on failure, so she
+ * is never charged for a photograph she did not receive, and two concurrent
+ * runs cannot both pass an under-budget check.
+ *
+ * ⚠ THE FIRST SEVEN USED TO DRAW ON NOTHING. They were "part of what she
+ * bought", which is true of the PRICE and false of the ACCOUNTING: it left
+ * the operator's global daily ceiling as the only record of what a kit's
+ * photographs had cost. `isRegeneration` no longer decides whether money is
+ * booked — only how a refusal is worded.
  */
 
 type Client = SupabaseClient<Database>;
@@ -152,25 +157,26 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
   // Priced on the EFFECTIVE quality, never on the configured one.
   const costCents = priceCents(IMAGE_MODEL, quality, config.size);
 
-  // Reserved BEFORE the call, and released below on any failure.
-  if (isRegeneration) {
-    const reserved = await reserveImageRegeneration(supabase, brandKitId, costCents);
-    if (!reserved.ok) {
-      return {
-        ok: false,
-        slot,
-        reason: "no_credit",
-        message:
-          reserved.reason === "budget_exhausted"
-            ? "You have used the photograph budget included with this kit."
-            : "That regeneration could not be started.",
-      };
-    }
+  // Reserved BEFORE the call, and released below on any failure. Every image,
+  // not only a regeneration.
+  const reserved = await reserveImageSpend(supabase, brandKitId, costCents);
+  if (!reserved.ok) {
+    return {
+      ok: false,
+      slot,
+      reason: "no_credit",
+      message:
+        reserved.reason === "budget_exhausted"
+          ? "You have used the photograph budget included with this kit."
+          : isRegeneration
+            ? "That regeneration could not be started."
+            : "That photograph could not be started.",
+    };
   }
 
-  /** Releases a regeneration reservation on any path that does not deliver an image. */
+  /** Releases the reservation on any path that does not deliver an image. */
   const release = async (): Promise<void> => {
-    if (isRegeneration) await settleImageRegeneration(supabase, brandKitId, costCents, false);
+    await settleImageSpend(supabase, brandKitId, costCents, false);
   };
 
   const claim = await claimBrandImage(
@@ -261,11 +267,8 @@ export async function generateBrandImage(input: GenerateInput): Promise<Generate
     return { ok: false, slot, reason: "stale_claim", message: "Another run finished this image first." };
   }
 
-  // Only now, and only for a regeneration: the image exists, so the
-  // reservation becomes real spend.
-  if (isRegeneration) {
-    await settleImageRegeneration(supabase, brandKitId, costCents, true);
-  }
+  // Only now: the image exists, so the reservation becomes real spend.
+  await settleImageSpend(supabase, brandKitId, costCents, true);
 
   return {
     ok: true,

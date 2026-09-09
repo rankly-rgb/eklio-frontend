@@ -122,20 +122,27 @@ describe("le chemin heureux", () => {
     expect(ready?.args.p_cost_cents).not.toBe(100);
   });
 
-  it("un slot initial ne coûte RIEN à son budget", async () => {
+  it("⚠ un slot initial n'atteint JAMAIS le compteur des directions", async () => {
+    /*
+     * Il réserve, lui : depuis le 9 septembre, TOUTE image tire sur
+     * `plans.image_budget_cents`. Ce qu'il ne fait toujours pas, et ne fera
+     * jamais, c'est toucher `consume_generation_credit` — l'échelle des
+     * directions, vendue 79 à 249 USD, qui n'a rien à voir avec des pixels.
+     */
     const supabase = stubSupabase();
     await run(supabase, stubClient(ok));
-    for (const fn of ["consume_generation_credit", "reserve_image_regeneration"]) {
-      expect(supabase.calls.map((c) => c.fn)).not.toContain(fn);
-    }
+    expect(supabase.calls.map((c) => c.fn)).not.toContain("consume_generation_credit");
   });
 });
 
-describe("le budget de régénération", () => {
+describe("le budget d'images", () => {
   /*
-   * Une régénération tire sur `plans.image_budget_cents`, JAMAIS sur
-   * `consume_generation_credit` -- dont le compteur est l'échelle des
-   * DIRECTIONS et n'a rien à voir avec des pixels. Cf. FINDINGS.md.
+   * TOUTE image -- les sept premières comme chaque régénération -- tire sur
+   * `plans.image_budget_cents`, JAMAIS sur `consume_generation_credit`, dont
+   * le compteur est l'échelle des DIRECTIONS et n'a rien à voir avec des
+   * pixels. Les RPC gardent leur nom `…_image_regeneration` : c'est le nom en
+   * base, et renommer une fonction vivante coûte une migration pour un mot.
+   * Les enveloppes, elles, portent le nom honnête.
    */
   it("ne touche jamais le compteur des directions", async () => {
     const supabase = stubSupabase();
@@ -180,11 +187,36 @@ describe("le budget de régénération", () => {
     expect(settle?.args.p_succeeded).toBe(false);
   });
 
-  it("une PREMIÈRE génération ne réserve rien du tout", async () => {
+  it("⚠ une PREMIÈRE génération réserve et règle comme les autres", async () => {
+    /*
+     * ── CE QUI A CHANGÉ, ET POURQUOI ────────────────────────────────────
+     *
+     * Les sept premières « faisaient partie de ce qu'elle a acheté » et ne
+     * tiraient donc sur rien. Vrai du PRIX, faux de la COMPTABILITÉ : le seul
+     * enregistrement de ce qu'un kit avait coûté en photographies vivait dans
+     * le plafond quotidien GLOBAL de l'opérateur — un chiffre à lui, pas une
+     * ligne à elle. Toute image réserve maintenant, et se règle à la
+     * livraison.
+     */
     const supabase = stubSupabase();
-    await run(supabase, stubClient(ok));
-    expect(supabase.calls.map((c) => c.fn)).not.toContain("reserve_image_regeneration");
-    expect(supabase.calls.map((c) => c.fn)).not.toContain("settle_image_regeneration");
+    const outcome = await run(supabase, stubClient(ok));
+    expect(outcome.ok).toBe(true);
+
+    const order = supabase.calls.map((c) => c.fn);
+    expect(order).toContain("reserve_image_regeneration");
+    expect(order.indexOf("reserve_image_regeneration")).toBeLessThan(order.indexOf("brand_images_claim"));
+
+    const settle = supabase.calls.filter((c) => c.fn === "settle_image_regeneration").at(-1);
+    expect(settle?.args.p_succeeded).toBe(true);
+  });
+
+  it("et une PREMIÈRE génération qui échoue libère sa réservation", async () => {
+    const supabase = stubSupabase();
+    const client = stubClient(() => Promise.reject(new ImageTransientError("upstream 503")));
+    const outcome = await run(supabase, client);
+    expect(outcome.ok).toBe(false);
+    const settle = supabase.calls.filter((c) => c.fn === "settle_image_regeneration").at(-1);
+    expect(settle?.args.p_succeeded).toBe(false);
   });
 });
 

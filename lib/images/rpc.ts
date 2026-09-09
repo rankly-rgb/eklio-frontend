@@ -157,17 +157,31 @@ export async function brandImagesPath(
 }
 
 /*
- * ── THE REGENERATION BUDGET ─────────────────────────────────────────────
+ * ── THE IMAGE BUDGET ────────────────────────────────────────────────────
  *
  * `plans.image_budget_cents`, never `consume_generation_credit`. The latter's
- * meter is the DIRECTIONS ladder — a model call over text — and spending it on
- * a photograph would charge her a direction regeneration for something priced
- * completely differently. See FINDINGS.md.
+ * meter is the DIRECTIONS ladder — three to twelve regenerations of a whole
+ * brand, priced at 79 to 249 USD — and spending it on a photograph would
+ * charge her a brand regeneration for something priced completely
+ * differently.
+ *
+ * ⚠ EVERY IMAGE, NOT ONLY A REGENERATION. The first seven used to draw on
+ * nothing at all, which meant the only record of what a kit's photographs had
+ * cost lived in the operator's daily ceiling — a global number, not hers.
+ * Every generation now reserves and settles here, so the per-kit spend is a
+ * per-kit row.
+ *
+ * ⚠ THE RPCs ARE STILL NAMED `…_image_regeneration`. That is the database
+ * name from the migration that introduced them, and renaming a live function
+ * is a migration and a redeploy for a word. The WRAPPERS carry the honest
+ * name, because a money path whose local name says "regeneration" while it is
+ * called for a first generation is exactly the kind of drift that produced
+ * two contradictory reports about which meter images spend.
  *
  * Reserved before the call, released on failure. She is never charged for a
  * photograph she did not receive.
  */
-export async function reserveImageRegeneration(
+export async function reserveImageSpend(
   supabase: Client,
   brandKitId: string,
   costCents: number
@@ -183,7 +197,7 @@ export async function reserveImageRegeneration(
   return data as unknown as { ok: boolean; reason: string };
 }
 
-export async function settleImageRegeneration(
+export async function settleImageSpend(
   supabase: Client,
   brandKitId: string,
   costCents: number,
@@ -208,7 +222,7 @@ export type ImageBudget = {
   remaining_cents: number;
 };
 
-export async function getImageRegenerationBudget(
+export async function getImageBudget(
   supabase: Client,
   brandKitId: string
 ): Promise<ImageBudget | null> {

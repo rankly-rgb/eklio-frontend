@@ -191,6 +191,24 @@ export type Database = {
           },
         ]
       }
+      check_rewrite_usage: {
+        Row: {
+          day: string
+          used: number
+          user_id: string
+        }
+        Insert: {
+          day: string
+          used?: number
+          user_id: string
+        }
+        Update: {
+          day?: string
+          used?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       brand_image_daily_spend: {
         Row: {
           actual_cents: number
@@ -2241,6 +2259,10 @@ export type Database = {
       complete_choose_direction: {
         Args: { p_brand_kit_id: string }
         Returns: undefined
+      }
+      consume_check_rewrite: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       consume_generation_credit: {
         Args: { p_brand_kit_id: string }

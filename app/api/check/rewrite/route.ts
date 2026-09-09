@@ -6,28 +6,40 @@ import { loadBrandKit } from "@/lib/data/brand-kit";
 import { readCatalog } from "@/lib/catalog/read";
 import { CHECK_MAX_CHARS, CHECK_MIN_CHARS } from "@/lib/check/review";
 import { rewriteAndRescan } from "@/lib/check/rewrite";
+import { consumeCheckRewrite } from "@/lib/check/allowance";
 import { AnthropicNotConfiguredError } from "@/lib/ai/client";
 import { track } from "@/lib/analytics";
 
 /*
  * POST /api/check/rewrite — ask the model to fix what the scan found.
  *
- * ── THE MONEY, IN ORDER ─────────────────────────────────────────────────
+ * ── WHAT THIS COSTS, AND WHAT BOUNDS IT ─────────────────────────────────
  *
- * 1. Availability is checked BEFORE the call, advisorily, through
- *    `brand_kit_has_generation_credit`. Refusing after spending would be the
- *    worst of both.
- * 2. The credit is consumed AFTER, and only when the rewrite actually
- *    RESOLVED what it was asked to fix. A rewrite that still trips the rule is
- *    the model failing at the one job it was given; Eklio eats that call. She
- *    is not charged for being handed back the same problem in new words.
- * 3. There is no refund primitive after delivery (`release_generation_credit`
- *    only works pre-delivery), which is why the order is check-then-consume
- *    rather than consume-then-refund.
+ * ⚠ IT SPENDS NEITHER METER. It used to call `consume_generation_credit`,
+ * which is the DIRECTIONS ladder: three to twelve regenerations of a whole
+ * brand, sold at 79 to 249 USD. A rewrite is one text call costing a fraction
+ * of a cent. Charging a brand regeneration for it was absurd in the only
+ * direction that matters — she would run out of the expensive thing by using
+ * the cheap one. It does not touch `plans.image_budget_cents` either: no
+ * pixels are made here.
  *
- * The known, bounded race: two rewrites started at once can both pass the
- * advisory check and both consume. It costs at most one extra credit, never
- * money, and it is recorded in FINDINGS.md rather than papered over.
+ * What bounds it instead is a per-user DAILY COUNT, `consume_check_rewrite`,
+ * twenty a day by default and configurable in `app_settings` without a
+ * deploy. Not money — a bound on the tight loop, which is the only real risk
+ * a cheap endpoint carries.
+ *
+ * ⚠ COUNTED BEFORE THE CALL, NOT AFTER, and deliberately not "only when the
+ * rewrite worked". A bound that only counts successes does not bound
+ * anything: a script whose rewrites all fail is exactly the loop this is here
+ * to stop. The cost of that choice is that a failed rewrite still spends one
+ * of twenty — which is a rounding error at that ceiling, and the honest price
+ * of a limit that actually limits.
+ *
+ * VERIFY-THEN-CONSUME, in one statement. `consume_check_rewrite` checks and
+ * increments inside a single `on conflict … do update … where`, so two
+ * simultaneous rewrites cannot both pass an under-limit read. There is still
+ * no post-purchase refund primitive anywhere in this product, which is why no
+ * path is allowed to consume before it has checked.
  *
  * ⚠ HER TEXT IS NEVER STORED, here either — not the input, not the rewrite.
  * The rewrite is returned to her and forgotten.
@@ -64,35 +76,28 @@ export async function POST(request: Request) {
     );
   }
 
-  // 1. Advisory, before the call.
-  const { data: hasCredit, error: creditError } = await supabase.rpc(
-    "brand_kit_has_generation_credit",
-    { p_brand_kit_id: brandKitId }
-  );
-  if (creditError) return serverError("POST /api/check/rewrite", creditError);
-
-  if (hasCredit === false) {
+  /*
+   * The bound, atomically, before the model call. A refusal here is 429 and
+   * not 402: nothing is for sale that would lift it, and offering a checkout
+   * for something a night's sleep fixes would be a lie.
+   */
+  const allowance = await consumeCheckRewrite(supabase);
+  if (!allowance.ok) {
+    if (allowance.reason === "rpc_error") {
+      return serverError("POST /api/check/rewrite", new Error("consume_check_rewrite failed"));
+    }
     return NextResponse.json(
       {
-        error: "Your rewrites are used up for this plan.",
-        checkoutUrl: `/app/checkout?project=${kit.projectId}`,
+        error: `You have used today's ${allowance.limit} rewrites. The scan itself is unlimited, and rewrites come back tomorrow.`,
+        retryAfterSeconds: allowance.retryAfterSeconds,
       },
-      { status: 402 }
+      { status: 429, headers: { "retry-after": String(allowance.retryAfterSeconds) } }
     );
   }
 
   try {
     const catalog = await readCatalog(supabase).catch(() => null);
     const outcome = await rewriteAndRescan(text, catalog?.ethicsRules ?? []);
-
-    // 2. Consume only on a rewrite that did the job, and only when a model
-    //    call was actually made.
-    if (outcome.attempts > 0 && outcome.resolved && !outcome.unchanged) {
-      const { error: spendError } = await supabase.rpc("consume_generation_credit", {
-        p_brand_kit_id: brandKitId,
-      });
-      if (spendError) console.error("[check] consume_generation_credit", spendError);
-    }
 
     track("check_rewritten", {
       attempts: outcome.attempts,
