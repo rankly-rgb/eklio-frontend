@@ -1499,13 +1499,16 @@ wrong.** Traced rather than remembered:
 
 Every image reserves now, not only a regeneration. The first seven "drew on nothing", which is true of the
 price and false of the accounting: it left the operator's GLOBAL daily ceiling as the only record of what a
-kit's photographs had cost. **The budgets were sized when only regenerations drew on them — see
-FINDINGS.md. A full set is 59 cents at the current price table, so Starter's 100-cent budget is 59% spent
-before she asks for anything. That is the one worth re-deciding.**
+kit's photographs had cost. **The budgets were sized when only regenerations drew on them, and were
+raised the same day** — 100/250/500 → **200/400/600**, leaving 141/341/541 cents of headroom after a full
+set (59c). Any change to the price table or the slot list moves that arithmetic; the three numbers were
+chosen against 59c.
 
 The Check rewrite is bounded by `consume_check_rewrite()`, twenty per user per UTC day, the number in
-`app_settings.check_rewrites_per_user_per_day` so it moves without a deploy. Counted BEFORE the call and
-regardless of outcome: a bound that only counts successes does not bound a script whose rewrites all fail.
+`app_settings.check_rewrites_per_user_per_day` so it moves without a deploy — **raised to 50 the same
+day**, because twenty is reachable in a first honest session (six flagged sentences worked twice is
+twelve) and the refusal lasts until the next UTC day. Counted BEFORE the call and regardless of outcome: a
+bound that only counts successes does not bound a script whose rewrites all fail.
 Refusal is 429 with `retry-after`, never 402 — nothing is for sale that lifts it.
 
 **Do not put this back.** `app/__tests__/meters-are-not-conflated.test.ts` walks every import chain from the

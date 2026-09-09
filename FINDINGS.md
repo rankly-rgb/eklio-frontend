@@ -368,15 +368,14 @@ replaced by what remains true. What follows is the residue, not the original lis
 
 ## Added while un-conflating the meters, hardening the image run, and building the tier guard
 
-- **The image budgets were sized for regenerations only, and every image now draws on them.** The brief
-  ruled that every generation and regeneration reserves against `plans.image_budget_cents`; before this
-  lot only regenerations did. The seeded budgets are 100 / 250 / 500 cents for starter / practice /
-  signature. A full set of seven at the CURRENT price table costs **59 cents** — hero 25c at high, two
-  ambients at 7c, four squares at 5c — not the 41c an earlier report quoted from an older table. So a
-  Starter kit now spends 59% of its lifetime photograph budget on the set she was always going to get,
-  leaving 41 cents: one hero regeneration and change, or eight textures. Practice (250c) and Signature
-  (500c) are comfortable; **Starter is not obviously right, and nobody has decided it since the meaning of
-  the number changed.** Resizing is
+- **~~The image budgets were sized for regenerations only~~ — RESOLVED 9 September, same day.** Every
+  image now reserves against `plans.image_budget_cents`, and a full set of seven at the current price
+  table is **59 cents** (hero 25c at high, two ambients 7c, four squares 5c) — not the 41c an earlier
+  report quoted from an older table, which is the `--quality medium` figure. At the original 100 / 250 /
+  500 that left Starter with 41c for the life of a kit: one hero regeneration. The budgets are now
+  **200 / 400 / 600**, leaving 141 / 341 / 541 cents of headroom after a full set. Kept here because the
+  ARITHMETIC is the thing to re-check: any change to the price table, the slot list, or a slot's quality
+  moves the cost of a full set, and these three numbers were chosen against 59c specifically. Resizing is
   an `update public.plans` and no code, exactly as that table's own comment intends.
 
 - **A first generation that fails now costs a reservation round-trip it did not before.** Reserve, fail,
@@ -395,8 +394,10 @@ replaced by what remains true. What follows is the residue, not the original lis
   consume a directions credit only when the rewrite *resolved* — Eklio ate the failures. The daily count
   that replaces it is charged before the call and regardless of outcome, because a bound that only counts
   successes does not bound a script whose rewrites all fail. The trade is deliberate: a failed rewrite
-  costs one of twenty rather than nothing. Worth revisiting only if twenty turns out to be tight, which
-  `app_settings` makes a one-row change.
+  costs one of fifty rather than nothing. (Twenty was the first ceiling and it WAS tight: a bio with six
+  flagged sentences, worked through twice, is twelve, and a second piece of copy hit the wall — with the
+  refusal lasting until the next UTC day. Raised to fifty on 9 September, one row in `app_settings`, no
+  deploy, which is what putting it there was for.)
 
 - **`brand_kit_has_generation_credit` has one caller fewer and may now have none that matter.** The Check
   rewrite was using it as its advisory pre-check. It still exists and is still correct; whether anything
