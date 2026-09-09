@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getStripeClient } from "@/lib/stripe/client";
 import type { WebhookPorts } from "@/lib/stripe/webhook";
+import { grantIncludedMonthlyPresence } from "@/lib/stripe/monthly-presence";
 import type { PurchaseStatus } from "@/types/supabase";
 import type { Json } from "@/types/supabase";
 
@@ -240,12 +241,65 @@ export function createWebhookPorts(): WebhookPorts {
           status: row.status,
           current_period_end: row.currentPeriodEnd,
           cancel_at_period_end: row.cancelAtPeriodEnd,
+          trial_end: row.trialEnd,
           updated_at: new Date().toISOString(),
         },
+        /*
+         * ⚠ `trial_notice_sent_for` N'EST PAS DANS CET OBJET, et c'est ce qui
+         * le préserve : un upsert ne réécrit que les colonnes fournies. Si on
+         * l'écrasait à chaque event d'abonnement, le moindre
+         * `customer.subscription.updated` — Stripe en émet pour tout — ferait
+         * réenvoyer le préavis, ou pire, effacerait la trace du préavis déjà
+         * envoyé et la ferait prélever sans avoir été prévenue une seconde fois.
+         */
         { onConflict: "user_id" }
       );
 
       if (error) throw error;
+    },
+
+    async grantIncludedMonthlyPresence({
+      customerId,
+      checkoutSessionId,
+      paymentIntentId,
+      metadata,
+    }): Promise<Stripe.Subscription | null> {
+      try {
+        /*
+         * La carte à prélever dans 90 jours : celle que `setup_future_usage`
+         * vient d'attacher au customer. On la relit sur le PaymentIntent
+         * plutôt que sur le customer — `invoice_settings.default_payment_method`
+         * n'est PAS posé par un checkout, et compter dessus donnerait un
+         * abonnement sans moyen de paiement au bout des trois mois.
+         */
+        let paymentMethodId: string | null = null;
+        if (paymentIntentId) {
+          const intent = await getStripeClient().paymentIntents.retrieve(paymentIntentId);
+          paymentMethodId =
+            typeof intent.payment_method === "string"
+              ? intent.payment_method
+              : (intent.payment_method?.id ?? null);
+        }
+
+        return await grantIncludedMonthlyPresence({
+          customerId,
+          userId: metadata.eklio_user_id ?? "",
+          checkoutSessionId,
+          paymentMethodId,
+          metadata,
+        });
+      } catch (error) {
+        /*
+         * Le kit est payé et écrit. Les trois mois offerts n'ont pas pu être
+         * posés : on le crie, et on rend `null` plutôt que de lever — voir le
+         * commentaire à l'appel dans `webhook.ts`.
+         */
+        console.error(
+          `[stripe-webhook] trois mois inclus NON accordés pour la session ${checkoutSessionId} — à poser à la main`,
+          error
+        );
+        return null;
+      }
     },
 
     async markSubscriptionPastDue(stripeSubscriptionId): Promise<void> {

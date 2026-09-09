@@ -1,5 +1,9 @@
 import type Stripe from "stripe";
-import { KIT_PLANS, CURRENCY } from "@/lib/billing/plans";
+import {
+  KIT_PLANS,
+  CURRENCY,
+  includesMonthlyPresence,
+} from "@/lib/billing/plans";
 import {
   parseCheckoutMetadata,
   readMetadataUserId,
@@ -96,6 +100,14 @@ export type SubscriptionRow = {
   status: SubscriptionStatus;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  /**
+   * Fin de la période d'essai, en ISO, ou `null` hors essai.
+   *
+   * ⚠ CE N'EST PAS UN DROIT. Le droit vient de `status` (`trialing` est déjà
+   * entitlant, et `active` en base l'est aussi). Cette date sert à ÉCRIRE à la
+   * praticienne avant de la prélever, jamais à décider ce qu'elle peut ouvrir.
+   */
+  trialEnd: string | null;
 };
 
 /*
@@ -169,6 +181,21 @@ export type WebhookPorts = {
     purchaseId: string,
     intoStatuses: PurchaseStatus[]
   ): Promise<PurchaseStatus | null>;
+  /**
+   * Accorde les trois mois de Monthly Presence inclus dans Practice Suite.
+   *
+   * Rend l'abonnement tel que Stripe le voit ensuite — créé avec 90 jours
+   * d'essai, ou celui qu'elle avait déjà, dont l'essai vient d'être repoussé
+   * de 90 jours. Rend `null` si Stripe a refusé : un kit payé ne doit pas être
+   * perdu parce que l'add-on offert n'a pas pu être posé.
+   */
+  grantIncludedMonthlyPresence(input: {
+    customerId: string;
+    userId: string;
+    checkoutSessionId: string;
+    paymentIntentId: string | null;
+    metadata: Record<string, string>;
+  }): Promise<Stripe.Subscription | null>;
   upsertSubscription(row: SubscriptionRow): Promise<void>;
   /** Passe l'abonnement en `past_due` sans toucher au reste de la ligne. */
   markSubscriptionPastDue(stripeSubscriptionId: string): Promise<void>;
@@ -283,6 +310,15 @@ export function subscriptionRow(
     status: deleted ? "canceled" : mapSubscriptionStatus(subscription.status),
     currentPeriodEnd: subscriptionPeriodEnd(subscription),
     cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+    /*
+     * `trial_end` reste renseigné par Stripe APRÈS la fin de l'essai (c'est la
+     * date à laquelle il s'est terminé). On le recopie tel quel : la ligne est
+     * un miroir de l'objet Stripe, pas une interprétation. Ce qui décide qu'un
+     * essai est en cours, c'est `status === "trialing"`, et rien d'autre.
+     */
+    trialEnd: subscription.trial_end
+      ? new Date(subscription.trial_end * 1000).toISOString()
+      : null,
   };
 }
 
@@ -413,6 +449,44 @@ async function handleCheckoutSession(
     const subscription = await ports.fetchSubscription(subscriptionId);
     if (subscription) {
       await ports.upsertSubscription(subscriptionRow(subscription, userId));
+    }
+  }
+
+  /*
+   * ── LES TROIS MOIS INCLUS DANS PRACTICE SUITE ────────────────────────────
+   *
+   * APRÈS l'encaissement, et seulement s'il a eu lieu. `paid` est la même
+   * condition que l'allocation du palier juste au-dessus : on n'offre pas
+   * trois mois sur un paiement différé qui n'est pas encore arrivé, ni sur un
+   * paiement refusé.
+   *
+   * Le customer est indispensable — c'est lui qui porte la carte enregistrée
+   * au checkout et à qui l'abonnement sera rattaché. Sans lui il n'y a rien à
+   * faire ici, et le kit reste acquis.
+   *
+   * ⚠ ON NE LÈVE PAS QUAND STRIPE REFUSE. Le port rend `null` et l'achat est
+   * déjà écrit : le kit à $249 est à elle quoi qu'il arrive. Faire échouer le
+   * traitement ferait rejouer l'event, réécrire l'achat, et finirait par
+   * rendre un 500 à Stripe pour un add-on offert — on préfère un add-on à
+   * poser à la main, qui se voit dans les logs, à un achat en suspens.
+   */
+  if (paid && includesMonthlyPresence(metadata.tier) && customerId) {
+    const included = await ports.grantIncludedMonthlyPresence({
+      customerId,
+      userId,
+      checkoutSessionId: session.id,
+      paymentIntentId: idOf(session.payment_intent),
+      metadata: session.metadata as Record<string, string>,
+    });
+
+    /*
+     * La ligne est écrite par le MÊME mapper que tous les autres events
+     * d'abonnement. C'est ce qui garantit qu'il n'y a pas une seconde façon
+     * d'être abonnée : `trialing` arrive en base exactement comme `active` y
+     * arrive, par `subscriptionRow()`.
+     */
+    if (included) {
+      await ports.upsertSubscription(subscriptionRow(included, userId));
     }
   }
 

@@ -459,3 +459,60 @@ replaced by what remains true. What follows is the residue, not the original lis
   kits the ceiling is 19.53 GiB (it was 4.88). Actual usage today is zero bytes across zero uploads, so
   there is no basis for predicting where inside that envelope real customers land — and nothing in the
   product reports aggregate storage. Worth a query before the kit count makes the ceiling interesting.
+
+---
+
+## Added while building the three included months of Monthly Presence
+
+- **⚠ The single fact I could NOT verify, and designed around instead.** In a Stripe Checkout session in
+  `mode: "subscription"`, a one-time line item becomes a posting on the subscription's FIRST invoice. With
+  a 90-day trial, that invoice is not issued until the trial ends — which would mean delivering a $249 kit
+  and collecting nothing for three months, on a subscription she can cancel throughout. `docs.stripe.com`
+  is blocked from this environment, so I could not confirm what Stripe actually does with a one-time
+  posting on a trialing subscription's first invoice. Rather than guess on a question worth $249 per sale,
+  the kit is now charged in `mode: "payment"` and the subscription is created afterwards by the webhook,
+  which makes the question moot. **If anyone ever wants to collapse the two back into one session, that is
+  the fact to establish first**, in Stripe test mode, with a real 90-day trial and a real one-time line.
+
+- **Stripe does NOT deduplicate subscriptions, and never has.** A second Checkout session in subscription
+  mode for a customer who already subscribes creates a SECOND subscription; Stripe publishes a page called
+  "Limit customers to one subscription" precisely because preventing it is the integrator's job. Our
+  `subscriptions` table is unique on `user_id`, so a second Stripe subscription would not even produce a
+  second row — it would produce one row that silently alternates between two Stripe objects while both
+  bill $39. `findLiveSubscription` + `planIncludedMonths` are what stand between us and that.
+
+- **`findLiveSubscription` deliberately does not filter on the price id.** The product sells exactly one
+  subscription, so any live subscription IS Monthly Presence. Filtering on `monthlyPresencePriceId()`
+  would create a second subscription the day that price is rotated in Stripe (same product, same $39, new
+  `price_…`) — the exact duplicate the function exists to prevent. If a second recurring product is ever
+  sold, this assumption breaks and the function must learn to tell them apart.
+
+- **The pricing page's `metadata.description` still says "Starter $79, Practice $149, Signature $249".**
+  Those are enum values, not the sold names, and the tier-name lot did not reach this string. It is what
+  search engines and link previews show. Not fixed here — out of this lot's scope — but it is public copy
+  contradicting the three names the same page now renders.
+
+- **The trial notice bypasses `lib/email/state.ts` entirely, and that asymmetry is now load-bearing.**
+  `canSend`'s 72-hour all-types cooldown, its never-repeat-a-kind rule, and the marketing unsubscribe are
+  all correct for nudges and all wrong for a pre-charge billing notice. Deduplication moved onto
+  `subscriptions.trial_notice_sent_for` instead. The risk this creates: there are now TWO email paths with
+  different suppression rules, and a future email will have to be classified into one of them. The test
+  that the notice carries no unsubscribe link is what keeps the boundary visible.
+
+- **Nothing measures whether the notice was actually delivered.** `sendEmail` returns `delivered: false`
+  when `RESEND_API_KEY` is absent and the sweep still marks `trial_notice_sent_for`, because from the
+  sweep's point of view the send succeeded. On a deployment without the key, every trial would be marked
+  warned and no one would be warned. The `track("trial_ending_notice_sent", { delivered })` call carries
+  the flag, but nothing alerts on it.
+
+- **`trial_settings.end_behavior.missing_payment_method: "create_invoice"` has never been exercised.**
+  It only fires if the card attached by `setup_future_usage` is gone 90 days later (expired, removed,
+  bank-reissued). The chosen behaviour issues a visible invoice rather than silently cancelling, and
+  `past_due` then gets the existing 3-day grace — but that whole path is reasoned, not observed.
+
+- **Production has 4 paid purchases, all `practice`, zero `signature`; 1 subscription row, 0 `trialing`**
+  (counted against the live database while writing this, not carried over from an earlier session). So
+  every line of this lot is unexercised by real data: no trial has ever existed, no notice has ever been
+  sent, and the already-subscribed branch of `planIncludedMonths` has never run against Stripe. The first
+  Practice Suite sale is the integration test — and the one existing subscriber is who would exercise the
+  extend path if she bought it.

@@ -386,6 +386,11 @@ const OTHER_GATE: Record<string, string> = {
   "app/api/settings": "Account settings, user-scoped and unrelated to any kit.",
   "app/api/notifications": "The caller's own notifications, RLS-scoped.",
   "app/api/monthly-presence": "Opens a subscription checkout; refusing it to an unpaid user would refuse the sale.",
+  "app/api/billing":
+    "Opens the Stripe billing portal for the signed-in user's OWN customer. " +
+    "It grants nothing and reads no kit: the portal is how someone cancels, " +
+    "and gating the exit behind an entitlement is the one thing a subscription " +
+    "must never do.",
   "app/api/checklist": "set_launch_step resolves ownership through brand_kits itself.",
   "app/app/briefs": "The pre-purchase brief. Free on purpose: it is the thing being sold.",
   "app/app/checkout": "The checkout itself. Gating it on having paid would be a closed loop.",

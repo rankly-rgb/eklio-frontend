@@ -35,6 +35,8 @@ type Recorded = {
   links: { userId: string; customerId: string }[];
   transitions: StatusTransition[];
   allowances: { projectId: string | null; tier: string; stripeEventId: string }[];
+  /** Les demandes de trois mois offerts, dans l'ordre. */
+  included: { customerId: string; checkoutSessionId: string }[];
 };
 
 /**
@@ -63,6 +65,7 @@ function makePorts(
     links: [],
     transitions: [],
     allowances: [],
+    included: [],
   };
 
   const ports: WebhookPorts = {
@@ -87,6 +90,15 @@ function makePorts(
     },
     async grantPlanAllowance(input) {
       recorded.allowances.push(input);
+    },
+    async grantIncludedMonthlyPresence({ customerId, checkoutSessionId }) {
+      recorded.included.push({ customerId, checkoutSessionId });
+      /*
+       * `null` par défaut : le port a le droit de ne rien rendre (Stripe a
+       * refusé), et le traitement doit survivre à ça. Les tests qui veulent
+       * l'abonnement le fournissent en override.
+       */
+      return null;
     },
     async upsertSubscription(row) {
       recorded.subscriptions.push(row);
@@ -1123,5 +1135,266 @@ describe("grant_plan_allowance", () => {
     // Un rejeu ne doit pas doubler ce qu'elle a payé, et c'est la base qui le
     // garantit : encore faut-il lui donner de quoi le faire.
     expect(recorded.allowances[0].stripeEventId).toBe("evt_grant_5");
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * L'ACHAT UNIQUE ET L'ABONNEMENT SONT INDÉPENDANTS
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Practice Suite comprend trois mois de Monthly Presence, ce qui rend les deux
+ * choses adjacentes dans la tête de tout le monde — et c'est exactement pour
+ * ça qu'il faut les épingler séparées. Résilier ne doit RIEN retirer d'autre
+ * que le contenu mensuel ; se faire rembourser le kit ne doit RIEN faire à
+ * l'abonnement.
+ *
+ * Les deux sens sont écrits, parce qu'un seul des deux ne prouve rien : le
+ * couplage peut naître de chaque côté.
+ */
+describe("indépendance de l'achat et de l'abonnement", () => {
+  /* ── SENS 1 : résilier ne touche pas au kit ──────────────────────────── */
+
+  it("résilier n'écrit AUCUN achat, aucune allocation, aucune transition", async () => {
+    const { ports, recorded } = makePorts();
+
+    await processStripeEvent(
+      ports,
+      subscriptionEvent(
+        "customer.subscription.deleted",
+        stripeSubscription({ status: "canceled" }),
+        "evt_cancel_1"
+      )
+    );
+
+    // L'abonnement, lui, est bien mis à jour : c'est tout ce qui bouge.
+    expect(recorded.subscriptions).toHaveLength(1);
+    expect(recorded.subscriptions[0].status).toBe("canceled");
+
+    /*
+     * ⚠ LES TROIS LISTES QUI DOIVENT RESTER VIDES. Le kit a été payé une fois ;
+     * rien dans le cycle de vie de l'abonnement n'a le droit de le reprendre,
+     * de refermer son allocation, ni de journaliser une transition d'achat.
+     */
+    expect(recorded.purchases).toEqual([]);
+    expect(recorded.allowances).toEqual([]);
+    expect(recorded.transitions).toEqual([]);
+  });
+
+  it("et c'est vrai de TOUS les events d'abonnement, pas seulement de la résiliation", async () => {
+    for (const [type, status] of [
+      ["customer.subscription.created", "trialing"],
+      ["customer.subscription.updated", "past_due"],
+      ["customer.subscription.deleted", "canceled"],
+    ] as const) {
+      const { ports, recorded } = makePorts();
+
+      await processStripeEvent(
+        ports,
+        subscriptionEvent(type, stripeSubscription({ status }), `evt_ind_${type}`)
+      );
+
+      expect(recorded.purchases, type).toEqual([]);
+      expect(recorded.allowances, type).toEqual([]);
+      expect(recorded.transitions, type).toEqual([]);
+    }
+  });
+
+  it("un échec de paiement d'abonnement ne touche pas non plus à l'achat", async () => {
+    const { ports, recorded } = makePorts();
+
+    await processStripeEvent(ports, {
+      id: "evt_ind_invoice",
+      type: "invoice.payment_failed",
+      data: {
+        object: {
+          parent: {
+            type: "subscription_details",
+            subscription_details: { subscription: "sub_test_1" },
+          },
+        },
+      },
+    } as unknown as Stripe.Event);
+
+    expect(recorded.pastDue).toEqual(["sub_test_1"]);
+    expect(recorded.purchases).toEqual([]);
+    expect(recorded.allowances).toEqual([]);
+    expect(recorded.transitions).toEqual([]);
+  });
+
+  /* ── SENS 2 : rembourser le kit ne touche pas à l'abonnement ─────────── */
+
+  it("rembourser le kit n'écrit AUCUNE ligne d'abonnement", async () => {
+    const { ports, recorded } = withPurchase("paid");
+
+    await processStripeEvent(
+      ports,
+      chargeEvent(
+        "charge.refunded",
+        { payment_intent: "pi_test_1", amount: 24900, amount_refunded: 24900 },
+        "evt_ind_refund"
+      )
+    );
+
+    // L'achat, lui, est bien révoqué.
+    expect(recorded.transitions[0].status).toBe("refunded");
+
+    /*
+     * ⚠ ET L'ABONNEMENT N'A PAS BOUGÉ. Elle a récupéré l'argent du kit ; le
+     * contenu mensuel qu'elle continue de payer $39 n'a rien à voir avec ça,
+     * et le lui couper serait lui reprendre une chose qu'elle paie encore.
+     */
+    expect(recorded.subscriptions).toEqual([]);
+    expect(recorded.pastDue).toEqual([]);
+  });
+
+  it("un litige sur le kit ne touche pas non plus à l'abonnement", async () => {
+    const { ports, recorded } = withPurchase("paid");
+
+    await processStripeEvent(
+      ports,
+      chargeEvent(
+        "charge.dispute.created",
+        { payment_intent: "pi_test_1", amount: 24900 },
+        "evt_ind_dispute"
+      )
+    );
+
+    expect(recorded.transitions[0].status).toBe("disputed");
+    expect(recorded.subscriptions).toEqual([]);
+    expect(recorded.pastDue).toEqual([]);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * LES TROIS MOIS INCLUS DANS PRACTICE SUITE
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+describe("les trois mois inclus", () => {
+  const signatureSession = (overrides: Partial<Stripe.Checkout.Session> = {}) =>
+    checkoutEvent(
+      {
+        amount_total: 24900,
+        metadata: buildCheckoutMetadata({
+          userId: USER,
+          projectId: PROJECT,
+          tier: "signature",
+        }),
+        ...overrides,
+      },
+      "evt_signature_1"
+    );
+
+  it("sont demandés quand Practice Suite est payé", async () => {
+    const { ports, recorded } = makePorts();
+
+    await processStripeEvent(ports, signatureSession());
+
+    expect(recorded.included).toEqual([
+      { customerId: CUSTOMER, checkoutSessionId: "cs_test_1" },
+    ]);
+  });
+
+  it("ne sont PAS demandés pour les autres paliers", async () => {
+    for (const tier of ["starter", "practice"] as const) {
+      const { ports, recorded } = makePorts();
+
+      await processStripeEvent(
+        ports,
+        checkoutEvent(
+          {
+            metadata: buildCheckoutMetadata({
+              userId: USER,
+              projectId: PROJECT,
+              tier,
+            }),
+          },
+          `evt_${tier}`
+        )
+      );
+
+      expect(recorded.included, tier).toEqual([]);
+    }
+  });
+
+  /*
+   * ⚠ PAS AVANT L'ARGENT. Un paiement différé encore en attente, ou refusé,
+   * n'ouvre rien — c'est la même condition que l'allocation du palier.
+   */
+  it("ne sont pas accordés tant que le paiement n'est pas arrivé", async () => {
+    const { ports, recorded } = makePorts();
+
+    await processStripeEvent(
+      ports,
+      signatureSession({ payment_status: "unpaid" })
+    );
+
+    expect(recorded.purchases[0].status).toBe("pending");
+    expect(recorded.included).toEqual([]);
+  });
+
+  it("ni sur un paiement refusé", async () => {
+    const { ports, recorded } = makePorts();
+
+    await processStripeEvent(ports, {
+      ...signatureSession(),
+      id: "evt_signature_failed",
+      type: "checkout.session.async_payment_failed",
+    } as unknown as Stripe.Event);
+
+    expect(recorded.purchases[0].status).toBe("failed");
+    expect(recorded.included).toEqual([]);
+  });
+
+  /*
+   * ⚠ UN REFUS DE STRIPE NE PERD PAS LE KIT. Le port rend `null` ; l'achat est
+   * déjà écrit et l'allocation déjà ouverte. Faire échouer le traitement ferait
+   * rejouer l'event et finirait par rendre un 500 à Stripe pour un add-on
+   * offert.
+   */
+  it("un refus de Stripe laisse l'achat et l'allocation intacts", async () => {
+    const { ports, recorded } = makePorts();
+
+    const outcome = await processStripeEvent(ports, signatureSession());
+
+    expect(outcome.status).toBe("processed");
+    expect(recorded.purchases[0].status).toBe("paid");
+    expect(recorded.allowances).toHaveLength(1);
+    // Le port a rendu `null` (défaut du harnais) : aucune ligne d'abonnement.
+    expect(recorded.subscriptions).toEqual([]);
+  });
+
+  /*
+   * Quand Stripe rend bien l'abonnement, il est écrit par LE MÊME chemin que
+   * tous les autres — `subscriptionRow()` — et il arrive en `trialing`. C'est
+   * ce qui garantit qu'il n'y a pas une seconde façon d'être abonnée.
+   */
+  it("l'abonnement rendu est écrit comme n'importe quel autre, en trialing", async () => {
+    const trialEnd = Math.floor(Date.parse("2026-12-08T00:00:00Z") / 1000);
+    const { ports, recorded } = makePorts({
+      async grantIncludedMonthlyPresence() {
+        return stripeSubscription({ status: "trialing", trial_end: trialEnd });
+      },
+    });
+
+    await processStripeEvent(ports, signatureSession());
+
+    expect(recorded.subscriptions).toHaveLength(1);
+    expect(recorded.subscriptions[0].status).toBe("trialing");
+    expect(recorded.subscriptions[0].trialEnd).toBe("2026-12-08T00:00:00.000Z");
+    expect(recorded.subscriptions[0].userId).toBe(USER);
+  });
+
+  it("et un abonnement sans essai n'invente pas de date", async () => {
+    const { ports, recorded } = makePorts({
+      async grantIncludedMonthlyPresence() {
+        return stripeSubscription({ status: "active" });
+      },
+    });
+
+    await processStripeEvent(ports, signatureSession());
+
+    expect(recorded.subscriptions[0].trialEnd).toBeNull();
   });
 });

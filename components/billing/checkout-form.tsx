@@ -4,7 +4,13 @@ import { useState, useTransition } from "react";
 import { startCheckout } from "@/app/app/checkout/actions";
 import { Button } from "@/components/ui/button";
 import { InlineError } from "@/components/ui/text-field";
-import { formatUsd, KIT_PLANS, MONTHLY_PRESENCE } from "@/lib/billing/plans";
+import {
+  formatUsd,
+  includesMonthlyPresence,
+  INCLUDED_MONTHLY_PRESENCE_COPY,
+  KIT_PLANS,
+  MONTHLY_PRESENCE,
+} from "@/lib/billing/plans";
 import type { KitTier } from "@/lib/kit/tiers";
 
 /*
@@ -27,7 +33,15 @@ export function CheckoutForm({
   projectId: string | null;
 }) {
   const plan = KIT_PLANS[tier];
+  /*
+   * ⚠ CE TIER INCLUT DÉJÀ L'ABONNEMENT. La case n'a alors rien à proposer : on
+   * ne peut pas ajouter ce qui est déjà là, et l'afficher cochée à $39
+   * facturerait le mois qu'on offre. Le serveur l'ignore de toute façon (cf.
+   * `createCheckoutSession`) — ceci est la moitié visible de la même décision.
+   */
+  const included = includesMonthlyPresence(tier);
   const [withMonthlyPresence, setWithMonthlyPresence] = useState(true);
+  const addOn = withMonthlyPresence && !included;
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +72,30 @@ export function CheckoutForm({
         <p className="text-ui leading-prose text-ink-2">{plan.tagline}</p>
       </div>
 
+      {included ? (
+        <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <span className="font-display text-card-title font-medium tracking-card-title">
+              {MONTHLY_PRESENCE.label}
+            </span>
+            <span className="font-mono text-mono tracking-mono-14">
+              Included, 3 months
+            </span>
+          </div>
+          <p className="text-ui leading-prose text-ink-2">
+            {MONTHLY_PRESENCE.tagline}
+          </p>
+          {/*
+            Le prélèvement futur est annoncé ICI, sur l'écran de paiement, et
+            pas seulement sur la page de tarifs qu'elle a peut-être traversée
+            il y a une semaine. C'est le dernier moment où elle peut décider en
+            connaissance de cause.
+          */}
+          <p className="font-mono text-mono tracking-mono-14 text-ink-2">
+            {INCLUDED_MONTHLY_PRESENCE_COPY}
+          </p>
+        </div>
+      ) : (
       <label
         className={`flex cursor-pointer gap-4 rounded-card border p-6 transition-colors ${
           withMonthlyPresence
@@ -99,6 +137,7 @@ export function CheckoutForm({
           </span>
         </span>
       </label>
+      )}
 
       <div className="flex flex-col gap-4 border-t border-line pt-6">
         <dl className="flex flex-col gap-2 text-ui">
@@ -106,7 +145,7 @@ export function CheckoutForm({
             <dt className="text-ink-2">{plan.label} brand kit</dt>
             <dd className="font-mono text-mono tracking-mono-14">{formatUsd(plan.amountCents)}</dd>
           </div>
-          {withMonthlyPresence && (
+          {addOn && (
             <div className="flex justify-between gap-4">
               <dt className="text-ink-2">
                 {MONTHLY_PRESENCE.label}, first month
@@ -120,17 +159,24 @@ export function CheckoutForm({
             <dt>Due today</dt>
             <dd className="font-mono text-mono tracking-mono-14">
               {formatUsd(
-                plan.amountCents +
-                  (withMonthlyPresence ? MONTHLY_PRESENCE.amountCents : 0)
+                plan.amountCents + (addOn ? MONTHLY_PRESENCE.amountCents : 0)
               )}
             </dd>
           </div>
         </dl>
 
-        {withMonthlyPresence && (
+        {addOn && (
           <p className="text-ui text-ink-2">
             After today, {formatUsd(MONTHLY_PRESENCE.amountCents)} per month for
             Monthly Presence. The brand kit is not charged again.
+          </p>
+        )}
+        {included && (
+          <p className="text-ui text-ink-2">
+            Due today is the kit only. Monthly Presence starts free for three
+            months, then {formatUsd(MONTHLY_PRESENCE.amountCents)} per{" "}
+            {MONTHLY_PRESENCE.interval} unless you cancel. The brand kit is not
+            charged again.
           </p>
         )}
 

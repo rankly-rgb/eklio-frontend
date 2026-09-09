@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   formatUsd,
+  includesMonthlyPresence,
+  INCLUDED_MONTHLY_PRESENCE_COPY,
   KIT_PLANS,
   MONTHLY_PRESENCE,
   ORDERED_PLANS,
@@ -72,7 +74,7 @@ const FAQ: { question: string; answer: string }[] = [
   {
     question: "Is this a subscription?",
     answer:
-      "The brand kit is a one-time payment. Monthly Presence is the only recurring part, it is optional, and you can cancel it at any time from your account.",
+      `The brand kit is a one-time payment. ${MONTHLY_PRESENCE.label} is the only recurring part, it is optional, and you can cancel it at any time from your account. ${KIT_PLANS.signature.label} includes three months of it; after those, it renews at ${formatUsd(MONTHLY_PRESENCE.amountCents)} per ${MONTHLY_PRESENCE.interval} unless you cancel, and we email you before the first charge.`,
   },
   {
     question: "What happens after I pay?",
@@ -97,7 +99,7 @@ const FAQ: { question: string; answer: string }[] = [
   {
     question: "What if I cancel Monthly Presence?",
     answer:
-      "Your brand kit is yours permanently — it was a one-time purchase. You keep every month of content already generated, and nothing new is generated after the period you have paid for ends.",
+      "Your brand kit is yours permanently — it was a one-time purchase. You keep every month of content already generated, and nothing new is generated after the period you have paid for ends. This is true during the included months too: cancelling them takes nothing away from the kit you bought.",
   },
 ];
 
@@ -136,6 +138,22 @@ function PlanCard({ tier }: { tier: KitTier }) {
           </li>
         ))}
       </ul>
+
+      {/*
+        Les trois mois inclus, et ce qui se passe après.
+
+        ⚠ PAS UNE PUCE DE PLUS DANS LA LISTE CI-DESSUS. Cette liste dit ce
+        qu'on reçoit ; cette phrase-ci annonce une RECONDUCTION AUTOMATIQUE et
+        un prélèvement futur. La noyer entre « Blog and FAQ copy included » et
+        le bouton reviendrait à cacher la seule ligne de cette carte qui
+        engage la carte bancaire de quelqu'un après la vente. Elle est donc
+        détachée, sur son propre filet.
+      */}
+      {includesMonthlyPresence(tier) ? (
+        <p className="border-t border-line pt-4 text-helper leading-prose text-ink-2">
+          {INCLUDED_MONTHLY_PRESENCE_COPY}
+        </p>
+      ) : null}
 
       <Link
         /* Sous `/app` : le proxy renvoie vers /login si la session manque. */

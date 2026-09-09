@@ -153,6 +153,60 @@ export const MONTHLY_PRESENCE = {
     "Added by default — keep it only if it earns its place. Cancel anytime.",
 } as const;
 
+/*
+ * ── LES TROIS MOIS INCLUS DANS PRACTICE SUITE ─────────────────────────────
+ *
+ * Practice Suite (`signature`) comprend trois mois de Monthly Presence. Ce
+ * n'est PAS un crédit, pas un booléen, pas une colonne de date posée à côté :
+ * l'achat crée un VRAI abonnement Stripe avec une période d'essai de 90 jours,
+ * et l'abonnement est la seule source de vérité. `subscriptions.status` vaut
+ * `trialing`, `subscriptions.active` (colonne générée) est déjà vraie pour
+ * `trialing` depuis la migration 20260827106000, et
+ * `isEntitledToMonthlyPresence` répond oui sans apprendre une seconde façon
+ * d'être vraie. Même principe que le journal de publication qui EST l'état de
+ * publication : un seul exemplaire du fait, donc rien ne peut diverger.
+ *
+ * ⚠ 90 JOURS, PAS « 3 MOIS ». Stripe compte des JOURS (`trial_period_days`),
+ * pas des mois de calendrier. Écrire « trois mois » quelque part dans le code
+ * obligerait à choisir entre 89, 90, 91 et 92 jours selon le mois d'achat, et
+ * la date annoncée dans l'e-mail de préavis finirait par ne plus être la date
+ * de prélèvement. Le produit VEND « trois mois » ; le code COMPTE 90 jours, et
+ * c'est la même durée à un jour près pour tout le monde plutôt qu'une durée
+ * différente pour chacune.
+ */
+export const INCLUDED_MONTHLY_PRESENCE_TRIAL_DAYS = 90;
+
+/**
+ * Ce tier comprend-il Monthly Presence ?
+ *
+ * Une FONCTION plutôt qu'une comparaison `tier === "signature"` recopiée : le
+ * checkout, le webhook, la page de tarifs et l'écran de paiement posent tous
+ * la même question, et le jour où un deuxième tier l'inclut, il y a un seul
+ * endroit à changer plutôt que quatre à retrouver.
+ */
+export function includesMonthlyPresence(tier: KitTier): boolean {
+  return tier === "signature";
+}
+
+/*
+ * La phrase qui dit ce qui est inclus, et ce qui se passe ensuite.
+ *
+ * ⚠ CONSTRUITE DEPUIS LE CATALOGUE, jamais recopiée à la main. Elle nomme un
+ * montant, et un montant écrit en dur sur une page de tarifs est exactement le
+ * bug que ce module existe pour rendre impossible — sauf qu'ici il serait pire
+ * qu'ailleurs : c'est la phrase qui tient lieu d'information précontractuelle
+ * sur une reconduction automatique.
+ *
+ * TROIS FAITS, ET ILS SONT TOUS LES TROIS OBLIGATOIRES :
+ *   1. ce qui est inclus et pour combien de temps ;
+ *   2. ce qu'il advient après — le montant ET la périodicité ;
+ *   3. qu'on peut arrêter avant le premier prélèvement.
+ *
+ * Le troisième est celui qu'une page de vente « oublie » d'habitude, et c'est
+ * précisément celui qui rend les deux premiers honnêtes.
+ */
+export const INCLUDED_MONTHLY_PRESENCE_COPY = `Includes three months of ${MONTHLY_PRESENCE.label}. After that it renews at ${formatUsd(MONTHLY_PRESENCE.amountCents)}/${MONTHLY_PRESENCE.interval}. Cancel any time before the first charge and you are not billed for it.`;
+
 /** Quantités du livrable mensuel. Consommées par le prompt de génération. */
 export const MONTHLY_PRESENCE_POSTS = 12;
 export const MONTHLY_PRESENCE_STORIES = 4;

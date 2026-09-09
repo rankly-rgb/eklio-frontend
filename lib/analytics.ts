@@ -52,6 +52,8 @@ export type AnalyticsEvent =
   | "check_rewritten"
   | "unlock_opened"
   | "email_sent"
+  | "billing_portal_opened"
+  | "trial_ending_notice_sent"
   /* ── Positionnement USP (§2.5) ────────────────────────────────────────
    * `usp_gate_rejected` porte le nom de la porte et l'id du candidat —
    * jamais le texte, qui EST la donnée libre que ce fichier interdit

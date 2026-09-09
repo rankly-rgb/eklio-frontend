@@ -1587,3 +1587,66 @@ download (she keeps the file), and one line underneath names what the other size
 **Uploads: 60 files and 200 MiB per kit, per-file cap unchanged at 10 MiB, and NOT a tier.** Her own files
 are the substitute for the portrait Eklio refuses to generate; rationing them to sell a bigger plan is
 petty. 19.53 GiB of ceiling at a hundred kits, against 4.88 before.
+
+---
+
+## Practice Suite includes three months of Monthly Presence
+
+**It is the subscription, not a flag.** Buying Practice Suite creates a real Stripe subscription with a
+90-day trial. `subscriptions.status` is `trialing`, and `subscriptions.active` — generated, added back in
+`20260827106000` — has read `status in (active, trialing)` since long before this lot. So
+`isEntitledToMonthlyPresence` learned **nothing**: no `trial_end` comparison, no included-months counter,
+no boolean. One copy of the fact, same principle as the publishing log being the publication state. Two
+columns were added (`trial_end`, `trial_notice_sent_for`) and **neither is an entitlement input** — a
+migration guard rail fails if `active` ever starts reading `trial_end`, and a test asserts `active` stays
+true for `trialing` with a null, past and future `trial_end`.
+
+**The kit is charged in `payment` mode; the subscription is created afterwards, by the webhook.** The
+obvious shape — one `mode: "subscription"` session with both lines and `trial_period_days: 90` — was
+rejected: a one-time line item becomes a posting on the subscription's first invoice, and with a 90-day
+trial that invoice may not be issued for three months. Delivering a $249 kit and collecting nothing until
+day 91, on a subscription she can cancel, is not a risk worth taking for a saving of one API call. I could
+not verify Stripe's exact behaviour here (docs are blocked from this environment), so the design makes the
+question moot rather than answering it wrongly. `setup_future_usage: "off_session"` saves the card so the
+subscription has something to charge at day 91.
+
+**Already subscribed → three months ADDED, never a second subscription.** Stripe does not deduplicate:
+a second subscription-mode checkout for the same customer creates a second subscription, which is why
+Stripe publishes a page called "Limit customers to one subscription". `planIncludedMonths` (pure, tested at
+the boundaries) extends the existing subscription's `trial_end` by 90 days from **the end of what she has
+already paid for** — never from today, which would swallow the days she has bought — and never from a past
+date, which would hand a `past_due` subscriber a trial that expired before it started. `proration_behavior:
+"none"`, so she gets the three months sold and not a bonus credit for the current period.
+
+**Seven days' notice, and the number is not arbitrary.** California's Automatic Renewal Law (Bus. & Prof.
+Code § 17602, amended 1 July 2025) requires, for a free trial longer than 31 days, a notice between **3 and
+21 days** before it converts, naming the renewal terms, the amount, the frequency and how to cancel. Ninety
+days is well over 31. Seven sits inside the window with four days of slack against the legal floor — the
+sweep runs daily, and a notice due at day 3 that slips one day is unlawful. Twenty-one would be read and
+forgotten. Seven also matches Stripe's own trial-ending default, so a customer who gets both gets them the
+same day.
+
+**The notice is transactional and bypasses the marketing email machinery.** `lib/email/state.ts` enforces a
+72-hour all-types cooldown, a never-repeat-a-kind rule and a marketing unsubscribe — all correct for nudges,
+all wrong for a message that announces a charge. Deduplication lives on `subscriptions.trial_notice_sent_for`
+instead, which stores **which** trial end was warned about rather than whether one was: a replayed sweep is a
+no-op, and an *extended* trial earns a fresh notice, which a boolean would have swallowed. The notice carries
+no unsubscribe link, and a test asserts it never gains one.
+
+**Cancelling now works, because there is now a way to cancel.** `cancel_at_period_end` had been stored and
+read since Lot 4, and nothing in the product could set it. `/api/billing/portal` opens Stripe's billing
+portal, with `flow_data.type = "subscription_cancel"` deep-linking straight to the cancellation screen
+rather than a dashboard she has to search. It is reachable from Settings (`#subscription`, the anchor the
+notice email links to) and it is deliberately ungated: gating the exit is the one thing a subscription must
+never do.
+
+**The two purchases are independent, in both directions, and it is written as tests.** No subscription
+event writes to `purchases`, no allowance, no status transition; no refund or dispute event writes to
+`subscriptions`. `surfaceAccess` takes only the purchased tier and its source contains no reference to a
+subscription; `isEntitledToMonthlyPresence` takes only a subscription and its body references neither
+`purchases` nor `tier`. Cancelling removes Monthly Presence and nothing else — every Practice Suite surface
+stays open at `signature` — and a refunded kit leaves the subscription untouched.
+
+Production check while writing this: 4 paid purchases, all `practice`, zero `signature`; 1 subscription row,
+0 `trialing`. Every line of this lot is unexercised by real data. The first Practice Suite sale is the
+integration test.

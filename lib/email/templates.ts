@@ -197,6 +197,110 @@ export function monthReadyEmail(input: {
   });
 }
 
+/* ── LE PRÉAVIS D'AVANT-PRÉLÈVEMENT ────────────────────────────────────────
+ *
+ * ⚠ CE N'EST PAS UNE RELANCE, ET IL NE PASSE PAS PAR `build()`.
+ *
+ * `layout()` termine tous les autres e-mails par « Stop receiving these
+ * emails ». Le mettre ici serait une faute : ce message est TRANSACTIONNEL —
+ * il annonce un prélèvement à venir sur la carte de quelqu'un. Lui offrir de
+ * s'en désinscrire reviendrait à lui offrir de ne plus être prévenue avant
+ * d'être débitée, ce qui est exactement l'inverse de ce à quoi il sert. Le
+ * plafond de 72 h et la déduplication par type de `lib/email/state.ts` sont
+ * contournés pour la même raison, et le cron le dit là où il le fait.
+ *
+ * ── CE QU'IL DOIT CONTENIR, ET QUI L'EXIGE ───────────────────────────────
+ *
+ * La loi californienne sur la reconduction automatique (Bus. & Prof. Code
+ * § 17602, amendée le 1er juillet 2025) impose, pour un essai gratuit de plus
+ * de 31 jours, un préavis entre 3 et 21 jours avant la bascule, portant :
+ *
+ *   1. la durée et les conditions de la période reconduite  → « every month »
+ *   2. le MONTANT                                            → $39
+ *   3. la FRÉQUENCE                                          → monthly
+ *   4. COMMENT ANNULER                                       → le lien, en CTA
+ *
+ * Les quatre sont dans le corps ci-dessous, et un test les y épingle. Aucun
+ * n'est décoratif : ce produit n'a aucune primitive de remboursement
+ * après-coup, donc ce message est la SEULE protection entre une praticienne
+ * qui a oublié et $39 qu'on ne saura pas lui rendre.
+ */
+export function trialEndingEmail(input: {
+  to: string;
+  userId: string;
+  /** Déjà formatée pour un lecteur américain — « December 8, 2026 ». */
+  chargeDate: string;
+  amount: string;
+  interval: string;
+}): OutgoingEmail {
+  const heading = `Your included months end on ${input.chargeDate}.`;
+  const body = [
+    `Practice Suite came with three months of Monthly Presence. They end on ${input.chargeDate}.`,
+    `On that day, Monthly Presence renews at ${input.amount} every ${input.interval}, charged to the card you paid with. It continues every ${input.interval} until you cancel.`,
+    "If you would rather it stopped, cancel before that date and you will not be charged. Your brand kit is yours either way — it was a one-time purchase, and cancelling Monthly Presence takes nothing away from it.",
+  ];
+  const ctaLabel = "Manage or cancel";
+  const ctaHref = `${siteUrl()}/app/settings#subscription`;
+
+  return {
+    to: input.to,
+    subject: `Monthly Presence renews on ${input.chargeDate}`,
+    html: billingLayout({ heading, body, ctaLabel, ctaHref }),
+    text: [
+      heading,
+      "",
+      ...body,
+      "",
+      `${ctaLabel}: ${ctaHref}`,
+    ].join("\n"),
+  };
+}
+
+/**
+ * Le gabarit du préavis : `layout()` sans le pied de désinscription.
+ *
+ * Recopié plutôt que paramétré par un booléen `withUnsubscribe`. Un drapeau
+ * se met à faux par accident ; deux fonctions dont une n'a jamais eu de lien
+ * de désinscription ne peuvent pas en gagner un par une valeur par défaut mal
+ * choisie. C'est la même raison qui fait que ce fichier ne partage pas
+ * `build()` avec les relances.
+ */
+function billingLayout({
+  heading,
+  body,
+  ctaLabel,
+  ctaHref,
+}: {
+  heading: string;
+  body: string[];
+  ctaLabel: string;
+  ctaHref: string;
+}): string {
+  return `<!doctype html>
+<html lang="en"><body style="margin:0;padding:0;background:${BG};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};padding:40px 24px;">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+      <tr><td style="font:600 20px Georgia,serif;color:${INK};padding-bottom:28px;">Eklio</td></tr>
+      <tr><td style="font:500 26px/1.2 Georgia,serif;color:${INK};padding-bottom:16px;">${escapeHtml(heading)}</td></tr>
+      ${body
+        .map(
+          (paragraph) =>
+            `<tr><td style="font:400 16px/1.6 -apple-system,Segoe UI,sans-serif;color:${INK_2};padding-bottom:14px;">${escapeHtml(paragraph)}</td></tr>`
+        )
+        .join("")}
+      <tr><td style="padding:14px 0 28px;">
+        <a href="${ctaHref}" style="display:inline-block;background:${INK};color:${BG};text-decoration:none;font:600 15px -apple-system,Segoe UI,sans-serif;padding:12px 26px;border-radius:999px;">${escapeHtml(ctaLabel)}</a>
+      </td></tr>
+      <tr><td style="border-top:1px solid ${LINE};padding-top:18px;font:400 13px/1.6 -apple-system,Segoe UI,sans-serif;color:${INK_2};">
+        You are receiving this because you have an active subscription with Eklio.
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
 /*
  * Le nom d'une practice arrive de l'utilisateur : il ne va pas brut dans du
  * HTML. Déclaré en `function` pour être hissé — `layout` l'appelle plus haut
