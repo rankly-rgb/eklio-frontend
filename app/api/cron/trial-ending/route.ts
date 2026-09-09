@@ -136,6 +136,13 @@ export async function GET(request: Request) {
   }
 
   let sent = 0;
+  /*
+   * Compté et rendu dans la réponse : un balayage qui échoue à tout remettre
+   * rend `{ sent: 0, failed: 12 }` plutôt qu'un `{ sent: 0 }` qu'on lirait
+   * comme « rien à faire aujourd'hui ». C'est la différence entre une panne
+   * visible et une panne silencieuse, et c'est tout le sujet de ce fichier.
+   */
+  let failed = 0;
 
   for (const row of data ?? []) {
     /*
@@ -185,17 +192,39 @@ export async function GET(request: Request) {
       })
     );
 
-    if (!outcome.ok) {
-      console.error("[cron/trial-ending] envoi", outcome.error);
+    /*
+     * ⚠ ON NE MARQUE QUE SUR UNE REMISE CONFIRMÉE, et `ok` ne suffit pas.
+     *
+     * C'est le défaut que ce bloc existe pour ne plus avoir : `sendEmail`
+     * rendait `{ ok: true, delivered: false }` quand `RESEND_API_KEY`
+     * manquait, on lisait `ok`, et on marquait la ligne « prévenue ». Sur un
+     * déploiement mal configuré, ça marquait TOUS les essais comme avertis
+     * sans avertir personne — pendant que les prélèvements partaient. Le
+     * préavis est une obligation légale (Cal. Bus. & Prof. Code § 17602) : le
+     * supprimer en silence est une faute de conformité, pas un e-mail perdu.
+     *
+     * `delivered === true` veut dire « Resend a accepté le message ». Tout le
+     * reste — clé absente, 4xx, réseau coupé — laisse la ligne INTACTE, donc
+     * `owedNotice` la retrouve demain et le balayage réessaie. Sept jours de
+     * fenêtre contre un plancher légal de trois : il y a de la place pour
+     * quatre réessais avant que ça devienne un problème, et c'est exactement
+     * pour ça que la fenêtre est à sept.
+     */
+    if (!outcome.delivered) {
+      console.error(
+        `[cron/trial-ending] NON REMIS pour ${row.user_id} — ligne laissée non marquée, réessai au prochain balayage :`,
+        outcome.ok ? outcome.reason : outcome.error
+      );
+      failed += 1;
       continue;
     }
 
     /*
-     * Noté APRÈS l'envoi. Dans l'autre ordre, un échec d'envoi laisserait une
-     * marque disant « prévenue » sur quelqu'un qui ne l'a pas été, et le
-     * balayage du lendemain passerait à côté. On préfère le risque inverse —
-     * un doublon si l'écriture échoue après un envoi réussi — parce qu'un
-     * préavis de trop se lit, et qu'un préavis manquant se paie $39.
+     * Marqué APRÈS la remise. Dans l'autre ordre, un échec laisserait une
+     * marque disant « prévenue » sur quelqu'un qui ne l'a pas été. Le risque
+     * qui reste est l'inverse — un doublon si CETTE écriture échoue après un
+     * envoi réussi — et c'est le bon sens du compromis : un préavis de trop se
+     * lit, un préavis manquant se paie $39 et une infraction.
      */
     const { error: markError } = await admin
       .from("subscriptions")
@@ -206,9 +235,9 @@ export async function GET(request: Request) {
       console.error("[cron/trial-ending] marquage", markError);
     }
 
-    track("trial_ending_notice_sent", { delivered: outcome.delivered });
+    track("trial_ending_notice_sent", { delivered: true });
     sent += 1;
   }
 
-  return NextResponse.json({ sent });
+  return NextResponse.json({ sent, failed });
 }

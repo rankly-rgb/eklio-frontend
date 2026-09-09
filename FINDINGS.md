@@ -499,11 +499,9 @@ replaced by what remains true. What follows is the residue, not the original lis
   different suppression rules, and a future email will have to be classified into one of them. The test
   that the notice carries no unsubscribe link is what keeps the boundary visible.
 
-- **Nothing measures whether the notice was actually delivered.** `sendEmail` returns `delivered: false`
-  when `RESEND_API_KEY` is absent and the sweep still marks `trial_notice_sent_for`, because from the
-  sweep's point of view the send succeeded. On a deployment without the key, every trial would be marked
-  warned and no one would be warned. The `track("trial_ending_notice_sent", { delivered })` call carries
-  the flag, but nothing alerts on it.
+- ~~**Nothing measures whether the notice was actually delivered.**~~ **FIXED in the next lot.** The sweep
+  now stamps only on `delivered === true`; a missing key is an `ok: false` in production; and
+  `instrumentation.ts` refuses to serve without the key. Left here as the record of the defect.
 
 - **`trial_settings.end_behavior.missing_payment_method: "create_invoice"` has never been exercised.**
   It only fires if the card attached by `setup_future_usage` is gone 90 days later (expired, removed,
@@ -516,3 +514,42 @@ replaced by what remains true. What follows is the residue, not the original lis
   sent, and the already-subscribed branch of `planIncludedMonths` has never run against Stripe. The first
   Practice Suite sale is the integration test — and the one existing subscriber is who would exercise the
   extend path if she bought it.
+
+---
+
+## Added while fixing the delivery stamp and sweeping the tier names
+
+- **What the startup guard actually does, measured rather than assumed.** On Next 16.3.0 in this repo, with
+  `RESEND_API_KEY` removed: `next build` **succeeds** (the instrumentation hook does not run at build time,
+  so deployments still build), and `next start` prints `Failed to prepare server` with the reason, then
+  **answers 500 to every request** while the process stays alive. It is loud, immediate and visible at
+  deploy — but it is not a clean crash, and anyone reading a health check will see 500s rather than a
+  stopped process. Worth knowing before someone debugs it at 2am.
+
+- **The nudge emails have the same bug and I did not fix it.** `app/api/cron/nudges/route.ts` calls
+  `recordSend` on `outcome.ok`, so a nudge that was never delivered is still recorded as sent and will
+  never be retried — the same shape as the notice defect. It is out of this lot's scope and its
+  consequence is different in kind: a missed nudge costs a conversion, a missed notice costs an unlawful
+  charge. But it is the same class, the fix is the same one line, and the new three-branch `SendOutcome`
+  type makes it a one-word change (`outcome.ok` → `outcome.delivered`).
+
+- **There are no Open Graph tags and no JSON-LD anywhere in the repo.** The sweep looked for them and found
+  zero. Nothing is therefore *wrong* in them — but with cold email starting, every link shared to LinkedIn,
+  Slack or iMessage renders from `<title>` and `metadata.description` alone, with no image and no card. A
+  test now fails the moment someone adds an `openGraph` block or a `ld+json` script, forcing it through the
+  tier-name sweep; building them is a separate decision.
+
+- **`app/layout.tsx`'s description is the site-wide fallback and names no product at all.** Every page
+  except `/pricing` and the three checkout screens inherits it. That is not a correctness defect — it names
+  no tier, so nothing in it can be wrong — but it means the pricing page is the *only* page whose snippet
+  says what is sold, and it is the only one the sweep had anything to correct.
+
+- **Four of the five metadata blocks are bare titles.** `/app/checkout`, `/app/checkout/success` and
+  `/app/checkout/canceled` carry `title` only, no description. They are behind auth so snippets do not
+  matter, but it is worth knowing the sweep found nothing there because there is nothing there.
+
+- **`SOLD_TIER_NAME` is now read by exactly four places**, and the sweep confirmed no fifth exists:
+  `KIT_PLANS[*].label` (which feeds the pricing cards, the comparison table, the checkout screen and now
+  the meta description), `TierLine`, `TierUpgradePrompt` and `lib/api/surface-guard.ts`. Every other
+  appearance of the words `starter` / `practice` / `signature` in the repo is either an enum value in a
+  key, a URL parameter, or a code comment using the internal vocabulary correctly.

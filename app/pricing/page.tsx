@@ -26,10 +26,29 @@ import { KIT_TIERS, KIT_TIER_RULES, type KitTier } from "@/lib/kit/tiers";
  * diverger du prix facturé.
  */
 
+/*
+ * ⚠ LA DESCRIPTION EST CONSTRUITE, PAS ÉCRITE.
+ *
+ * Elle a porté « Starter $79, Practice $149, Signature $249 » — c'est-à-dire
+ * les valeurs d'enum de `purchases.tier`, jamais les noms vendus. Personne
+ * n'achète un « Signature » : le catalogue vend Brand Kit, Brand Kit Plus et
+ * Practice Suite. Or c'est CETTE chaîne que Google affiche en extrait et que
+ * chaque aperçu de lien rend — donc la première phrase qu'un prospect lit,
+ * avec trois noms de produits qui n'existent pas.
+ *
+ * Même classe de défaut que le jour où `tier-names.ts` a expédié les enums
+ * capitalisés : une chaîne plausible que personne ne rattrape en relisant. La
+ * seule parade est de ne plus l'écrire à la main. Nom ET prix viennent
+ * maintenant de `ORDERED_PLANS`, donc de `SOLD_TIER_NAME` et du catalogue, et
+ * un test interdit à cette page de contenir un nom de palier écrit en dur.
+ */
+const PLAN_SUMMARY = ORDERED_PLANS.map(
+  (plan) => `${plan.label} ${formatUsd(plan.amountCents)}`
+).join(", ");
+
 export const metadata: Metadata = {
   title: "Pricing — Eklio",
-  description:
-    "One-time pricing for a complete brand kit, plus an optional monthly content subscription. Starter $79, Practice $149, Signature $249.",
+  description: `One-time pricing for a complete brand kit, plus an optional monthly content subscription. ${PLAN_SUMMARY}.`,
 };
 
 /** Ce que chaque ligne du comparatif vaut pour un tier donné. */

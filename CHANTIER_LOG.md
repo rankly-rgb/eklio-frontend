@@ -1650,3 +1650,40 @@ stays open at `signature` — and a refunded kit leaves the subscription untouch
 Production check while writing this: 4 paid purchases, all `practice`, zero `signature`; 1 subscription row,
 0 `trialing`. Every line of this lot is unexercised by real data. The first Practice Suite sale is the
 integration test.
+
+---
+
+## The notice is stamped only when it is delivered, and no tier is named by hand
+
+**"Not configured" was returning a success shape, and that was a compliance defect.** `sendEmail` answered
+`{ ok: true, delivered: false }` when `RESEND_API_KEY` was missing; the sweep read `ok` and stamped
+`trial_notice_sent_for`. On a deployment without the key that marks every trial warned, warns nobody, and
+lets the charge go out — against a notice California requires (Bus. & Prof. Code § 17602). Three locks now:
+
+- `SendOutcome` is three branches, not `delivered: boolean`. Only `delivered: true` licenses a stamp, and
+  the type makes `ok && delivered` the obvious read.
+- In **production** a missing key is `ok: false`. Nothing ever claims to have sent. In development it stays
+  `ok: true, delivered: false, reason: "not_configured_dev"` — nobody is billed locally, and requiring the
+  key would stop the project running.
+- The sweep returns before the stamp when `delivered` is false, leaving the row due so the next day retries.
+  Seven days of window against a legal floor of three is exactly the room for four retries — which is why
+  the window is seven and not three.
+
+**A silently-absent variable now refuses to serve.** `lib/env/required.ts` lists only variables whose
+absence is *silent*: Stripe keys throw `StripeConfigError` at first use and are deliberately not in it. The
+criterion is written into the file, and the reason is stored beside each name so the boot failure explains
+itself. Measured on Next 16.3.0: `next build` still succeeds (the hook does not run at build time), and
+`next start` prints the reason then answers 500 to every request. Loud, immediate, visible at deploy — and
+not a clean crash, which is recorded rather than glossed.
+
+**The meta description said "Starter $79, Practice $149, Signature $249".** Enum values from
+`purchases.tier`, in the string Google shows as a snippet and every link preview renders — three product
+names nobody sells, at the top of the funnel. It is now built from `ORDERED_PLANS`, so name and price both
+come from `SOLD_TIER_NAME` and the catalogue: *"Brand Kit $79, Brand Kit Plus $149, Practice Suite $249."*
+
+**The sweep found nothing else, and now enforces that.** Five files declare metadata; only `/pricing` named
+a tier. There are **no Open Graph tags and no JSON-LD anywhere** in the repo, and no email subject names a
+tier. The enforcing test walks `app/` rather than reading a hand-kept list, so a new page cannot escape it;
+it bans the enum names in metadata and email subjects; it fails the moment an `openGraph` or `ld+json`
+block appears, forcing it through the same sweep; and a canary re-feeds the exact string that was in
+production to prove the rule bites — it fails three assertions.
