@@ -7,6 +7,7 @@ import { AssetDetailPanel } from "@/components/kit/asset-detail-panel";
 import { StatusChip } from "@/components/ui/status-chip";
 import { MonoLabel } from "@/components/ui/mono-label";
 import type { StatusKey } from "@/lib/status";
+import type { KitTier } from "@/lib/kit/tiers";
 import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
 import { track } from "@/lib/analytics";
 
@@ -54,11 +55,21 @@ export function AssetLibraryView({
   manifest,
   staleKeys,
   practiceName,
+  entitledTier,
+  projectId,
 }: {
   brandKitId: string;
   manifest: AssetManifestEntry[];
   staleKeys: string[];
   practiceName: string;
+  /*
+   * Drilled to the detail panel, where three of its parts are their own
+   * surfaces: other sizes and formats and seeing an asset in place are
+   * Practice, version history is Signature. The library ITSELF is Starter —
+   * the grid, the filters and the plain download are what she bought.
+   */
+  entitledTier: KitTier | null;
+  projectId: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -291,6 +302,8 @@ export function AssetLibraryView({
           onClose={() => setParam("asset", null)}
           availableKeys={new Set(manifest.filter((entry) => entry.current).map((entry) => entry.key))}
           practiceName={practiceName}
+          entitledTier={entitledTier}
+          projectId={projectId}
         />
       ) : null}
     </div>

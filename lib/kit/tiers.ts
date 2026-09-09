@@ -95,7 +95,13 @@ const PAGE_PRIORITY: PageKey[] = [
 ];
 
 type TierRule = {
-  label: string;
+  /*
+   * ⚠ PAS DE `label` ICI. Le nom VENDU d'un tier vit dans
+   * `lib/billing/tier-names.ts`, en un seul endroit : c'est une décision
+   * commerciale, pas un paramètre de génération, et le jour où « Practice »
+   * s'appelle autrement sur la page de tarifs, ce module n'a aucune raison
+   * d'être touché.
+   */
   /** Plafond de pages du site ; `null` = toutes celles demandées. */
   maxPages: number | null;
   /** Les specs de gabarits sociaux sont un livrable de Practice et au-dessus. */
@@ -103,9 +109,9 @@ type TierRule = {
 };
 
 export const KIT_TIER_RULES: Record<KitTier, TierRule> = {
-  starter: { label: "Starter", maxPages: 3, includeSocialTemplates: false },
-  practice: { label: "Practice", maxPages: 6, includeSocialTemplates: true },
-  signature: { label: "Signature", maxPages: null, includeSocialTemplates: true },
+  starter: { maxPages: 3, includeSocialTemplates: false },
+  practice: { maxPages: 6, includeSocialTemplates: true },
+  signature: { maxPages: null, includeSocialTemplates: true },
 };
 
 export type KitScope = {

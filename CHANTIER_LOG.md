@@ -1541,7 +1541,25 @@ Built: `lib/billing/surfaces.ts` (the map, 19 surfaces, **every row `starter`**)
 `lib/billing/surface-access.ts` (the one guard, 404 before `payment_required`, unreadable tier fails closed).
 `components/billing/tier-upgrade-prompt.tsx` is the named upgrade path.
 
-**The permissive default is deliberate and it is a value in a file.** Do not "fix" it by guessing a
-distribution; do not treat it as the missing-policy kind of permissive this repo is otherwise full of. A test
-fails if a surface is added without a row, and another fails if a row is raised — so a distribution is a
-decision someone makes on purpose, one line at a time.
+**THE DISTRIBUTION LANDED THE SAME DAY**, from the owner. Six rows above `starter`:
+
+| tier | surfaces |
+| --- | --- |
+| Practice | `site_editor`, `assets_sizes_and_formats`, `assets_in_situ`, `ethics_rewrite` |
+| Signature | `assets_version_history`, `designer_handoff` |
+
+The other thirteen are `starter` — the whole kit, every file, the PDF, the archive, her own uploads and the
+ethics scan. `own_uploads` stays `starter` deliberately: uploads are bounded by a QUOTA (10 MiB a file,
+50 MiB and 24 files a kit, in `app_settings`), and that quota is global rather than per-tier.
+
+All nineteen surfaces consult the guard, including the thirteen that can never refuse — a surface that
+consults nothing is the one nobody remembers when a row moves. Every refusable surface is guarded at its
+ROUTE as well as on screen, with one documented exemption (`assets_in_situ` fetches nothing of its own).
+`surface-access.test.ts` pins every row against a hand-written copy of the decision, so a tier change
+cannot arrive inside a diff that was about something else.
+
+**Sold names live in `lib/billing/tier-names.ts`, and only there.** `starter`/`practice`/`signature` are
+enum values in `purchases.tier`; what she bought had a name on a pricing page. They coincide today. The
+file exists so that the day one is renamed, no screen tells a customer she is on a word she has never
+seen — and so that `purchases.tier` is never rewritten to match a marketing change, because it is a record
+of money.

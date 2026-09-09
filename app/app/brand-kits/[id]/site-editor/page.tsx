@@ -5,6 +5,9 @@ import { siteSpecGet } from "@/lib/site/rpc";
 import { readSiteCatalog } from "@/lib/site/catalog";
 import { readCatalog } from "@/lib/catalog/read";
 import { SiteEditor } from "@/components/site/site-editor";
+import { surfaceAccess } from "@/lib/billing/surface-access";
+import { TierGate } from "@/components/billing/tier-gate";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { track } from "@/lib/analytics";
 
 /*
@@ -40,6 +43,18 @@ export default async function SiteEditorPage({
   // Sans direction retenue, il n'y a pas de spec à semer : on renvoie là où
   // le choix se fait, plutôt que d'afficher un éditeur vide.
   if (!kit.selectedDirection) redirect(`/app/brand-kits/${id}/reveal`);
+
+  /*
+   * ⚠ PRACTICE. Reading the kit is Starter; EDITING the site specification
+   * is not. The refusal is a card naming the tier, in place of the editor —
+   * never a greyed control and never a section that silently is not there.
+   */
+  const gate = surfaceAccess(
+    "site_editor",
+    await resolveEntitledTier(supabase, kit.projectId)
+  );
+  if (!gate.ok) return <TierGate access={gate} projectId={kit.projectId} />;
+
 
   /*
    * Deux catalogues, et c'est voulu : `site_catalog()` porte les types de

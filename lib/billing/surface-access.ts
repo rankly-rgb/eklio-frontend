@@ -6,6 +6,9 @@ import {
   type Surface,
 } from "@/lib/billing/surfaces";
 
+export type { Surface };
+
+
 /*
  * ── THE ONE GUARD ───────────────────────────────────────────────────────
  *

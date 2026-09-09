@@ -1,4 +1,5 @@
-import { KIT_TIERS, KIT_TIER_RULES, type KitTier } from "@/lib/kit/tiers";
+import { KIT_TIERS, type KitTier } from "@/lib/kit/tiers";
+import { SOLD_TIER_NAME } from "@/lib/billing/tier-names";
 
 /*
  * Le catalogue : ce qui est vendu, à quel prix, et ce que ça contient.
@@ -13,6 +14,10 @@ import { KIT_TIERS, KIT_TIER_RULES, type KitTier } from "@/lib/kit/tiers";
  * (`price_…`) n'y vivent PAS : ils diffèrent entre le mode test et le mode
  * live, donc ils viennent de l'environnement (cf. `.env.example`). Ce module
  * nomme seulement la variable à lire.
+ *
+ * Le NOM vendu vient de `lib/billing/tier-names.ts`, un seul endroit, parce
+ * que « Practice » est une décision commerciale et pas une valeur d'enum —
+ * cf. l'en-tête de ce fichier-là.
  *
  * Le périmètre du livrable n'est pas redécrit ici non plus : il est dérivé de
  * `KIT_TIER_RULES` (`lib/kit/tiers.ts`), qui pilote la génération. Une carte
@@ -43,7 +48,7 @@ export type KitPlan = {
 export const KIT_PLANS: Record<KitTier, KitPlan> = {
   starter: {
     tier: "starter",
-    label: KIT_TIER_RULES.starter.label,
+    label: SOLD_TIER_NAME.starter,
     tagline:
       "For a first practice website. The three pages a new client actually reads before reaching out.",
     amountCents: 7900,
@@ -58,7 +63,7 @@ export const KIT_PLANS: Record<KitTier, KitPlan> = {
   },
   practice: {
     tier: "practice",
-    label: KIT_TIER_RULES.practice.label,
+    label: SOLD_TIER_NAME.practice,
     tagline:
       "For an established practice. Room for your specialties, your fees and the questions people ask first.",
     amountCents: 14900,
@@ -71,7 +76,7 @@ export const KIT_PLANS: Record<KitTier, KitPlan> = {
   },
   signature: {
     tier: "signature",
-    label: KIT_TIER_RULES.signature.label,
+    label: SOLD_TIER_NAME.signature,
     tagline:
       "For a practice that writes. Every page you asked for in the brief, including the blog.",
     amountCents: 24900,

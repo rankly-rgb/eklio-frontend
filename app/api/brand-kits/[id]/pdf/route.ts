@@ -1,3 +1,5 @@
+import { surfaceRefusal } from "@/lib/api/surface-guard";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authenticate, notFound, serverError } from "@/lib/api/handler";
@@ -63,6 +65,14 @@ export async function GET(
       { status: 402 }
     );
   }
+
+  // Starter: the whole kit as one document is part of what she bought.
+  const pdfRefusal = surfaceRefusal(
+    "brand_kit_pdf",
+    await resolveEntitledTier(supabase, kit.projectId),
+    kit.projectId
+  );
+  if (pdfRefusal) return pdfRefusal;
 
   if (!kit.selectedDirection) return notFound();
 

@@ -1,3 +1,6 @@
+import { surfaceAccess } from "@/lib/billing/surface-access";
+import { TierGate } from "@/components/billing/tier-gate";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
@@ -42,6 +45,18 @@ export default async function HandoffPage({ params }: PageProps<"/app/brand-kits
     const reversed = await purchaseWasReversed(supabase, kit.projectId);
     redirect(`/app/checkout?project=${kit.projectId}${reversed ? "&reversed=1" : ""}`);
   }
+
+  /*
+   * ⚠ SIGNATURE. The handoff sheet is the one page she gives to whoever
+   * touches her brand next — a designer, a developer, an agency — and that is
+   * the moment the top tier is for. The refusal is a card naming it, in place
+   * of the sheet.
+   */
+  const gate = surfaceAccess(
+    "designer_handoff",
+    await resolveEntitledTier(supabase, kit.projectId)
+  );
+  if (!gate.ok) return <TierGate access={gate} projectId={kit.projectId} />;
 
   const [assetStats, catalog, siteSpec] = await Promise.all([
     loadAssetStats(supabase, kit),

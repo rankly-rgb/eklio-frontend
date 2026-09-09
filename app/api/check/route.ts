@@ -1,3 +1,5 @@
+import { surfaceRefusal } from "@/lib/api/surface-guard";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authenticate, badRequest, notFound, readJson, serverError } from "@/lib/api/handler";
@@ -55,7 +57,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const catalog = await readCatalog(supabase).catch(() => null);
+    // Starter: scanning her own copy against six rules a licensing board wrote
+  // is not something to sell back to her.
+  const scanRefusal = surfaceRefusal(
+    "ethics_check",
+    await resolveEntitledTier(supabase, kit.projectId),
+    kit.projectId
+  );
+  if (scanRefusal) return scanRefusal;
+
+  const catalog = await readCatalog(supabase).catch(() => null);
     const review = reviewText(text, catalog?.ethicsRules ?? []);
 
     // Rule ids only. Never the text, never an excerpt.

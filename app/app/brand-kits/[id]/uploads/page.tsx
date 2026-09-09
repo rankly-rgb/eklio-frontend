@@ -1,3 +1,6 @@
+import { surfaceAccess } from "@/lib/billing/surface-access";
+import { TierGate } from "@/components/billing/tier-gate";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
@@ -36,6 +39,19 @@ export default async function UploadsPage({
     const reversed = await purchaseWasReversed(supabase, kit.projectId);
     redirect(`/app/checkout?project=${kit.projectId}${reversed ? "&reversed=1" : ""}`);
   }
+
+  /*
+   * ⚠ STARTER, AND THE CONSULT IS STILL HERE. Keeping her own portrait beside
+   * the generated files is not a feature to withhold from someone who paid;
+   * what bounds uploads is a QUOTA, and that quota is global today (10 MiB a
+   * file, 50 MiB and 24 files a kit, all in `app_settings`) rather than
+   * per-tier. If it ever becomes per-tier, it changes there — not here.
+   */
+  const gate = surfaceAccess(
+    "own_uploads",
+    await resolveEntitledTier(supabase, kit.projectId)
+  );
+  if (!gate.ok) return <TierGate access={gate} projectId={kit.projectId} />;
 
   const listed = await listUserUploads(supabase, id);
   const quota = listed.ok

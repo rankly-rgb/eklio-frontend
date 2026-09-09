@@ -1,3 +1,5 @@
+import { surfaceRefusal } from "@/lib/api/surface-guard";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -52,6 +54,14 @@ export async function POST(
       { status: 402 }
     );
   }
+
+  // Starter: the archive is part of what she bought.
+  const zipRefusal = surfaceRefusal(
+    "brand_kit_zip",
+    await resolveEntitledTier(supabase, kit.projectId),
+    kit.projectId
+  );
+  if (zipRefusal) return zipRefusal;
 
   const assetContext = await loadAssetContext(supabase, kit);
   if (!assetContext.ok) {

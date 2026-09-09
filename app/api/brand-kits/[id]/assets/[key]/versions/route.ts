@@ -1,3 +1,5 @@
+import { surfaceRefusal } from "@/lib/api/surface-guard";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { NextResponse } from "next/server";
 import { authenticate, notFound } from "@/lib/api/handler";
 import { isBrandKitEntitled, lockedMessage, purchaseWasReversed } from "@/lib/billing/entitlements";
@@ -40,6 +42,18 @@ export async function GET(
       { status: 402 }
     );
   }
+
+  /*
+   * ⚠ SIGNATURE. Every past rendering of a file, and what changed between
+   * them, is what the top tier is for. Refused here as well as in the panel:
+   * this endpoint is a plain GET against her own kit.
+   */
+  const refusal = surfaceRefusal(
+    "assets_version_history",
+    await resolveEntitledTier(supabase, kit.projectId),
+    kit.projectId
+  );
+  if (refusal) return refusal;
 
   const versions = await getBrandAssetVersions(supabase, id, key);
   if (!versions.ok) {

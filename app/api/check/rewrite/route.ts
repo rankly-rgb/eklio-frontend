@@ -1,3 +1,5 @@
+import { surfaceRefusal } from "@/lib/api/surface-guard";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authenticate, badRequest, notFound, readJson, serverError } from "@/lib/api/handler";
@@ -75,6 +77,18 @@ export async function POST(request: Request) {
       { status: 402 }
     );
   }
+
+  /*
+   * ⚠ PRACTICE, and checked before the daily count so a refusal she cannot
+   * lift by waiting is not disguised as one she can. The scan above is
+   * Starter; asking the model to FIX what it found is not.
+   */
+  const rewriteRefusal = surfaceRefusal(
+    "ethics_rewrite",
+    await resolveEntitledTier(supabase, brandKitId),
+    kit.projectId
+  );
+  if (rewriteRefusal) return rewriteRefusal;
 
   /*
    * The bound, atomically, before the model call. A refusal here is 429 and

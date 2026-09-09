@@ -1,3 +1,5 @@
+import { surfaceRefusal } from "@/lib/api/surface-guard";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { NextResponse } from "next/server";
 import { authenticate, badRequest, notFound, serverError } from "@/lib/api/handler";
 import { isBrandKitEntitled, lockedMessage, purchaseWasReversed } from "@/lib/billing/entitlements";
@@ -68,6 +70,19 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/brand-kits/
     );
   }
 
+  /*
+   * Starter. Uploads are bounded by a QUOTA, not by a tier — 10 MiB a file,
+   * 50 MiB and 24 files a kit, all in `app_settings` and enforced by the RPC
+   * below. The consult is here so that if the quota ever becomes per-tier,
+   * this route is already asking the right question of the right place.
+   */
+  const uploadRefusal = surfaceRefusal(
+    "own_uploads",
+    await resolveEntitledTier(supabase, kit.projectId),
+    kit.projectId
+  );
+  if (uploadRefusal) return uploadRefusal;
+
   try {
     const listed = await listUserUploads(supabase, id);
     if (!listed.ok) return refusal(listed);
@@ -108,6 +123,19 @@ export async function POST(request: Request, ctx: RouteContext<"/api/brand-kits/
       { status: 402 }
     );
   }
+
+  /*
+   * Starter. Uploads are bounded by a QUOTA, not by a tier — 10 MiB a file,
+   * 50 MiB and 24 files a kit, all in `app_settings` and enforced by the RPC
+   * below. The consult is here so that if the quota ever becomes per-tier,
+   * this route is already asking the right question of the right place.
+   */
+  const uploadRefusal = surfaceRefusal(
+    "own_uploads",
+    await resolveEntitledTier(supabase, kit.projectId),
+    kit.projectId
+  );
+  if (uploadRefusal) return uploadRefusal;
 
   let form: FormData;
   try {

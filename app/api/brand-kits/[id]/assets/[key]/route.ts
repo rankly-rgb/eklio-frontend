@@ -1,3 +1,5 @@
+import { surfaceRefusal } from "@/lib/api/surface-guard";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authenticate, notFound, serverError } from "@/lib/api/handler";
@@ -114,6 +116,25 @@ export async function POST(
       { status: 402 }
     );
   }
+
+  /*
+   * ⚠ THREE SURFACES MEET IN THIS ONE ROUTE, and they are not the same
+   * question. Handing over the file as the catalogue defines it is Starter.
+   * Asking for it at ANOTHER SIZE OR FORMAT is Practice. Asking for an OLDER
+   * VERSION is Signature. Gating the screen is not enough here — the URL is
+   * plain and the params are visible, so a client that hid the split button
+   * would be a suggestion rather than a rule.
+   */
+  const tier = await resolveEntitledTier(supabase, kit.projectId);
+  const requestedOldVersion = request.nextUrl.searchParams.get("version");
+  const refusal =
+    surfaceRefusal("assets_download", tier, kit.projectId) ??
+    (isVariant ? surfaceRefusal("assets_sizes_and_formats", tier, kit.projectId) : null) ??
+    (requestedOldVersion
+      ? surfaceRefusal("assets_version_history", tier, kit.projectId)
+      : null) ??
+    (key === "brand_kit_zip" ? surfaceRefusal("brand_kit_zip", tier, kit.projectId) : null);
+  if (refusal) return refusal;
 
   /*
    * `?version=` hands back an OLDER version of this asset — the file she

@@ -1,3 +1,5 @@
+import { surfaceRefusal } from "@/lib/api/surface-guard";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authenticate, notFound, serverError } from "@/lib/api/handler";
@@ -59,6 +61,19 @@ export async function POST(
       { status: 402 }
     );
   }
+
+  /*
+   * Starter. The photographs are part of the kit, and what bounds asking for
+   * a different one is MONEY — `plans.image_budget_cents`, in cents, per
+   * tier — not a locked door. Two different mechanisms, and this is the one
+   * that says "yes".
+   */
+  const imageRefusal = surfaceRefusal(
+    "image_regeneration",
+    await resolveEntitledTier(supabase, kit.projectId),
+    kit.projectId
+  );
+  if (imageRefusal) return imageRefusal;
 
   const context = await loadImageContext(supabase, kit);
   if (!context.ok) {

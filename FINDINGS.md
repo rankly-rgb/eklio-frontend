@@ -403,12 +403,23 @@ replaced by what remains true. What follows is the residue, not the original lis
   rewrite was using it as its advisory pre-check. It still exists and is still correct; whether anything
   else needs it should be checked before someone assumes it is load-bearing.
 
-- **`min_tier` is enforced nowhere, and this lot did not change that — on purpose.** All 35 `asset_catalog`
-  rows say `starter`, and `SURFACE_MIN_TIER` (`lib/billing/surfaces.ts`) now says the same for all 19
-  product surfaces. The guard is built and every surface can consult it; **no surface consults it yet**,
-  because with every row permissive a call site would be nineteen no-op branches added to working code. The
-  guard, the map and the upgrade card are what the next decision needs, and the wiring is one line per
-  surface when there is a distribution to wire.
+- **~~`min_tier` is enforced nowhere~~ — the guard is wired, and `asset_catalog.min_tier` still is not.**
+  The nineteen product surfaces now resolve through `surfaceAccess`, with six above `starter` (site editor,
+  other sizes and formats, in-situ frames and the ethics rewrite at Practice; version history and the
+  designer handoff at Signature). `asset_catalog.min_tier` — 35 rows, all `starter` — is a SEPARATE and
+  still-unread column, and the two ask different questions: "may she see this THING" versus "may she have
+  this FILE". Nothing disagrees today because the catalogue is uniformly permissive. The day a file is
+  raised, someone has to decide whether a `practice`-only file inside a `starter` surface is coherent.
+
+- **`assets_in_situ` is the one paid surface guarded only in a component**, and the test carries the
+  exemption with its reason: the in-situ panel fetches nothing of its own — it frames a thumbnail the
+  assets route already served under `assets_download`. If it ever gains a server-side composite render,
+  the exemption has to go with it.
+
+- **Six surfaces became refusable, and production has no customer who can be refused.** All 4 paid
+  purchases are `practice`, so the two Signature surfaces are the only ones any live customer would hit,
+  and there is exactly one live paid kit. The distribution is therefore untested against a real Starter
+  buyer, because none exists.
 
 - **Two tier vocabularies exist and they nearly agree.** `asset_catalog.min_tier` is per-catalogue-key
   (35 rows, all `starter`), enforced by nothing; `SURFACE_MIN_TIER` is per product surface (19 rows, all

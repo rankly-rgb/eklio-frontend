@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AssetThumbnail } from "@/components/kit/asset-thumbnail";
-import { AssetDownloadSplit } from "@/components/kit/asset-download-button";
+import { AssetDownloadButton, AssetDownloadSplit } from "@/components/kit/asset-download-button";
 import { AssetVersionHistory } from "@/components/kit/asset-version-history";
 import { InSituSection } from "@/components/kit/in-situ/in-situ-panel";
 import { StatusChip } from "@/components/ui/status-chip";
 import { MonoLabel } from "@/components/ui/mono-label";
 import type { StatusKey } from "@/lib/status";
 import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
+import type { KitTier } from "@/lib/kit/tiers";
+import { surfaceAccess } from "@/lib/billing/surface-access";
+import { TierUpgradePrompt } from "@/components/billing/tier-upgrade-prompt";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -81,6 +84,8 @@ export function AssetDetailPanel({
   onClose,
   availableKeys,
   practiceName,
+  entitledTier,
+  projectId,
 }: {
   brandKitId: string;
   entry: AssetManifestEntry;
@@ -88,7 +93,22 @@ export function AssetDetailPanel({
   onClose: () => void;
   availableKeys: Set<string>;
   practiceName: string;
+  entitledTier: KitTier | null;
+  projectId: string;
 }) {
+  /*
+   * ⚠ THREE SURFACES INSIDE ONE PANEL, and they resolve separately because
+   * they are separately sold. Seeing an asset in place and asking for another
+   * size or format are Practice; every past version of it is Signature. The
+   * file itself, at the size the catalogue defines, is Starter and is always
+   * here.
+   *
+   * The API refuses each of these too — a hidden control is not a closed
+   * door, and every one of them is a plain request against her own kit.
+   */
+  const inSitu = surfaceAccess("assets_in_situ", entitledTier);
+  const versions = surfaceAccess("assets_version_history", entitledTier);
+  const renditions = surfaceAccess("assets_sizes_and_formats", entitledTier);
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
   const isSheet = useIsSheet();
@@ -223,26 +243,51 @@ export function AssetDetailPanel({
           </div>
         ) : null}
 
-        <InSituSection
-          brandKitId={brandKitId}
-          assetKey={entry.key}
-          availableKeys={availableKeys}
-          practiceName={practiceName}
-        />
+        {inSitu.ok ? (
+          <InSituSection
+            brandKitId={brandKitId}
+            assetKey={entry.key}
+            availableKeys={availableKeys}
+            practiceName={practiceName}
+          />
+        ) : inSitu.reason === "payment_required" ? (
+          <TierUpgradePrompt access={inSitu} projectId={projectId} />
+        ) : null}
 
-        <AssetVersionHistory key={entry.key} brandKitId={brandKitId} assetKey={entry.key} />
+        {versions.ok ? (
+          <AssetVersionHistory key={entry.key} brandKitId={brandKitId} assetKey={entry.key} />
+        ) : versions.reason === "payment_required" ? (
+          <TierUpgradePrompt access={versions} projectId={projectId} />
+        ) : null}
 
-        <AssetDownloadSplit
-          brandKitId={brandKitId}
-          assetKey={entry.key}
-          kind={entry.kind}
-          availableSizes={entry.available_sizes}
-          availableFormats={entry.available_formats}
-          nativeWidth={entry.width}
-          className="self-start rounded-pill bg-ink px-[26px] py-2.5 text-ui font-semibold text-bg hover:bg-ink-2"
-        >
-          Download
-        </AssetDownloadSplit>
+        {/*
+         * ⚠ NOT A DEAD CONTROL — THE OTHER CONTROL. Without Practice the split
+         * button becomes the plain one: she still downloads the file, at the
+         * size the catalogue defines, which is hers. Greying out the half she
+         * cannot use would teach her the product is broken; removing the
+         * download with it would take away something she bought.
+         */}
+        {renditions.ok ? (
+          <AssetDownloadSplit
+            brandKitId={brandKitId}
+            assetKey={entry.key}
+            kind={entry.kind}
+            availableSizes={entry.available_sizes}
+            availableFormats={entry.available_formats}
+            nativeWidth={entry.width}
+            className="self-start rounded-pill bg-ink px-[26px] py-2.5 text-ui font-semibold text-bg hover:bg-ink-2"
+          >
+            Download
+          </AssetDownloadSplit>
+        ) : (
+          <AssetDownloadButton
+            brandKitId={brandKitId}
+            assetKey={entry.key}
+            className="self-start rounded-pill bg-ink px-[26px] py-2.5 text-ui font-semibold text-bg hover:bg-ink-2"
+          >
+            Download
+          </AssetDownloadButton>
+        )}
       </div>
     </>
   );

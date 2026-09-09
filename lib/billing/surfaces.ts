@@ -6,22 +6,22 @@ import type { KitTier } from "@/lib/kit/tiers";
  * Which surface needs which tier. One row per surface, one file, and the
  * whole of the policy.
  *
- * ⚠ EVERY ROW IS `starter`, AND THAT IS A DECISION, NOT AN OVERSIGHT.
+ * ⚠ THE DISTRIBUTION IS THE OWNER'S, TAKEN ON 9 SEPTEMBER. Six rows sit above
+ * `starter`; the other thirteen are `starter` because a 79 USD buyer is meant
+ * to have them, not because nobody decided.
  *
- * `min_tier` has been seeded across `asset_catalog` since 3 September and
- * enforced nowhere: all 35 catalogue rows say `starter`, and a 79 USD buyer
- * receives everything. Turning that into a real distribution is a product
- * decision about what each of three price points contains — it is not a
- * refactor, and it is not this lot's to invent.
+ * Read it as three sentences. STARTER is a whole brand kit she can use: every
+ * section, every file, the PDF, the archive, her own uploads, and the ethics
+ * scan. PRACTICE adds the things that let her keep working on it — editing
+ * the site specification, other sizes and formats of a file, seeing an asset
+ * in place, and asking the model to fix what the scan found. SIGNATURE adds
+ * the two that matter when someone else touches her brand: every past version
+ * of a file, and the handoff sheet.
  *
- * What this lot builds is the MECHANISM, with the permissive default written
- * down where it can be read and changed. Every surface already consults the
- * guard; raising one is editing one line here, not wiring a second chantier.
- *
- * This is deliberately NOT the permissive default this repo is otherwise full
- * of — the kind where a table has no policies and quietly returns everything.
- * It is an explicit value in a file, and `surface-access.test.ts` fails if a
- * surface is added without a row.
+ * This file is the whole of the policy. Raising or lowering a surface is one
+ * word on one line; if it ever also needs a code edit somewhere, the guard has
+ * been bypassed and that is the bug. `surface-access.test.ts` pins every row
+ * and fails both if one moves and if a surface arrives without one.
  *
  * ⚠ THE AXIS IS SURFACE COVERED, NOT NUMBER OF REGENERATIONS. How many
  * regenerations a tier buys already lives in `plans.regenerations_limit`, in
@@ -77,6 +77,7 @@ export type Surface = (typeof SURFACES)[number];
  * guard has been bypassed and that is the bug.
  */
 export const SURFACE_MIN_TIER: Record<Surface, KitTier> = {
+  // ── Starter: the brand kit itself, whole and usable ──────────────────
   kit_overview: "starter",
   kit_identity: "starter",
   kit_colors: "starter",
@@ -84,18 +85,28 @@ export const SURFACE_MIN_TIER: Record<Surface, KitTier> = {
   kit_site: "starter",
   kit_words: "starter",
   kit_assets: "starter",
-  site_editor: "starter",
   assets_download: "starter",
-  assets_sizes_and_formats: "starter",
-  assets_version_history: "starter",
-  assets_in_situ: "starter",
   brand_kit_pdf: "starter",
   brand_kit_zip: "starter",
-  designer_handoff: "starter",
-  own_uploads: "starter",
   ethics_check: "starter",
-  ethics_rewrite: "starter",
   image_regeneration: "starter",
+  /*
+   * ⚠ UPLOADS ARE A QUOTA QUESTION, NOT AN ACCESS ONE, and the quota is
+   * global rather than per-tier today (`app_settings`: 10 MiB a file,
+   * 50 MiB and 24 files a kit). Keeping her own portrait beside the
+   * generated files is not a feature to withhold from someone who paid.
+   */
+  own_uploads: "starter",
+
+  // ── Practice: continuing to work on it ───────────────────────────────
+  site_editor: "practice",
+  assets_sizes_and_formats: "practice",
+  assets_in_situ: "practice",
+  ethics_rewrite: "practice",
+
+  // ── Signature: what matters when someone else touches her brand ──────
+  assets_version_history: "signature",
+  designer_handoff: "signature",
 };
 
 /** What each surface is called when the product has to name it to her. */

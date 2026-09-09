@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { KIT_PLANS } from "@/lib/billing/plans";
+import { soldTierName } from "@/lib/billing/tier-names";
 import type { SurfaceAccess } from "@/lib/billing/surface-access";
 
 /*
@@ -23,9 +24,9 @@ import type { SurfaceAccess } from "@/lib/billing/surface-access";
  *
  * ⚠ AND IT IS NOT AN UPSELL PANEL. It renders only where a surface is
  * actually gated, in place of that surface — never beside one she already
- * has. Today it renders NOWHERE, because every row of `SURFACE_MIN_TIER` is
- * `starter`; that is the permissive default being visible rather than
- * assumed. The day a row moves, this is already what appears.
+ * has. Six surfaces can reach it: the site editor, other sizes and formats,
+ * seeing an asset in place and the ethics rewrite at Practice; version
+ * history and the designer handoff at Signature.
  */
 export function TierUpgradePrompt({
   access,
@@ -37,7 +38,15 @@ export function TierUpgradePrompt({
   projectId: string | null;
 }) {
   const plan = KIT_PLANS[access.requiredTier];
-  const current = access.currentTier ? KIT_PLANS[access.currentTier] : null;
+  /*
+   * ⚠ THE SOLD NAME, NEVER THE ENUM. `practice` is a value in
+   * `purchases.tier`; what she bought had a name on a pricing page. They
+   * coincide today and `lib/billing/tier-names.ts` is what keeps them from
+   * drifting the day one is renamed — a customer must never be told she is on
+   * a word she has never seen.
+   */
+  const requiredName = soldTierName(access.requiredTier);
+  const currentName = soldTierName(access.currentTier);
   const price = `$${Math.round(plan.amountCents / 100)}`;
 
   const checkoutHref = projectId
@@ -51,8 +60,8 @@ export function TierUpgradePrompt({
       </MonoLabel>
 
       <p className="text-body leading-prose text-ink">
-        {access.label} is part of {plan.label}.
-        {current ? ` You're on ${current.label}.` : ""}
+        {access.label} is part of {requiredName}.
+        {currentName ? ` You're on ${currentName}.` : ""}
       </p>
 
       <p className="text-helper leading-prose text-ink-2">{plan.tagline}</p>
@@ -62,7 +71,7 @@ export function TierUpgradePrompt({
           href={checkoutHref}
           className="inline-flex h-11 items-center whitespace-nowrap rounded-pill bg-ink px-[30px] text-ui font-semibold text-bg hover:bg-ink-2"
         >
-          {`Upgrade to ${plan.label} — ${price}`}
+          {`Upgrade to ${requiredName} — ${price}`}
         </Link>
         <Link
           href="/pricing"

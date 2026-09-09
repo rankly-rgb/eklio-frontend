@@ -10,10 +10,10 @@ import {
 import {
   FALLBACK_KIT_TIER,
   KIT_TIERS,
-  KIT_TIER_RULES,
   parseKitTier,
   resolveKitScope,
 } from "@/lib/kit/tiers";
+import { SOLD_TIER_NAME } from "@/lib/billing/tier-names";
 
 /*
  * Le catalogue et le gating partagent une seule source. Ces tests figent ce
@@ -70,7 +70,9 @@ describe("catalogue", () => {
   it("couvre exactement les tiers du gating, sans en inventer un", () => {
     expect(Object.keys(KIT_PLANS).sort()).toEqual([...KIT_TIERS].sort());
     for (const tier of KIT_TIERS) {
-      expect(KIT_PLANS[tier].label).toBe(KIT_TIER_RULES[tier].label);
+      // ⚠ Le nom vendu vient d'UN endroit. Un tier nommé ailleurs finirait
+      // par dire « Practice » à quelqu'un qui a acheté autre chose.
+      expect(KIT_PLANS[tier].label).toBe(SOLD_TIER_NAME[tier]);
     }
   });
 });

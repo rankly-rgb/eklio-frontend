@@ -1,3 +1,6 @@
+import { surfaceAccess } from "@/lib/billing/surface-access";
+import { TierGate } from "@/components/billing/tier-gate";
+import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadHome } from "@/lib/data/home";
@@ -33,6 +36,14 @@ export default async function CheckPage() {
     const reversed = await purchaseWasReversed(supabase, kit.projectId);
     redirect(`/app/checkout?project=${kit.projectId}${reversed ? "&reversed=1" : ""}`);
   }
+
+  /*
+   * ⚠ THE SCAN IS STARTER; the REWRITE is Practice, and it is gated at its own
+   * route and in `<CheckView>`. Scanning her own copy against six rules a
+   * licensing board wrote is not something to sell back to her.
+   */
+  const gate = surfaceAccess("ethics_check", await resolveEntitledTier(supabase, kit.projectId));
+  if (!gate.ok) return <TierGate access={gate} projectId={kit.projectId} />;
 
   const catalog = await readCatalog(supabase).catch(() => null);
   const rules = catalog?.ethicsRules ?? [];

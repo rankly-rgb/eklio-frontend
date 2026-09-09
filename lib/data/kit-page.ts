@@ -6,6 +6,7 @@ import {
   isBrandKitEntitled,
   isCompAccessActive,
   purchaseWasReversed,
+  resolveEntitledTier,
 } from "@/lib/billing/entitlements";
 import { siteSpecGet } from "@/lib/site/rpc";
 import { readSiteCatalog } from "@/lib/site/catalog";
@@ -17,6 +18,7 @@ import { loadAssetStats, type AssetStats } from "@/lib/data/asset-stats";
 import { loadImageContext } from "@/lib/images/context";
 import { computeImageFingerprint } from "@/lib/images/fingerprint";
 import { getBrandImages } from "@/lib/images/rpc";
+import type { KitTier } from "@/lib/kit/tiers";
 import type { PracticeDetails } from "@/lib/kit/launch-copy";
 import type {
   ContrastReport,
@@ -71,6 +73,14 @@ export type KitPage = {
   assetStats: AssetStats | null;
   launchProgress: LaunchProgress;
   compAccess: boolean;
+  /**
+   * WHICH tier she paid for — the question `isBrandKitEntitled` does not ask.
+   *
+   * `null` when no purchase could be read, and that is not "the cheapest
+   * one": `surfaceAccess` treats it as unreadable and fails CLOSED. Loaded
+   * once here so nineteen surfaces consult one answer rather than nineteen.
+   */
+  entitledTier: KitTier | null;
   /**
    * The one photograph this route family renders — the rail card's, through
    * `<PhotoSlot>`. Never the `hero` slot: the full-bleed hero band is gone
@@ -130,6 +140,8 @@ export const requireKitPage = cache(async function requireKitPage(
       loadAssetStats(supabase, kit),
     ]);
 
+  const entitledTier = await resolveEntitledTier(supabase, kit.projectId);
+
   const spec = siteSpec.ok ? siteSpec.data.spec : null;
 
   return {
@@ -153,6 +165,7 @@ export const requireKitPage = cache(async function requireKitPage(
     assetStats,
     launchProgress,
     compAccess,
+    entitledTier,
     ...(await loadKitImages(supabase, kit)),
   };
 });

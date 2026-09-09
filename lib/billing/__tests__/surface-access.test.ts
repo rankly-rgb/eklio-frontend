@@ -7,6 +7,7 @@ import {
   SURFACE_LABEL,
   SURFACE_MIN_TIER,
   isSurface,
+  type Surface,
 } from "@/lib/billing/surfaces";
 import { KIT_TIERS, type KitTier } from "@/lib/kit/tiers";
 
@@ -57,14 +58,71 @@ describe("l'énumération elle-même", () => {
   });
 });
 
-describe("⚠ le défaut permissif est explicite, et il est visible", () => {
-  it.each([...SURFACES])("%s est ouvert au tier le plus bas", (surface) => {
+/*
+ * ⚠ LA DISTRIBUTION, ÉPINGLÉE LIGNE PAR LIGNE.
+ *
+ * Ce bloc est une COPIE de la décision, écrite ici à la main, et c'est le
+ * point : la carte ne peut pas bouger sans que ce fichier le dise. Une
+ * surface montée d'un tier est un changement de prix pour quelqu'un qui a
+ * déjà payé ; une surface descendue est un revenu abandonné. Ni l'un ni
+ * l'autre ne doit pouvoir arriver dans un diff qui parlait d'autre chose.
+ *
+ * Et l'inverse compte autant : une surface AJOUTÉE sans ligne ici fait
+ * échouer la suite, parce que « on décidera plus tard » est comment
+ * `min_tier` a passé six jours semé et appliqué nulle part.
+ */
+const EXPECTED_MIN_TIER: Record<Surface, KitTier> = {
+  kit_overview: "starter",
+  kit_identity: "starter",
+  kit_colors: "starter",
+  kit_type: "starter",
+  kit_site: "starter",
+  kit_words: "starter",
+  kit_assets: "starter",
+  assets_download: "starter",
+  brand_kit_pdf: "starter",
+  brand_kit_zip: "starter",
+  ethics_check: "starter",
+  image_regeneration: "starter",
+  own_uploads: "starter",
+
+  site_editor: "practice",
+  assets_sizes_and_formats: "practice",
+  assets_in_situ: "practice",
+  ethics_rewrite: "practice",
+
+  assets_version_history: "signature",
+  designer_handoff: "signature",
+};
+
+describe("⚠ la distribution est celle-ci, et rien d'autre", () => {
+  it("l'énumération épinglée couvre exactement les surfaces réelles", () => {
+    // Sans ça, une surface ajoutée sans ligne passerait inaperçue et le
+    // `it.each` ci-dessous ne la testerait simplement pas.
+    expect(Object.keys(EXPECTED_MIN_TIER).sort()).toEqual([...SURFACES].sort());
+  });
+
+  it.each([...SURFACES])("%s", (surface) => {
+    expect(
+      SURFACE_MIN_TIER[surface],
+      `${surface} a changé de tier.\n` +
+        "C'est une décision de prix. Si elle est voulue, change la ligne\n" +
+        "correspondante dans EXPECTED_MIN_TIER en même temps — jamais l'une\n" +
+        "sans l'autre."
+    ).toBe(EXPECTED_MIN_TIER[surface]);
+  });
+
+  it("les trois tiers portent chacun quelque chose", () => {
     /*
-     * Si ce test échoue, quelqu'un a décidé une distribution. C'est
-     * peut-être la bonne — mais c'est une DÉCISION, et elle se prend en
-     * connaissance de cause, pas en passant.
+     * Garde anti-vacuité de la distribution elle-même : si tout retombait à
+     * `starter`, chaque assertion ci-dessus resterait verte une fois
+     * EXPECTED_MIN_TIER aplati avec — et le paywall ne vendrait plus rien
+     * sans qu'un seul test rougisse.
      */
-    expect(SURFACE_MIN_TIER[surface]).toBe(KIT_TIERS[0]);
+    const counts = KIT_TIERS.map(
+      (tier) => Object.values(SURFACE_MIN_TIER).filter((value) => value === tier).length
+    );
+    expect(counts).toEqual([13, 4, 2]);
   });
 
   it("et le tier le plus bas est bien celui qui est vendu le moins cher", () => {
@@ -90,10 +148,30 @@ describe("surfaceAccess — 404 avant payment_required", () => {
     if (!refusal.ok) expect(refusal.reason).toBe("not_found");
   });
 
-  it("une surface connue au bon tier passe", () => {
+  it("une surface `starter` passe pour les trois tiers", () => {
     for (const tier of KIT_TIERS) {
-      expect(surfaceAccess("site_editor", tier).ok).toBe(true);
+      expect(surfaceAccess("kit_colors", tier).ok).toBe(true);
     }
+  });
+
+  it("⚠ une surface `practice` refuse `starter` et passe au-dessus", () => {
+    expect(surfaceAccess("site_editor", "starter").ok).toBe(false);
+    expect(surfaceAccess("site_editor", "practice").ok).toBe(true);
+    expect(surfaceAccess("site_editor", "signature").ok).toBe(true);
+  });
+
+  it("⚠ une surface `signature` ne passe qu'au sommet", () => {
+    expect(surfaceAccess("designer_handoff", "starter").ok).toBe(false);
+    expect(surfaceAccess("designer_handoff", "practice").ok).toBe(false);
+    expect(surfaceAccess("designer_handoff", "signature").ok).toBe(true);
+  });
+
+  it("un refus nomme le tier requis, jamais celui qu'elle a", () => {
+    const refusal = surfaceAccess("assets_version_history", "practice");
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok || refusal.reason !== "payment_required") return;
+    expect(refusal.requiredTier).toBe("signature");
+    expect(refusal.currentTier).toBe("practice");
   });
 
   it("⚠ un tier illisible échoue FERMÉ", () => {
@@ -103,46 +181,31 @@ describe("surfaceAccess — 404 avant payment_required", () => {
      * quelqu'un qui a payé : visible, signalé, réparé. Le pire d'une
      * autorisation injustifiée est silencieux, permanent et gratuit.
      */
-    const refusal = surfaceAccess("site_editor", null);
-    expect(refusal.ok).toBe(false);
-    if (!refusal.ok) expect(refusal.reason).toBe("payment_required");
+    // Y compris pour une surface `starter`, que tout le monde a payée.
+    for (const surface of SURFACES) {
+      const refusal = surfaceAccess(surface, null);
+      expect(refusal.ok).toBe(false);
+      if (!refusal.ok) expect(refusal.reason).toBe("payment_required");
+    }
   });
 });
 
-describe("le garde compare bien sur l'échelle, dans le bon sens", () => {
-  /*
-   * Le canari de la carte : on n'a aucune ligne au-dessus de `starter`
-   * aujourd'hui, donc sans surface fictive ce bloc ne testerait rien. On
-   * exerce la comparaison directement, avec la vraie fonction.
-   */
-  const HIGHER: KitTier = "practice";
-
-  it.each(KIT_TIERS.map((tier) => [tier] as const))(
-    "un client %s face à une surface `practice`",
-    (tier) => {
-      const raised = { ...SURFACE_MIN_TIER, site_editor: HIGHER };
-      const allowed = KIT_TIERS.indexOf(tier) >= KIT_TIERS.indexOf(HIGHER);
-      // Reproduit la comparaison du garde contre une carte modifiée.
-      expect(
-        KIT_TIERS.indexOf(tier) >= KIT_TIERS.indexOf(raised.site_editor)
-      ).toBe(allowed);
-    }
-  );
-
-  it("⚠ le canari : une carte relevée refuserait bien le tier du dessous", () => {
-    // Prouve que la comparaison mord, plutôt que d'être toujours vraie parce
-    // que toutes les lignes valent `starter`.
-    expect(KIT_TIERS.indexOf("starter") >= KIT_TIERS.indexOf("practice")).toBe(false);
-    expect(KIT_TIERS.indexOf("signature") >= KIT_TIERS.indexOf("practice")).toBe(true);
+describe("le garde compare sur l'échelle, dans le bon sens", () => {
+  it.each(
+    KIT_TIERS.flatMap((tier) => SURFACES.map((surface) => [tier, surface] as const))
+  )("un client %s face à %s", (tier, surface) => {
+    const allowed =
+      KIT_TIERS.indexOf(tier) >= KIT_TIERS.indexOf(SURFACE_MIN_TIER[surface]);
+    expect(surfaceAccess(surface, tier).ok).toBe(allowed);
   });
 
   it("un refus porte tout ce que la carte d'upgrade doit dire", () => {
-    const refusal = surfaceAccess("assets_version_history", null);
+    const refusal = surfaceAccess("assets_version_history", "starter");
     expect(refusal.ok).toBe(false);
     if (refusal.ok || refusal.reason !== "payment_required") return;
-    expect(refusal.requiredTier).toBe("starter");
+    expect(refusal.requiredTier).toBe("signature");
     expect(refusal.label).toBe(SURFACE_LABEL.assets_version_history);
-    expect(refusal.currentTier).toBeNull();
+    expect(refusal.currentTier).toBe("starter");
   });
 });
 
@@ -188,5 +251,100 @@ describe("rien ne redérive la règle à côté du garde", () => {
     ).map((file) => file.slice(ROOT.length + 1).replace(/\\/g, "/"));
 
     expect(readers).toEqual(["lib/billing/surface-access.ts", "lib/billing/surfaces.ts"]);
+  });
+});
+
+/*
+ * ── LES DIX-NEUF CONSULTENT, Y COMPRIS CELLES QUI PASSENT TOUJOURS ──────
+ *
+ * Treize surfaces sont `starter` et ne peuvent donc rien refuser aujourd'hui.
+ * Elles consultent quand même, et c'est le point : une surface qui ne consulte
+ * rien est celle qu'on oublie le jour où sa ligne monte. Le coût est une ligne
+ * par surface ; l'oubli coûte un paywall qui fuit sans que rien ne rougisse.
+ */
+describe("chaque surface consulte le garde quelque part", () => {
+  function walk(dir: string): string[] {
+    return readdirSync(join(ROOT, dir), { withFileTypes: true }).flatMap((entry) => {
+      const child = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) return entry.name === "__tests__" ? [] : walk(child);
+      return /\.tsx?$/.test(entry.name) ? [child] : [];
+    });
+  }
+
+  const PRODUCT = [...walk("app"), ...walk("components"), ...walk("lib")].filter(
+    (path) =>
+      path !== "lib/billing/surfaces.ts" &&
+      path !== "lib/billing/surface-access.ts"
+  );
+
+  const consulted = new Map<string, string[]>();
+  for (const path of PRODUCT) {
+    const body = readFileSync(join(ROOT, path), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    if (!/surfaceAccess\(|surfaceRefusal\(/.test(body)) continue;
+    for (const match of body.matchAll(/surface(?:Access|Refusal)\(\s*\n?\s*"([a-z_]+)"/g)) {
+      consulted.set(match[1], [...(consulted.get(match[1]) ?? []), path]);
+    }
+  }
+
+  it("le balayage trouve bien des consultations", () => {
+    // Sans cette garde, un motif cassé rendrait tout le bloc vacuously vrai.
+    expect(PRODUCT.length).toBeGreaterThanOrEqual(100);
+    expect(consulted.size).toBeGreaterThanOrEqual(15);
+  });
+
+  it.each([...SURFACES])("%s est consultée", (surface) => {
+    expect(
+      consulted.get(surface) ?? [],
+      `${surface} n'est consultée nulle part.\n` +
+        "Une surface qui ne demande rien au garde ne refusera rien le jour où\n" +
+        "sa ligne monte — et personne ne le remarquera."
+    ).not.toHaveLength(0);
+  });
+
+  /**
+   * La seule surface payante gardée UNIQUEMENT dans un composant, et pourquoi
+   * c'est correct.
+   *
+   * `assets_in_situ` ne va chercher rien : `in-situ-panel.tsx` compose des
+   * cadres autour d'une vignette que `useAssetUrl` a déjà obtenue par la
+   * route des assets — laquelle est gardée par `assets_download`. Il n'existe
+   * donc aucune requête serveur propre à cette surface à refuser. Le jour où
+   * elle en gagne une (un rendu composité côté serveur, par exemple), cette
+   * exemption doit sauter avec.
+   */
+  const CLIENT_ONLY: Record<string, string> = {
+    assets_in_situ:
+      "Purely presentational: it frames a thumbnail the assets route already " +
+      "served under `assets_download`, and fetches nothing of its own.",
+  };
+
+  it("⚠ chaque surface qui PEUT refuser est gardée côté serveur aussi", () => {
+    /*
+     * Un contrôle caché n'est pas une porte fermée : ces surfaces sont des
+     * requêtes ordinaires contre son propre kit, et l'URL est visible. Garder
+     * seulement l'écran ferait de la distribution une suggestion.
+     */
+    for (const surface of SURFACES) {
+      if (SURFACE_MIN_TIER[surface] === KIT_TIERS[0]) continue;
+      if (surface in CLIENT_ONLY) {
+        expect(CLIENT_ONLY[surface].length).toBeGreaterThan(40);
+        continue;
+      }
+      const paths = consulted.get(surface) ?? [];
+      expect(
+        paths.some((path) => path.startsWith("app/api/") || path.startsWith("app/app/")),
+        `${surface} n'est gardée que dans un composant.\n` +
+          "Ajoute la garde à sa route, ou inscris-la dans CLIENT_ONLY avec la\n" +
+          "raison pour laquelle elle n'a aucune requête à elle."
+      ).toBe(true);
+    }
+  });
+
+  it("aucune exemption ne survit à la surface qu'elle exemptait", () => {
+    for (const surface of Object.keys(CLIENT_ONLY)) {
+      expect(SURFACES as readonly string[]).toContain(surface);
+    }
   });
 });
