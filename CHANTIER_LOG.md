@@ -1500,7 +1500,8 @@ wrong.** Traced rather than remembered:
 Every image reserves now, not only a regeneration. The first seven "drew on nothing", which is true of the
 price and false of the accounting: it left the operator's GLOBAL daily ceiling as the only record of what a
 kit's photographs had cost. **The budgets were sized when only regenerations drew on them — see
-FINDINGS.md; Starter at 100 cents is the one worth re-deciding.**
+FINDINGS.md. A full set is 59 cents at the current price table, so Starter's 100-cent budget is 59% spent
+before she asks for anything. That is the one worth re-deciding.**
 
 The Check rewrite is bounded by `consume_check_rewrite()`, twenty per user per UTC day, the number in
 `app_settings.check_rewrites_per_user_per_day` so it moves without a deploy. Counted BEFORE the call and
@@ -1521,7 +1522,9 @@ with it about `IMAGE_PROMPT_VERSION`, or has uncommitted changes under `lib/imag
 correct and unreadable. Every fix it prints is a `git stash push`; a test fails if a discard ever appears in
 one.
 
-Seven slots, roughly 41 cents at `IMAGE_PROMPT_VERSION` 7. The runbook is in the session report.
+Seven slots, **59 cents** at `IMAGE_PROMPT_VERSION` 7, computed from the production price table
+(`lib/images/config.ts`): hero 25c, two ambients 7c each, four squares 5c each. All seven are `enabled`.
+The runbook is in the session report.
 
 ### `min_tier`
 

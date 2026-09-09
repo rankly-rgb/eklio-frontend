@@ -371,10 +371,12 @@ replaced by what remains true. What follows is the residue, not the original lis
 - **The image budgets were sized for regenerations only, and every image now draws on them.** The brief
   ruled that every generation and regeneration reserves against `plans.image_budget_cents`; before this
   lot only regenerations did. The seeded budgets are 100 / 250 / 500 cents for starter / practice /
-  signature, and a full set of seven photographs costs roughly 41 cents. So a Starter kit now spends 41%
-  of its lifetime photograph budget on the set she was always going to get, leaving 59 cents — about two
-  hero regenerations at 25c, or a dozen textures at 5c. Practice and Signature are comfortable; **Starter
-  is not obviously right and nobody has decided it since the meaning of the number changed.** Resizing is
+  signature. A full set of seven at the CURRENT price table costs **59 cents** — hero 25c at high, two
+  ambients at 7c, four squares at 5c — not the 41c an earlier report quoted from an older table. So a
+  Starter kit now spends 59% of its lifetime photograph budget on the set she was always going to get,
+  leaving 41 cents: one hero regeneration and change, or eight textures. Practice (250c) and Signature
+  (500c) are comfortable; **Starter is not obviously right, and nobody has decided it since the meaning of
+  the number changed.** Resizing is
   an `update public.plans` and no code, exactly as that table's own comment intends.
 
 - **A first generation that fails now costs a reservation round-trip it did not before.** Reserve, fail,
