@@ -17,10 +17,14 @@ import type { SurfaceAccess } from "@/lib/billing/surface-access";
  * named, and one link goes to the checkout already carrying that tier. She
  * can read the whole trade in one card without leaving the page she is on.
  *
- * ⚠ IT NAMES WHAT SHE ALREADY HAS, TOO. "Signature — $249" alone reads as a
- * demand; "You're on Starter. Type is part of Practice." reads as an answer.
- * A customer who paid should never have to work out which of three things she
- * bought.
+ * ⚠ IT NAMES WHAT SHE ALREADY HAS, TOO. "Practice Suite — $249" alone reads
+ * as a demand; "Version history comes with Practice Suite. You have Brand
+ * Kit." reads as an answer. A customer who paid should never have to work out
+ * which of three things she bought.
+ *
+ * "Comes with", not "is part of": the sold names are NOUNS ("Brand Kit Plus"),
+ * and "is part of Brand Kit Plus" reads like a row in a spec table rather than
+ * a sentence someone wrote.
  *
  * ⚠ AND IT IS NOT AN UPSELL PANEL. It renders only where a surface is
  * actually gated, in place of that surface — never beside one she already
@@ -60,8 +64,8 @@ export function TierUpgradePrompt({
       </MonoLabel>
 
       <p className="text-body leading-prose text-ink">
-        {access.label} is part of {requiredName}.
-        {currentName ? ` You're on ${currentName}.` : ""}
+        {access.label} comes with {requiredName}.
+        {currentName ? ` You have ${currentName}.` : ""}
       </p>
 
       <p className="text-helper leading-prose text-ink-2">{plan.tagline}</p>

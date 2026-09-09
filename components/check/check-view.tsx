@@ -6,6 +6,9 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import { TextAreaField } from "@/components/ui/text-field";
 import { CopyButton } from "@/components/site/copy-chip";
 import { CHECK_MAX_CHARS, CHECK_MIN_CHARS, type CheckFinding } from "@/lib/check/review";
+import { surfaceAccess, type SurfaceAccess } from "@/lib/billing/surface-access";
+import { TierLine } from "@/components/billing/tier-line";
+import type { KitTier } from "@/lib/kit/tiers";
 
 /*
  * ── CHECK, THE SCREEN ───────────────────────────────────────────────────
@@ -23,6 +26,15 @@ import { CHECK_MAX_CHARS, CHECK_MIN_CHARS, type CheckFinding } from "@/lib/check
  * still trips a rule, that is displayed rather than hidden — a rewrite she
  * trusts because Eklio handed it to her is exactly the one that must not be
  * quietly wrong.
+ *
+ * ⚠ THE SCAN IS NEVER WITHHELD. The rewrite is a Brand Kit Plus surface; the
+ * scan, the named rule, the rationale and her own words are not, and a
+ * customer on Brand Kit always leaves knowing what to change. The refusal
+ * renders INSIDE a finding, under the rationale, exactly where the generated
+ * alternative would have been — never in place of the finding.
+ *
+ * A scan that alarms without teaching is a sales vitrine, and this one alarms
+ * about her licensing board.
  */
 
 type ScanState =
@@ -43,7 +55,16 @@ type RewriteState =
     }
   | { kind: "error"; message: string };
 
-export function CheckView({ brandKitId }: { brandKitId: string }) {
+export function CheckView({
+  brandKitId,
+  entitledTier,
+  projectId,
+}: {
+  brandKitId: string;
+  entitledTier: KitTier | null;
+  projectId: string;
+}) {
+  const rewriteAccess = surfaceAccess("ethics_rewrite", entitledTier);
   const [text, setText] = useState("");
   const [scan, setScan] = useState<ScanState>({ kind: "idle" });
   const [rewrite, setRewrite] = useState<RewriteState>({ kind: "idle" });
@@ -148,13 +169,18 @@ export function CheckView({ brandKitId }: { brandKitId: string }) {
               </MonoLabel>
               <ul className="flex flex-col gap-4">
                 {scan.findings.map((finding, index) => (
-                  <FindingRow key={`${finding.ruleId}-${index}`} finding={finding} />
+                  <FindingRow
+                    key={`${finding.ruleId}-${index}`}
+                    finding={finding}
+                    rewriteAccess={rewriteAccess}
+                    projectId={projectId}
+                  />
                 ))}
               </ul>
             </>
           )}
 
-          {blocking.length > 0 ? (
+          {blocking.length > 0 && rewriteAccess.ok ? (
             <div className="flex flex-wrap items-center gap-4 border-t border-line pt-5">
               <Button
                 variant="secondary"
@@ -182,7 +208,27 @@ export function CheckView({ brandKitId }: { brandKitId: string }) {
   );
 }
 
-function FindingRow({ finding }: { finding: CheckFinding }) {
+/*
+ * One finding: the rule it trips, WHY that rule exists, and the words of hers
+ * that tripped it. Every part of that is hers on any tier — it is the whole
+ * point of the feature, and withholding any of it would leave her alarmed and
+ * no better informed.
+ */
+function FindingRow({
+  finding,
+  rewriteAccess,
+  projectId,
+}: {
+  finding: CheckFinding;
+  /*
+   * Omitted where a refusal cannot apply: the re-scan of a rewrite she has
+   * already been handed. She plainly has the surface — she just used it.
+   */
+  rewriteAccess?: SurfaceAccess;
+  projectId?: string;
+}) {
+  const blocker = finding.severity !== "warn";
+
   return (
     <li className="flex flex-col gap-2 border-l border-accent pl-4">
       <p className="text-ui font-medium text-ink">{finding.label}</p>
@@ -194,6 +240,17 @@ function FindingRow({ finding }: { finding: CheckFinding }) {
         <MonoLabel tracking="14" tone="ink-3">
           Worth a look, not a blocker
         </MonoLabel>
+      ) : null}
+
+      {/*
+       * ⚠ HERE, AND ONLY HERE. This is where a generated alternative would
+       * have been offered, so it is where its absence is explained — under
+       * the rationale, inside the finding, after everything she is entitled
+       * to. Only on a blocker, because only a blocker would have had one:
+       * repeating it under six warnings would be a wall rather than a note.
+       */}
+      {blocker && rewriteAccess && !rewriteAccess.ok && rewriteAccess.reason === "payment_required" ? (
+        <TierLine access={rewriteAccess} projectId={projectId ?? null} />
       ) : null}
     </li>
   );

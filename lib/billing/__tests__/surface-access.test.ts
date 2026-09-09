@@ -10,6 +10,7 @@ import {
   type Surface,
 } from "@/lib/billing/surfaces";
 import { KIT_TIERS, type KitTier } from "@/lib/kit/tiers";
+import { SOLD_TIER_NAME } from "@/lib/billing/tier-names";
 
 /*
  * Le garde de tier — un seul, et toutes les surfaces passent par lui.
@@ -346,5 +347,127 @@ describe("chaque surface consulte le garde quelque part", () => {
     for (const surface of Object.keys(CLIENT_ONLY)) {
       expect(SURFACES as readonly string[]).toContain(surface);
     }
+  });
+});
+
+/*
+ * ── UN REFUS NE REMPLACE JAMAIS CE QU'ELLE A PAYÉ ───────────────────────
+ *
+ * Deux surfaces refusent À CÔTÉ de quelque chose qu'elle est en train
+ * d'utiliser, pas à sa place — et ce sont exactement celles où un refus
+ * maladroit ferait le plus de dégâts.
+ *
+ * Check alarme au sujet de son ordre professionnel. Une cliente Brand Kit
+ * garde le scan, la règle nommée et sa justification pour CHAQUE constat :
+ * elle repart toujours en sachant quoi changer. Une analyse qui alarme sans
+ * enseigner est une vitrine commerciale, pas un produit.
+ */
+describe("les refus qui vivent à l'intérieur, pas à la place", () => {
+  const check = readFileSync(join(ROOT, "components/check/check-view.tsx"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+  it("⚠ le constat entier est rendu quel que soit le tier", () => {
+    /*
+     * La règle, sa justification et ses propres mots : rien de tout ça n'est
+     * derrière une condition de tier. Si `FindingRow` devenait conditionnel,
+     * ce test rougirait.
+     */
+    // Le CORPS rendu, pas la signature — `rewriteAccess` y est une prop.
+    const component = check.slice(check.indexOf("function FindingRow"));
+    const body = component.slice(component.indexOf("return ("));
+
+    for (const part of ["finding.label", "finding.description", "finding.excerpt"]) {
+      const at = body.indexOf(part);
+      expect(at, `${part} n'est plus rendu`).toBeGreaterThan(-1);
+      // Aucune condition de tier avant ces trois-là.
+      expect(body.slice(0, at)).not.toContain("rewriteAccess");
+    }
+  });
+
+  it("le refus est DANS le constat, sous la justification", () => {
+    const component = check.slice(check.indexOf("function FindingRow"));
+    const body = component.slice(component.indexOf("return ("));
+    expect(body).toContain("<TierLine");
+    // Après les trois parties auxquelles elle a droit, jamais avant.
+    expect(body.indexOf("<TierLine")).toBeGreaterThan(body.indexOf("finding.excerpt"));
+  });
+
+  it("⚠ et il ne s'affiche que là où une alternative aurait été proposée", () => {
+    // Seulement sur un bloqueur : le répéter sous six avertissements serait
+    // un mur plutôt qu'une note.
+    expect(check).toContain('const blocker = finding.severity !== "warn";');
+    expect(check).toMatch(/\{blocker && rewriteAccess/);
+  });
+
+  it("le bouton de réécriture disparaît plutôt que de refuser au clic", () => {
+    // Un contrôle qui répond 402 est pire que pas de contrôle.
+    expect(check).toContain("blocking.length > 0 && rewriteAccess.ok");
+  });
+
+  it("la ligne du panneau d'asset est une LIGNE, pas une carte", () => {
+    const panel = readFileSync(join(ROOT, "components/kit/asset-detail-panel.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    // Le téléchargement simple reste, et la ligne se pose sous lui.
+    expect(panel).toContain("<AssetDownloadButton");
+    expect(panel).toContain("<TierLine");
+    expect(panel.indexOf("<TierLine")).toBeGreaterThan(panel.indexOf("<AssetDownloadButton"));
+    // Elle ne s'affiche que si d'autres tailles ou formats existent vraiment.
+    expect(panel).toContain("entry.available_sizes.length > 0");
+  });
+
+  it("⚠ `TierLine` ne porte ni prix, ni argumentaire, ni bouton", () => {
+    /*
+     * C'est ce qui la distingue de `TierUpgradePrompt`, qui remplace une
+     * surface entière et a la place pour tout ça. Celle-ci apparaît à côté de
+     * ce qu'elle est en train de lire.
+     */
+    const line = readFileSync(join(ROOT, "components/billing/tier-line.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(line).not.toContain("amountCents");
+    expect(line).not.toContain("tagline");
+    expect(line).not.toContain("Upgrade to");
+  });
+});
+
+/*
+ * ── LES NOMS VENDUS ─────────────────────────────────────────────────────
+ * « Practice » a vécu une journée dans ce fichier, faux et l'air juste. Rien
+ * d'autre dans le dépôt ne l'aurait attrapé : une valeur d'enum capitalisée
+ * est toujours plausible.
+ */
+describe("les trois noms sont ceux de la page de tarifs", () => {
+  it("et ce ne sont pas les valeurs de l'enum", () => {
+    expect(SOLD_TIER_NAME).toEqual({
+      starter: "Brand Kit",
+      practice: "Brand Kit Plus",
+      signature: "Practice Suite",
+    });
+    for (const tier of KIT_TIERS) {
+      expect(SOLD_TIER_NAME[tier].toLowerCase()).not.toBe(tier);
+    }
+  });
+
+  it("⚠ la phrase se lit, une fois le nom substitué", () => {
+    /*
+     * « The site editor is part of Brand Kit Plus » se lit comme une ligne de
+     * tableau comparatif. « comes with » se lit comme une phrase.
+     */
+    for (const file of [
+      "components/billing/tier-upgrade-prompt.tsx",
+      "components/billing/tier-line.tsx",
+      "lib/api/surface-guard.ts",
+    ]) {
+      const body = readFileSync(join(ROOT, file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      expect(body, `${file} construit encore « is part of »`).not.toContain("is part of");
+      expect(body).toContain("comes with");
+    }
+  });
+
+  it("aucun écran ne montre une valeur d'enum à une cliente", () => {
+    const prompt = readFileSync(join(ROOT, "components/billing/tier-upgrade-prompt.tsx"), "utf8");
+    expect(prompt).toContain("soldTierName(access.requiredTier)");
+    expect(prompt).toContain("soldTierName(access.currentTier)");
+    expect(prompt).not.toMatch(/\{access\.(required|current)Tier\}/);
   });
 });

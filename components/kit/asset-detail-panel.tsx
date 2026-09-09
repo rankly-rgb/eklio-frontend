@@ -12,6 +12,7 @@ import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
 import type { KitTier } from "@/lib/kit/tiers";
 import { surfaceAccess } from "@/lib/billing/surface-access";
 import { TierUpgradePrompt } from "@/components/billing/tier-upgrade-prompt";
+import { TierLine } from "@/components/billing/tier-line";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -280,13 +281,31 @@ export function AssetDetailPanel({
             Download
           </AssetDownloadSplit>
         ) : (
-          <AssetDownloadButton
-            brandKitId={brandKitId}
-            assetKey={entry.key}
-            className="self-start rounded-pill bg-ink px-[26px] py-2.5 text-ui font-semibold text-bg hover:bg-ink-2"
-          >
-            Download
-          </AssetDownloadButton>
+          <div className="flex flex-col gap-2">
+            <AssetDownloadButton
+              brandKitId={brandKitId}
+              assetKey={entry.key}
+              className="self-start rounded-pill bg-ink px-[26px] py-2.5 text-ui font-semibold text-bg hover:bg-ink-2"
+            >
+              Download
+            </AssetDownloadButton>
+            {/*
+             * ⚠ ONE LINE, WHERE THE FORMAT LIST WOULD HAVE OPENED. Dropping
+             * the chevron silently is right — a greyed half-button teaches her
+             * the product is broken. But a customer who never learns the other
+             * sizes exist is an upsell lost in the one place it would have
+             * been natural to make it, standing in front of the exact file she
+             * would have wanted at another width.
+             *
+             * A line, not a card: she is here to download something, and the
+             * thing she came for is directly above it and works.
+             */}
+            {renditions.reason === "payment_required" &&
+            (entry.available_sizes.length > 0 ||
+              entry.available_formats.some((format) => format !== entry.kind)) ? (
+              <TierLine access={renditions} projectId={projectId} />
+            ) : null}
+          </div>
         )}
       </div>
     </>

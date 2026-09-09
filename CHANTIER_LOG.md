@@ -1558,8 +1558,32 @@ ROUTE as well as on screen, with one documented exemption (`assets_in_situ` fetc
 `surface-access.test.ts` pins every row against a hand-written copy of the decision, so a tier change
 cannot arrive inside a diff that was about something else.
 
-**Sold names live in `lib/billing/tier-names.ts`, and only there.** `starter`/`practice`/`signature` are
-enum values in `purchases.tier`; what she bought had a name on a pricing page. They coincide today. The
-file exists so that the day one is renamed, no screen tells a customer she is on a word she has never
-seen — and so that `purchases.tier` is never rewritten to match a marketing change, because it is a record
-of money.
+**Sold names live in `lib/billing/tier-names.ts`, and only there.**
+
+    starter → "Brand Kit"        $79
+    practice → "Brand Kit Plus"  $149
+    signature → "Practice Suite" $249
+
+`starter`/`practice`/`signature` are enum values in `purchases.tier`; they are not what anyone bought, and
+`purchases.tier` is never rewritten to match a marketing change because it records what was charged. The
+file shipped for one day holding the enum values capitalised — plausible, and wrong, and uncatchable by
+any test. Copy that builds a sentence from one of these says "comes with", never "is part of": the names
+are nouns, and "is part of Brand Kit Plus" reads like a row in a comparison table.
+
+**A refusal never replaces what she paid for.** Two registers, chosen by POSITION and not by taste:
+
+- `<TierUpgradePrompt>` stands IN PLACE of a surface — a whole editor, a whole handoff sheet. Price,
+  tagline, one button.
+- `<TierLine>` sits BESIDE something she is using. One sentence, the tier name carrying the link, no
+  price and no argument.
+
+Check is the case that decided it. The scan, the named rule, its rationale and her own words are hers on
+every tier — a scan that alarms about her licensing board without teaching her what to change is a sales
+vitrine. So the refusal renders INSIDE each blocking finding, under the rationale, exactly where a
+generated alternative would have been, and the whole-text rewrite button disappears rather than refusing
+on click. Same instinct in the asset panel: without Brand Kit Plus the split button degrades to the plain
+download (she keeps the file), and one line underneath names what the other sizes come with.
+
+**Uploads: 60 files and 200 MiB per kit, per-file cap unchanged at 10 MiB, and NOT a tier.** Her own files
+are the substitute for the portrait Eklio refuses to generate; rationing them to sell a bigger plan is
+petty. 19.53 GiB of ceiling at a hundred kits, against 4.88 before.

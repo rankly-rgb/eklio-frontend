@@ -431,3 +431,31 @@ replaced by what remains true. What follows is the residue, not the original lis
   three long (`starter`, `practice`, `signature`); `plans` also carries `free` with a zero price and one
   regeneration. Nothing in this lot's guard can express `free`, and `parseKitTier` returns `null` for it —
   which fails closed, correctly. Worth knowing before someone reads `plans` as the list of tiers.
+
+---
+
+## Added while correcting the tier names and the two in-place refusals
+
+- **The sold names were wrong for a day, and nothing could have caught it.** `lib/billing/tier-names.ts`
+  shipped holding the enum values capitalised — "Starter", "Practice", "Signature" — which is exactly what
+  a plausible-but-wrong value looks like. The live names are **Brand Kit / Brand Kit Plus / Practice
+  Suite**. No test can tell a real product name from a capitalised enum, so the only defence is that the
+  file exists at all and has one job; the test now pins the three strings and asserts none of them is its
+  own enum value lowercased, which would at least catch a silent revert.
+
+- **The Check screen no longer offers a whole-text rewrite to a Brand Kit customer, and offers nothing in
+  its place.** The button is gone rather than refusing on click; the teaching moved inside each blocking
+  finding as one line. That means a Brand Kit customer has no path from "this trips a rule" to "here is
+  wording that does not" other than her own writing. That is the intended shape — the scan teaches, the
+  rewrite is sold — but it is worth watching: if the six rules turn out to be hard to satisfy by hand, the
+  scan becomes an alarm she cannot silence.
+
+- **`TierLine` and `TierUpgradePrompt` are two refusal registers, and the rule for choosing is positional
+  rather than stylistic.** In place of a surface → the card, with price and tagline. Beside something she
+  is using → the line, with neither. Written down because the next surface to be gated will need the
+  choice made again, and "which one looks better" is the wrong question.
+
+- **Upload storage is now a 200 MiB ceiling per kit, and nothing measures the real number.** At a hundred
+  kits the ceiling is 19.53 GiB (it was 4.88). Actual usage today is zero bytes across zero uploads, so
+  there is no basis for predicting where inside that envelope real customers land — and nothing in the
+  product reports aggregate storage. Worth a query before the kit count makes the ceiling interesting.

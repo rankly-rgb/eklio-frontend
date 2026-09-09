@@ -42,7 +42,8 @@ export default async function CheckPage() {
    * route and in `<CheckView>`. Scanning her own copy against six rules a
    * licensing board wrote is not something to sell back to her.
    */
-  const gate = surfaceAccess("ethics_check", await resolveEntitledTier(supabase, kit.projectId));
+  const entitledTier = await resolveEntitledTier(supabase, kit.projectId);
+  const gate = surfaceAccess("ethics_check", entitledTier);
   if (!gate.ok) return <TierGate access={gate} projectId={kit.projectId} />;
 
   const catalog = await readCatalog(supabase).catch(() => null);
@@ -62,7 +63,11 @@ export default async function CheckPage() {
         </p>
       </div>
 
-      <CheckView brandKitId={kit.row.id} />
+      <CheckView
+        brandKitId={kit.row.id}
+        entitledTier={entitledTier}
+        projectId={kit.projectId}
+      />
 
       {rules.length > 0 ? (
         <section className="mt-14 max-w-[760px]">

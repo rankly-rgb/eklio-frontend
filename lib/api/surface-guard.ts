@@ -37,7 +37,7 @@ export function surfaceRefusal(
 
   return NextResponse.json(
     {
-      error: `${access.label} is part of ${requiredName}.`,
+      error: `${access.label} comes with ${requiredName}.`,
       requiredTier: access.requiredTier,
       // The name she has seen, never the enum — see `lib/billing/tier-names.ts`.
       requiredTierName: requiredName,
