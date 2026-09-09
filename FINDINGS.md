@@ -553,3 +553,61 @@ replaced by what remains true. What follows is the residue, not the original lis
   the meta description), `TierLine`, `TierUpgradePrompt` and `lib/api/surface-guard.ts`. Every other
   appearance of the words `starter` / `practice` / `signature` in the repo is either an enum value in a
   key, a URL parameter, or a code comment using the internal vocabulary correctly.
+
+---
+
+## Added during the Content chantier, Session 1 (inventory only)
+
+- **⚠ `monthly_presence_content`'s live shape is not the shape in the migration that
+  creates it.** `20260825160000_lot4_billing.sql` creates it as
+  `(project_id, month, content jsonb, status)`; `20260827105000_monthly_content_calendar.sql`
+  reshapes it to `(user_id, brand_kit_id, month, day_of_month, type, title, caption,
+  visual_spec, published_at)` with a completely different `status` vocabulary
+  (`locked/draft/ready/published`). I initially read `home_recent_activity` as broken —
+  it selects `mpc.brand_kit_id`, `mpc.type`, `mpc.day_of_month`, none of which exist in the
+  creating migration — and it is fine. Anyone auditing this table from its `create table`
+  alone will reach a wrong conclusion; the live schema is the only reliable source.
+
+- **Two SECURITY DEFINER functions read the dead table on ordinary user traffic.**
+  `home_recent_activity(uuid)` and `sync_notifications(uuid)` both run on the home screen.
+  They are safe today only because the table has zero rows. Neither was in the tendril list
+  the chantier brief carried, and `sync_notifications` is the actual writer of the
+  `content_ready` notification whose payload the brief did name.
+
+- **The `content_ready` payload shape is load-bearing inside an index.**
+  `notifications_content_ready_idx` is a partial unique index on
+  `(brand_kit_id, (payload ->> 'item_id')) WHERE kind = 'content_ready'`, and
+  `sync_notifications` relies on it for its `on conflict … do nothing`. Retiring the
+  notification kind means dropping an index and relaxing a CHECK, not just deleting an
+  insert. Production has never created a `content_ready` row (only `asset_rendered` exists),
+  so there is no data to migrate.
+
+- **The "alt text before `ready`" rule does not exist.** It is named in the chantier brief as
+  something the editor already has. It does not: the only constraint on `alt_text` anywhere is
+  `char_length <= 420`. `status` is a plain three-value dropdown with no precondition, and
+  `update_content_item` does not check alt text when moving to `ready`. The editor shows the
+  field with the hint "Worth writing before you post, not after." That is advice. Accessibility
+  is sold on the pricing page and to an audience that sells accessibility; a rule everyone
+  believes exists and which does not is worse than a known gap.
+
+- **`content_items` has no `month` column.** The month is derived from `scheduled_for`, which
+  is nullable, so an item can exist in no month at all — the `unscheduled` bucket. Any "month
+  record" added later needs its own key and its own link, and cannot assume an item knows
+  which month it belongs to.
+
+- **Five archetypes, six registers.** `content_items.archetype` is a CHECK over
+  `statement|question|notes|signature|story`, chosen to match the asset-catalogue keys the
+  satori renderer draws (`post_statement_1080`, …). The Content chantier's six registers are a
+  different taxonomy with different safety rules. Whichever way they are reconciled, the
+  renderer's five layouts are the constraint underneath, not the CHECK.
+
+- **The monthly cron was already disarmed and the chantier brief did not know.** It was armed
+  in `0f8a908` and its `vercel.json` entry removed in `14c6725`. The route and its generator
+  still exist and still answer to `CRON_SECRET`. This is the good version of the "armed cron"
+  problem, and it is worth recording that the disarm happened, because the brief's own
+  cautionary example is now stale.
+
+- **Production content is three rows, not two.** All `draft`, all untitled, no captions, no alt
+  text; two scheduled on the same day (2026-09-08, both `question`), one unscheduled. The
+  September calendar shows two because the third has no date. `Ready 0` / `Posted 0` are
+  literally true.

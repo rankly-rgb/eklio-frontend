@@ -1687,3 +1687,212 @@ tier. The enforcing test walks `app/` rather than reading a hand-kept list, so a
 it bans the enum names in metadata and email subjects; it fails the moment an `openGraph` or `ld+json`
 block appears, forcing it through the same sweep; and a canary re-feeds the exact string that was in
 production to prove the rule bites — it fails three assertions.
+
+---
+
+# CONTENT CHANTIER — Session 1: inventory
+
+Read-only. No schema, no code, no migration touched. Only this file and
+`FINDINGS.md` changed.
+
+**Starting state:** frontend `main` at `c85eb1c` (the brief said `bc26d83`, which
+is one commit behind — `c85eb1c` is the delivery-stamp and tier-name lot).
+Backend `main` at `8343e9f`, as stated. Both trees clean.
+
+## The dead table has TWENTY tendrils, not three
+
+`monthly_presence_content` holds **0 rows** in production and has never held
+any. The brief named three tendrils; there are more, and two of them are
+`SECURITY DEFINER` functions that run for every user on every home visit.
+
+**In the database (backend):**
+
+1. The table itself — 13 columns. ⚠ Its LIVE shape is **not** the one in
+   `20260825160000_lot4_billing.sql`: `20260827105000_monthly_content_calendar.sql`
+   reshaped it from `(project_id, month, content jsonb, status)` to
+   `(user_id, brand_kit_id, month, day_of_month, type, title, caption,
+   visual_spec, published_at, status)`. Reading only the creating migration
+   gives the wrong table.
+2. 4 RLS policies — `select_own`, insert/update/delete denied.
+3. 4 indexes, including the unique `(brand_kit_id, month, type, day_of_month)`.
+4. 7 CHECK constraints, including `status in (locked, draft, ready, published)`
+   — a *different* status vocabulary from `content_items`.
+5. Trigger `set_monthly_presence_content_updated_at`.
+6. RPC `calendar_summary(uuid, date)` — invoker rights. **Named in the brief.**
+7. RPC `ensure_month_skeleton(uuid, date)` — invoker rights. **Not named.**
+8. RPC `home_recent_activity(uuid)` — **SECURITY DEFINER**, reads it to build
+   the home screen's "content that became ready" list. **Not named.**
+9. RPC `sync_notifications(uuid)` — **SECURITY DEFINER**, this is what actually
+   INSERTS `content_ready` notifications with `payload.item_id`. **Not named**
+   (the brief named the payload, not its writer).
+10. `notifications.kind` CHECK — includes `'content_ready'`.
+11. Partial unique index `notifications_content_ready_idx` on
+    `(brand_kit_id, (payload ->> 'item_id')) WHERE kind = 'content_ready'`.
+    **Not named.** The payload SHAPE is load-bearing in an index.
+
+No views reference it. No foreign key points at it. Nothing cascades from it.
+
+**In the frontend:**
+
+12. `app/api/cron/monthly/route.ts` — the generator. Five read/write sites.
+13. `lib/generation/monthly.ts` — its generation half.
+14. `lib/presence/month.ts` — month normalisation written for its `date` CHECK.
+15. `lib/kit/render/social-posts.ts` — names it as the "primary source" the
+    satori post renderer deliberately did **not** wire in.
+16. `lib/data/home.ts` — `hrefForNotification` special-cases `content_ready`
+    and routes it to `/app/content` rather than to an item, precisely because
+    `payload.item_id` is an id in the dead table's id space.
+17. `types/supabase.ts` — Row/Insert/Update plus the two RPC signatures.
+18. `app/__tests__/one-month-model.test.ts` — already enforces that nothing
+    reads the old model **except one allow-listed file**, the cron. Its
+    `PARKED` map is the retirement checklist Session 2 needs, pre-written.
+19. `components/home/content-grid.tsx`, `app/app/content/page.tsx` — comments
+    recording the migration away from it. Prose, not tendrils.
+
+**And one the brief got wrong, in our favour:**
+
+20. `vercel.json` — the monthly cron is **already disarmed**. It was armed in
+    `0f8a908` and removed in `14c6725` ("Disarm the monthly cron"). The route
+    file still exists and still answers to `CRON_SECRET`, but Vercel does not
+    call it. Nothing is scheduled against the dead table today.
+
+**Production evidence:** `notifications` contains only `asset_rendered` rows.
+No `content_ready` notification has ever been created, so the `item_id` tendril
+has never fired against real data. Retirement can drop it without a data
+migration.
+
+## `content_items` — the live model
+
+Columns: `id, brand_kit_id, archetype, status, title, caption, alt_text,
+tags text[], category, image_slot, scheduled_for, created_at, updated_at`.
+
+- **There is no `month` column.** The month is derived from `scheduled_for`
+  (a `date`), and `scheduled_for` is NULLABLE — an item with no date lands in
+  an `unscheduled` bucket, not in a month.
+- **States: `draft | ready | archived`.** No `proposed`, no `posted`.
+  `posted`/`posted_at`/`channel` are DERIVED from the last row of the
+  append-only `content_publications` log, in the database. There is no parallel
+  column and Session 2 must not add one.
+- **Archetypes: `statement | question | notes | signature | story`** — five,
+  and they are *not* the brief's six registers. They came from asset-catalogue
+  keys (`post_statement_1080` etc.). Mapping six registers onto five archetypes
+  is an open decision for Session 2/3, listed under Open questions below.
+- **RLS: `select_own` only; insert, update and delete are all `false`.** Every
+  write goes through one of eight `SECURITY DEFINER` RPCs:
+  `create_content_item`, `update_content_item`, `delete_content_item`,
+  `get_content_item`, `get_content_month`, `get_publishing_log`,
+  `mark_content_posted`, `content_item_json`.
+
+**Readers:** `lib/data/content.ts` (the only data layer),
+`app/api/brand-kits/[id]/content`, `app/api/content-items/[id]`,
+`app/api/content-items/[id]/posted`, `app/app/content` (calendar, item, log),
+`components/content/content-calendar.tsx`, `components/content/item-editor.tsx`,
+`components/home/content-grid.tsx`.
+
+**Production rows: three, not two.** All `draft`, all `title` NULL (hence
+"Untitled"), no captions, no alt text. Two are scheduled 2026-09-08 (both
+`question`) and one is unscheduled — which is why the September calendar shows
+two. `Ready 0` and `Posted 0` are literally true: nothing is `ready`, and
+`content_publications` is empty.
+
+## What the interface assumes
+
+- **The alt-text rule does not exist.** There is no "alt text before `ready`"
+  gate anywhere — not in the CHECK constraints (only `char_length <= 420`), not
+  in `update_content_item`, not in the editor. `status` is a plain dropdown, and
+  alt text is a field with the hint *"Worth writing before you post, not after."*
+  Session 4's "alt text before `ready`" is a rule to BUILD, not to keep.
+- `Mark as posted` → `mark_content_posted(p_id, p_posted, p_channel)`, which is
+  idempotent: re-marking an already-posted item writes no log row.
+- The publishing log is `content_publications`, append-only, client-unwritable,
+  with `action in (published, unpublished)` — so unpost-then-repost leaves
+  history rather than overwriting it.
+- Channels: `instagram | facebook | linkedin | newsletter | other`.
+- `image_slot` names one of the seven photograph slots but is deliberately NOT
+  a foreign key — an item may name a slot before that slot has generated.
+
+## Where the brief's answers live
+
+`project_briefs`, one row per project, 33 columns across seven steps
+(`practice, positioning, client, how_you_work, voice, look, website`).
+
+**Voice / substance — what a caption can be written from:**
+`positioning`, `problem_card_ids`, `gain_card_ids`, `data->>'problem_text'`,
+`data->>'gain_text'`, `client_persona_ids`, `specialty_ids`, `license_type_id`,
+`session_style_ids`, `modality_ids`, `modality_prominence`, `not_a_fit_ids`,
+`not_a_fit_text`, `referral_quote`, `prior_career` (+ `prior_career_public`),
+`usp_statement` / `selected_usp_id` / `usp_options`, `tone_card_id`,
+`tone_cards`, `practice_name`, `city`, `state`, `site_goal_ids`,
+`primary_action_id`.
+
+**Visual only — must never reach a caption:**
+`palette_family_ids`, `type_pairing_id`, `builder_target_id`,
+`tone_cards_inputs_hash`.
+
+`tone_card_id` is the hinge: it drives the visual preview AND is the closest
+thing to a voice setting. `referral_quote` ("what a colleague would say", ≥20
+chars, mandatory) and `not_a_fit_text` are the two free-text fields with real
+voice in them.
+
+## The image machinery
+
+- **Seven slots**, `lib/images/config.ts`: `hero, ambient_a, ambient_b,
+  post_bg_1..3, texture`. Each carries size, quality, `enabled`, a closed
+  `brief`, and optional `slotExclusions`. `{subject}` is substituted from the
+  specialty's object register.
+- **Model pinned to `gpt-image-1`** in one place, deliberately not
+  `gpt-image-2`, because a flat per-image price is required to reserve a spend
+  cap BEFORE the call.
+- **`IMAGE_PROMPT_VERSION = 7`**, hashed into the fingerprint.
+- **Fingerprint** = SHA-256 of exactly `{toneKeywords, palette{6 roles},
+  specialty, promptVersion}` — projected, never spread, so a caller handing over
+  a wider object cannot silently widen the hash.
+- **Reserve/settle**: `reserve_image_regeneration(kit, cost_cents)` →
+  `settle_image_regeneration(kit, cost_cents, succeeded)`, wrapped as
+  `reserveImageSpend` / `settleImageSpend`, drawing on `plans.image_budget_cents`
+  (free 0, starter 200, practice 400, signature 600). Reserved before the call,
+  released on failure.
+- **Satori composition**: `lib/kit/render/social-posts.ts` renders the five
+  post/story archetypes at 1080/1920 from `kit.socialTemplates`.
+- **Measured scrim**: `lib/kit/render/luminance.ts`. Pixels are LINEARISED
+  before averaging (WCAG relative luminance is defined on linear channels;
+  `sharp().stats()` averages gamma-encoded values and overstates dark regions).
+  Target `CONTRAST_TARGET = 4.5`, ceiling `MAX_SCRIM_OPACITY = 0.92`, solved by
+  a 1%-step climb. Regions are fractions of the frame: `HERO_TEXT_REGION` is the
+  left third, `POST_TEXT_REGION` the upper two thirds. The achieved ratio is
+  reported in the asset's spec line.
+
+## Two guard tests that will bind later sessions
+
+- **`app/__tests__/content-never-generates.test.ts`** forbids every spending
+  path (`consume_generation_credit`, `image_budget_cents`,
+  `reserve_image_regeneration`, `OPENAI_API_KEY`, `anthropic`, …) from appearing
+  anywhere under `lib/data/content.ts`, `lib/content`, `app/api/content-items`,
+  `app/api/brand-kits/[id]/content`, `app/app/content`, `components/content`.
+  Its own header says it is *meant* to go red when the generator arrives.
+  **Session 3 must change it deliberately, not delete it** — and the new
+  allowance must be added to `SPENDING` so the kit's lifetime budget stays
+  forbidden on those paths.
+- **`app/__tests__/one-month-model.test.ts`** enforces that only
+  `app/api/cron/monthly/route.ts` may name the old model. Session 2's step 0
+  empties `PARKED` and then `OLD_MODEL` should be unreachable everywhere.
+
+## Open questions for Session 2 — answer before building
+
+1. **Six registers vs five archetypes.** `content_items.archetype` is a CHECK
+   over five values tied to asset-catalogue keys and to the satori renderer.
+   The brief's six registers are a different taxonomy. Extend the CHECK to six,
+   add a separate `register` column, or map? This changes the renderer.
+2. **`posted` is not a status.** The brief writes `proposed → draft → ready →
+   posted`, but `posted` is derived from `content_publications` and Session 4
+   confirms the log "IS the publication state, with no parallel column". Reading
+   the arrow as three statuses plus a derived fourth.
+3. **There is no `month` column.** A "month record holding the four themes and
+   the generated grounds" needs a month key; `content_items` derives its month
+   from a nullable `scheduled_for`. The month record's key and the item→month
+   link both need deciding.
+4. **The cron route still exists, disarmed.** Retiring the table means deleting
+   `app/api/cron/monthly/route.ts` and `lib/generation/monthly.ts` outright.
+   Confirming that is the intent rather than porting them.
+
+**Session 1 ends here. Nothing was built.**
