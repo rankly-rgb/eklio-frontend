@@ -30,7 +30,7 @@ export function TierLine({
 
   return (
     <p className="text-helper leading-prose text-ink-3">
-      {`${access.label} comes with `}
+      {`${access.label} ${access.verb} with `}
       <Link
         href={href}
         className="text-ink-2 underline decoration-line underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"

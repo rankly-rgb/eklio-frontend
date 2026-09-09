@@ -132,6 +132,60 @@ export const SURFACE_LABEL: Record<Surface, string> = {
   image_regeneration: "New photographs",
 };
 
+/*
+ * ── THE VERB, PER SURFACE ───────────────────────────────────────────────
+ *
+ * The refusal copy is one sentence built in three places: `<TierLine>`,
+ * `<TierUpgradePrompt>` and the API's `surfaceRefusal`. It reads
+ * `<label> <verb> with <sold tier name>` — "Version history comes with
+ * Practice Suite."
+ *
+ * ⚠ WHY THE VERB IS DATA AND NOT A CONSTANT. `Other sizes and formats` is
+ * plural, and "Other sizes and formats comes with Brand Kit Plus" is simply
+ * wrong. There were two ways out: make the label singular so the one verb
+ * fits, or let the verb follow the label.
+ *
+ * The label wins. A label is what the product CALLS a thing to a customer, and
+ * bending it to fit a sentence template distorts the name rather than the
+ * sentence — "Another size or format" is worse English about a menu that
+ * genuinely offers several. And the next chantier adds more plural surfaces
+ * (content items, publication logs, monthly posts), so this would have come up
+ * again with a worse precedent already set.
+ *
+ * A partial map with a default: nineteen rows of "comes" would be noise around
+ * the one row that says anything.
+ */
+export const SURFACE_VERB: Partial<Record<Surface, "come">> = {
+  // The one that forced this: `assets_sizes_and_formats` is the only plural
+  // surface that can refuse under the current distribution.
+  assets_sizes_and_formats: "come",
+
+  /*
+   * ⚠ THE OTHER FIVE PLURALS, SET NOW RATHER THAN WHEN THEY BREAK. All five
+   * sit at `starter` today and so cannot refuse, which means none of them
+   * renders a sentence yet — and that is exactly why they would be wrong for
+   * however long it took someone to notice after a row moved. The verb
+   * belongs to the LABEL, not to the tier; a label's number does not change
+   * when its price does.
+   *
+   * A gerund or an imperative is singular and stays on "comes": "Downloading
+   * your files comes with…", "Rewriting what Check found comes with…". Only
+   * a plural NOUN takes "come".
+   */
+  kit_colors: "come",
+  kit_words: "come",
+  kit_assets: "come",
+  own_uploads: "come",
+  image_regeneration: "come",
+};
+
+export type SurfaceVerb = "comes" | "come";
+
+/** The verb that agrees with a surface's label. */
+export function surfaceVerb(surface: Surface): SurfaceVerb {
+  return SURFACE_VERB[surface] ?? "comes";
+}
+
 export function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value);
 }

@@ -3,7 +3,9 @@ import {
   SURFACE_LABEL,
   SURFACE_MIN_TIER,
   isSurface,
+  surfaceVerb,
   type Surface,
+  type SurfaceVerb,
 } from "@/lib/billing/surfaces";
 
 export type { Surface };
@@ -43,6 +45,13 @@ export type SurfaceAccess =
       requiredTier: KitTier;
       /** Her own words for it, for the upgrade card. */
       label: string;
+      /**
+       * The verb that agrees with that label — "comes" for almost everything,
+       * "come" for the one plural. Carried on the refusal rather than looked
+       * up by each caller, exactly like `label`: three separate places build
+       * this sentence, and two of them agreeing is not enough.
+       */
+      verb: SurfaceVerb;
     };
 
 /** Position on the ladder. `KIT_TIERS` is ordered, and that order is a contract. */
@@ -73,5 +82,6 @@ export function surfaceAccess(surface: string, tier: KitTier | null): SurfaceAcc
     currentTier: tier,
     requiredTier,
     label: SURFACE_LABEL[surface],
+    verb: surfaceVerb(surface),
   };
 }

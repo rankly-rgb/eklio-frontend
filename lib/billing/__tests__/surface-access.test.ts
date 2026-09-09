@@ -6,7 +6,9 @@ import {
   SURFACES,
   SURFACE_LABEL,
   SURFACE_MIN_TIER,
+  SURFACE_VERB,
   isSurface,
+  surfaceVerb,
   type Surface,
 } from "@/lib/billing/surfaces";
 import { KIT_TIERS, type KitTier } from "@/lib/kit/tiers";
@@ -453,14 +455,9 @@ describe("les trois noms sont ceux de la page de tarifs", () => {
      * « The site editor is part of Brand Kit Plus » se lit comme une ligne de
      * tableau comparatif. « comes with » se lit comme une phrase.
      */
-    for (const file of [
-      "components/billing/tier-upgrade-prompt.tsx",
-      "components/billing/tier-line.tsx",
-      "lib/api/surface-guard.ts",
-    ]) {
+    for (const file of SENTENCE_BUILDERS) {
       const body = readFileSync(join(ROOT, file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
       expect(body, `${file} construit encore « is part of »`).not.toContain("is part of");
-      expect(body).toContain("comes with");
     }
   });
 
@@ -469,5 +466,103 @@ describe("les trois noms sont ceux de la page de tarifs", () => {
     expect(prompt).toContain("soldTierName(access.requiredTier)");
     expect(prompt).toContain("soldTierName(access.currentTier)");
     expect(prompt).not.toMatch(/\{access\.(required|current)Tier\}/);
+  });
+});
+
+/*
+ * ── LE VERBE SUIT L'ÉTIQUETTE, PAS L'INVERSE ────────────────────────────
+ *
+ * « Other sizes and formats comes with Brand Kit Plus » est faux. Deux
+ * sorties existaient : rendre l'étiquette singulière pour que le verbe unique
+ * tienne, ou laisser le verbe suivre l'étiquette. C'est l'étiquette qui gagne —
+ * une étiquette est le nom que le produit donne à une chose, et la tordre pour
+ * qu'elle entre dans un gabarit déforme le nom plutôt que la phrase.
+ */
+const SENTENCE_BUILDERS = [
+  "components/billing/tier-upgrade-prompt.tsx",
+  "components/billing/tier-line.tsx",
+  "lib/api/surface-guard.ts",
+];
+
+describe("l'accord du verbe", () => {
+  /*
+   * Les étiquettes dont le sujet est un NOM PLURIEL, écrites à la main. Un
+   * gérondif ou un impératif reste singulier — « Downloading your files comes
+   * with… », « Rewriting what Check found comes with… » — et c'est pour ça
+   * qu'on ne peut pas déduire ça d'un `s` final.
+   */
+  const PLURAL_SUBJECTS: readonly Surface[] = [
+    "kit_colors",              // "Colors"
+    "kit_words",               // "Your words"
+    "kit_assets",              // "Your assets"
+    "assets_sizes_and_formats", // "Other sizes and formats"
+    "own_uploads",             // "Your own files"
+    "image_regeneration",      // "New photographs"
+  ];
+
+  it("⚠ chaque étiquette au pluriel prend « come », les autres « comes »", () => {
+    /*
+     * Cinq de ces six sont à `starter` et ne peuvent donc rien refuser
+     * aujourd'hui : elles ne construisent aucune phrase, et c'est précisément
+     * pourquoi elles seraient fausses pendant tout le temps qu'il faudrait
+     * pour s'en apercevoir après un changement de ligne. Le verbe appartient
+     * à l'ÉTIQUETTE, pas au tier.
+     */
+    for (const surface of SURFACES) {
+      expect(surfaceVerb(surface), `${surface}: ${SURFACE_LABEL[surface]}`).toBe(
+        PLURAL_SUBJECTS.includes(surface) ? "come" : "comes"
+      );
+    }
+  });
+
+  it("la liste des pluriels n'est pas vide, et n'est pas tout", () => {
+    // Garde anti-vacuité : les deux moitiés de l'assertion ci-dessus doivent
+    // avoir de quoi mordre.
+    expect(PLURAL_SUBJECTS.length).toBeGreaterThan(0);
+    expect(PLURAL_SUBJECTS.length).toBeLessThan(SURFACES.length);
+  });
+
+  it("le refus PORTE son verbe, comme il porte son étiquette", () => {
+    const refusal = surfaceAccess("assets_sizes_and_formats", "starter");
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok || refusal.reason !== "payment_required") return;
+    expect(refusal.verb).toBe("come");
+    expect(`${refusal.label} ${refusal.verb} with`).toBe("Other sizes and formats come with");
+  });
+
+  it("et la phrase se lit, pour chacune des dix-neuf", () => {
+    for (const surface of SURFACES) {
+      const refusal = surfaceAccess(surface, null);
+      if (refusal.ok || refusal.reason !== "payment_required") continue;
+      /*
+       * L'accord lui-même est déjà cloué, surface par surface, dans
+       * `PLURAL_SUBJECTS` ci-dessus — une liste écrite à la main parce
+       * qu'aucune règle sur la CHAÎNE ne le donne : « Downloading your files
+       * comes with… » est correct et se termine par un `s`. Ici on vérifie
+       * seulement que la phrase se compose : une majuscule, le verbe au
+       * milieu, le nom vendu à la fin.
+       */
+      const sentence = `${refusal.label} ${refusal.verb} with Brand Kit Plus.`;
+      expect(sentence).toMatch(/^[A-Z].+ (come|comes) with Brand Kit Plus\.$/);
+    }
+  });
+
+  it("⚠ les trois constructeurs de phrase lisent le verbe du refus", () => {
+    /*
+     * Trois endroits bâtissent la même phrase. Deux qui s'accordent ne
+     * suffisent pas : c'est exactement comme ça qu'un « comes » en dur
+     * survivrait dans le troisième.
+     */
+    for (const file of SENTENCE_BUILDERS) {
+      const body = readFileSync(join(ROOT, file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      expect(body, `${file} n'utilise pas access.verb`).toContain("access.verb");
+      expect(body, `${file} garde un verbe en dur`).not.toMatch(/\bcomes with\b/);
+    }
+  });
+
+  it("une exemption périmée ne survit pas à sa surface", () => {
+    for (const surface of Object.keys(SURFACE_VERB)) {
+      expect(SURFACES as readonly string[]).toContain(surface);
+    }
   });
 });

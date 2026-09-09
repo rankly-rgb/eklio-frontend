@@ -64,7 +64,7 @@ export function TierUpgradePrompt({
       </MonoLabel>
 
       <p className="text-body leading-prose text-ink">
-        {access.label} comes with {requiredName}.
+        {access.label} {access.verb} with {requiredName}.
         {currentName ? ` You have ${currentName}.` : ""}
       </p>
 
