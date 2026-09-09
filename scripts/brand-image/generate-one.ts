@@ -16,6 +16,13 @@
  * it. Everything else about the pipeline is proved by tests against a stubbed
  * client, which spend nothing.
  *
+ * ── THE PREFLIGHT ───────────────────────────────────────────────────────
+ *
+ * It refuses to run at all from a checkout that is behind `origin/main`, that
+ * disagrees with it about `IMAGE_PROMPT_VERSION`, or that has uncommitted
+ * changes under `lib/images/` or `scripts/brand-image/` — and it names the
+ * command that fixes each. Always `git stash push`, never a discard.
+ *
  * ── THE GUARD ───────────────────────────────────────────────────────────
  *
  * It refuses more than one slot per run. There is no --all, no loop, no
@@ -55,8 +62,19 @@ import { generateBrandImage } from "../../lib/images/generate";
 import { loadImageContext } from "../../lib/images/context";
 import { loadBrandKit } from "../../lib/data/brand-kit";
 import { arg, die, loadEnvLocal, publishableKey, required } from "./shared";
+import { runPreflight } from "./preflight";
 
 async function main(): Promise<void> {
+  /*
+   * ⚠ BEFORE ANYTHING ELSE, INCLUDING READING THE ENVIRONMENT. A checkout
+   * behind `origin/main`, or one carrying uncommitted changes under
+   * `lib/images/`, generates against the wrong `IMAGE_PROMPT_VERSION` — and
+   * the wrong version means the wrong fingerprint, which means
+   * `already_ready` for an image the deployed code cannot see. Four rounds of
+   * this failed exactly that way. See `preflight.ts`.
+   */
+  runPreflight(die);
+
   loadEnvLocal();
 
   const kitId = arg("kit") ?? die("Pass --kit <brand_kit_id>.");
