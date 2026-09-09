@@ -1470,3 +1470,72 @@ Overview's `Status` tile, which had said "N assets need rebuilding" — a chore 
 - **`Assets ready` and `All assets (N)` are two different sets on purpose.** They are not a bug to reconcile.
 - **The rail holds no state.** `useState` in `kit-rail.tsx` is what the scroll-spy defect was.
 - **The site editor is at `/site-editor`.** `/site` is the section.
+
+---
+
+## 2026-09-09 — the meters, the image runbook, and the tier guard
+
+### Which report was right about the credits
+
+Two reports from this chantier contradicted each other. **Session 3 was right; the final report was half
+wrong.** Traced rather than remembered:
+
+- **Images already spent `plans.image_budget_cents`** and had since the backend migration of 6 September.
+  `lib/images/generate.ts` reserved through `reserve_image_regeneration` and never reached
+  `consume_generation_credit`. The final report's "nothing routes to `plans.image_budget_cents` yet" was
+  simply false.
+- **The Check rewrite really did spend the directions meter** — `app/api/check/rewrite/route.ts`, one
+  `consume_generation_credit` call on every rewrite that resolved. The final report was right about that
+  half, and it is the half that mattered: a brand regeneration, sold at 79–249 USD, charged for a text call
+  costing a fraction of a cent.
+
+### What each path spends now
+
+| path | meter |
+| --- | --- |
+| brand images (first seven AND regenerations) | `plans.image_budget_cents`, reserve → settle, in cents |
+| direction regeneration | `consume_generation_credit` — unchanged, and now its only caller |
+| Check rewrite | neither; a per-user daily count |
+
+Every image reserves now, not only a regeneration. The first seven "drew on nothing", which is true of the
+price and false of the accounting: it left the operator's GLOBAL daily ceiling as the only record of what a
+kit's photographs had cost. **The budgets were sized when only regenerations drew on them — see
+FINDINGS.md; Starter at 100 cents is the one worth re-deciding.**
+
+The Check rewrite is bounded by `consume_check_rewrite()`, twenty per user per UTC day, the number in
+`app_settings.check_rewrites_per_user_per_day` so it moves without a deploy. Counted BEFORE the call and
+regardless of outcome: a bound that only counts successes does not bound a script whose rewrites all fail.
+Refusal is 429 with `retry-after`, never 402 — nothing is for sale that lifts it.
+
+**Do not put this back.** `app/__tests__/meters-are-not-conflated.test.ts` walks every import chain from the
+four image entry points and fails if any reaches `consume_generation_credit`, if the reservation stops
+preceding the model call, if a failing exit stops releasing, or if any new file in `app/` or `lib/` starts
+spending the directions meter. That last assertion is a closed list of exactly one file. The monthly content
+generation — the next chantier — is precisely the path that must not join it.
+
+### The image run
+
+`scripts/brand-image/preflight.ts` refuses the run from a checkout that is behind `origin/main`, disagrees
+with it about `IMAGE_PROMPT_VERSION`, or has uncommitted changes under `lib/images/` or
+`scripts/brand-image/`. Four earlier rounds failed exactly there and reported `already_ready`, which is
+correct and unreadable. Every fix it prints is a `git stash push`; a test fails if a discard ever appears in
+one.
+
+Seven slots, roughly 41 cents at `IMAGE_PROMPT_VERSION` 7. The runbook is in the session report.
+
+### `min_tier`
+
+Inventory: `min_tier` is written in `asset_catalog` only — 35 rows, **all `starter`** — with a CHECK
+constraint over (`starter`, `practice`, `signature`) and no reader anywhere. The 39 USD/month subscription is
+NOT a tier: it is a `subscriptions` row answered by `isEntitledToMonthlyPresence`, and it stays out of this
+mechanism. Production holds **4 paid purchases, all `practice`, and 1 live paid kit** — so no grandfathering
+path is needed, and no Starter buyer exists to have received too much.
+
+Built: `lib/billing/surfaces.ts` (the map, 19 surfaces, **every row `starter`**) and
+`lib/billing/surface-access.ts` (the one guard, 404 before `payment_required`, unreadable tier fails closed).
+`components/billing/tier-upgrade-prompt.tsx` is the named upgrade path.
+
+**The permissive default is deliberate and it is a value in a file.** Do not "fix" it by guessing a
+distribution; do not treat it as the missing-policy kind of permissive this repo is otherwise full of. A test
+fails if a surface is added without a row, and another fails if a row is raised — so a distribution is a
+decision someone makes on purpose, one line at a time.

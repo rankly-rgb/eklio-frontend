@@ -363,3 +363,57 @@ replaced by what remains true. What follows is the residue, not the original lis
   still the right information — see the entry above about what `staleKeys` can say — but its container is
   now the odd one out, and folding it into the band would put a sentence among three numbers, which the
   no-aphorism ruling exists to prevent.
+
+---
+
+## Added while un-conflating the meters, hardening the image run, and building the tier guard
+
+- **The image budgets were sized for regenerations only, and every image now draws on them.** The brief
+  ruled that every generation and regeneration reserves against `plans.image_budget_cents`; before this
+  lot only regenerations did. The seeded budgets are 100 / 250 / 500 cents for starter / practice /
+  signature, and a full set of seven photographs costs roughly 41 cents. So a Starter kit now spends 41%
+  of its lifetime photograph budget on the set she was always going to get, leaving 59 cents — about two
+  hero regenerations at 25c, or a dozen textures at 5c. Practice and Signature are comfortable; **Starter
+  is not obviously right and nobody has decided it since the meaning of the number changed.** Resizing is
+  an `update public.plans` and no code, exactly as that table's own comment intends.
+
+- **A first generation that fails now costs a reservation round-trip it did not before.** Reserve, fail,
+  release — two extra RPCs on the unhappy path of the seven initial images. It is the price of the per-kit
+  accounting and it is small, but it is a real change to a path that used to be free of the budget
+  entirely.
+
+- **`reserve_image_regeneration` and `settle_image_regeneration` are now called for first generations
+  too, and their database names still say "regeneration".** The frontend wrappers were renamed
+  (`reserveImageSpend`, `settleImageSpend`, `getImageBudget`) because a money path whose local name
+  disagrees with what it does is precisely what produced two contradictory reports about which meter
+  images spend. The RPC names were left alone: renaming a live function is a migration and a redeploy for
+  a word. The mismatch is now documented at both ends rather than silent.
+
+- **The Check rewrite no longer refunds nothing, because it no longer charges anything.** It used to
+  consume a directions credit only when the rewrite *resolved* — Eklio ate the failures. The daily count
+  that replaces it is charged before the call and regardless of outcome, because a bound that only counts
+  successes does not bound a script whose rewrites all fail. The trade is deliberate: a failed rewrite
+  costs one of twenty rather than nothing. Worth revisiting only if twenty turns out to be tight, which
+  `app_settings` makes a one-row change.
+
+- **`brand_kit_has_generation_credit` has one caller fewer and may now have none that matter.** The Check
+  rewrite was using it as its advisory pre-check. It still exists and is still correct; whether anything
+  else needs it should be checked before someone assumes it is load-bearing.
+
+- **`min_tier` is enforced nowhere, and this lot did not change that — on purpose.** All 35 `asset_catalog`
+  rows say `starter`, and `SURFACE_MIN_TIER` (`lib/billing/surfaces.ts`) now says the same for all 19
+  product surfaces. The guard is built and every surface can consult it; **no surface consults it yet**,
+  because with every row permissive a call site would be nineteen no-op branches added to working code. The
+  guard, the map and the upgrade card are what the next decision needs, and the wiring is one line per
+  surface when there is a distribution to wire.
+
+- **Two tier vocabularies exist and they nearly agree.** `asset_catalog.min_tier` is per-catalogue-key
+  (35 rows, all `starter`), enforced by nothing; `SURFACE_MIN_TIER` is per product surface (19 rows, all
+  `starter`), enforced by `surfaceAccess`. They answer different questions — "may she have this FILE" and
+  "may she see this THING" — and both are currently permissive, so nothing disagrees. The day either moves,
+  someone has to decide whether a `practice`-only file inside a `starter` surface is coherent.
+
+- **The `plans` table has a fourth row, `free`, that is not a sold tier.** `KIT_TIERS` in the frontend is
+  three long (`starter`, `practice`, `signature`); `plans` also carries `free` with a zero price and one
+  regeneration. Nothing in this lot's guard can express `free`, and `parseKitTier` returns `null` for it —
+  which fails closed, correctly. Worth knowing before someone reads `plans` as the list of tiers.
