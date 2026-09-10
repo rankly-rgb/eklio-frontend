@@ -35,6 +35,15 @@ export const FIXTURE_MONTH: ContentMonthRecord = {
   month: "2026-10-01",
   themes: ["Going back to a routine", "Rest that is not a reward", "Asking for help"],
   status: "proposed",
+  /*
+   * The fixture models the production path: themes derived from her own
+   * check-in sentence, with that sentence kept beside them. `supplied` would
+   * have been the easier fixture and the wrong one — the review screen's job
+   * is partly to let her ask whether these three follow from what she said,
+   * and a fixture with no sentence cannot exercise that.
+   */
+  theme_source: "derived_check_in",
+  theme_source_text: "Burnout, mostly. A lot of people going back to work after the summer.",
   created_at: "2026-09-28T09:00:00Z",
 };
 

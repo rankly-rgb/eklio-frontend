@@ -50,6 +50,16 @@ describe("the call ceiling", () => {
     expect(model.label).toBe(STUB_LABEL);
   });
 
+  it("⚠ counts the fifth method too, which is what wrapping the seam buys", async () => {
+    // The wrapper enumerates ContentModel exhaustively: `writeThemes` was added
+    // after the ceiling existed, and it could not typecheck until it was
+    // counted. This asserts it is not merely present but metered.
+    const { model, ledger } = withCallCeiling(stubContentModel(), 1);
+    await model.writeThemes({ sessionsTheme: "x" } as never);
+    expect(ledger.calls).toEqual(["themes:check_in"]);
+    await expect(model.writeThemes({} as never)).rejects.toBeInstanceOf(CeilingReachedError);
+  });
+
   it("counts every call and reports what is left", async () => {
     const { model, ledger } = withCallCeiling(stubContentModel(), 100);
     await generateMonth(input({ model }));

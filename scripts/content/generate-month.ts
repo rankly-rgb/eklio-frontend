@@ -5,18 +5,29 @@
  * whole output printed for `WEEKEND_REVIEW.md`.
  *
  *   npx tsx scripts/content/generate-month.ts \
- *     --kit <uuid> --month 2026-10 \
- *     --themes "going back to a routine,rest,asking for help" \
- *     --confirm
+ *     --kit <uuid> --month 2026-10 --no-grounds --confirm
  *
- * ── WHY IT ASKS FOR THE THEMES ──────────────────────────────────────────
+ * ── THE THEMES ARE DERIVED. THAT IS THE DEFAULT AND THE PRODUCT ─────────
  *
- * Because nothing in this codebase can honestly choose them yet. Three themes
- * is the ruled shape; WHICH three is the judgement that has to be made once by
- * a person who has read a real month, and the monthly cron says the same thing
- * (it answers 501 rather than guessing). A script that invented them here
- * would put the guess behind a command line instead of behind a flag, which is
- * not an improvement.
+ * ⚠ IN PRODUCTION A THERAPIST NEVER TYPES THREE THEMES. If she had to, the
+ * sixty-second promise would be gone and the monthly check-in would exist for
+ * nothing. Run without `--themes` and the three come from her check-in's own
+ * free-text answer — "what has been coming up in your sessions this month" —
+ * or, when she did not answer, from the brief and the calendar alone. An
+ * unanswered check-in never blocks a month.
+ *
+ * `--themes "a,b,c"` remains, as a HARNESS AFFORDANCE for testing. A run that
+ * uses it stamps `theme_source = 'supplied'` on the month, so nobody can later
+ * read a hand-typed run as evidence that the derivation works. The report says
+ * so in bold too.
+ *
+ * ── WORDS FIRST ─────────────────────────────────────────────────────────
+ *
+ * `--no-grounds` runs the whole month on `ANTHROPIC_API_KEY` alone: every line,
+ * every caption, every alt text, with nothing reserved and nothing spent
+ * against her monthly image allowance. Words are the thing to read first — the
+ * register, the safety, whether it sounds like a person. Photographs are a
+ * separate question and they can wait.
  *
  * ── WHAT IT REFUSES ─────────────────────────────────────────────────────
  *
@@ -79,23 +90,27 @@ async function main() {
   if (!monthArg || !/^\d{4}-\d{2}$/.test(monthArg)) fail("--month YYYY-MM is required.");
   const month = `${monthArg}-01`;
 
-  const themes = (themesArg ?? "")
-    .split(",")
-    .map((theme) => theme.trim())
-    .filter(Boolean);
-  if (themes.length !== 3) {
-    fail(
-      "--themes needs exactly three, comma separated.\n" +
-        "  Three is the ruled shape; which three is a judgement nothing here can\n" +
-        "  make yet. Read the kit's check-in for this month and choose from it."
-    );
+  /*
+   * ⚠ AN OVERRIDE, NOT THE PATH. Absent, the run DERIVES the three themes from
+   * her check-in's own sentence — which is what production does, and the only
+   * version compatible with "sixty seconds a month". Present, the month is
+   * stamped `supplied` in the database so nobody can later read this run as
+   * evidence the derivation works.
+   */
+  const overrideThemes = themesArg
+    ? themesArg.split(",").map((theme) => theme.trim()).filter(Boolean)
+    : undefined;
+  if (overrideThemes && overrideThemes.length !== 3) {
+    fail("--themes, when given, needs exactly three, comma separated.");
   }
 
   if (!has("confirm")) {
     fail(
       "Refusing without --confirm.\n" +
-        `  This writes a month for kit ${kitId}: up to ${maxCalls} model calls and\n` +
-        `  three photographs at ${GROUND_COST_CENTS}c each against her monthly allowance.`
+        `  This writes a month for kit ${kitId}: up to ${maxCalls} model calls` +
+        (has("no-grounds") || !process.env.OPENAI_API_KEY
+          ? ", and no photographs."
+          : `, and three photographs at ${GROUND_COST_CENTS}c each against her monthly allowance.`)
     );
   }
 
@@ -106,7 +121,14 @@ async function main() {
   if (!process.env.ANTHROPIC_API_KEY) {
     fail("ANTHROPIC_API_KEY is not set. Text is Anthropic; images are OpenAI. See CHANTIER_LOG.md.");
   }
-  const drawGrounds = Boolean(process.env.OPENAI_API_KEY);
+  /*
+   * ⚠ WORDS FIRST, PHOTOGRAPHS LATER, AND THAT IS A REAL SETTING.
+   * `--no-grounds` runs the whole month on `ANTHROPIC_API_KEY` alone: every
+   * line, every caption, every alt text, nothing reserved and nothing spent.
+   * Without an image key it is the only thing that can happen anyway, so the
+   * flag exists to make it a choice rather than an accident.
+   */
+  const drawGrounds = Boolean(process.env.OPENAI_API_KEY) && !has("no-grounds");
 
   const admin = createClient<Database>(url, serviceKey, {
     auth: { persistSession: false },
@@ -192,17 +214,25 @@ async function main() {
   );
 
   console.error(`\n▸ kit ${kitId} · ${month} · cadence ${preferences.cadence_per_week}`);
-  console.error(`▸ themes: ${themes.join(" / ")}`);
+  console.error(`▸ themes: ${overrideThemes ? "SUPPLIED (--themes)" : "derived from her check-in"}`);
   console.error(`▸ ceiling: ${maxCalls} model calls`);
-  console.error(`▸ grounds: ${drawGrounds ? "yes" : "SKIPPED (no OPENAI_API_KEY)"}\n`);
+  console.error(
+    `▸ grounds: ${
+      drawGrounds
+        ? "yes"
+        : has("no-grounds")
+          ? "SKIPPED (--no-grounds)"
+          : "SKIPPED (no OPENAI_API_KEY)"
+    }\n`
+  );
 
-  let generated;
+  let outcome;
   try {
-    generated = await runMonthForKit({
+    outcome = await runMonthForKit({
       admin,
       brandKitId: kitId,
       month,
-      themes,
+      overrideThemes,
       preferences,
       checkin,
       safetyRules,
@@ -220,7 +250,8 @@ async function main() {
     throw error;
   }
 
-  const persisted = await persistGeneratedMonth(admin, kitId, month, generated);
+  const { generated, themes } = outcome;
+  const persisted = await persistGeneratedMonth(admin, kitId, month, outcome);
 
   /* ── The report, in the order the review asks for it ─────────────────── */
   const { data: allowance } = await admin.rpc("get_content_image_allowance", {
@@ -232,6 +263,22 @@ async function main() {
   out.push(`## THE GATE — ${month}, kit \`${kitId}\``);
   out.push("");
   out.push(`Written by \`${generated.generatedBy}\`. ${ledger.calls.length} model calls of ${maxCalls}.`);
+  out.push("");
+
+  out.push("### 0. The three themes, and where they came from");
+  out.push("");
+  const SOURCE_LABEL: Record<string, string> = {
+    derived_check_in: "**Derived** from her own check-in sentence.",
+    derived_brief: "**Derived** from the brief and the calendar — she did not answer this month's check-in.",
+    supplied: "⚠ **SUPPLIED by hand** (`--themes`). This run is NOT evidence that the derivation works.",
+  };
+  out.push(SOURCE_LABEL[themes.source]);
+  out.push("");
+  if (themes.sourceText) {
+    out.push("> " + themes.sourceText.split("\n").join("\n> "));
+    out.push("");
+  }
+  for (const theme of themes.themes) out.push(`- ${theme}`);
   out.push("");
 
   out.push("### 1. The twelve on-image lines");
@@ -266,6 +313,14 @@ async function main() {
 
   out.push("### 4. Grounds and composed posts, by storage path");
   out.push("");
+  if (!drawGrounds) {
+    out.push(
+      "**No photographs were drawn on this run**, deliberately. Nothing was reserved " +
+        "and nothing was spent against the monthly allowance; every post below is " +
+        "typographic and its `groundPath` is null."
+    );
+    out.push("");
+  }
   for (const ground of generated.grounds) {
     out.push(`- **${ground.theme}** — \`${ground.storagePath ?? "(none)"}\` · ${ground.state} · ${ground.costCents}c`);
   }

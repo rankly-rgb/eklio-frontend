@@ -411,9 +411,21 @@ npx tsx scripts/content/generate-month.ts \
   --confirm
 ```
 
-**It asks you for the three themes**, and that is deliberate. Three is the ruled shape;
-*which* three is the judgement nothing in the codebase can make honestly until a real month
-has been read. The cron says the same thing by answering 501 rather than guessing.
+**It derives the three themes. You do not type them.** You were right that `--themes` was a
+harness affordance wearing the product's clothes — in production a therapist never types
+three themes, and if she had to, the sixty-second promise would be gone and the check-in
+would exist for nothing.
+
+The default path now reads her check-in's own free-text answer. When she did not answer it
+falls back to the brief and the calendar, and the prompt is explicit that it must **not
+invent anything about her caseload** — a theme that pretended to know would be a claim
+about clients nobody made. Either way a month arrives, which is what the card on her
+calendar promises.
+
+`--themes` survives as an override, and a run that uses it stamps
+`theme_source = 'supplied'` on the month. The database refuses a month that has themes and
+no source, so a hand-typed run can never be read later as evidence the derivation works —
+and the report says so in bold at the top.
 
 **Its refusal ladder, each rung tested by running it:**
 
@@ -423,7 +435,18 @@ has been read. The cron says the same thing by answering 501 rather than guessin
 | not exactly three themes | three is the shape; the choice is yours |
 | a kit that already has that month | one month, ever, until you have read it |
 | a missing `ANTHROPIC_API_KEY` | checked up front, not on the first call |
+| themes it cannot use | a post shape returned as a subject, two the same, one too long for the column, or one that trips the ethics scanner |
 | the ceiling | **checked in front of every call, never after** |
+
+That fourth row is worth a sentence. A theme is not published text, which is exactly why
+it is easy to forget to check — but it steers twelve captions and three photographs.
+"Healing your anxiety for good" as a theme produces twelve posts the guard then has to
+catch one at a time, and some of them it will not. And asked for "themes" right after being
+handed the register vocabulary, a model hands the vocabulary back: a month whose three
+themes are `statement`, `question` and `notes` reads as three photographs of nothing. Both
+are refused by name, with the reason quoted back on the retry. After three attempts the
+month **fails** rather than falling back to three invented ones — a failed month is
+recoverable, a plausible wrong one is not.
 
 The ceiling counts **calls, not tokens**: token spend is only knowable once a response comes
 back, so a token ceiling can only ever report that it was crossed. 60 by default — 36 is a
@@ -431,10 +454,21 @@ clean twelve-post month, and the slack is the guard's rewrites. A test proves th
 never reached on the call that would cross the line, and that a ceiling hit during the copy
 costs nothing at all, because the photographs are drawn only after every text is clean.
 
-**Without `OPENAI_API_KEY` it still runs** and reports `grounds: SKIPPED`. That is an
-explicit branch, not a degradation: no reservation, no spend, `groundPath: null` on every
-post, and the image client is constructed lazily so a missing key can never surface *after*
-thirty-six paid-for model calls.
+**`--no-grounds` is now a choice, not just what happens without an image key.** It runs the
+whole month on `ANTHROPIC_API_KEY` alone: every line, every caption, every alt text, with
+nothing reserved and nothing spent against her monthly allowance. The report says so in
+place of the grounds section rather than leaving a blank one.
+
+### What runs the moment the key lands
+
+```
+npx tsx scripts/content/generate-month.ts \
+  --kit <uuid> --month <YYYY-MM> --no-grounds --confirm
+```
+
+Words only, themes derived from the kit's real check-in, the sentence they came from
+printed beside them. Then the adversarial batch, also words only. Both land here in full.
+**No ground will be drawn.**
 
 **What lands in this file when it finishes**, in this order:
 
@@ -500,3 +534,10 @@ Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
   `lib/content/generate/run.ts` fills every port of the pipeline with the real thing — the
   allowance RPCs, the image client, storage, and the persistence that writes the month, its
   grounds and its posts as `proposed`. Suite 2,073 green.
+- **Session 5, the themes derive themselves —** `--themes` was a harness affordance wearing
+  the product's clothes; the default path now reads her check-in's own sentence, or the
+  brief and the calendar when she did not answer. Backend `20260910144421` adds
+  `theme_source` and `theme_source_text`, with a CHECK that a month **with** themes must
+  carry a source — so a hand-typed run cannot pass for a derived one. The review screen
+  quotes her sentence back above the plan, which is the only honest way to show that the
+  minute she spent on the check-in did something. Suite 2,102 green.

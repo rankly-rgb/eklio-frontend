@@ -74,6 +74,10 @@ export function withCallCeiling(
     ledger,
     model: {
       label: model.label,
+      async writeThemes(request) {
+        admit(`themes:${request.sessionsTheme ? "check_in" : "brief"}`);
+        return model.writeThemes(request);
+      },
       async writeOnImageLine(request) {
         admit(`on_image_line:${request.register}`);
         return model.writeOnImageLine(request);

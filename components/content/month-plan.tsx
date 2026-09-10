@@ -118,6 +118,29 @@ export function MonthPlan({
         <p className="text-[11px] uppercase tracking-[0.08em] text-ink-3">
           Written by {generatedBy ?? "an earlier version of Eklio"}
         </p>
+
+        {/*
+          ── WHERE THE THEMES CAME FROM, SHOWN TO HER ──────────────────────
+          She is being asked whether a month sounds like her practice. Half of
+          that question is whether its three themes follow from what she
+          actually said — and she cannot answer it without seeing the sentence
+          they came from. Quoting it back is also the only honest way to show
+          that the minute she spent on the check-in did something.
+        */}
+        {record.theme_source_text ? (
+          <blockquote className="mt-2 border-l-2 border-line pl-4 text-helper leading-prose text-ink-2">
+            <p>
+              Written around what you told us was coming up in your sessions:
+            </p>
+            <p className="mt-1 italic text-ink">“{record.theme_source_text}”</p>
+          </blockquote>
+        ) : record.theme_source === "derived_brief" ? (
+          <p className="mt-2 text-helper leading-prose text-ink-2">
+            You didn&apos;t fill in this month&apos;s check-in, so this was written
+            from your brief and the time of year. A minute next month makes it
+            sound more like this month than any other.
+          </p>
+        ) : null}
       </header>
 
       {byTheme.map(({ theme, posts }) => (

@@ -49,6 +49,19 @@ export const STUB_UNETHICAL_LINE =
 export const STUB_REWRITTEN_LINE =
   "We work with anxiety at a pace that you set, week by week.";
 
+/*
+ * Three themes in the shape a derivation would produce: subjects a person is
+ * living through, not post shapes. Fixtures, like everything else here.
+ */
+const THEMES = [
+  "Going back to a routine",
+  "Rest that is not a reward",
+  "Asking for help",
+];
+
+/** A theme set that breaks the rules on purpose, for the validator's test. */
+export const STUB_BAD_THEMES = ["reflective_question", "statement", "notes"];
+
 export type StubOptions = {
   /**
    * Themes whose FIRST line should trip the ethics scanner. Steering is by
@@ -61,6 +74,12 @@ export type StubOptions = {
   overrunOnTheme?: string[];
   /** Every call, in order, so a test can assert the ORDER of the six steps. */
   calls?: string[];
+  /**
+   * Make the FIRST theme derivation return post shapes instead of subjects —
+   * the mistake a real model actually makes when it has just been handed the
+   * register vocabulary.
+   */
+  badThemesFirst?: boolean;
 };
 
 /**
@@ -81,6 +100,13 @@ export function stubContentModel(options: StubOptions = {}): ContentModel {
 
   return {
     label: STUB_LABEL,
+
+    async writeThemes(request) {
+      const attempt = attemptOf("themes");
+      record(`themes:${request.sessionsTheme ? "check_in" : "brief"}:${attempt}`);
+      if (attempt === 1 && options.badThemesFirst) return STUB_BAD_THEMES;
+      return THEMES;
+    },
 
     async writeOnImageLine(request) {
       const attempt = attemptOf(`line:${request.theme}:${request.archetype}`);

@@ -9,6 +9,7 @@ import type {
   TakingClients,
 } from "@/lib/data/content";
 import { ARCHETYPE_FLOOR, ON_IMAGE_MAX_WORDS, ON_IMAGE_MIN_WORDS } from "./capacity";
+import { parseThemeLines, themesPrompt, type ThemesRequest } from "./themes";
 
 /*
  * ── ONE SEAM, AND EVERYTHING ELSE IS PURE ───────────────────────────────
@@ -88,6 +89,12 @@ export type RewriteRequest = {
  */
 export type ContentModel = {
   readonly label: string;
+  /*
+   * ⚠ THE MONTH'S THREE THEMES, DERIVED. In production she never types them —
+   * the check-in's free-text answer is what this reads. See `themes.ts` for
+   * why an unanswered check-in still produces a month.
+   */
+  writeThemes(request: ThemesRequest): Promise<string[]>;
   writeOnImageLine(request: OnImageRequest): Promise<string>;
   writeCaption(request: CaptionRequest): Promise<string>;
   writeAltText(request: AltTextRequest): Promise<string>;
@@ -200,6 +207,8 @@ export function anthropicContentModel(rules: EthicsRule[]): ContentModel {
   const system = contentSystemPrompt(rules);
   return {
     label: GENERATION_MODEL,
+    writeThemes: async (request) =>
+      parseThemeLines(await oneLine(system, themesPrompt(request), 300)),
     writeOnImageLine: (request) => oneLine(system, onImagePrompt(request), 400),
     writeCaption: (request) => oneLine(system, captionPrompt(request), 1500),
     writeAltText: (request) => oneLine(system, altTextPrompt(request), 400),

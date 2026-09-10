@@ -11,6 +11,7 @@ import type {
   ContentRegister,
 } from "@/lib/data/content";
 import { buildGroundPrompt } from "./ground";
+import { deriveThemes, suppliedThemes, type DerivedThemes } from "./themes";
 import { anthropicContentModel, type ContentModel } from "./model";
 import { PHOTOGRAPHIC_ARCHETYPES } from "./plan";
 import {
@@ -200,7 +201,18 @@ export type RunMonthInput = {
   brandKitId: string;
   /** YYYY-MM-01. */
   month: string;
-  themes: readonly string[];
+  /*
+   * ⚠ ABSENT IS THE PRODUCTION PATH. Leave it out and the three themes are
+   * DERIVED from her check-in's own sentence, or from the brief and the
+   * calendar when she did not answer. In production a therapist never types
+   * three themes; if she had to, the sixty-second promise would be gone and
+   * the check-in would exist for nothing.
+   *
+   * Passing it is a harness affordance — the generator script's `--themes`
+   * override — and the month is stamped `supplied` so a test run can never
+   * later be read as evidence the derivation works.
+   */
+  overrideThemes?: string[];
   preferences: ContentPreferences;
   checkin: ContentCheckin | null;
   safetyRules: Record<ContentRegister, string>;
@@ -213,19 +225,39 @@ export type RunMonthInput = {
   drawGrounds?: boolean;
 };
 
-export async function runMonthForKit(input: RunMonthInput): Promise<GeneratedMonth> {
-  const monthKey = input.month.slice(0, 7);
+export type RunOutcome = {
+  generated: GeneratedMonth;
+  /** Where the three themes came from, and the sentence they came from. */
+  themes: DerivedThemes;
+};
 
-  return generateMonth({
+export async function runMonthForKit(input: RunMonthInput): Promise<RunOutcome> {
+  const monthKey = input.month.slice(0, 7);
+  const model = input.model ?? anthropicContentModel(input.rules);
+
+  /*
+   * Step 0, and it is a model call like the others: it goes through the same
+   * seam, so the ceiling counts it and a stub can serve it.
+   */
+  const themes = input.overrideThemes
+    ? suppliedThemes(input.overrideThemes)
+    : await deriveThemes(model, {
+        month: monthKey,
+        checkin: input.checkin,
+        briefContext: input.context,
+        offLimits: input.preferences.off_limits,
+      });
+
+  const generated = await generateMonth({
     month: monthKey,
-    themes: input.themes,
+    themes: themes.themes,
     cadence: input.preferences.cadence_per_week as ContentCadence,
     acceptedRegisters: input.preferences.accepted_registers,
     safetyRules: input.safetyRules,
     takingClients: input.checkin?.taking_clients ?? null,
     context: input.context,
     rules: input.rules,
-    model: input.model ?? anthropicContentModel(input.rules),
+    model,
     allowance: contentAllowancePort(input.admin, input.brandKitId, input.month),
     drawGround: contentGroundDrawer(input.admin, input.brandKitId, input.month),
     groundPrompt: (theme) =>
@@ -239,6 +271,8 @@ export async function runMonthForKit(input: RunMonthInput): Promise<GeneratedMon
     drawGrounds: input.drawGrounds,
     compose: composeFromGround,
   });
+
+  return { generated, themes };
 }
 
 /* ── Persistence ───────────────────────────────────────────────────────── */
@@ -259,8 +293,10 @@ export async function persistGeneratedMonth(
   admin: Admin,
   brandKitId: string,
   month: string,
-  generated: GeneratedMonth
+  outcome: RunOutcome
 ): Promise<{ monthId: string; items: number }> {
+  const { generated, themes } = outcome;
+
   const { data: monthRow, error: monthError } = await admin
     .from("content_months")
     .insert({
@@ -268,6 +304,14 @@ export async function persistGeneratedMonth(
       month,
       themes: generated.themes,
       status: "proposed",
+      /*
+       * ⚠ WRITTEN EVERY TIME, and the database refuses a month with themes
+       * and no source. Without it a hand-typed `--themes` run is byte-identical
+       * to a derived one, and six weeks later somebody reads the first as proof
+       * the second works.
+       */
+      theme_source: themes.source,
+      theme_source_text: themes.sourceText,
     })
     .select("id")
     .single();

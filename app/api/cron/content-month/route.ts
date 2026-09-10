@@ -50,26 +50,31 @@ export async function GET(request: Request) {
   }
 
   /*
-   * ⚠ DELIBERATELY NOT IMPLEMENTED BEHIND AN ARMED FLAG.
+   * ⚠ THE THEMES ARE NO LONGER THE MISSING PIECE. `deriveThemes` reads her
+   * check-in's own free-text answer, or the brief and the calendar when she did
+   * not answer, and `runMonthForKit` calls it by default — in production a
+   * therapist never types three themes, and if she had to, the sixty-second
+   * promise would be gone.
    *
-   * The enumeration — who is subscribed, who has preferences, who is missing a
-   * month — is the easy half. The half that is NOT written is the one that
-   * decides the three themes, and it cannot be written honestly until a real
-   * month has been generated and read (the Session 3 gate, still blocked on a
-   * model key). Shipping a guess at it behind a flag someone might flip is
-   * worse than shipping nothing: the flag would then be the only thing between
-   * a customer and twelve posts nobody has ever seen the like of.
+   * What is still not written here is the ENUMERATION: which subscribers are
+   * due, in what order, with what rate limit, and what happens to a kit whose
+   * month fails halfway. That is a scheduling question, and it waits on the
+   * first generated month being read — because whether this should run at all
+   * is a decision that follows from reading one, not from writing more code.
    *
-   * So the flag exists, the locks exist, the route exists — and arming it
-   * today gets an honest 501 rather than a month written blind.
+   * So the flag exists, the locks exist, the route exists, and the generator
+   * behind it is finished and tested. Arming it today gets an honest 501
+   * rather than a sweep nobody has decided the shape of.
    */
   return NextResponse.json(
     {
       armed: true,
       generated: 0,
       reason:
-        "Theme selection is not written yet. It waits on the first generated " +
-        "month being read. Nothing was generated and nothing was spent.",
+        "The generator is written and the themes are derived, but the monthly " +
+        "sweep is not: which subscribers are due, in what order, and what " +
+        "happens to a kit whose month fails halfway. That waits on the first " +
+        "generated month being read. Nothing was generated and nothing was spent.",
     },
     { status: 501 }
   );

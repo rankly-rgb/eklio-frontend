@@ -700,12 +700,26 @@ export const CONTENT_MONTH_STATUSES = [
 ] as const;
 export type ContentMonthStatus = (typeof CONTENT_MONTH_STATUSES)[number];
 
+/*
+ * ⚠ WHERE THE THREE THEMES CAME FROM. In production she never types them: they
+ * are derived from her check-in's own sentence, or from the brief and the
+ * calendar when she did not answer. `supplied` means a human passed them to
+ * the generator script — never a production path, and recorded so a test run
+ * can never be read later as evidence the derivation works.
+ */
+export const THEME_SOURCES = ["derived_check_in", "derived_brief", "supplied"] as const;
+export type ThemeSourceCode = (typeof THEME_SOURCES)[number];
+
 export const contentMonthRecordSchema = z.object({
   id: z.string(),
   brand_kit_id: z.string(),
   month: z.string(),
   themes: z.array(z.string()),
   status: z.enum(CONTENT_MONTH_STATUSES),
+  /** Null only while a month is queued and has no themes yet. */
+  theme_source: z.enum(THEME_SOURCES).nullable(),
+  /** Her sentence, verbatim. Null unless `theme_source` is `derived_check_in`. */
+  theme_source_text: z.string().nullable(),
   created_at: z.string(),
 });
 export type ContentMonthRecord = z.infer<typeof contentMonthRecordSchema>;
@@ -727,7 +741,7 @@ export async function getContentMonthRecord(
 ): Promise<ContentMonthRecord | null> {
   const { data, error } = await supabase
     .from("content_months")
-    .select("id, brand_kit_id, month, themes, status, created_at")
+    .select("id, brand_kit_id, month, themes, status, theme_source, theme_source_text, created_at")
     .eq("brand_kit_id", brandKitId)
     .eq("month", month)
     .maybeSingle();
