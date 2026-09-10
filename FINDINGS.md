@@ -696,3 +696,8 @@ replaced by what remains true. What follows is the residue, not the original lis
   `OPENAI_API_KEY` in this environment, and no `.env.local`.** So captions cannot be generated here even
   though the network would allow it, and grounds cannot be generated at all. The Session 3 gate is not
   executable from this environment.
+
+- **The tier-name sweep was narrower than its brief.** `tier-names-in-metadata.test.ts`
+  walks `app/` and checks metadata only, so `lib/billing/plans.ts` shipped "Everything in
+  Starter" and "Everything in Practice" as visible bullets on `/pricing`. Found by the
+  acquisition walk; see `ACQUISITION_WALK.md` §5.1. Not fixed here — Session 1 is report-only.
