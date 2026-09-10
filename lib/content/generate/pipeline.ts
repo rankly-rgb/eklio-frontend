@@ -49,6 +49,12 @@ export type GroundRequest = {
 
 export type GroundResult = {
   storagePath: string;
+  /*
+   * The identity of the brief that produced it. Carried back out so the row
+   * and the file agree: recomputing it at persistence time from a different
+   * input is how a stored fingerprint stops matching the path it names.
+   */
+  fingerprint: string;
   /** What the photograph shows, in a sentence. Feeds step 6. */
   description: string;
   /** What it really cost, if that differs from the estimate. */
@@ -111,6 +117,7 @@ export type GeneratedPost = {
 export type GeneratedGround = {
   theme: string;
   storagePath: string | null;
+  fingerprint: string | null;
   costCents: number;
   state: "settled" | "released";
 };
@@ -208,6 +215,7 @@ export async function generateMonth(input: GenerateMonthInput): Promise<Generate
       grounds.push({
         theme,
         storagePath: result.storagePath,
+        fingerprint: result.fingerprint,
         costCents: result.costCents,
         state: "settled",
       });
@@ -219,7 +227,7 @@ export async function generateMonth(input: GenerateMonthInput): Promise<Generate
        * for it, and nothing later releases it.
        */
       await input.allowance.settle(input.groundCostCents, false);
-      grounds.push({ theme, storagePath: null, costCents: 0, state: "released" });
+      grounds.push({ theme, storagePath: null, fingerprint: null, costCents: 0, state: "released" });
       throw error;
     }
   }

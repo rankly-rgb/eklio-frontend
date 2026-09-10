@@ -92,6 +92,7 @@ function input(overrides: Partial<GenerateMonthInput> = {}): GenerateMonthInput 
       }),
     drawGround: async ({ theme }) => ({
       storagePath: `fixtures/${theme.replace(/\s+/g, "-")}.webp`,
+      fingerprint: `fixture-${theme.replace(/\s+/g, "-")}`,
       description: `A quiet interior standing for ${theme}.`,
       costCents: 5,
     }),

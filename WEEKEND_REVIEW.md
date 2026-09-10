@@ -351,6 +351,44 @@ Two things worth your eye on Saturday:
 
 ---
 
+## THE SWITCH, AND WHERE IT IS
+
+You asked for the cron shipped disarmed with the switch location recorded. Here it is.
+
+**Two locks, and both must be opened.** They are in `lib/content/generate/armed.ts`, with
+the reasoning:
+
+1. **`vercel.json` does not list `/api/cron/content-month`.** Nothing calls it on a
+   schedule. A test reads that file and fails if the path appears.
+2. **`CONTENT_GENERATION_ARMED` must be exactly the string `"true"`.** Documented in
+   `.env.example`. Any other value is off — `"false"`, `"0"`, `"no"`, `"TRUE"`, unset. A
+   flag read as "truthy" would arm on the string `"false"`, which is the likeliest way this
+   gets switched on by accident: by someone writing the variable to turn it off.
+
+Two rather than one because they fail differently. A schedule can be added by someone
+reading `vercel.json` as configuration; the variable has to be set by someone who went
+looking for that comment.
+
+**Armed today, it still generates nothing** and answers 501 saying why: choosing the three
+themes is the one piece that cannot be written honestly until a real month has been
+generated and read. Shipping a guess at it behind a flag someone might flip is worse than
+shipping nothing — the flag would be the only thing between a customer and twelve posts
+nobody has ever seen the like of.
+
+**The first month at purchase is wired the same way.** `customer.subscription.created`
+with a live subscription (`active` **or** `trialing` — the three included months *are* a
+90-day trial, and waiting for it to end would bill her three times before she saw
+anything) calls `queueFirstContentMonth`. That function writes a `content_months` row in
+`generating`, keyed uniquely on `(kit, month)` so a Stripe replay is refused by the
+database rather than by a flag.
+
+**And it writes nothing while the generator is disarmed** — the same switch. A `generating`
+row nobody comes to collect is a screen that says "Eklio is writing your month" forever, to
+someone who has just paid. A test asserts no row is written in that state; another asserts
+a failing queue can never fail the payment event.
+
+---
+
 ## Work log for the weekend
 
 Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
@@ -394,3 +432,9 @@ Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
   is held to, so the screen cannot promise one thing while the prompt asks another. All six
   on by default: an empty month is the failure this chantier exists to end, and the
   generator refuses to run with no accepted register at all. Suite 2,045 green.
+- **Session 5, the cron and the purchase wiring —** `/api/cron/content-month` written and
+  shipped disarmed behind two locks (see above); `queueFirstContentMonth` called from the
+  subscription webhook, silent while disarmed, and unable to fail a payment event.
+  `lib/content/generate/run.ts` fills every port of the pipeline with the real thing — the
+  allowance RPCs, the image client, storage, and the persistence that writes the month, its
+  grounds and its posts as `proposed`. Suite 2,073 green.

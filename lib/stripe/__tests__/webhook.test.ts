@@ -37,6 +37,8 @@ type Recorded = {
   allowances: { projectId: string | null; tier: string; stripeEventId: string }[];
   /** Les demandes de trois mois offerts, dans l'ordre. */
   included: { customerId: string; checkoutSessionId: string }[];
+  /** Les mises en file du premier mois de contenu, dans l'ordre. */
+  queued: string[];
 };
 
 /**
@@ -66,6 +68,7 @@ function makePorts(
     transitions: [],
     allowances: [],
     included: [],
+    queued: [],
   };
 
   const ports: WebhookPorts = {
@@ -132,6 +135,9 @@ function makePorts(
       return null;
     },
     ...overrides,
+    async queueFirstContentMonth({ userId }) {
+      recorded.queued.push(userId);
+    },
   };
 
   return { ports, recorded, purchase };
@@ -1396,5 +1402,86 @@ describe("les trois mois inclus", () => {
     await processStripeEvent(ports, signatureSession());
 
     expect(recorded.subscriptions[0].trialEnd).toBeNull();
+  });
+});
+
+/*
+ * ── LE PREMIER MOIS DE CONTENU, MIS EN FILE À L'ABONNEMENT ──────────────
+ *
+ * Le webhook ne GÉNÈRE rien : écrire un mois prend des minutes, Stripe accorde
+ * des secondes. Il pose une intention, et le cron mensuel la ramasse. Ce qui
+ * est testé ici, c'est QUAND l'intention est posée — et surtout quand elle ne
+ * l'est pas.
+ */
+describe("le premier mois de contenu", () => {
+  it("est mis en file à la CRÉATION d'un abonnement vivant", async () => {
+    const { ports, recorded } = makePorts();
+    await processStripeEvent(
+      ports,
+      subscriptionEvent("customer.subscription.created", stripeSubscription(), "evt_q1")
+    );
+    expect(recorded.queued).toEqual([USER]);
+  });
+
+  it("l'est aussi pendant l'essai, parce que les trois mois offerts EN SONT un", async () => {
+    // Attendre la fin de l'essai lui ferait payer trois mois avant d'avoir
+    // rien vu : l'essai de 90 jours EST Practice Suite.
+    const { ports, recorded } = makePorts();
+    await processStripeEvent(
+      ports,
+      subscriptionEvent(
+        "customer.subscription.created",
+        stripeSubscription({ status: "trialing" }),
+        "evt_q2"
+      )
+    );
+    expect(recorded.queued).toEqual([USER]);
+  });
+
+  it("ne l'est PAS sur une mise à jour", async () => {
+    // Stripe émet `updated` pour tout — un changement de carte, une relance,
+    // une remise. Une file relancée à chaque fois serait une file par event.
+    const { ports, recorded } = makePorts();
+    await processStripeEvent(
+      ports,
+      subscriptionEvent("customer.subscription.updated", stripeSubscription(), "evt_q3")
+    );
+    expect(recorded.queued).toEqual([]);
+  });
+
+  it("ne l'est PAS sur une résiliation, ni sur un abonnement mort", async () => {
+    const { ports, recorded } = makePorts();
+    await processStripeEvent(
+      ports,
+      subscriptionEvent("customer.subscription.deleted", stripeSubscription(), "evt_q4")
+    );
+    await processStripeEvent(
+      ports,
+      subscriptionEvent(
+        "customer.subscription.created",
+        stripeSubscription({ status: "incomplete" }),
+        "evt_q5"
+      )
+    );
+    expect(recorded.queued).toEqual([]);
+  });
+
+  it("⚠ ne fait PAS échouer l'event quand la file tombe", async () => {
+    // Le droit est acquis dès que la ligne d'abonnement est écrite. La file
+    // n'est qu'une commodité, et elle n'a pas le droit de faire rejouer un
+    // event de paiement — ni pire, de laisser un abonnement non enregistré.
+    const { ports, recorded } = makePorts({
+      async queueFirstContentMonth() {
+        throw new Error("la file est tombée");
+      },
+    });
+
+    const outcome = await processStripeEvent(
+      ports,
+      subscriptionEvent("customer.subscription.created", stripeSubscription(), "evt_q6")
+    );
+
+    expect(outcome.status).toBe("processed");
+    expect(recorded.subscriptions).toHaveLength(1);
   });
 });

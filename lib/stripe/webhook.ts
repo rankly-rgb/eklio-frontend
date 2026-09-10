@@ -197,6 +197,19 @@ export type WebhookPorts = {
     metadata: Record<string, string>;
   }): Promise<Stripe.Subscription | null>;
   upsertSubscription(row: SubscriptionRow): Promise<void>;
+  /**
+   * Met le premier mois de contenu en file d'attente.
+   *
+   * ⚠ NE GÉNÈRE RIEN ICI. Écrire un mois prend des minutes et Stripe accorde
+   * des secondes ; ce port pose une ligne `content_months` en `generating` et
+   * le cron mensuel la ramasse. Tant que le générateur est désarmé, il ne pose
+   * rien du tout — une ligne « en cours d'écriture » dont personne ne vient
+   * jamais s'occuper est un écran qui ment à quelqu'un qui vient de payer.
+   *
+   * Ne lève JAMAIS. Un kit payé ne doit pas être perdu parce que la file de
+   * contenu a échoué ; l'appelant journalise et continue.
+   */
+  queueFirstContentMonth(input: { userId: string }): Promise<void>;
   /** Passe l'abonnement en `past_due` sans toucher au reste de la ligne. */
   markSubscriptionPastDue(stripeSubscriptionId: string): Promise<void>;
   /** Relit l'abonnement chez Stripe (statut et période à jour). */
@@ -523,6 +536,34 @@ async function handleSubscriptionChange(
       deleted: event.type === "customer.subscription.deleted",
     })
   );
+
+  /*
+   * ── LE PREMIER MOIS, MIS EN FILE À L'ABONNEMENT ────────────────────────
+   *
+   * Sur `created` seulement, et seulement si l'abonnement est vivant. Sur
+   * `updated` ce serait une file relancée à chaque changement de carte, et sur
+   * `deleted` une file ouverte à quelqu'un qui vient de partir.
+   *
+   * `active` ET `trialing` : les trois mois inclus dans Practice Suite sont un
+   * essai de 90 jours, et attendre la fin de l'essai pour écrire le premier
+   * mois lui ferait payer trois mois avant d'avoir rien vu.
+   *
+   * ⚠ APRÈS `upsertSubscription`, ET SANS POUVOIR L'ANNULER. Le droit est
+   * acquis dès que la ligne est écrite ; la file n'est qu'une commodité. Elle
+   * n'a pas le droit de faire échouer un event de paiement.
+   */
+  if (
+    event.type === "customer.subscription.created" &&
+    (subscription.status === "active" || subscription.status === "trialing")
+  ) {
+    try {
+      await ports.queueFirstContentMonth({ userId });
+    } catch (error) {
+      console.error(
+        `[stripe-webhook] file du premier mois échouée pour ${userId} : ${String(error)}`
+      );
+    }
+  }
 
   return { status: "processed", type: event.type };
 }

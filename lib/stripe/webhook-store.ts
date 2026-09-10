@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { getStripeClient } from "@/lib/stripe/client";
 import type { WebhookPorts } from "@/lib/stripe/webhook";
 import { grantIncludedMonthlyPresence } from "@/lib/stripe/monthly-presence";
+import { queueFirstContentMonth } from "@/lib/content/generate/queue";
 import type { PurchaseStatus } from "@/types/supabase";
 import type { Json } from "@/types/supabase";
 
@@ -256,6 +257,18 @@ export function createWebhookPorts(): WebhookPorts {
       );
 
       if (error) throw error;
+    },
+
+    async queueFirstContentMonth({ userId }): Promise<void> {
+      /*
+       * Ne lève jamais, et n'est pas censée : `queueFirstContentMonth` rend un
+       * verdict plutôt qu'une exception, précisément parce qu'un kit payé ne
+       * doit pas être perdu parce que la file de contenu a hoqueté.
+       */
+      const outcome = await queueFirstContentMonth(supabase, { userId });
+      if (!outcome.queued) {
+        console.info(`[stripe-webhook] premier mois non mis en file : ${outcome.reason}`);
+      }
     },
 
     async grantIncludedMonthlyPresence({
