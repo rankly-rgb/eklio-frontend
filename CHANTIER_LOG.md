@@ -2110,3 +2110,76 @@ to `<InlineError>`, which already has one — widened to accept either, plus an 
 Remaining in Session 4: the preferences step, the month-as-a-plan screen (worth waiting for
 the gate — designing it before seeing twelve real proposals is how art direction goes wrong
 twice), and rendering proposals greyed in the calendar.
+
+## Session 5 — the generator, the review screen, and the switch
+
+Written under the weekend operating mode: take the reversible option, write down what you
+chose and why, keep going. Every choice is in `WEEKEND_REVIEW.md` as a numbered Decision;
+this is what was built.
+
+### The on-image line is its own field
+
+Backend `20260910100415`: `content_items.on_image_text`, capped at **480** — the largest
+measured archetype floor (`notes`, 472) plus air. One column cannot carry five different
+caps, so the tighter per-archetype floor is enforced by the generator, which is the thing
+that knows which layout it picked.
+
+`20260910100758` corrects the same hour's mistake. Adding the field to `content_item_json`
+by retyping the function rather than editing it dropped `stable`, replaced the lateral join
+with three subqueries, and let a `posted_at` survive an unpublish — `posted: false` beside
+a filled date, which the editor renders. Restored verbatim with a guard rail per
+regression. Kept as its own migration because the first was already applied and the record
+of what the database did should not be rewritten after the fact.
+
+**Recorded, not fixed:** `content_publications` tiebreaks on a random uuid, so
+`order by occurred_at desc, id desc` is undefined for two rows sharing a timestamp.
+Unreachable through the product — `mark_content_posted` refuses a no-op — and a monotonic
+column is a change to the publishing model, not to this one.
+
+### The generator
+
+`lib/content/generate/`, in the ruled order — decide, then write to the decision:
+
+| File | What it holds |
+|---|---|
+| `capacity.ts` | the measured floors, as data, and the 6–40 word bound |
+| `plan.ts` | the pure decisions: register draw, archetype rotation, the schedule |
+| `model.ts` | the one seam every model call goes through, and the prompts |
+| `ground.ts` | the photograph prompt, reusing the kit's own master direction |
+| `pipeline.ts` | the six steps, and the reservation |
+| `stub-model.ts` | a labelled stub, so the whole pipeline runs without a key |
+| `run.ts` | the adapter: real RPCs, real image client, real storage, persistence |
+| `armed.ts` | the switch |
+| `queue.ts` | "a month is coming", as a row |
+
+Four posts a month per weekly cadence — four weeks' worth, not every Tuesday in the month.
+A month with five Tuesdays would otherwise spend 25% more of a fixed allowance on a post
+nobody promised.
+
+The grounds are drawn only **after** every text has passed the Ethics Guard, so a month
+that fails on its last post has cost nothing.
+
+### The review screen
+
+`/app/content/plan`, previewed on fixtures at `/dev/content-plan`. Grouped by theme, not by
+date. Both texts shown, never the caption alone. Eklio chrome rather than her brand, on
+purpose — see Decision 8 and the section under it.
+
+`theme` got its own column (backend `20260910102753`) rather than borrowing `category`,
+which is hers to rename.
+
+### The preferences step, and the switch
+
+Preferences asked once at the top of the calendar, permanently editable from Settings, each
+register showing the **safety rule read from `content_registers`** — the same string the
+generator is held to.
+
+The monthly cron is written and shipped disarmed behind two locks; the first month at
+purchase is queued through the same switch and writes nothing while it is off.
+`WEEKEND_REVIEW.md` records where both locks are.
+
+### Still blocked, and it is the only thing
+
+The words. `api.anthropic.com` answers 401 from this environment and there is no key. The
+Session 3 gate — twelve real lines, twelve real captions, three real photographs — runs the
+moment one exists, and everything around it is finished and tested.
