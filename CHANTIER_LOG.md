@@ -2183,3 +2183,50 @@ purchase is queued through the same switch and writes nothing while it is off.
 The words. `api.anthropic.com` answers 401 from this environment and there is no key. The
 Session 3 gate — twelve real lines, twelve real captions, three real photographs — runs the
 moment one exists, and everything around it is finished and tested.
+
+## THE MODEL VENDOR SPLIT — settled, and written down so nobody re-derives it
+
+**One rule: OpenAI for images, Anthropic for text. Split by modality, not by feature.**
+
+| Modality | Vendor | Key | Entry point |
+|---|---|---|---|
+| Text | Anthropic | `ANTHROPIC_API_KEY` | `lib/ai/client.ts` → `getAnthropicClient()` |
+| Images | OpenAI | `OPENAI_API_KEY` | `lib/images/client.ts` → `openAiImageClientFromEnv()` |
+
+Everything that writes a word goes through the first: brand generation
+(`lib/generation/model.ts`), the Check rewrite (`app/api/check/rewrite/route.ts`), the
+Ethics Guard's targeted rewrite, and the Content generator (`lib/content/generate/model.ts`).
+Everything that makes a picture goes through the second: the seven brand photographs and
+the Content grounds. `@anthropic-ai/sdk` is the only model SDK in `package.json`; the image
+path is a hand-written `fetch` against `api.openai.com`, with no SDK at all.
+
+### Why this is in the log rather than only in a comment
+
+Because it was already once re-derived wrongly, from memory, by the person who set it up —
+and the correction cost a ruling and a session. The sentence that caused it was *"every
+model dependency in this product is already OpenAI"*, asserted from a picture of the
+codebase rather than from the codebase. It is the kind of claim that sounds like a fact and
+is checkable in ten seconds:
+
+```
+rg -l "@anthropic-ai/sdk|getAnthropicClient"   # every text path
+rg -l "openAiImageClient|IMAGES_ENDPOINT"      # every image path
+rg '"openai"' package.json                     # no match: there is no OpenAI SDK
+```
+
+**Check before ruling.** A ruling made from a remembered architecture can invert its own
+intent: that one was written to protect "one vendor, one key, one outage surface" for text,
+and following it literally would have added a second text vendor to a stack that had one.
+
+### The rule for a future session
+
+A new model dependency asks one question — *is this text or is it a picture?* — and the
+answer names the vendor, the key and the client. There is no third option and no
+per-feature choice. Adding a vendor is a decision that gets its own entry in this file,
+with the reason it could not be done inside the split.
+
+Superseded by this entry: the OpenAI-for-captions ruling recorded as Decision 5 in
+`WEEKEND_REVIEW.md`. It was withdrawn by its author; the generator's existing Anthropic
+seam stands unchanged. The seam itself is worth keeping for its own reason, not this one:
+`ContentModel` is four methods, and every model call in a month goes through it, which is
+what let the whole pipeline be tested before any key existed.

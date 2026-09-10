@@ -352,6 +352,36 @@ describe("generateMonth", () => {
     expect(events).toEqual([]);
   });
 
+  it("writes the words and draws nothing when there is no image key", async () => {
+    // ⚠ A REAL STATE, NOT A DEGRADATION. Images are OpenAI and text is
+    //   Anthropic (CHANTIER_LOG.md, "the model vendor split"), so one key can
+    //   be present without the other. What must never happen is discovering
+    //   that AFTER thirty-six model calls have been paid for.
+    const { events, port } = ledger();
+    const month = await generateMonth(
+      input({
+        allowance: port,
+        drawGrounds: false,
+        drawGround: async () => {
+          throw new Error("the drawer must not be reached at all");
+        },
+      })
+    );
+
+    expect(month.posts).toHaveLength(12);
+    expect(month.grounds).toEqual([]);
+    expect(month.posts.every((post) => post.groundPath === null)).toBe(true);
+    // Nothing reserved, nothing settled, nothing spent.
+    expect(events).toEqual([]);
+
+    // And every post still has its two texts and its alt text.
+    for (const post of month.posts) {
+      expect(post.onImageText).toBeTruthy();
+      expect(post.caption).toBeTruthy();
+      expect(post.altText).toContain(post.onImageText);
+    }
+  });
+
   it("stops the month when the allowance refuses, rather than drawing anyway", async () => {
     const port: AllowancePort = {
       async reserve() {

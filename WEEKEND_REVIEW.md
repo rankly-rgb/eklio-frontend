@@ -32,14 +32,12 @@ because it needs neither your money nor your taste — it still needs a key.
 
 ### What unblocks it
 
-One of these, whichever suits you:
+**`ANTHROPIC_API_KEY` in this environment.** That alone unblocks the twelve on-image lines,
+the twelve captions, the alt text and the adversarial batch — every word in the gate.
 
-1. **Put the keys in this environment.** `ANTHROPIC_API_KEY` alone unblocks the
-   adversarial batch (50–100 lines through the scanner, fractions of a cent) and the
-   twelve captions. `OPENAI_API_KEY` additionally unblocks the three square grounds and
-   the one vertical story ground — but that is image spend, and you may prefer to keep it.
-2. **Run it in your Codespace.** The generator is not yet written (see below), so this
-   needs me to write it first.
+`OPENAI_API_KEY` additionally unblocks the three grounds (15¢ of a 100¢ monthly allowance).
+That is image spend and it is yours to decide; the gate runs without it and reports the
+grounds as `skipped` rather than pretending they exist.
 
 ### What is blocked behind it
 
@@ -202,7 +200,7 @@ codebase kept inlining it, revert the guard and add the literal; it is one commi
 
 ---
 
-## DECISION 5 — Your OpenAI ruling does not match this repo, and I did the opposite
+## DECISION 5 — ✅ SETTLED. The OpenAI ruling was withdrawn; the split is by modality
 
 **Where:** `lib/content/generate/model.ts`, header comment.
 
@@ -232,9 +230,17 @@ implementation of it and the only one that exists. Moving text to OpenAI later i
 file implementing one interface, with no change to the pipeline, the tests, or anything
 downstream — which is the other reason the seam is there.
 
-**If you meant it as a forward decision rather than a description** — "I want text on
-OpenAI from here, and I misremembered where we were" — say so and it is a day's work at
-most: one implementation, one key, and the Check rewrite moved across for consistency.
+> **✅ WITHDRAWN BY YOU, and the architecture stands: OpenAI for images, Anthropic for
+> text, split by modality.** The existing seam stays. Recorded in `CHANTIER_LOG.md` under
+> *"The model vendor split"* — with the two `rg` commands that check it in ten seconds, so
+> no future session re-derives it from a half-remembered sentence.
+>
+> The rule for anyone adding a model dependency: ask whether it is text or a picture. The
+> answer names the vendor, the key and the client. There is no third option and no
+> per-feature choice.
+
+**The key to expect is `ANTHROPIC_API_KEY`.** It is still unset here — see the gate
+procedure below.
 
 ---
 
@@ -386,6 +392,62 @@ database rather than by a flag.
 row nobody comes to collect is a screen that says "Eklio is writing your month" forever, to
 someone who has just paid. A test asserts no row is written in that state; another asserts
 a failing queue can never fail the payment event.
+
+---
+
+## THE GATE — what runs the moment `ANTHROPIC_API_KEY` lands
+
+Your instruction, kept here so whoever runs it captures the right things:
+
+> One kit, one month, the hard ceiling checked before each call, and the full output into
+> `WEEKEND_REVIEW.md`. Then the adversarial batch, captions only, and stop.
+
+**One command**, written and exercised as far as a keyless environment allows:
+
+```
+npx tsx scripts/content/generate-month.ts \
+  --kit <uuid> --month 2026-10 \
+  --themes "going back to a routine,rest,asking for help" \
+  --confirm
+```
+
+**It asks you for the three themes**, and that is deliberate. Three is the ruled shape;
+*which* three is the judgement nothing in the codebase can make honestly until a real month
+has been read. The cron says the same thing by answering 501 rather than guessing.
+
+**Its refusal ladder, each rung tested by running it:**
+
+| It refuses | Because |
+|---|---|
+| no `--confirm` | it spends money on someone's behalf, and names the amount first |
+| not exactly three themes | three is the shape; the choice is yours |
+| a kit that already has that month | one month, ever, until you have read it |
+| a missing `ANTHROPIC_API_KEY` | checked up front, not on the first call |
+| the ceiling | **checked in front of every call, never after** |
+
+The ceiling counts **calls, not tokens**: token spend is only knowable once a response comes
+back, so a token ceiling can only ever report that it was crossed. 60 by default — 36 is a
+clean twelve-post month, and the slack is the guard's rewrites. A test proves the model is
+never reached on the call that would cross the line, and that a ceiling hit during the copy
+costs nothing at all, because the photographs are drawn only after every text is clean.
+
+**Without `OPENAI_API_KEY` it still runs** and reports `grounds: SKIPPED`. That is an
+explicit branch, not a degradation: no reservation, no spend, `groundPath: null` on every
+post, and the image client is constructed lazily so a missing key can never surface *after*
+thirty-six paid-for model calls.
+
+**What lands in this file when it finishes**, in this order:
+
+1. The twelve on-image lines, each with its register, its archetype, its character count
+   and that archetype's floor.
+2. The twelve captions.
+3. The alt text — three of them, one per theme.
+4. The grounds and the composed posts, by storage path.
+5. The allowance ledger: reserved, settled, released, remaining.
+6. Everything the Ethics Guard caught and everything it rewrote.
+
+**Then the adversarial batch**, captions only, and stop. No second month — that one is
+yours to ask for after you have read the first.
 
 ---
 

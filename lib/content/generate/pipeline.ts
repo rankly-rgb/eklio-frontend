@@ -90,6 +90,19 @@ export type GenerateMonthInput = {
   drawGround: (request: GroundRequest) => Promise<GroundResult>;
   groundPrompt: (theme: string, context: string) => string;
   groundCostCents: number;
+  /*
+   * ⚠ FALSE MEANS NO PHOTOGRAPHS AT ALL THIS RUN, said out loud rather than
+   * discovered. The image vendor is a separate key from the text vendor
+   * (OpenAI for images, Anthropic for text — see CHANTIER_LOG.md), so one can
+   * be present without the other, and a month whose words are written and
+   * whose pictures are not is a real state.
+   *
+   * It is NOT a silent degradation: the posts come back with `groundPath: null`
+   * and `grounds: []`, and nothing is reserved or spent. What must never happen
+   * is discovering the missing key AFTER thirty-six model calls have been paid
+   * for — which is what an eagerly-constructed image client would do.
+   */
+  drawGrounds?: boolean;
   compose: ComposePort;
   now?: Date;
 };
@@ -198,7 +211,9 @@ export async function generateMonth(input: GenerateMonthInput): Promise<Generate
   const grounds: GeneratedGround[] = [];
   const groundByTheme = new Map<string, string>();
 
-  for (const theme of themesNeedingGround(plan)) {
+  const themesToDraw = input.drawGrounds === false ? [] : themesNeedingGround(plan);
+
+  for (const theme of themesToDraw) {
     const reservation = await input.allowance.reserve(input.groundCostCents);
     if (!reservation.ok) {
       throw new AllowanceExhaustedError(reservation.reason ?? "unknown");

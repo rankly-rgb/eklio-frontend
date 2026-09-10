@@ -115,9 +115,17 @@ export function contentGroundDrawer(
   brandKitId: string,
   month: string
 ): (request: GroundRequest) => Promise<GroundResult> {
-  const client = openAiImageClientFromEnv();
+  /*
+   * ⚠ CONSTRUCTED LAZILY, ON THE FIRST DRAW. `openAiImageClientFromEnv()`
+   * throws when `OPENAI_API_KEY` is absent, and building it while wiring the
+   * pipeline would raise that AFTER every line and caption had been written
+   * and paid for. Deferred to the first call, which only happens once the copy
+   * is clean — and never at all when `drawGrounds` is false.
+   */
+  let client: ReturnType<typeof openAiImageClientFromEnv> | null = null;
 
   return async ({ theme, prompt }) => {
+    client ??= openAiImageClientFromEnv();
     const fingerprint = groundFingerprint(brandKitId, month, prompt);
     const path = groundStoragePath(brandKitId, month, fingerprint);
 
@@ -201,6 +209,8 @@ export type RunMonthInput = {
   context: string;
   /** Injected so a dry run can pass a stub without touching the vendor. */
   model?: ContentModel;
+  /** False when there is no image key. The words still get written. */
+  drawGrounds?: boolean;
 };
 
 export async function runMonthForKit(input: RunMonthInput): Promise<GeneratedMonth> {
@@ -226,6 +236,7 @@ export async function runMonthForKit(input: RunMonthInput): Promise<GeneratedMon
         mood: "unhurried",
       }),
     groundCostCents: GROUND_COST_CENTS,
+    drawGrounds: input.drawGrounds,
     compose: composeFromGround,
   });
 }
