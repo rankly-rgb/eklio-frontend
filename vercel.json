@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/anon-briefs",
+      "schedule": "0 5 * * *"
+    },
+    {
       "path": "/api/cron/nudges",
       "schedule": "0 14 * * *"
     },

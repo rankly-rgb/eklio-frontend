@@ -33,9 +33,19 @@ function layout({
   body: string[];
   ctaLabel: string;
   ctaHref: string;
-  userId: string;
+  /*
+   * ⚠ NULL POUR UN ENVOI QU'ELLE A DEMANDÉ ELLE-MÊME, une fois. Le pied de
+   * page propose de « ne plus recevoir ces e-mails » : sur un lien de reprise
+   * réclamé à l'instant, il n'y a rien à désabonner, et l'offrir quand même
+   * enverrait quelqu'un cliquer sur un lien qui ne peut rien faire — sans
+   * compte, `unsubscribeUrl` n'a pas d'identité à porter.
+   *
+   * Ce n'est PAS une dérogation à la règle : les envois répétés (relances,
+   * préavis, mois prêt) portent tous un identifiant et gardent le lien.
+   */
+  userId: string | null;
 }): string {
-  const unsubscribe = unsubscribeUrl(userId);
+  const unsubscribe = userId ? unsubscribeUrl(userId) : null;
 
   return `<!doctype html>
 <html lang="en"><body style="margin:0;padding:0;background:${BG};">
@@ -55,9 +65,13 @@ function layout({
       <tr><td style="padding:14px 0 28px;">
         <a href="${ctaHref}" style="display:inline-block;background:${INK};color:${BG};text-decoration:none;font:600 15px -apple-system,Segoe UI,sans-serif;padding:12px 26px;border-radius:999px;">${ctaLabel}</a>
       </td></tr>
-      <tr><td style="border-top:1px solid ${LINE};padding-top:18px;font:400 13px/1.6 -apple-system,Segoe UI,sans-serif;color:${INK_2};">
+      ${
+        unsubscribe
+          ? `<tr><td style="border-top:1px solid ${LINE};padding-top:18px;font:400 13px/1.6 -apple-system,Segoe UI,sans-serif;color:${INK_2};">
         <a href="${unsubscribe}" style="color:${INK_2};">Stop receiving these emails</a>
-      </td></tr>
+      </td></tr>`
+          : ""
+      }
     </table>
   </td></tr>
 </table>
@@ -75,7 +89,7 @@ function plain({
   body: string[];
   ctaLabel: string;
   ctaHref: string;
-  userId: string;
+  userId: string | null;
 }): string {
   return [
     heading,
@@ -83,8 +97,7 @@ function plain({
     ...body,
     "",
     `${ctaLabel}: ${ctaHref}`,
-    "",
-    `Stop receiving these emails: ${unsubscribeUrl(userId)}`,
+    ...(userId ? ["", `Stop receiving these emails: ${unsubscribeUrl(userId)}`] : []),
   ].join("\n");
 }
 
@@ -95,7 +108,7 @@ function build(input: {
   body: string[];
   ctaLabel: string;
   ctaHref: string;
-  userId: string;
+  userId: string | null;
 }): OutgoingEmail {
   return {
     to: input.to,
@@ -312,4 +325,51 @@ function escapeHtml(value: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+
+/*
+ * ── "EMAIL ME A LINK TO COME BACK TO THIS" ──────────────────────────────
+ *
+ * The one email on the anonymous path, and she asks for it.
+ *
+ * ⚠ IT IS NOT AN ACCOUNT, AND IT IS NOT A SEQUENCE. The signed token lives in
+ * a cookie; if the cookie survives, she resumes and never needs this. If it is
+ * gone — a different phone, a cleared browser, a private tab — her brief is
+ * unreachable forever, and this is the only thing that can bring it back.
+ *
+ * That is why the ask works where the wall did not: at the end of the brief
+ * and again at the reveal she is looking at something she wants to keep, so
+ * "don't lose this" is a reason she already has. It is the same address the
+ * wall used to demand, obtained at the moment it is worth giving.
+ *
+ * ⚠ THE LINK CARRIES THE TOKEN. That makes this email as good as the cookie —
+ * anyone holding it can open the brief. It is a brief, not a bank; the same
+ * trade every magic link makes. What it must never carry is anything she
+ * wrote: the subject and the body name her practice at most, and only when she
+ * has given it a name herself.
+ */
+export function resumeBriefEmail(input: {
+  to: string;
+  token: string;
+  practiceName: string | null;
+  step: number;
+}): OutgoingEmail {
+  const name = input.practiceName?.trim();
+
+  return build({
+    to: input.to,
+    // No account, so nothing to unsubscribe from. See `layout`.
+    userId: null,
+    subject: name ? `Your brand for ${name}` : "Your brand, saved",
+    heading: "Here's the link back to your brief.",
+    body: [
+      name
+        ? `Everything you've told us about ${name} is saved — you're at step ${input.step} of 7.`
+        : `Everything you've told us is saved — you're at step ${input.step} of 7.`,
+      "Open this on any device to pick it up. The link works for the next 30 days.",
+    ],
+    ctaLabel: "Open my brief",
+    ctaHref: `${siteUrl()}/brief/resume?t=${encodeURIComponent(input.token)}`,
+  });
 }

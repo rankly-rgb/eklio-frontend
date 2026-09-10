@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ButtonLink } from "@/components/ui/button";
+
+import { StartBriefButton } from "@/components/brief/start-brief-button";
 import { MonoLabel } from "@/components/ui/mono-label";
 
 /*
@@ -36,9 +37,7 @@ export default function LandingPage() {
           <Link href="/login" className="text-ink-2 hover:text-ink">
             Sign in
           </Link>
-          <ButtonLink href="/signup" variant="primary">
-            Build my brand
-          </ButtonLink>
+          <StartBriefButton label="Build my brand" />
         </nav>
       </header>
 
@@ -63,12 +62,21 @@ export default function LandingPage() {
             directions — palette, typefaces, voice and site copy — plus a prompt
             you can paste straight into your website builder.
           </p>
-          <div className="mt-2 flex items-center gap-6">
-            <ButtonLink href="/signup" variant="primary">
-              Start my brief
-            </ButtonLink>
+          {/*
+            ⚠ THIS USED TO POINT AT `/signup`, AND THAT WAS THE WALL.
+            The acquisition walk found that the first click after a cold email
+            demanded an email address and a password before a stranger had
+            received anything at all — then sent her off to her inbox to
+            confirm before she could answer question one.
+
+            It now starts the brief. `StartBriefButton` POSTs to `/api/briefs`,
+            which creates an anonymous brief owned by a token in a cookie. The
+            account comes later, when she wants to keep what she is looking at.
+          */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <StartBriefButton label="Start my brief" />
             <span className="text-helper text-ink-2">
-              About seven minutes. One-time from $79.
+              About seven minutes. No account needed. One-time from $79.
             </span>
           </div>
         </section>

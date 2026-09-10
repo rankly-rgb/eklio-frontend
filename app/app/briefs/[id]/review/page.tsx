@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { requireBriefAccess } from "@/lib/anon/require-brief";
 import { loadBrief, readPreview } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
 import { summarize, isAnswered } from "@/lib/brief/summary";
@@ -8,6 +8,7 @@ import type { StepDraft } from "@/lib/brief/flow";
 import { BrandPreview } from "@/components/preview/brand-preview";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { AfterTheBrief } from "@/components/brief/after-the-brief";
+import { EmailMeALink } from "@/components/brief/email-me-a-link";
 import { ButtonLink } from "@/components/ui/button";
 
 /*
@@ -25,13 +26,11 @@ export default async function ReviewPage({
 }: PageProps<"/app/briefs/[id]/review">) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=/app/briefs/${id}/review`);
+  const { supabase, userId, anonymous } = await requireBriefAccess(
+    `/app/briefs/${id}/review`
+  );
 
-  const bundle = await loadBrief(supabase, id, user.id);
+  const bundle = await loadBrief(supabase, id, userId);
   if (!bundle) notFound();
 
   const [catalog, preview] = await Promise.all([
@@ -133,6 +132,14 @@ export default async function ReviewPage({
             >
               Back to the brief
             </ButtonLink>
+
+            {/*
+              ⚠ ONLY FOR AN ANONYMOUS BRIEF. A signed-in one is already
+              reachable from her account, and offering a bearer link for it
+              would be handing out a second, weaker key to something that
+              already has a proper lock.
+            */}
+            {anonymous ? <EmailMeALink projectId={id} where="review" /> : null}
           </div>
         </div>
 

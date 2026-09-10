@@ -1,6 +1,6 @@
 import { after, NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { authenticate, json, notFound, serverError } from "@/lib/api/handler";
+import { json, notFound, serverError } from "@/lib/api/handler";
 import { createAdminClient } from "@/lib/supabase/server";
 import { loadBrief } from "@/lib/data/brief";
 import {
@@ -14,6 +14,8 @@ import {
   withJob,
 } from "@/lib/generation/job";
 import { rateLimit } from "@/lib/api/rate-limit";
+import { resolveBriefCaller } from "@/lib/anon/session";
+import { clientIp, ipBucket } from "@/lib/anon/token";
 import { track } from "@/lib/analytics";
 
 /*
@@ -58,13 +60,63 @@ export async function POST(
   _request: NextRequest,
   ctx: RouteContext<"/api/briefs/[id]/generate">
 ) {
-  const auth = await authenticate();
-  if (!auth.ok) return auth.response;
+  const caller = await resolveBriefCaller();
+  if (caller.kind === "none") {
+    /*
+     * No session and no usable cookie. Not an error to explain away: her brief
+     * is genuinely unreachable from this browser, and the only honest thing is
+     * to say so and offer the way back.
+     */
+    return NextResponse.json(
+      {
+        error:
+          "We can't find your brief on this device. If you asked us to email you a link, open that; otherwise you can start again.",
+      },
+      { status: 401 }
+    );
+  }
 
   const { id: projectId } = await ctx.params;
-  const { supabase, userId } = auth.session;
+  const { supabase, userId } = caller;
 
-  const verdict = rateLimit(`generate:${userId}`, GENERATE_LIMIT);
+  /*
+   * ⚠ THE SPEND CAP, AND IT IS THE FIRST THING. Anonymous generation is the
+   * one place in this product where a stranger with no account can cost money
+   * — three directions per press. A cold-email launch plus an open generate
+   * button is a bill, so both ceilings and the kill switch are checked here,
+   * atomically, in the database (`consume_anon_generation`), before anything
+   * else is read.
+   *
+   * A signed-in caller does not pass through it: she is bounded by
+   * `consume_generation_credit`, which is per-kit and which she may have paid
+   * for.
+   */
+  if (caller.kind === "anon") {
+    const admin = createAdminClient();
+    const { data: verdictRow, error: capError } = await admin.rpc(
+      "consume_anon_generation",
+      { p_ip_hash: ipBucket(clientIp(_request)) }
+    );
+
+    if (capError) {
+      // A meter that cannot be read is "we could not tell", never "go ahead".
+      console.error(`[generate] consume_anon_generation: ${capError.message}`);
+      return NextResponse.json(
+        { error: "We couldn't start that just now. Try again in a moment." },
+        { status: 503 }
+      );
+    }
+
+    const outcome = verdictRow as unknown as { ok?: boolean; reason?: string } | null;
+    if (outcome?.ok !== true) {
+      return NextResponse.json(
+        { error: anonCapMessage(outcome?.reason) },
+        { status: 429, headers: { "retry-after": "3600" } }
+      );
+    }
+  }
+
+  const verdict = rateLimit(`generate:${userId ?? caller.token}`, GENERATE_LIMIT);
   if (!verdict.allowed) {
     return NextResponse.json(
       { error: "That's a lot of tries in a short time. Give it a minute." },
@@ -238,4 +290,24 @@ export async function POST(
   });
 
   return json({ jobId: kit.id });
+}
+
+
+/*
+ * What a stranger reads when a ceiling closes.
+ *
+ * ⚠ NEVER "you have used your 3 of 3". She has no account, so a number about
+ * her is a number about a device — and telling her the global ceiling is full
+ * would be telling her the product is popular, which is not her problem. Both
+ * refusals say the same true thing: not now, come back.
+ */
+function anonCapMessage(reason: string | undefined): string {
+  switch (reason) {
+    case "ip_cap":
+      return "You've built a few of these today. Come back tomorrow, or make an account to keep going.";
+    case "global_cap":
+    case "disabled":
+    default:
+      return "We're at capacity for new brands right now. Try again in a little while — your answers are saved.";
+  }
 }

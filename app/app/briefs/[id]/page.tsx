@@ -1,5 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { requireBriefAccess } from "@/lib/anon/require-brief";
 import { loadBrief, readPreview } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
 import { STEP_COUNT, resumeStep, type StepDraft } from "@/lib/brief/flow";
@@ -38,13 +38,11 @@ export default async function BriefPage({
   const { id } = await params;
   const query = await searchParams;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=/app/briefs/${id}`);
+  const { supabase, userId } = await requireBriefAccess(
+    `/app/briefs/${id}`
+  );
 
-  const bundle = await loadBrief(supabase, id, user.id);
+  const bundle = await loadBrief(supabase, id, userId);
   // Projet inexistant OU appartenant à quelqu'un d'autre : la même réponse.
   if (!bundle) notFound();
 

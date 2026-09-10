@@ -1,5 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { requireBriefAccess } from "@/lib/anon/require-brief";
 import { loadBrief } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
 import { uspOptionsSchema } from "@/lib/generation/how-you-work-shapes";
@@ -26,13 +26,11 @@ export default async function PositioningPage({
 }: PageProps<"/app/briefs/[id]/positioning">) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=/app/briefs/${id}/positioning`);
+  const { supabase, userId } = await requireBriefAccess(
+    `/app/briefs/${id}/positioning`
+  );
 
-  const bundle = await loadBrief(supabase, id, user.id);
+  const bundle = await loadBrief(supabase, id, userId);
   if (!bundle) notFound();
 
   const catalog = await readCatalog(supabase);

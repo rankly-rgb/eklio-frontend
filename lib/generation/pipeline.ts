@@ -75,7 +75,13 @@ export type PipelineInput = {
   admin: Client;
   projectId: string;
   brandKitId: string;
-  userId: string;
+  /*
+   * ⚠ NULL FOR AN ANONYMOUS BRIEF. It is only ever handed to `loadBrief`,
+   * which treats null as "let RLS decide" — and for an anonymous caller the
+   * client carries `x-anon-token`, so RLS decides on the token. Nothing else
+   * in this pipeline reads it.
+   */
+  userId: string | null;
   /** Injecté par les tests ; l'appel réel par défaut. */
   call?: GenerationCall;
   rewrite?: (system: string, instruction: string) => Promise<string>;

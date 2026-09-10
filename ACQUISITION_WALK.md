@@ -505,3 +505,167 @@ thumb misses.
 6. **Step 6 cannot crash on a null preview.** `components/preview/cards.tsx` now types
    `model` nullable — as its call site always was — and falls back to `SAMPLE_PREVIEW`. The
    swatches come from `family` and are right either way.
+
+
+---
+
+# §11 — THE BRIEF RUNS WITHOUT AN ACCOUNT
+
+**Session 2.** The wall in §1 is down. What follows is what to know before the emails land.
+
+## 11.1 What a stranger now does
+
+| # | Then | Now |
+|---|---|---|
+| 1 | Land on `/` | Land on `/` |
+| 2 | Tap "Start my brief" → **`/signup`** | Tap "Start my brief" → **step 1 of the brief** |
+| 3 | Type an email | — |
+| 4 | Type a password | — |
+| 5 | Submit → "check your email" | — |
+| 6 | **Leave the site, find the mail, come back** | — |
+| 7 | Tap "Start my brief" *again* | — |
+
+**Five steps and one off-site round trip removed before the first question.** She is asked
+for an email address at the end of the brief and again at the reveal, as an offer she can
+ignore.
+
+## 11.2 The one that guards everything: token isolation
+
+`projects.user_id` is nullable; a row can be owned by the SHA-256 of a token instead. The
+browser sends the plaintext in `x-anon-token`, `public.anon_token_hash()` hashes it, and
+every policy compares hashes — **the plaintext exists only in the cookie**, so a stolen dump
+hands nobody a working session.
+
+Proven in `20260910192157_anonymous_briefs.test.sql`, against the live database:
+
+- Alice's token sees exactly one project and one brief: hers.
+- **Bob's token cannot read or write Alice's brief**, even naming its id directly.
+- **No token sees nothing.** Not incidental: null never equals anything, which is why a
+  claimed row carries `null` and not `''`. A naive comparison would have shown every claimed
+  project in the table to every visitor with no cookie.
+- An **expired** brief is refused by the policy, before any purge runs.
+- A token holder **cannot claim** her own brief from the browser, and cannot hand it to
+  another token. Both raise `42501` rather than updating zero rows.
+
+## 11.3 Expiry and purge — **30 days**
+
+`projects.anon_expires_at`, enforced in the policy and swept by `/api/cron/anon-briefs`
+(daily, 05:00 UTC, **armed** — it spends nothing).
+
+**Why 30:** it is already the answer to *"how long does Eklio keep something nobody
+claimed"* — `purge-deleted-kits` uses the same window for soft-deleted kits. One number is
+easier to reason about, easier to state in a privacy notice, and harder to get wrong than
+two. It is also exactly the life of the cookie that points at the row, so nothing survives
+that could still be reached and nothing reachable is deleted.
+
+The purge repeats its filter on the `DELETE` as well as the `SELECT`: between the two, a row
+can be claimed by someone signing up, and deleting the brief of a person who has just made
+an account is the worst thing that route could do.
+
+## 11.4 Coming back three days later
+
+**If the cookie survives** she lands on her brief at the step she reached — `progress_step`
+is canonical and always was. That is retention for free, and it now happens without an
+account.
+
+**If the cookie is gone** — a different phone, a cleared browser, a private tab — the brief
+is unreachable forever. That is where the email belongs, and it is the only place the
+anonymous path asks for one:
+
+> *"We'll email you one link. No account, no list — it just means a new phone or a cleared
+> browser doesn't lose your work."*
+
+Offered at the end of the brief and again at the reveal. It creates no account, subscribes
+her to nothing, and **the address is not stored** — it goes to the transport and is gone.
+Keeping it would turn a favour into a list, and this product has not asked her about a list.
+
+`/brief/resume?t=…` writes the cookie and **redirects immediately to a clean path**, so the
+token does not sit in her history, a screenshot, or a `Referer`. Opening the link does
+**not** extend the deadline — a link that renewed itself would be the row that never
+expires. Expired, purged and already-claimed all land on one screen, because the difference
+is not something she can act on and naming it would say something about a brief that may not
+be hers.
+
+## 11.5 The spend guard, and what 200 clicks costs
+
+Three rows in `app_settings`, checked and incremented in **one statement** by
+`consume_anon_generation` — two statements would let two concurrent requests both read
+"149 of 150", and a generation once started is money already spent. A refused per-IP attempt
+**gives the global count back**, so one visitor refreshing cannot eat the day's ceiling for
+everyone. **A missing or unreadable setting is "no", never "unlimited".**
+
+| Row | Value | Why |
+|---|---|---|
+| `anon_generation_daily_per_ip` | **3** | Enough for a false start and a retry; a fourth in one day from one address is not a prospect |
+| `anon_generation_daily_global` | **150** | See below |
+| `anon_generation_enabled` | **true** | The kill switch |
+
+**The arithmetic, at your figure of $0.09–1.80 for three directions.**
+
+| Scenario | Generations | Worst case |
+|---|---|---|
+| 200 cold-email clicks, **no cap** — every click generates | 200 | **$360/day** |
+| 200 clicks, realistic — ~30% start, most finish | ~60 | ~$108/day |
+| 200 clicks, **capped at 150** | 150 | **$270/day** — the ceiling |
+| A script, uncapped | unbounded | unbounded |
+| A script, **capped** | 150 | **$270/day**, whatever it does |
+
+150 sits above the demand a 200-click day can plausibly produce (~60) and bounds the worst
+case at $270 — which is the number that matters, because it is what a bad morning costs
+while you are asleep. At the low end of your range the same ceiling is $13.50.
+
+**If the numbers are wrong on the morning the emails land**, this is the edit — seconds, no
+deploy, no build:
+
+```sql
+-- Turn it off entirely
+update public.app_settings set value = 'false'::jsonb
+ where key = 'anon_generation_enabled';
+
+-- Or move a ceiling
+update public.app_settings set value = '400'::jsonb
+ where key = 'anon_generation_daily_global';
+update public.app_settings set value = '5'::jsonb
+ where key = 'anon_generation_daily_per_ip';
+```
+
+The counter resets by date, so raising a ceiling mid-day immediately admits whatever the new
+number allows. Today's usage:
+
+```sql
+select bucket, used from public.anon_generation_counters
+ where day = (now() at time zone 'utc')::date
+ order by used desc limit 20;   -- '@global' is the whole day's total
+```
+
+**The IP is hashed with the date as salt** — enough to recognise a repeat visitor within a
+day, useless the day after. A raw IP is personal data and this audience is reached from
+France.
+
+## 11.6 Two decisions I took and would flag
+
+**The token's signature is advisory.** `ANON_TOKEN_SECRET` is optional: when it is set,
+forged tokens are rejected without a database round trip, which matters because this cookie
+sits in front of the spend path. When it is **absent**, verification is skipped and tokens
+still work. As a hard startup requirement it would take the landing page down (§4.5); as a
+hard check it would invalidate every outstanding cookie the moment the secret rotated,
+losing every brief in flight. The database is the authority either way. **Setting it is
+worth doing before launch; forgetting it is not an outage.**
+
+**Email confirmation is out of the critical path without changing a Supabase setting.**
+`signUp` returns the new user's id even when confirmation is on and no session is issued —
+so the claim happens at signup, and her brief is attached to her account whether she is let
+straight in or has to confirm first. Turning confirmation **off** in Supabase Auth is still
+worth doing (she would land straight back on her work rather than on "check your email"),
+but nothing is lost if you leave it on.
+
+## 11.7 What stayed shut
+
+`reachableWithoutAccount` opens exactly four patterns: the brief, its review, its positioning
+screen, and the reveal. **The paid kit sections are not among them** — `/assets`,
+`/site-editor`, `/handoff`, `/delivered` still require a session, because an account is the
+only thing a purchase can attach to. A test enumerates both lists.
+
+And letting a request through is not the same as letting it see something: every one of
+those four resolves its caller and reads through RLS, where a request without a matching
+token reads nothing.

@@ -97,20 +97,32 @@ export function parseEthicsCheck(value: unknown): EthicsCheck | null {
 export async function loadBrandKit(
   supabase: Client,
   brandKitId: string,
-  userId: string
+  /*
+   * ⚠ NULL FOR AN ANONYMOUS CALLER. Same rule as `loadBrief`: the `user_id`
+   * filter was always belt-and-braces on top of RLS, and `brand_kits_all_own`
+   * — which now resolves through `owns_project` — is what actually decides.
+   * An anonymous brief has no `user_id` to filter on, so the belt comes off
+   * and the braces do the work they were already doing.
+   */
+  userId: string | null
 ): Promise<BrandKit | null> {
-  const { data, error } = await supabase
+  /*
+   * The conditional filter goes where it always was in the chain, between the
+   * id and `deleted_at`. Order is invisible to Postgres and very visible to
+   * the test doubles that stub this client one method at a time.
+   */
+  let query = supabase
     .from("brand_kits")
     .select("*, projects!inner(user_id, name)")
-    .eq("id", brandKitId)
-    .eq("projects.user_id", userId)
-    .is("deleted_at", null)
-    .maybeSingle();
+    .eq("id", brandKitId);
+  if (userId) query = query.eq("projects.user_id", userId);
+
+  const { data, error } = await query.is("deleted_at", null).maybeSingle();
 
   if (error || !data) return null;
 
   const { projects, ...row } = data as BrandKitRow & {
-    projects: { user_id: string; name: string };
+    projects: { user_id: string | null; name: string };
   };
 
   const { data: brief } = await supabase

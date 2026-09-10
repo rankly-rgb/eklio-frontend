@@ -1,5 +1,6 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { requireBriefAccess } from "@/lib/anon/require-brief";
+import { EmailMeALink } from "@/components/brief/email-me-a-link";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import { loadRevealPayload } from "@/lib/data/reveal";
 import { readJob, statusOf } from "@/lib/generation/job";
@@ -31,13 +32,11 @@ export default async function RevealPage({
 }: PageProps<"/app/brand-kits/[id]/reveal">) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=/app/brand-kits/${id}/reveal`);
+  const { supabase, userId, anonymous } = await requireBriefAccess(
+    `/app/brand-kits/${id}/reveal`
+  );
 
-  const kit = await loadBrandKit(supabase, id, user.id);
+  const kit = await loadBrandKit(supabase, id, userId);
   if (!kit) notFound();
 
   const status = statusOf(readJob(kit.row.content), kit.directions !== null);
@@ -67,11 +66,28 @@ export default async function RevealPage({
   if (!outcome.ok) notFound();
 
   return (
-    <RevealCeremony
-      brandKitId={id}
-      projectId={kit.projectId}
-      payload={outcome.payload}
-      paid={tier !== null}
-    />
+    <>
+      <RevealCeremony
+        brandKitId={id}
+        projectId={kit.projectId}
+        payload={outcome.payload}
+        paid={tier !== null}
+      />
+
+      {/*
+        ⚠ THE SECOND ASK, AND THE BETTER ONE. She is looking at three finished
+        directions with her practice's name on them — the moment an email
+        address is worth giving, and the moment losing this would actually
+        hurt. Under the ceremony, never in front of it: the reveal is what she
+        came for, and nothing may stand between her and it.
+
+        Only for an anonymous brief; a signed-in one is already hers.
+      */}
+      {anonymous ? (
+        <div className="mx-auto w-full max-w-[560px] px-[var(--gutter-sm)] pb-16">
+          <EmailMeALink projectId={kit.projectId} where="reveal" />
+        </div>
+      ) : null}
+    </>
   );
 }

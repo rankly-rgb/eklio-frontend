@@ -5,6 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { signedInRedirectPath } from "@/lib/auth/next-url";
 import { siteUrl } from "@/lib/site-url";
 import { signUpMessage } from "@/lib/auth/signup-message";
+import { cookies } from "next/headers";
+import { createAdminClient } from "@/lib/supabase/server";
+import { claimAnonBrief } from "@/lib/anon/claim";
+import { ANON_COOKIE } from "@/lib/anon/token";
+import { currentAnonToken } from "@/lib/anon/session";
 
 export type AuthFormState = { error: string } | null;
 
@@ -60,8 +65,16 @@ export async function signUp(
     return { error: "Use a password of at least 8 characters." };
   }
 
+  /*
+   * ⚠ READ BEFORE SIGNING UP. `signUp` may issue a session, which changes what
+   * `resolveBriefCaller` reports — and by then it would report the new user
+   * and forget the cookie entirely. The brief she is looking at is identified
+   * now, while nothing has changed yet.
+   */
+  const anonToken = await currentAnonToken();
+
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -87,7 +100,47 @@ export async function signUp(
     return { error: signUpMessage(error.code) };
   }
 
-  redirect("/signup/check-your-email");
+  /*
+   * ── SIGNING UP CLAIMS THE BRIEF, IT DOES NOT START ONE ────────────────
+   *
+   * She answered seven steps and is looking at three directions. The account
+   * exists so she can keep THAT.
+   *
+   * ⚠ THE CLAIM DOES NOT WAIT FOR A SESSION, and that is what keeps email
+   * confirmation out of the critical path rather than merely shortening it.
+   * `signUp` returns the new user's id even when confirmation is on and no
+   * session is issued — so the brief is attached to her account at the moment
+   * she signs up, and is waiting for her whether she is let straight in or has
+   * to confirm first.
+   *
+   * It never fails the signup. Her account exists either way; a brief that
+   * could not be attached is a brief, not an account.
+   */
+  if (data.user && anonToken) {
+    const outcome = await claimAnonBrief(createAdminClient(), {
+      token: anonToken,
+      userId: data.user.id,
+    });
+
+    if (outcome.claimed) {
+      /*
+       * The cookie is spent. Leaving it would point at a row that no longer
+       * answers to it, and on a shared device the next person would carry a
+       * token for someone else's claimed project.
+       */
+      const jar = await cookies();
+      jar.delete(ANON_COOKIE);
+    } else {
+      console.info(`[signUp] brief not claimed: ${outcome.reason}`);
+    }
+  }
+
+  /*
+   * With confirmation ON, `signUp` issues no session and she is told to check
+   * her email — but her brief is already hers. With confirmation OFF, the
+   * session exists and this redirect lands her straight back on it.
+   */
+  redirect(data.session ? "/app" : "/signup/check-your-email");
 }
 
 export async function signOut() {

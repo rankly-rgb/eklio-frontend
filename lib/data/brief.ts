@@ -237,14 +237,26 @@ export type BriefBundle = {
 export async function loadBrief(
   supabase: Client,
   projectId: string,
-  userId: string
+  /*
+   * ⚠ NULL FOR AN ANONYMOUS CALLER, AND THAT IS NOT A WEAKENING.
+   *
+   * The `user_id` filter below was always belt-and-braces on top of RLS — the
+   * policies are what actually decide, and they have been since the table was
+   * created. An anonymous brief has no `user_id` to filter on, so for that
+   * caller the belt is dropped and the braces do the work they were already
+   * doing.
+   *
+   * The client passed in for an anonymous caller carries `x-anon-token`
+   * (`lib/anon/session.ts`), and `projects_select_own` compares its hash. A
+   * caller with the wrong token reads nothing — proven in
+   * `20260910192157_anonymous_briefs.test.sql`.
+   */
+  userId: string | null
 ): Promise<BriefBundle | null> {
-  const { data: project, error } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", projectId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  let query = supabase.from("projects").select("*").eq("id", projectId);
+  if (userId) query = query.eq("user_id", userId);
+
+  const { data: project, error } = await query.maybeSingle();
 
   if (error || !project) return null;
 

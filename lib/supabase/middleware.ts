@@ -3,6 +3,34 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PROTECTED_PREFIXES = ["/app"];
 
+/*
+ * ── WHAT A STRANGER MAY REACH WITHOUT AN ACCOUNT ────────────────────────
+ *
+ * The brief, its review, its positioning screen and the reveal. Everything
+ * else under `/app` still needs a session.
+ *
+ * ⚠ THIS DOES NOT GRANT ANYTHING. It only stops the proxy from bouncing her to
+ * `/login` before the page runs. Every one of these surfaces then resolves its
+ * caller (`lib/anon/session.ts`) and reads through RLS, where an anonymous
+ * request without a matching token reads nothing at all. Letting the request
+ * through and letting it see something are two different decisions, made in
+ * two different places, and only the second one is a permission.
+ *
+ * ⚠ THE KIT SECTIONS ARE NOT HERE, deliberately. `/app/brand-kits/[id]/reveal`
+ * is the free reveal — the thing being sold — and it is the last screen before
+ * the checkout. The paid sections underneath it (`/assets`, `/site-editor`,
+ * `/handoff`…) stay behind the session, because an account is the only place a
+ * purchase can attach to.
+ */
+const ANONYMOUS_PATTERNS: RegExp[] = [
+  /^\/app\/briefs\/[^/]+(\/(review|positioning))?\/?$/,
+  /^\/app\/brand-kits\/[^/]+\/reveal\/?$/,
+];
+
+export function reachableWithoutAccount(pathname: string): boolean {
+  return ANONYMOUS_PATTERNS.some((pattern) => pattern.test(pathname));
+}
+
 /**
  * Rafraîchit la session Supabase à chaque requête et protège les routes
  * listées dans PROTECTED_PREFIXES en redirigeant vers /login si non connecté.
@@ -39,7 +67,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(prefix)
   );
 
-  if (isProtected && !user) {
+  if (isProtected && !user && !reachableWithoutAccount(request.nextUrl.pathname)) {
     const redirectUrl = new URL("/login", request.url);
     /*
      * Le chemin ET sa query string.
