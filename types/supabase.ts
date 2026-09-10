@@ -505,6 +505,183 @@ export type Database = {
         }
         Relationships: []
       }
+      content_checkins: {
+        Row: {
+          brand_kit_id: string
+          created_at: string
+          happening: string | null
+          id: string
+          month: string
+          sessions_theme: string | null
+          taking_clients: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_kit_id: string
+          created_at?: string
+          happening?: string | null
+          id?: string
+          month: string
+          sessions_theme?: string | null
+          taking_clients?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_kit_id?: string
+          created_at?: string
+          happening?: string | null
+          id?: string
+          month?: string
+          sessions_theme?: string | null
+          taking_clients?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      content_grounds: {
+        Row: {
+          cost_cents: number
+          created_at: string
+          fingerprint: string
+          id: string
+          month_id: string
+          state: string
+          storage_path: string | null
+          theme: string
+          updated_at: string
+        }
+        Insert: {
+          cost_cents?: number
+          created_at?: string
+          fingerprint: string
+          id?: string
+          month_id: string
+          state?: string
+          storage_path?: string | null
+          theme: string
+          updated_at?: string
+        }
+        Update: {
+          cost_cents?: number
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          month_id?: string
+          state?: string
+          storage_path?: string | null
+          theme?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      content_image_allowance: {
+        Row: {
+          brand_kit_id: string
+          budget_cents: number
+          created_at: string
+          month: string
+          reserved_cents: number
+          updated_at: string
+          used_cents: number
+        }
+        Insert: {
+          brand_kit_id: string
+          budget_cents: number
+          created_at?: string
+          month: string
+          reserved_cents?: number
+          updated_at?: string
+          used_cents?: number
+        }
+        Update: {
+          brand_kit_id?: string
+          budget_cents?: number
+          created_at?: string
+          month?: string
+          reserved_cents?: number
+          updated_at?: string
+          used_cents?: number
+        }
+        Relationships: []
+      }
+      content_months: {
+        Row: {
+          brand_kit_id: string
+          created_at: string
+          id: string
+          month: string
+          status: string
+          themes: string[]
+          updated_at: string
+        }
+        Insert: {
+          brand_kit_id: string
+          created_at?: string
+          id?: string
+          month: string
+          status?: string
+          themes?: string[]
+          updated_at?: string
+        }
+        Update: {
+          brand_kit_id?: string
+          created_at?: string
+          id?: string
+          month?: string
+          status?: string
+          themes?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      content_preferences: {
+        Row: {
+          accepted_registers: string[]
+          brand_kit_id: string
+          cadence_per_week: number
+          created_at: string
+          off_limits: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_registers: string[]
+          brand_kit_id: string
+          cadence_per_week: number
+          created_at?: string
+          off_limits?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_registers?: string[]
+          brand_kit_id?: string
+          cadence_per_week?: number
+          created_at?: string
+          off_limits?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      content_registers: {
+        Row: {
+          id: string
+          label: string
+          safety_rule: string
+          sort_order: number
+        }
+        Insert: {
+          id: string
+          label: string
+          safety_rule: string
+          sort_order: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          safety_rule?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       content_items: {
         Row: {
           alt_text: string | null
@@ -515,6 +692,8 @@ export type Database = {
           created_at: string
           id: string
           image_slot: string | null
+          month_id: string | null
+          register: string | null
           scheduled_for: string | null
           status: string
           tags: string[]
@@ -530,6 +709,8 @@ export type Database = {
           created_at?: string
           id?: string
           image_slot?: string | null
+          month_id?: string | null
+          register?: string | null
           scheduled_for?: string | null
           status?: string
           tags?: string[]
@@ -545,6 +726,8 @@ export type Database = {
           created_at?: string
           id?: string
           image_slot?: string | null
+          month_id?: string | null
+          register?: string | null
           scheduled_for?: string | null
           status?: string
           tags?: string[]

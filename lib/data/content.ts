@@ -39,8 +39,59 @@ export const CONTENT_ARCHETYPES = [
 ] as const;
 export type ContentArchetype = (typeof CONTENT_ARCHETYPES)[number];
 
-export const CONTENT_STATUSES = ["draft", "ready", "archived"] as const;
+/*
+ * ⚠ `proposed` GOES IN FRONT, AND IT CHANGES WHAT THE COUNTS MEAN.
+ *
+ *   proposed -> draft -> ready -> archived
+ *
+ * A `proposed` item is one Eklio wrote and she has not yet read. It counts in
+ * NEITHER `Ready` nor `Posted`. Today "Ready 0" is true only by vacuity —
+ * three untitled drafts and nothing else — and the moment a month arrives
+ * full, a status that counted proposals would report work she has never seen.
+ * Approving the month moves the batch to `draft`.
+ *
+ * `posted` is deliberately absent. It is derived from `content_publications`,
+ * which is append-only and which clients cannot write. One copy of the fact.
+ */
+export const CONTENT_STATUSES = ["proposed", "draft", "ready", "archived"] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
+
+/*
+ * ── REGISTER IS NOT ARCHETYPE ────────────────────────────────────────────
+ *
+ * `archetype` above is a LAYOUT — it maps to the satori renderer's catalogue
+ * keys. A register is an EDITORIAL SHAPE with its own safety rule, governing
+ * what a caption may say and what it may never say. A named feeling can be
+ * laid out as a statement or as notes; a practical note usually lands in notes
+ * but does not have to.
+ *
+ * The two value sets are DISJOINT by construction — note `reflective_question`
+ * rather than `question` — and a guard rail in the creating migration fails if
+ * they ever overlap. That is the `min_tier` lesson applied in advance: two
+ * vocabularies that agree only because both are currently permissive will
+ * eventually disagree, silently.
+ *
+ * The catalogue itself lives in `content_registers`, with each register's
+ * safety rule stored as data. This array is the TypeScript mirror of its ids;
+ * the labels and rules are read from the table, never duplicated here.
+ */
+export const CONTENT_REGISTERS = [
+  "named_feeling",
+  "reflective_question",
+  "how_the_work_works",
+  "permission",
+  "practical_note",
+  "seasonal_note",
+] as const;
+export type ContentRegister = (typeof CONTENT_REGISTERS)[number];
+
+/** 1, 2 or 3 posts a week. Closed: the generation plan is a table indexed by it. */
+export const CONTENT_CADENCES = [1, 2, 3] as const;
+export type ContentCadence = (typeof CONTENT_CADENCES)[number];
+
+/** Governs whether a post may carry a call to action, and which one. */
+export const TAKING_CLIENTS = ["yes", "waitlist", "no"] as const;
+export type TakingClients = (typeof TAKING_CLIENTS)[number];
 
 export const PUBLISH_CHANNELS = [
   "instagram",
@@ -74,6 +125,15 @@ export const contentItemSchema = z.object({
   tags: z.array(z.string()),
   category: z.string().nullable(),
   image_slot: z.string().nullable(),
+  /*
+   * Null on anything she wrote herself before the generator existed — which is
+   * every item in production today. Not defaulted to a register: "we do not
+   * know what shape this was written under" is the truth, and inventing one
+   * would put a safety category on a caption nothing checked.
+   */
+  register: z.enum(CONTENT_REGISTERS).nullable(),
+  /** Which generated month produced it. Never derived from `scheduled_for`. */
+  month_id: z.string().nullable(),
   scheduled_for: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),

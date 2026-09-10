@@ -52,6 +52,9 @@ function item(overrides: Partial<ContentItem>): ContentItem {
     tags: [],
     category: null,
     image_slot: null,
+    // Null, like every item in production: these predate the generator.
+    register: null,
+    month_id: null,
     scheduled_for: null,
     created_at: "2026-09-01T00:00:00Z",
     updated_at: "2026-09-01T00:00:00Z",

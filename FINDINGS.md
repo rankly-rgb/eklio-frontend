@@ -611,3 +611,52 @@ replaced by what remains true. What follows is the residue, not the original lis
   text; two scheduled on the same day (2026-09-08, both `question`), one unscheduled. The
   September calendar shows two because the third has no date. `Ready 0` / `Posted 0` are
   literally true.
+
+---
+
+## Added during the Content chantier, Session 2 (retirement + schema)
+
+- **⚠ A SQL guard rail caught my own comment, and it was right to.** The retirement's guard greps every
+  function body for the dead table's name — and `pg_get_functiondef` returns the COMMENTS too. My first
+  draft left an explanatory comment inside the replaced `sync_notifications` naming the table, and the
+  migration failed. A name inside a function body is indistinguishable, to that check, from a live
+  reference. The fix was to write prose that does not lie to the grep ("the dead table") and to have the
+  guard ASSEMBLE the name rather than contain it. This is the SQL twin of the repo's own rule for its
+  static tests, and it is the first time that rule has bitten in SQL rather than TypeScript.
+
+- **`eklio-backend/types/supabase.ts` is CLI-generated, says "Do not hand-edit", and is badly stale.** It
+  does not contain `content_items` or `content_publications` at all — tables that shipped on 2026-09-06.
+  I removed the retired table and its two RPCs from it (making it less wrong), but I deliberately did NOT
+  hand-write the six new tables into it: that would be simulating typegen, which is the very trap
+  "Ruling 2 — make the typegen trap fail loudly" was about. It needs a real
+  `supabase gen types` run against a replayed migration set. The FRONTEND's copy is the hand-maintained
+  one and is current.
+
+- **The frontend `HomeActivity.contentReady` was mapped but never rendered.** `loadHomeActivity` built a
+  `contentReady` array from the RPC and no component ever read it. So the content half of "Since you were
+  here" was dead on both sides of the wire, not just in the database.
+
+- **The three production items now sit under a rule they cannot satisfy without an edit.** All three are
+  `draft`, untitled, with no alt text. The new gate means marking any of them `ready` refuses with
+  `alt_text_required` until alt text is written. That is the intended rule and they are her own drafts, so
+  nothing is lost — but it is a behaviour change to three existing rows and worth knowing before someone
+  reports it as a bug.
+
+- **`content_kit_access` refuses an unpaid kit, which makes every content fixture a billing fixture.** A
+  test kit needs a `paid` purchase row, and a `paid` row must carry `paid_at` (`purchases_paid_at_check`).
+  Worth recording because it is not obvious from the content migrations, and it cost two failed test runs.
+
+- **How many themes a month gets is still undecided, and the schema deliberately does not decide it.** The
+  chantier brief says "a month record holding the four themes", but its own cadence table gives 2 / 3 / 4
+  square grounds for 1× / 2× / 3× per week. Four themes with two grounds, or two themes at the lowest
+  cadence? `content_months.themes` is bounded 1..6 rather than pinned to four precisely so Session 3 can
+  answer this without a migration. **It must be answered there** — the grounds table is keyed
+  `(month_id, theme)`, so the count of themes IS the count of photographic grounds and therefore the
+  month's image spend.
+
+- **No renderer/register pairing is physically impossible yet, because nothing renders a register.** The
+  brief asked for any pairing the renderer cannot do to be recorded as a fact. As of this session the
+  answer is: none, and the reason is that `archetype` alone drives the satori layouts and every register
+  can be carried by any of the five. The real constraint will be LENGTH — `post_signature_1080` and
+  `story_1080x1920` have the least room for text — and that is a Session 3 measurement against real
+  captions, not something this schema can assert.

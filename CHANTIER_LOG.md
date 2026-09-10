@@ -1896,3 +1896,87 @@ voice in them.
    Confirming that is the intent rather than porting them.
 
 **Session 1 ends here. Nothing was built.**
+
+---
+
+# CONTENT CHANTIER — Session 2: retirement, then schema
+
+Frontend `main` `c29e0a5` → `436625d` → (this). Backend `8343e9f` → `328544d` → `726de66`.
+
+## The retirement order, which was the one hazard
+
+**One migration, not five** (backend `20260910082539`). `home_recent_activity` and `sync_notifications`
+both run on every home visit; between two migrations there is a window in which one of them selects a
+table that is already gone — a 500 on the home screen of every paying customer. Postgres DDL is
+transactional, so a single migration has no such window.
+
+Inside it, each step removes only what nothing still standing refers to:
+
+1. **Both readers replaced first.** After this, nothing executable depends on anything below.
+2. **Rows deleted.** No `content_ready` notification has ever existed in production, but step 4 would
+   fail against one and "there are none" is a fact about today.
+3. **`notifications_content_ready_idx` dropped.** It existed only to serve step 1's `on conflict`.
+   Dropping it FIRST would have broken dedup for the length of the window; after, it is inert.
+4. **`notifications.kind` narrowed** to the two kinds that remain.
+5. **`calendar_summary` and `ensure_month_skeleton` dropped.**
+6. **The table last**, cascade taking its trigger, four policies, four indexes, seven CHECKs.
+
+Verified live: table gone, both RPCs gone, index gone, CHECK narrowed, 24 `asset_rendered` notifications
+intact, `content_items` untouched at 3 rows. Both home functions execute, and their `else` branches —
+which plpgsql plans lazily, so the not-found smoke test never reaches them — were run verbatim against a
+real kit and returned 28 real assets.
+
+**Frontend:** `app/api/cron/monthly/route.ts`, `lib/generation/monthly.ts` and `lib/presence/month.ts`
+deleted outright. `one-month-model.test.ts`'s `PARKED` allow-list is now **zero entries** — a stronger
+invariant than one — and it asserts the three files stay deleted.
+
+## The schema
+
+`20260910083735` (tables) and `20260910084320` (write path).
+
+- **`content_registers`** — the six editorial shapes as a CATALOGUE TABLE, each carrying its safety rule
+  as data. A table rather than a CHECK because the six are needed twice (one per item, a set per kit),
+  and two CHECK lists holding the same six strings is the drift being avoided.
+- **⚠ Register and archetype are DISJOINT by construction.** `question` as a register is
+  `reflective_question`. A guard rail fails the migration on any overlap, and tests prove both
+  directions. This is the `min_tier` lesson applied in advance.
+- **`content_preferences`** — cadence (1/2/3), `accepted_registers` validated by a TRIGGER against the
+  catalogue (an array cannot carry a foreign key), `off_limits` bounded at 500 chars because it enters a
+  prompt.
+- **`content_checkins`** — three nullable fields per (kit, month). `taking_clients` is
+  `yes|waitlist|no`, not a boolean: a waitlist has its own copy, and squeezing it into yes/no would put
+  "book now" in front of someone who can take nobody. An unanswered check-in never blocks a month.
+- **`content_months`** — provenance. `themes` bounded 1..6, NOT pinned to four (see FINDINGS: the count
+  is Session 3's to decide).
+- **`content_grounds`** — rows keyed `(month_id, theme)`, each with fingerprint, storage path, cost in
+  cents and reserve/settle state. A settled ground must have a storage path; the CHECK says so.
+- **`content_image_allowance`** — one row per (kit, month), so **the reset is structural**: a new month
+  has no row, and last month's exhaustion cannot reach it. Ceiling 100 cents in `app_settings`
+  (a ground is 5c; four at the largest cadence is 20c; 100 is 5× that and ~2.6% of the subscription).
+- **`content_items`** gains `register` (FK) and `month_id` (nullable FK), and `proposed` in front of
+  `draft`. `posted` stays derived from `content_publications`.
+
+**The alt-text rule is BUILT, not kept.** The generator writes the alt text — Eklio composed the image.
+The RPC enforces only the floor: no `ready` with blank alt text, resolved against the state the patch
+will LEAVE the row in, so the editor's combined save still works. Whitespace does not count.
+
+**Write doors split by author:** she gets RPCs (`set_content_preferences`, `set_content_checkin`); months
+and grounds get NO client door, because a server job writes them as the Stripe webhook writes purchases;
+spending is revoked from `authenticated` entirely, reading her allowance is hers.
+
+Every new table ships RLS + four policies in its creating migration, guarded. Non-owner tests ran live: a
+stranger reads zero rows from all five per-kit tables, the owner reads her own, no client can update any.
+
+## For Session 3
+
+1. **How many themes per cadence** — the open decision, deliberately not frozen. Themes = grounds =
+   image spend.
+2. **`content-never-generates.test.ts` must go red and be changed deliberately.** Its own header says so.
+   Add `reserve_content_image` / `settle_content_image` to its `SPENDING` list so the KIT's lifetime
+   budget stays forbidden on content paths while the monthly one becomes allowed.
+3. **Register → layout is the generator's second choice, not a mapping.** Pick the register first from
+   her accepted list, write under its safety rule, then choose a layout that fits the text and the
+   month's photographic/solid mix.
+4. `content_kit_access` refuses an unpaid kit — every fixture needs a `paid` purchase with `paid_at`.
+
+**Session 2 ends here. Nothing was generated.**
