@@ -7,6 +7,7 @@ import { summarize, isAnswered } from "@/lib/brief/summary";
 import type { StepDraft } from "@/lib/brief/flow";
 import { BrandPreview } from "@/components/preview/brand-preview";
 import { MonoLabel } from "@/components/ui/mono-label";
+import { AfterTheBrief } from "@/components/brief/after-the-brief";
 import { ButtonLink } from "@/components/ui/button";
 
 /*
@@ -73,7 +74,7 @@ export default async function ReviewPage({
       <div className="flex items-start gap-12 max-xl:flex-col">
         <div className="flex w-[380px] flex-none flex-col gap-8 max-xl:w-full">
           <div className="flex flex-col gap-3">
-            <MonoLabel tracking="18">Your brief</MonoLabel>
+            <AfterTheBrief current="review" />
             <h1 className="font-display text-h1 font-medium leading-tight tracking-h1">
               Everything we&rsquo;ll work from.
             </h1>

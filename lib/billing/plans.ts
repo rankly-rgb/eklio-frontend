@@ -69,7 +69,7 @@ export const KIT_PLANS: Record<KitTier, KitPlan> = {
     amountCents: 14900,
     priceEnvVar: "STRIPE_PRICE_PRACTICE",
     highlights: [
-      "Everything in Starter",
+      `Everything in ${SOLD_TIER_NAME.starter}`,
       "Website copy for 6 pages",
       "Branded social template specs",
     ],
@@ -82,7 +82,7 @@ export const KIT_PLANS: Record<KitTier, KitPlan> = {
     amountCents: 24900,
     priceEnvVar: "STRIPE_PRICE_SIGNATURE",
     highlights: [
-      "Everything in Practice",
+      `Everything in ${SOLD_TIER_NAME.practice}`,
       "Website copy for every page you asked for, up to 8",
       "Blog and FAQ copy included",
     ],
@@ -149,8 +149,8 @@ export const MONTHLY_PRESENCE = {
    * défaut sans dire qu'on peut décocher est un dark pattern, et ce produit
    * s'adresse à des cliniciens tenus à leur propre déontologie publicitaire.
    */
-  defaultOnMicrocopy:
-    "Added by default — keep it only if it earns its place. Cancel anytime.",
+  addOnMicrocopy:
+    "Off unless you add it. Tick it at checkout if you want it; cancel anytime.",
 } as const;
 
 /*

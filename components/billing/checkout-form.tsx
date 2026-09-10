@@ -40,7 +40,21 @@ export function CheckoutForm({
    * `createCheckoutSession`) — ceci est la moitié visible de la même décision.
    */
   const included = includesMonthlyPresence(tier);
-  const [withMonthlyPresence, setWithMonthlyPresence] = useState(true);
+  /*
+   * ⚠ UNTICKED, AND THE DEFAULT IS THE WHOLE POINT.
+   *
+   * This was `useState(true)`: a $39/month recurring charge pre-selected on a
+   * one-time purchase, sold to US consumers. That is a negative option —
+   * she is billed unless she notices and opts out — and it sits under FTC
+   * ROSCA and the Negative Option Rule, and under California's ARL for the
+   * cancellation half.
+   *
+   * Unticking needs no advice; it is the state nobody has to defend. Someone
+   * who wants Monthly Presence ticks one box on the way past, and that tick is
+   * the express consent the rules are asking for. Someone who does not want it
+   * is not billed for having read too quickly at eleven at night.
+   */
+  const [withMonthlyPresence, setWithMonthlyPresence] = useState(false);
   const addOn = withMonthlyPresence && !included;
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +147,7 @@ export function CheckoutForm({
             ))}
           </ul>
           <span className="font-mono text-mono tracking-mono-14 text-ink-2">
-            {MONTHLY_PRESENCE.defaultOnMicrocopy}
+            {MONTHLY_PRESENCE.addOnMicrocopy}
           </span>
         </span>
       </label>

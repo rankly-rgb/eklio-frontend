@@ -4,13 +4,22 @@ import { loadBrief } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
 import { uspOptionsSchema } from "@/lib/generation/how-you-work-shapes";
 import { PositioningScreen } from "@/components/brief/positioning-screen";
-import { Progress7, StepCounter } from "@/components/ui/progress7";
 import { MonoLabel } from "@/components/ui/mono-label";
+import { AfterTheBrief } from "@/components/brief/after-the-brief";
 
 /*
  * L'écran de positionnement (§2.4). Route À PART, entre le récapitulatif et
- * la génération — pas une huitième étape du brief : la jauge reste posée à
- * 7 de 7, pleine, comme à la fin du brief lui-même.
+ * la génération — pas une huitième étape du brief.
+ *
+ * ⚠ LA JAUGE À « 7 DE 7 » A ÉTÉ RETIRÉE D'ICI. Elle disait vrai sur le brief
+ * et faux sur ce qui restait : une barre pleine, sur un écran qui n'est pas le
+ * dernier. La marche d'acquisition l'a relevé — la prospect finit une jauge,
+ * puis découvre deux écrans dont rien n'annonçait l'existence, sur un chemin
+ * vendu comme « sept étapes ».
+ *
+ * `AfterTheBrief` la remplace : trois repères NOMMÉS, jamais numérotés, donc
+ * impossibles à confondre avec des étapes de brief — et le nombre d'écrans
+ * restants dit en toutes lettres.
  */
 export default async function PositioningPage({
   params,
@@ -32,10 +41,7 @@ export default async function PositioningPage({
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pt-6 pb-16 max-md:px-[var(--gutter-sm)]">
       <div className="mx-auto flex max-w-brief flex-col">
-        <div className="mb-2.5 flex justify-end">
-          <StepCounter step={7} />
-        </div>
-        <Progress7 step={7} fraction={1} />
+        <AfterTheBrief current="positioning" />
 
         <div className="mt-8 flex flex-col gap-3">
           <MonoLabel tracking="18">Positioning</MonoLabel>

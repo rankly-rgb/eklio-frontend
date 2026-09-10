@@ -310,7 +310,7 @@ export default function PricingPage() {
                 advertising-ethics rules as the rest of your copy.
               </p>
               <p className="text-helper leading-prose text-ink-2">
-                {MONTHLY_PRESENCE.defaultOnMicrocopy}
+                {MONTHLY_PRESENCE.addOnMicrocopy}
               </p>
             </div>
             <ul className="flex shrink-0 flex-col gap-2 text-ui text-ink-2">

@@ -50,10 +50,18 @@ export default function LandingPage() {
           <h1 className="font-display text-generation font-medium leading-tight tracking-h1 text-pretty max-md:text-question-sm">
             A brand that sounds like the way you actually work.
           </h1>
+          {/*
+            ⚠ THE COUNT HAS TO SURVIVE THE WALK. This said "Answer a seven-step
+            brief. Get three complete directions", which reads as seven screens
+            between here and the reveal. The brief is seven steps; after it come
+            a review and a positioning screen. Two more is nothing to hide — but
+            arriving at them unannounced, on a path sold by its step count, is
+            the kind of small lie a nervous audience feels.
+          */}
           <p className="max-w-[560px] text-body leading-prose text-ink-2">
-            Answer a seven-step brief. Get three complete directions — palette,
-            typefaces, voice and site copy — and a prompt you can paste straight
-            into your website builder.
+            Answer a seven-step brief, check it over, and get three complete
+            directions — palette, typefaces, voice and site copy — plus a prompt
+            you can paste straight into your website builder.
           </p>
           <div className="mt-2 flex items-center gap-6">
             <ButtonLink href="/signup" variant="primary">

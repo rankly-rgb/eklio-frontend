@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signedInRedirectPath } from "@/lib/auth/next-url";
 import { siteUrl } from "@/lib/site-url";
+import { signUpMessage } from "@/lib/auth/signup-message";
 
 export type AuthFormState = { error: string } | null;
 
@@ -69,7 +70,21 @@ export async function signUp(
   });
 
   if (error) {
-    return { error: `We couldn't create the account: ${error.message}` };
+    /*
+     * ⚠ THE UPSTREAM MESSAGE NEVER REACHES HER. This line used to read
+     * `${error.message}`, and a therapist on a phone was shown:
+     *
+     *   We couldn't create the account: Unexpected token 'H', "Host not i"...
+     *   is not valid JSON
+     *
+     * Whatever the auth layer is having trouble with — a rate limit, an
+     * outage, a proxy in front of it returning HTML — the sentence she reads
+     * has to be one a human wrote, and it has to say what to do next. The
+     * machine detail is what an engineer needs, so it goes to the server log,
+     * where it is useful and where she never sees it.
+     */
+    console.error(`[signUp] ${error.code ?? "unknown"}: ${error.message}`);
+    return { error: signUpMessage(error.code) };
   }
 
   redirect("/signup/check-your-email");
@@ -80,3 +95,4 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/");
 }
+

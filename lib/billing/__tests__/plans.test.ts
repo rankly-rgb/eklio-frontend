@@ -45,12 +45,22 @@ describe("catalogue", () => {
     expect(MONTHLY_PRESENCE.interval).toBe("month");
   });
 
-  it("dit que l'add-on est coché par défaut ET résiliable", () => {
-    // Cocher par défaut sans le dire est un dark pattern ; la microcopy est
-    // donc une contrainte produit, pas une décoration.
-    const microcopy = MONTHLY_PRESENCE.defaultOnMicrocopy.toLowerCase();
-    expect(microcopy).toContain("added by default");
+  it("⚠ ne dit PLUS que l'add-on est coché par défaut, parce qu'il ne l'est plus", () => {
+    /*
+     * Ce test disait l'inverse, et il avait raison de le dire : tant que la
+     * case partait cochée, l'annoncer était une contrainte produit et pas une
+     * décoration. La case part maintenant décochée
+     * (`components/billing/checkout-form.tsx`), donc la phrase qui la
+     * défendait est devenue fausse — et une microcopy qui décrit un
+     * comportement disparu est pire que pas de microcopy du tout.
+     *
+     * Ce qui reste vrai des deux côtés : elle est résiliable, et on le dit.
+     */
+    const microcopy = MONTHLY_PRESENCE.addOnMicrocopy.toLowerCase();
+    expect(microcopy).not.toContain("added by default");
     expect(microcopy).toContain("cancel anytime");
+    // Et elle dit ce qu'il faut faire pour l'avoir : cocher.
+    expect(microcopy).toMatch(/tick it|add it/);
   });
 
   it("nomme une variable d'environnement par prix, jamais un id en dur", () => {

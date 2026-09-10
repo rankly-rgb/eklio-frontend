@@ -21,8 +21,29 @@ import { KIT_TIERS } from "@/lib/kit/tiers";
  * structurelle — interdire de l'écrire — d'où ce fichier.
  *
  * ⚠ L'ÉNUMÉRATION EST DÉCOUVERTE, PAS TENUE À LA MAIN. On marche dans `app/`
- * et on ramasse tout fichier qui déclare des métadonnées. Une nouvelle page
- * ne peut donc pas échapper à la règle en n'étant ajoutée nulle part.
+ * ET dans `lib/`, et on ramasse tout fichier qui déclare des métadonnées ou
+ * qui porte de la copy vendue. Une nouvelle page ne peut donc pas échapper à
+ * la règle en n'étant ajoutée nulle part.
+ *
+ * ── POURQUOI `lib/` A ÉTÉ AJOUTÉ, ET CE QUI EST PASSÉ SANS ────────────────
+ *
+ * La marche d'acquisition (`ACQUISITION_WALK.md` §5.1) a trouvé, sur la page
+ * de tarifs EN PRODUCTION, deux puces visibles :
+ *
+ *     « Everything in Starter »      sur la carte « Brand Kit Plus »
+ *     « Everything in Practice »     sur la carte « Practice Suite »
+ *
+ * Ce fichier ne les a pas vues, pour deux raisons cumulées, et aucune n'était
+ * un accident de code :
+ *
+ *   1. il ne marchait que dans `app/`, et `lib/billing/plans.ts` n'y est pas ;
+ *   2. il ne regardait que les MÉTADONNÉES, et une puce de fonctionnalité
+ *      n'en est pas — alors que c'est du texte qu'une prospect LIT, ce qui
+ *      était précisément l'objet de la consigne.
+ *
+ * La garde était donc plus étroite que la phrase qui l'avait demandée. Elle
+ * couvre maintenant les deux : les métadonnées où qu'elles soient, et toute
+ * copy de facturation dans `lib/billing/`.
  */
 
 const ROOT = process.cwd();
@@ -45,11 +66,22 @@ function code(file: string): string {
 }
 
 const APP_FILES = walk(join(ROOT, "app"));
+const LIB_FILES = walk(join(ROOT, "lib"));
 
-const METADATA_FILES = APP_FILES.filter((file) => {
+const METADATA_FILES = [...APP_FILES, ...LIB_FILES].filter((file) => {
   const source = code(file);
   return /export\s+(const|async\s+function)\s+(metadata|generateMetadata)/.test(source);
 });
+
+/*
+ * La copy de facturation : ce qu'une prospect lit sur `/pricing` et sur le
+ * checkout, quel que soit le fichier d'où il vient. C'est le périmètre que la
+ * consigne demandait depuis le début — « chaque surface qui nomme un palier »
+ * — et pas seulement les balises `<head>`.
+ */
+const BILLING_COPY_FILES = LIB_FILES.filter((file) =>
+  file.startsWith(join(ROOT, "lib", "billing"))
+);
 
 /*
  * Les valeurs d'enum, capitalisées comme un nom de produit le serait.
@@ -81,6 +113,76 @@ describe("l'énumération elle-même", () => {
 
   it("et la page de tarifs en fait partie", () => {
     expect(METADATA_FILES.some((file) => file.endsWith("app/pricing/page.tsx"))).toBe(true);
+  });
+
+  it("la copy de facturation est balayée, et le catalogue en fait partie", () => {
+    // Anti-vacuité : c'est le fichier qui a laissé passer les deux puces.
+    expect(BILLING_COPY_FILES.length).toBeGreaterThanOrEqual(2);
+    expect(BILLING_COPY_FILES.some((f) => f.endsWith("lib/billing/plans.ts"))).toBe(true);
+  });
+});
+
+describe("la copy de facturation ne nomme aucun palier à la main", () => {
+  it.each(BILLING_COPY_FILES.map((file) => [file.slice(ROOT.length + 1), file]))(
+    "%s",
+    (_label, file) => {
+      const source = withoutSoldNames(code(file as string));
+      for (const pattern of BANNED) {
+        expect(source, `${_label} contient ${pattern}`).not.toMatch(pattern);
+      }
+    }
+  );
+
+  /*
+   * ── LA RENVOI D'UN PALIER VERS UN AUTRE ─────────────────────────────────
+   *
+   * `BANNED` seul ne suffisait pas ici, et il ne le POUVAIT pas : « Practice »
+   * n'y est interdit que collé à un prix, parce que « your practice » et
+   * « Practice details » sont de l'anglais légitime partout dans ce produit.
+   * « Everything in Practice » n'a donc été attrapé par rien.
+   *
+   * La forme du défaut est plus précise que le mot : c'est une carte qui
+   * RENVOIE à un autre palier, et qui le nomme. On lit donc la phrase entière
+   * et on vérifie que ce qu'elle nomme est un nom vendu — ce qui interdit
+   * l'enum sans interdire le mot.
+   */
+  const CROSS_REFERENCE = /Everything in ([^"`\n]+)/g;
+
+  it.each(BILLING_COPY_FILES.map((file) => [file.slice(ROOT.length + 1), file]))(
+    "%s ne renvoie qu'à des paliers réellement vendus",
+    (_label, file) => {
+      const source = code(file as string);
+      for (const match of source.matchAll(CROSS_REFERENCE)) {
+        const named = match[1].trim();
+        // Construit depuis le catalogue : c'est la bonne façon, et elle passe.
+        if (named.startsWith("${")) continue;
+        expect(
+          Object.values(SOLD_TIER_NAME),
+          `${_label} renvoie à « ${named} », qui n'est pas un palier vendu`
+        ).toContain(named);
+      }
+    }
+  );
+
+  /*
+   * ⚠ LE CANARI DE CETTE RÈGLE-CI : les deux puces EXACTES qui étaient en
+   * production. Sans lui, élargir le balayage puis casser la regex repasserait
+   * au vert sans que rien ne le dise.
+   */
+  it("et elle mord : les deux puces qui étaient en production sont refusées", () => {
+    for (const bullet of ["Everything in Starter", "Everything in Practice"]) {
+      const named = [...bullet.matchAll(CROSS_REFERENCE)][0][1].trim();
+      expect(
+        Object.values(SOLD_TIER_NAME).includes(named),
+        `« ${bullet} » devrait être refusée`
+      ).toBe(false);
+    }
+  });
+
+  it("tandis que la version construite depuis le catalogue passe", () => {
+    const now = "Everything in ${SOLD_TIER_NAME.starter}";
+    const named = [...now.matchAll(CROSS_REFERENCE)][0][1].trim();
+    expect(named.startsWith("${")).toBe(true);
   });
 });
 
