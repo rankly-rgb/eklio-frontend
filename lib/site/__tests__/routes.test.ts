@@ -37,6 +37,29 @@ const SERVICE_ROLE_CALLS = [
 /** Le module qui définit le client admin — sa définition n'est pas un usage. */
 const ADMIN_CLIENT_DEFINITION = "lib/supabase/server.ts";
 
+/*
+ * ── UNE EXEMPTION, NOMMÉE PLUTÔT QUE CACHÉE ──────────────────────────────
+ *
+ * `lib/funnel/sink.ts` ouvre bien un client admin, et il est atteignable
+ * depuis à peu près tout le dépôt : `track()` l'importe, et `track()` est
+ * appelé partout. Le rendre invisible à ce balayage (un `import()` dynamique,
+ * par exemple) serait contourner la garde, pas la respecter — donc il est
+ * écrit ici, avec ce qui le rend admissible :
+ *
+ *   1. il n'appelle AUCUNE des huit RPC du contrat, et rien de `auth.uid()` ;
+ *   2. il n'écrit que dans `funnel_events`, la seule table du projet dont les
+ *      lignes n'appartiennent à personne d'autre qu'Eklio ;
+ *   3. il ne LIT rien, jamais, et ne rend rien à l'appelant ;
+ *   4. il ne reçoit aucun identifiant fourni par la requête : le hash d'IP est
+ *      dérivé sur le serveur, et les uuid viennent des propriétés que la route
+ *      a elle-même écrites.
+ *
+ * ⚠ SI L'UN DE CES QUATRE POINTS CESSE D'ÊTRE VRAI, retirer cette ligne et
+ * régler le problème pour de bon. Ce qui rend l'exemption sûre, c'est qu'un
+ * évier d'écriture pure ne peut pas rendre les données de quelqu'un d'autre.
+ */
+const ANALYTICS_SINK = "lib/funnel/sink.ts";
+
 /** Retire commentaires de bloc et de ligne : on lit du code, pas de la prose. */
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -114,6 +137,7 @@ describe("les points d'entrée de l'éditeur de site", () => {
     (_label, entry) => {
       const offenders = reachableFrom(entry)
         .filter((file) => relative(file) !== ADMIN_CLIENT_DEFINITION)
+        .filter((file) => relative(file) !== ANALYTICS_SINK)
         .filter((file) => {
           const source = stripComments(readFileSync(file, "utf8"));
           return SERVICE_ROLE_CALLS.some((pattern) => pattern.test(source));

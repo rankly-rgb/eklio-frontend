@@ -83,8 +83,15 @@ export async function PATCH(
   if (outcome.ok) {
     if (parsed.data.completed_steps) {
       const last = Math.max(...parsed.data.completed_steps, 0);
-      track("brief_step_completed", { step: last });
-      if (last === 7) track("brief_reviewed", {});
+      /*
+       * ⚠ `projectId` PORTÉ ICI DEPUIS LE LOT « INSTRUMENTATION ». Sans lui,
+       * ces deux étapes comptaient des événements que rien ne raccrochait à
+       * une marche : le tunnel voyait « quarante briefs ont passé l'étape 4 »
+       * sans pouvoir dire si c'étaient quarante personnes ou une seule qui
+       * revenait. `funnel_report` compte des projets distincts.
+       */
+      track("brief_step_completed", { step: last, projectId: id });
+      if (last === 7) track("brief_reviewed", { projectId: id });
     }
     return json({
       brief: outcome.brief,

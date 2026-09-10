@@ -407,6 +407,12 @@ const OTHER_GATE: Record<string, string> = {
     "and gating the exit behind an entitlement is the one thing a subscription " +
     "must never do.",
   "app/api/checklist": "set_launch_step resolves ownership through brand_kits itself.",
+  "app/api/e":
+    "The funnel beacon. Unauthenticated on purpose -- it is how a STATIC " +
+    "landing page reports that it was viewed -- and it accepts two event " +
+    "names and nothing else: no ids, no properties, no free text. It reads " +
+    "nothing and can grant nothing; the worst it can do is inflate two " +
+    "counters that are already labelled an estimate.",
   "app/app/briefs": "The pre-purchase brief. Free on purpose: it is the thing being sold.",
   "app/app/checkout": "The checkout itself. Gating it on having paid would be a closed loop.",
   "app/app/settings": "Account settings, user-scoped and unrelated to any kit.",

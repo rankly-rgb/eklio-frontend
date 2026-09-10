@@ -10,6 +10,7 @@ import {
   RECOMMENDED_TIER,
 } from "@/lib/billing/plans";
 import { KIT_TIERS, KIT_TIER_RULES, type KitTier } from "@/lib/kit/tiers";
+import { PageBeacon } from "@/components/analytics/page-beacon";
 
 /*
  * Page de tarifs — publique, hors `/app`, donc hors du middleware d'auth.
@@ -192,6 +193,8 @@ function PlanCard({ tier }: { tier: KitTier }) {
 export default function PricingPage() {
   return (
     <div className="flex min-h-full flex-col">
+      {/* Step 2 of the funnel. Same shape as the landing page. */}
+      <PageBeacon event="pricing_viewed" />
       <header className="flex items-center justify-between border-b border-line px-6 py-5 md:px-12">
         <Link href="/" className="font-display text-wordmark font-semibold tracking-wordmark text-ink">
           Eklio

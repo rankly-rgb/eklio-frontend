@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CheckoutForm } from "@/components/billing/checkout-form";
 import { ORDERED_PLANS, RECOMMENDED_TIER, formatUsd } from "@/lib/billing/plans";
+import { track } from "@/lib/analytics";
 import { parseKitTier } from "@/lib/kit/tiers";
 
 /*
@@ -65,6 +66,18 @@ export default async function CheckoutPage({
       projectName = project.name;
     }
   }
+
+  /*
+   * ⚠ SUR LE RENDU, PAS SUR UN CLIC. C'est l'écran de paiement lui-même qui
+   * est l'étape du tunnel : ce qu'on veut savoir, c'est combien y arrivent et
+   * combien en repartent sans payer. Un événement posé sur le bouton ne
+   * mesurerait que les gens qui ont déjà décidé.
+   *
+   * `reversed` est porté parce qu'un retour ici après un remboursement n'est
+   * pas la même visite qu'une première, et les compter ensemble gonflerait
+   * l'étape d'un pas que personne n'a fait.
+   */
+  track("checkout_opened", { projectId, tier, reversed });
 
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-10 px-6 py-12">

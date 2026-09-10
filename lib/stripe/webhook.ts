@@ -10,6 +10,7 @@ import {
 } from "@/lib/stripe/metadata";
 import type { KitTier } from "@/lib/kit/tiers";
 import type { PurchaseStatus, SubscriptionStatus } from "@/types/supabase";
+import { track } from "@/lib/analytics";
 
 /*
  * Traitement des events Stripe — la logique, sans le transport.
@@ -446,6 +447,26 @@ async function handleCheckoutSession(
       projectId: metadata.projectId,
       tier: metadata.tier,
       stripeEventId: eventId,
+    });
+
+    /*
+     * ⚠ LE DERNIER PAS DU TUNNEL, ET IL EST ICI PLUTÔT QU'AU CHECKOUT.
+     * `purchases` est la vérité de l'argent, mais c'est une table de
+     * RÉSULTAT : elle ne sait rien de ce qui s'est passé avant. Cet
+     * événement porte le `projectId`, donc il raccroche le paiement à la
+     * marche anonyme qui l'a précédé — c'est le seul endroit du produit où
+     * les deux moitiés se rejoignent.
+     *
+     * Émis seulement quand l'argent est arrivé : un `pending` n'est pas une
+     * vente, et un tunnel qui compterait les intentions se mentirait à
+     * lui-même. Aucune donnée personnelle — un tier, un montant, deux
+     * identifiants.
+     */
+    track("purchase_completed", {
+      userId,
+      projectId: metadata.projectId,
+      tier: metadata.tier,
+      amount_cents: KIT_PLANS[metadata.tier].amountCents,
     });
   }
 

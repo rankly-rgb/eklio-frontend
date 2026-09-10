@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signedInRedirectPath } from "@/lib/auth/next-url";
 import { siteUrl } from "@/lib/site-url";
 import { signUpMessage } from "@/lib/auth/signup-message";
+import { track } from "@/lib/analytics";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/server";
 import { claimAnonBrief } from "@/lib/anon/claim";
@@ -61,6 +62,16 @@ export async function signUp(
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
 
+  /*
+   * ⚠ THE ATTEMPT, NOT THE FORM. `/signup` is a static page, so there is no
+   * server render to measure "she opened it" without making that page dynamic
+   * — and the number that matters is how many people got as far as pressing
+   * the button, which is exactly this. Emitted before the password check, so
+   * a bounced attempt still counts as an attempt: a signup step that only
+   * counted successes could never show a password rule turning people away.
+   */
+  track("signup_started");
+
   if (password.length < 8) {
     return { error: "Use a password of at least 8 characters." };
   }
@@ -116,6 +127,8 @@ export async function signUp(
    * It never fails the signup. Her account exists either way; a brief that
    * could not be attached is a brief, not an account.
    */
+  let claimedProjectId: string | null = null;
+
   if (data.user && anonToken) {
     const outcome = await claimAnonBrief(createAdminClient(), {
       token: anonToken,
@@ -123,6 +136,7 @@ export async function signUp(
     });
 
     if (outcome.claimed) {
+      claimedProjectId = outcome.projectId;
       /*
        * The cookie is spent. Leaving it would point at a row that no longer
        * answers to it, and on a shared device the next person would carry a
@@ -134,6 +148,20 @@ export async function signUp(
       console.info(`[signUp] brief not claimed: ${outcome.reason}`);
     }
   }
+
+  /*
+   * ⚠ THE PROJECT ID IS WHAT MAKES THIS STEP JOINABLE. Without it, the funnel
+   * can count accounts but cannot tell which anonymous walk became which
+   * account — and that link is the whole point of letting the brief run
+   * without one. It is null when she signed up without a brief in flight,
+   * which is itself worth being able to count.
+   */
+  track("account_created", {
+    userId: data.user?.id ?? null,
+    projectId: claimedProjectId,
+    claimed: claimedProjectId !== null,
+    confirmed: data.session !== null,
+  });
 
   /*
    * With confirmation ON, `signUp` issues no session and she is told to check

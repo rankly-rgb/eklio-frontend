@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { StartBriefButton } from "@/components/brief/start-brief-button";
 import { MonoLabel } from "@/components/ui/mono-label";
+import { PageBeacon } from "@/components/analytics/page-beacon";
 
 /*
  * Page publique. Elle ne fait pas partie des huit références : elle en reprend
@@ -22,6 +23,8 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <div className="route-enter flex min-h-full flex-col">
+      {/* Step 1 of the funnel. One word to /api/e; the page stays static. */}
+      <PageBeacon event="landing_viewed" />
       <header className="flex h-[var(--header-h)] flex-none items-center gap-12 border-b border-line px-[var(--gutter)] max-md:px-[var(--gutter-sm)]">
         <Link
           href="/"

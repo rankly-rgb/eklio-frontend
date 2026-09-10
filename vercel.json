@@ -13,6 +13,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/cron/purge-events",
+      "schedule": "0 4 * * *"
+    },
+    {
       "path": "/api/cron/trial-ending",
       "schedule": "0 15 * * *"
     }

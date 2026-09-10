@@ -3,7 +3,7 @@
 import { useAssetUrl } from "@/lib/kit/use-asset-url";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { FRAME_LABEL, IN_SITU_FRAME, InSituFrame, type FrameType } from "@/components/kit/in-situ/frames";
-import { track } from "@/lib/analytics";
+import { trackClient } from "@/lib/analytics-client";
 
 /**
  * One frame, fetching its own image. Used both for the open asset's own
@@ -73,7 +73,7 @@ export function InSituSection({
               <button
                 key={key}
                 type="button"
-                onClick={() => track("asset_insitu_viewed", { key: assetKey, frame: type })}
+                onClick={() => trackClient("asset_insitu_viewed", { key: assetKey, frame: type })}
                 className="flex flex-col gap-1.5 text-left"
               >
                 <FramedAsset brandKitId={brandKitId} assetKey={key} type={type} practiceName={practiceName} />

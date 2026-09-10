@@ -1025,6 +1025,72 @@ export type Database = {
         }
         Relationships: []
       }
+      funnel_events: {
+        Row: {
+          anonymous: boolean
+          brand_kit_id: string | null
+          event: string
+          id: number
+          occurred_at: string
+          project_id: string | null
+          props: Json
+          user_id: string | null
+          visitor_day: string | null
+        }
+        Insert: {
+          anonymous?: boolean
+          brand_kit_id?: string | null
+          event: string
+          id?: never
+          occurred_at?: string
+          project_id?: string | null
+          props?: Json
+          user_id?: string | null
+          visitor_day?: string | null
+        }
+        Update: {
+          anonymous?: boolean
+          brand_kit_id?: string | null
+          event?: string
+          id?: never
+          occurred_at?: string
+          project_id?: string | null
+          props?: Json
+          user_id?: string | null
+          visitor_day?: string | null
+        }
+        Relationships: []
+      }
+      funnel_steps: {
+        Row: {
+          event: string
+          label: string
+          match_prop: string | null
+          match_value: string | null
+          phase: string
+          step_key: string
+          step_no: number
+        }
+        Insert: {
+          event: string
+          label: string
+          match_prop?: string | null
+          match_value?: string | null
+          phase: string
+          step_key: string
+          step_no: number
+        }
+        Update: {
+          event?: string
+          label?: string
+          match_prop?: string | null
+          match_value?: string | null
+          phase?: string
+          step_key?: string
+          step_no?: number
+        }
+        Relationships: []
+      }
       gain_cards: {
         Row: {
           active: boolean
@@ -2539,6 +2605,21 @@ export type Database = {
         Returns: Json
       }
       direction_limits: { Args: never; Returns: Json }
+      funnel_props_are_safe: { Args: { p_props: Json }; Returns: boolean }
+      funnel_report: {
+        Args: { p_from: string; p_to?: string }
+        Returns: {
+          events: number
+          label: string
+          pct_of_first: number
+          pct_of_previous: number
+          phase: string
+          projects: number
+          step_key: string
+          step_no: number
+          visitors: number
+        }[]
+      }
       get_brand_asset_manifest: {
         Args: { p_brand_kit_id: string; p_current_fingerprint: string }
         Returns: Json
@@ -2599,6 +2680,7 @@ export type Database = {
         Returns: boolean
       }
       nearest_color_name: { Args: { p_hex: string }; Returns: string }
+      purge_funnel_events: { Args: never; Returns: number }
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_usp_options_valid: { Args: { p: Json }; Returns: boolean }
@@ -2606,6 +2688,7 @@ export type Database = {
         Args: { p_purchase_id: string; p_status: string }
         Returns: string
       }
+      record_funnel_events: { Args: { p_events: Json }; Returns: number }
       record_asset_download: {
         Args: {
           p_brand_kit_id: string

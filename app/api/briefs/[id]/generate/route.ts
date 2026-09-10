@@ -199,7 +199,7 @@ export async function POST(
     );
   }
 
-  track("generation_started", { brandKitId: kit.id });
+  track("generation_started", { brandKitId: kit.id, projectId });
 
   after(async () => {
     try {
@@ -210,10 +210,11 @@ export async function POST(
         brandKitId: kit.id,
         userId,
       });
-      track("generation_succeeded", { brandKitId: kit.id });
+      track("generation_succeeded", { brandKitId: kit.id, projectId });
     } catch (pipelineError) {
       track("generation_failed", {
         brandKitId: kit.id,
+        projectId,
         // Le NOM de l'erreur, jamais son message : il peut citer de la copy.
         reason:
           pipelineError instanceof Error ? pipelineError.name : "unknown",

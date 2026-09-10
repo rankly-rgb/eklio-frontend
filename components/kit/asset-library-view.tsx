@@ -9,7 +9,7 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import type { StatusKey } from "@/lib/status";
 import type { KitTier } from "@/lib/kit/tiers";
 import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
-import { track } from "@/lib/analytics";
+import { trackClient } from "@/lib/analytics-client";
 
 const GROUP_ORDER = ["identity", "web", "color", "social", "print", "document"] as const;
 type Group = (typeof GROUP_ORDER)[number];
@@ -189,7 +189,7 @@ export function AssetLibraryView({
             count={manifest.length}
             onClick={() => {
               setParam("group", null);
-              track("asset_filtered", { group: "all" });
+              trackClient("asset_filtered", { group: "all" });
             }}
           />
           {GROUP_ORDER.map((g) => (
@@ -200,7 +200,7 @@ export function AssetLibraryView({
               count={counts[g] ?? 0}
               onClick={() => {
                 setParam("group", g);
-                track("asset_filtered", { group: g });
+                trackClient("asset_filtered", { group: g });
               }}
             />
           ))}
@@ -272,7 +272,7 @@ export function AssetLibraryView({
                     type="button"
                     onClick={() => {
                       setParam("group", g);
-                      track("asset_filtered", { group: g });
+                      trackClient("asset_filtered", { group: g });
                     }}
                     className="flex-none whitespace-nowrap text-ui text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
                   >
@@ -328,7 +328,7 @@ export function AssetLibraryView({
           const isSelected = selected.has(entry.key);
           const openDetail = () => {
             setParam("asset", entry.key);
-            track("asset_detail_opened", { key: entry.key });
+            trackClient("asset_detail_opened", { key: entry.key });
           };
           const checkbox = (
             <label

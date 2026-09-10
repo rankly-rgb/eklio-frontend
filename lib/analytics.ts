@@ -1,5 +1,10 @@
+import { record } from "@/lib/funnel/sink";
+import type { AnalyticsEvent, AnalyticsProperties } from "@/lib/analytics-events";
+
 /*
- * Le tunnel, en événements — SERVEUR UNIQUEMENT.
+ * Le tunnel, en événements — SERVEUR UNIQUEMENT, et cette fois c'est vrai :
+ * ce module importe `next/headers`, donc un composant client qui l'importerait
+ * casserait le build au lieu de faire semblant de mesurer.
  *
  * PAS DE FOURNISSEUR, ET C'EST DÉLIBÉRÉ. Un SDK d'analytics côté client
  * ajouterait un script tiers, un cookie, une bannière de consentement, et une
@@ -11,88 +16,21 @@
  * e-mail, jamais un nom de practice, jamais un extrait de copy. Ce qui est
  * journalisé ici part chez qui héberge les logs.
  *
+ * ⚠ CE QUI A CHANGÉ AU LOT « INSTRUMENTATION ». La ligne de journal reste,
+ * mais elle n'est plus la seule destination : `lib/funnel/sink.ts` écrit
+ * chaque événement dans `public.funnel_events`. Sur Vercel, un journal de
+ * fonction vit quelques heures à quelques jours sans Log Drain — une semaine
+ * après l'envoi des e-mails, la preuve avait disparu. Le tunnel avait besoin
+ * d'un ÉVIER, pas d'une réécriture.
+ *
+ * L'écriture part dans `after()` : elle ne bloque aucune réponse et ne peut
+ * pas lever. Une mesure ne doit jamais pouvoir casser ce qu'elle mesure.
+ *
  * Le jour où un vrai fournisseur arrive, c'est cette fonction qu'on remplace,
  * et elle seule.
  */
 
-export type AnalyticsEvent =
-  | "brief_started"
-  | "brief_step_completed"
-  | "brief_reviewed"
-  | "generation_started"
-  | "generation_succeeded"
-  | "generation_failed"
-  | "direction_chosen"
-  /* Supersédé au lot 11 par `site_output_copied`. Conservé tant que
-     `lib/kit/site-prompt.ts` l'est — cf. l'en-tête de ce fichier. */
-  | "site_prompt_copied"
-  | "pdf_downloaded"
-  /* ── L'éditeur de site ────────────────────────────────────────────────
-   * Tous émis DEPUIS LE SERVEUR, comme le reste : les route handlers de
-   * `/api/brand-kits/[id]/site-*` et la page de l'éditeur. Aucun d'eux ne
-   * porte de texte libre — un `area`, une cible, un `kind`, jamais une
-   * ligne de copy.
-   */
-  | "site_editor_opened"
-  | "site_spec_edited"
-  | "contrast_fix_applied"
-  | "builder_target_changed"
-  | "site_output_copied"
-  | "setup_sheet_downloaded"
-  | "extra_instructions_used"
-  | "site_spec_reset"
-  | "checklist_item_completed"
-  /* ── Check (LOT 7) ────────────────────────────────────────────────────
-   * `check_scanned` and `check_rewritten` carry RULE IDS and counts only —
-   * six fixed strings out of `ethics_rules`. Never the text she pasted,
-   * never an excerpt of it, not even truncated. That is the whole rule for
-   * this surface and it is kept here as well as in the routes.
-   */
-  | "check_scanned"
-  | "check_rewritten"
-  | "unlock_opened"
-  | "email_sent"
-  | "billing_portal_opened"
-  | "trial_ending_notice_sent"
-  /* ── Positionnement USP (§2.5) ────────────────────────────────────────
-   * `usp_gate_rejected` porte le nom de la porte et l'id du candidat —
-   * jamais le texte, qui EST la donnée libre que ce fichier interdit
-   * d'en-tête.
-   */
-  | "usp_options_generated"
-  | "usp_gate_rejected"
-  | "usp_selected"
-  | "usp_edited"
-  | "usp_collision_warned"
-  | "usp_collision_kept"
-  /* ── post-purchase-v2, Lot 2 (app chrome) ──────────────────────────── */
-  | "search_used"
-  /* ── post-purchase-v2, Lot 4 (asset library) ─────────────────────────
-   * `asset_downloaded`'s `size`/`format` mean the file's byte size and its
-   * catalog `kind` (png/svg/...) -- never the pixel dimensions, which
-   * `asset_catalog.width`/`height` already name differently.
-   */
-  | "asset_library_opened"
-  | "asset_filtered"
-  | "asset_detail_opened"
-  | "asset_downloaded"
-  | "asset_zip_downloaded"
-  | "asset_insitu_viewed"
-  /* ── post-purchase-v2, Lot 5 (generated photography) ─────────────────
-   * `brand_image_generated`'s `cost_cents` is what the PRICE TABLE says the
-   * image cost, never anything derived from the model's `usage` block --
-   * see lib/images/config.ts. `brand_image_refused` carries the machine
-   * reason (budget_exceeded, moderated, busy, ...), never the prompt and
-   * never a message written for her.
-   */
-  | "brand_image_generated"
-  | "brand_image_refused";
-
-/** Valeurs admises : rien qui puisse porter du texte libre d'utilisateur. */
-export type AnalyticsProperties = Record<
-  string,
-  string | number | boolean | null
->;
+export type { AnalyticsEvent, AnalyticsProperties };
 
 export function track(
   event: AnalyticsEvent,
@@ -100,4 +38,6 @@ export function track(
 ): void {
   // Une ligne, préfixée, parsable — `[analytics] event {json}`.
   console.info(`[analytics] ${event} ${JSON.stringify(properties)}`);
+  // Puis l'évier, hors du chemin de la réponse. Il n'échoue jamais bruyamment.
+  record(event, properties);
 }
