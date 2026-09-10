@@ -525,12 +525,11 @@ export function buildSinceRows(params: {
 /**
  * Where a notification's own subject lives.
  *
- * ⚠ `content_ready`'s `payload.item_id` is a `monthly_presence_content` id --
- * that notification kind reads from the table `content_items` superseded
- * (Session 5, `one-month-model.test.ts`). It can only exist for rows synced
- * before that table went dead, and treating `item_id` as a `content_items`
- * id would 404. Routed to the calendar instead of the specific item; see
- * FINDINGS.md.
+ * ⚠ IL N'Y A PLUS DE CAS `content_ready`. Ce genre portait un `payload.item_id`
+ * pointant dans l'espace d'ids d'une table morte, et il était routé vers le
+ * calendrier faute de pouvoir viser l'item. La table, le genre, sa contrainte
+ * CHECK et l'index partiel qui indexait ce payload ont tous été retirés
+ * (20260910082539). Le `default` couvre donc un genre inconnu, pas celui-là.
  */
 export function hrefForNotification(brandKitId: string, notification: Notification): string {
   switch (notification.kind) {
@@ -543,8 +542,6 @@ export function hrefForNotification(brandKitId: string, notification: Notificati
     }
     case "site_stale":
       return `/app/brand-kits/${brandKitId}/site-editor`;
-    case "content_ready":
-      return "/app/content";
     default:
       return "/app";
   }

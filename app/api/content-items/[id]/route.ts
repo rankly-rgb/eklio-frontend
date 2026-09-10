@@ -13,7 +13,7 @@ import {
  * ── WHY THIS IS NOT UNDER /api/brand-kits/[id] ──────────────────────────
  *
  * `/api/content/[id]/unlock` already exists and takes a
- * `monthly_presence_content` id. Hanging a second, different id space off the
+ * id in the retired monthly-content table's id space. Hanging a second id space off the
  * same path would make `/api/content/<uuid>` mean two things depending on
  * which table the uuid happens to live in. `content-items` is its own word.
  *

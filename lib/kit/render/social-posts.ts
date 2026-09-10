@@ -16,10 +16,15 @@ import type { SocialTemplate } from "@/lib/brand/shapes";
  * names as the fallback: nothing in this schema models per-direction sample
  * copy separately (confirmed by reading `directionSchema` — no such
  * fields), and it's the only content in this schema that actually matches
- * the four archetypes the brief names. The "month's first four items"
- * primary source (`monthly_presence_content`) is a real, empty-in-production
- * table with NO archetype/layout column at all — see DECISIONS.md for why
- * that branch isn't wired in this lot.
+ * the four archetypes the brief names.
+ *
+ * ⚠ THE "month's first four items" ALTERNATIVE NO LONGER EXISTS. It named the
+ * dead monthly-content table, which the Content chantier retired (backend
+ * `20260910082539`). `content_items` is now the only month model, and it DOES
+ * carry an `archetype` — so wiring this renderer to a month became possible on
+ * that day rather than impossible. It is deliberately not done here: that is
+ * the generator's decision, in a later session of that chantier, not a
+ * renderer change.
  *
  * Layout mirrors the existing on-screen preview (`SocialTile` in
  * components/preview/brand-preview.tsx) at print/export resolution rather

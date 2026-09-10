@@ -7,7 +7,14 @@ import type { Database } from "@/types/supabase";
  * filtering or staleness logic lives here, the RPCs already did it.
  */
 
-export type NotificationKind = "asset_rendered" | "site_stale" | "content_ready";
+/*
+ * ⚠ DEUX GENRES, PAS TROIS. `content_ready` est parti avec la table morte
+ * (20260910082539) : la contrainte CHECK en base ne l'admet plus, et
+ * `sync_notifications` ne l'écrit plus. Le nouveau système notifiera depuis
+ * `content_items` quand il aura quelque chose de vrai à dire — il n'héritera
+ * pas de ce genre-ci, dont le payload portait un id d'une table disparue.
+ */
+export type NotificationKind = "asset_rendered" | "site_stale";
 
 export type Notification = {
   id: string;
@@ -55,11 +62,6 @@ export function notificationLine(notification: Notification): string {
     }
     case "site_stale":
       return "Your site instructions are out of date with your latest edits.";
-    case "content_ready": {
-      const title =
-        typeof notification.payload.title === "string" ? notification.payload.title : "A post";
-      return `${title} is ready.`;
-    }
     default:
       return "Something changed.";
   }

@@ -955,76 +955,6 @@ export type Database = {
         }
         Relationships: []
       }
-      monthly_presence_content: {
-        Row: {
-          brand_kit_id: string
-          caption: string | null
-          created_at: string
-          day_of_month: number
-          id: string
-          month: string
-          published_at: string | null
-          status: string
-          title: string | null
-          type: string
-          updated_at: string
-          user_id: string
-          visual_spec: Json | null
-        }
-        Insert: {
-          brand_kit_id: string
-          caption?: string | null
-          created_at?: string
-          day_of_month: number
-          id?: string
-          month: string
-          published_at?: string | null
-          status?: string
-          title?: string | null
-          type: string
-          updated_at?: string
-          user_id: string
-          visual_spec?: Json | null
-        }
-        Update: {
-          brand_kit_id?: string
-          caption?: string | null
-          created_at?: string
-          day_of_month?: number
-          id?: string
-          month?: string
-          published_at?: string | null
-          status?: string
-          title?: string | null
-          type?: string
-          updated_at?: string
-          user_id?: string
-          visual_spec?: Json | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "monthly_presence_content_brand_kit_id_fkey"
-            columns: ["brand_kit_id"]
-            isOneToOne: false
-            referencedRelation: "brand_kits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "monthly_presence_content_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "monthly_presence_content_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       not_a_fit_cards: {
         Row: {
           active: boolean
@@ -2255,10 +2185,6 @@ export type Database = {
         Returns: number
       }
       brief_step_renumber_up: { Args: { p_step: number }; Returns: number }
-      calendar_summary: {
-        Args: { p_month: string; p_user_id: string }
-        Returns: Json
-      }
       comp_access_active: { Args: never; Returns: boolean }
       comp_grant_active: { Args: { p_user_id: string }; Returns: boolean }
       comp_grant_credits: { Args: { p_user_id: string }; Returns: number }
@@ -2307,10 +2233,6 @@ export type Database = {
         Returns: Json
       }
       direction_limits: { Args: never; Returns: Json }
-      ensure_month_skeleton: {
-        Args: { p_month: string; p_user_id: string }
-        Returns: number
-      }
       get_brand_asset_manifest: {
         Args: { p_brand_kit_id: string; p_current_fingerprint: string }
         Returns: Json
@@ -2830,16 +2752,15 @@ export const Constants = {
  *                                                 'active','past_due','canceled','unpaid','paused'])
  *   purchases.status                 = ANY (ARRAY['pending','paid','refunded',
  *                                                  'partially_refunded','disputed','failed'])
- *   monthly_presence_content.status  = ANY (ARRAY['locked','draft','ready','published'])
+ *   content_items.status             = ANY (ARRAY['draft','ready','archived'])
  *
- * ATTENTION — `monthly_presence_content.status` A CHANGÉ. Il valait
- * `pending`/`generating`/`complete`/`failed` au Lot 4 ; le schéma backend l'a
- * remplacé par un cycle de publication (`locked`/`draft`/`ready`/`published`),
- * avec de nouvelles colonnes `caption`, `visual_spec` et `published_at`.
- * L'union ci-dessous suit la base, pas l'ancien lot. Le code de génération
- * mensuelle écrit encore `'complete'`, valeur que le CHECK REFUSE désormais :
- * cf. `app/app/projets/[id]/presence/actions.ts`, à reprendre avec le reste de
- * la persistance de Monthly Presence.
+ * L'ancienne table de contenu mensuel figurait ici avec son propre cycle
+ * (`locked`/`draft`/`ready`/`published`) et un avertissement disant que le
+ * générateur écrivait une valeur que le CHECK refusait. Le chantier Content a
+ * RETIRÉ cette table (backend 20260910082539) et supprimé le générateur : il
+ * n'y a plus ni cycle divergent ni avertissement à porter. `content_items` est
+ * le seul modèle de mois, et son union vit dans `lib/data/content.ts`
+ * (`CONTENT_STATUSES`), comme celle des tiers vit dans `lib/kit/tiers.ts`.
  *
  * `brand_kits.tier` et `purchases.tier` sont eux aussi contraints
  * (starter/practice/signature) mais leur union n'est PAS dupliquée ici : elle

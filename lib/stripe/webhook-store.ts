@@ -9,9 +9,9 @@ import type { Json } from "@/types/supabase";
 /*
  * Les ports du webhook, branchés sur Supabase et sur Stripe.
  *
- * TOUT passe par la service_role, et ce n'est pas un raccourci : `purchases`,
- * `subscriptions` et `monthly_presence_content` sont en écriture REFUSÉE aux
- * clients par RLS (policies `*_insert_denied` / `*_update_denied`), et
+ * TOUT passe par la service_role, et ce n'est pas un raccourci : `purchases`
+ * et `subscriptions` sont en écriture REFUSÉE aux clients par RLS (policies
+ * `*_insert_denied` / `*_update_denied`), et
  * `stripe_events` n'a aucune policy du tout — RLS activée, privilèges anon et
  * authenticated révoqués. C'est le seul chemin d'écriture qui existe, et il
  * n'est atteignable que depuis ce route handler serveur.

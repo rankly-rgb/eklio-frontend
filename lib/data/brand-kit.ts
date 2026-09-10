@@ -372,14 +372,13 @@ export async function listDeletedBrandKits(supabase: Client): Promise<DeletedBra
 export type HomeActivity = {
   since: string | null;
   newAssets: { key: string; label: string }[];
-  contentReady: { type: "post" | "story"; title: string; dayOfMonth: number }[];
 };
 
 export async function loadHomeActivity(
   supabase: Client,
   brandKitId: string
 ): Promise<HomeActivity> {
-  const empty: HomeActivity = { since: null, newAssets: [], contentReady: [] };
+  const empty: HomeActivity = { since: null, newAssets: [] };
   const { data, error } = await supabase.rpc("home_recent_activity", {
     p_brand_kit_id: brandKitId,
   });
@@ -388,19 +387,11 @@ export async function loadHomeActivity(
     return empty;
   }
   const result = data as
-    | { since: string | null; new_assets: { key: string; label: string }[]; content_ready: { type: "post" | "story"; title: string; day_of_month: number }[] }
+    | { since: string | null; new_assets: { key: string; label: string }[] }
     | { error: { code: string; message: string } };
   if ("error" in result) {
     console.error("[brand-kit] home_recent_activity", result.error);
     return empty;
   }
-  return {
-    since: result.since,
-    newAssets: result.new_assets,
-    contentReady: result.content_ready.map((item) => ({
-      type: item.type,
-      title: item.title,
-      dayOfMonth: item.day_of_month,
-    })),
-  };
+  return { since: result.since, newAssets: result.new_assets };
 }

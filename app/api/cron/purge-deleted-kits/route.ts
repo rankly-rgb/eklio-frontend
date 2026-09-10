@@ -6,13 +6,15 @@ import { authorizeCron } from "@/lib/api/cron";
  * The other half of soft delete (Lot 9) — kits `delete_brand_kit` marked 30+
  * days ago get their storage objects removed, then the row itself, which
  * cascades to `brand_assets`/`direction_assets`/`site_specs`/
- * `launch_checklist_items`/`monthly_presence_content` (see
- * `20260903280000_delete_brand_kit.sql`'s own header for the FK shape).
+ * `launch_checklist_items`/`content_items` (see
+ * `20260903280000_delete_brand_kit.sql`'s own header for the FK shape). The
+ * dead monthly-content table was in that cascade list until the Content
+ * chantier retired it (backend `20260910082539`).
  *
  * NEVER TOUCHES `purchases`/`subscriptions` — deletion doesn't refund, and
  * this cron is the actual data cleanup, not a billing action.
  *
- * IDEMPOTENT, same discipline as `cron/monthly`: storage removal on a path
+ * IDEMPOTENT: storage removal on a path
  * that's already gone is a no-op, not an error, so a re-run after a partial
  * failure (storage cleared but the row-delete didn't reach, or the reverse)
  * is safe.

@@ -244,22 +244,31 @@ describe("hrefForNotification", () => {
     expect(hrefForNotification(KIT, n)).toBe("/app/brand-kits/k1/site-editor");
   });
 
-  it("⚠ content_ready mène au calendrier, JAMAIS à payload.item_id", () => {
-    /*
-     * `item_id` référence `monthly_presence_content`, une table que la
-     * session 5 a rendue morte au profit de `content_items`. Le traiter
-     * comme un id de `content_items` répondrait 404 -- voir FINDINGS.md.
-     */
-    const n: Notification = {
+  /*
+   * ⚠ LE CAS `content_ready` A DISPARU AVEC SON GENRE.
+   *
+   * Ce bloc vérifiait qu'un `content_ready` était routé vers le calendrier
+   * plutôt que vers `payload.item_id`, parce que cet id pointait dans l'espace
+   * d'ids d'une table morte. Le chantier Content a retiré la table, le genre,
+   * sa contrainte CHECK et l'index partiel qui indexait ce payload
+   * (20260910082539). Le genre n'est plus dans `NotificationKind`, donc le
+   * test ne peut plus se construire — et c'est le bon échec : il ne compile
+   * pas, plutôt que de passer en testant un genre que la base refuse.
+   *
+   * Ce qui reste vérifié est plus fort : un genre inconnu tombe sur `default`.
+   */
+  it("un genre inconnu retombe sur l'accueil, sans deviner d'id", () => {
+    const n = {
       id: "n3",
-      kind: "content_ready",
-      payload: { title: "A post", item_id: "mpc-row-does-not-exist-in-content-items" },
+      kind: "something_we_do_not_know",
+      payload: { item_id: "an-id-from-nowhere" },
       read_at: null,
       created_at: "2026-09-06T00:00:00Z",
-    };
+    } as unknown as Notification;
+
     const href = hrefForNotification(KIT, n);
-    expect(href).toBe("/app/content");
-    expect(href).not.toContain("mpc-row-does-not-exist-in-content-items");
+    expect(href).toBe("/app");
+    expect(href).not.toContain("an-id-from-nowhere");
   });
 });
 

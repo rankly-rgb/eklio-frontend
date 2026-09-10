@@ -5,11 +5,13 @@ import type { Database } from "@/types/supabase";
 /*
  * ── LOT 6 — THE EDITORIAL CALENDAR SHE CAN ACTUALLY WRITE IN ─────────────
  *
- * Reads and writes `content_items`, which replaces `monthly_presence_content`.
- * That older table stores posts as rows but refuses every client write by
- * policy and holds zero rows anywhere; the brief's own contingency was to
- * build `content_items` instead, and that is what 20260906155600 did. The old
- * table is left in place and is now dead — see FINDINGS.md.
+ * Reads and writes `content_items`, the ONLY month model. It superseded an
+ * older monthly-content table that refused every client write by policy and
+ * held zero rows for its entire life; 20260906155600 built this one beside it,
+ * and the Content chantier then RETIRED the old one outright (backend
+ * `20260910082539`) along with its two RPCs, its notification kind and the
+ * partial index whose key was a jsonb payload path. There is no second model
+ * left to diverge from.
  *
  * ── PUBLICATION STATE IS DERIVED, NEVER STORED HERE ─────────────────────
  *

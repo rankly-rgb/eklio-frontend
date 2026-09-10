@@ -21,20 +21,21 @@ const ROOT = resolve(__dirname, "../..");
 const ROOTS = ["app", "components", "lib"];
 
 /**
- * LE SEUL appelant restant, et pourquoi il l'est.
+ * ⚠ VIDE, ET C'EST L'ÉTAT FORT.
  *
- * Le cron mensuel écrit encore la vieille table. Il n'a JAMAIS été activé en
- * production — c'est l'état « construit, jamais allumé » que FINDINGS.md
- * enregistre depuis septembre, et c'est pourquoi la table est vide. Le
- * déplacer demande de décider comment un item GÉNÉRÉ et PAYANT vit dans une
- * table qu'elle peut éditer, ce qui est une décision produit, pas un
- * déplacement mécanique. Il reste donc où il est, à l'arrêt, et cette entrée
- * dit exactement pourquoi.
+ * Cette carte portait UN appelant garé : le cron mensuel, qui écrivait encore
+ * la vieille table. La session 2 du chantier Content a supprimé le cron ET son
+ * générateur (`lib/generation/monthly.ts`), et la migration 20260910082539 a
+ * retiré la table elle-même, ses deux RPC, le genre de notification
+ * `content_ready` et l'index partiel dont la clé était la forme du payload.
+ *
+ * « Zéro appelant » est une invariante plus forte que « un seul appelant » :
+ * il n'y a plus d'exemption à faire grandir. Une entrée rajoutée ici
+ * ressusciterait un modèle de mois qui n'existe plus en base — l'ajout
+ * échouerait de toute façon à l'exécution, mais il doit d'abord échouer ici,
+ * à la lecture.
  */
-const PARKED: Record<string, string> = {
-  "app/api/cron/monthly/route.ts":
-    "The Monthly Presence generation cron, built and never turned on. Porting it means deciding how a paid, generated item lives in a table she can edit -- a product decision, not a move. Until then it must not be enabled: it would write rows nothing reads.",
-};
+const PARKED: Record<string, string> = {};
 
 const OLD_MODEL = ["monthly_presence_content", "calendar_summary", "ensure_month_skeleton"];
 
@@ -62,12 +63,33 @@ describe("l'énumération elle-même", () => {
     expect(FILES.length).toBeGreaterThan(150);
   });
 
-  it("l'appelant garé existe encore, et porte sa raison", () => {
-    // Une exemption qui survit au fichier qu'elle exemptait couvrira le
-    // prochain à porter ce nom.
+  it("plus aucun appelant n'est garé", () => {
+    /*
+     * L'assertion a changé de sens avec la session 2 : elle vérifiait qu'une
+     * exemption ne survivait pas au fichier qu'elle exemptait ; elle vérifie
+     * maintenant qu'il n'y en a plus aucune. La boucle reste, parce que le
+     * jour où quelqu'un en rajoute une, elle doit encore exiger un motif
+     * écrit — mais le compte, lui, doit être zéro.
+     */
     for (const [path, reason] of Object.entries(PARKED)) {
       expect(FILES).toContain(path);
       expect(reason.length).toBeGreaterThan(80);
+    }
+    expect(Object.keys(PARKED)).toEqual([]);
+  });
+
+  it("le cron mensuel et son générateur n'existent plus", () => {
+    // Supprimés plutôt que portés : le nouveau système a d'autres entrées,
+    // d'autres contraintes, une autre table de sortie et une autre
+    // architecture d'images. Porter aurait fait entrer les hypothèses de
+    // l'ancien modèle dans le nouveau — la dérive que ce chantier existe pour
+    // arrêter.
+    for (const gone of [
+      "app/api/cron/monthly/route.ts",
+      "lib/generation/monthly.ts",
+      "lib/presence/month.ts",
+    ]) {
+      expect(FILES).not.toContain(gone);
     }
   });
 });
