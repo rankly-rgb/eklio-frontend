@@ -55,6 +55,7 @@ function item(overrides: Partial<ContentItem>): ContentItem {
     // Null, like every item in production: these predate the generator.
     register: null,
     on_image_text: null,
+    theme: null,
     month_id: null,
     scheduled_for: null,
     created_at: "2026-09-01T00:00:00Z",

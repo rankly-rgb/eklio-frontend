@@ -146,6 +146,14 @@ export const contentItemSchema = z.object({
   register: z.enum(CONTENT_REGISTERS).nullable(),
   /** Which generated month produced it. Never derived from `scheduled_for`. */
   month_id: z.string().nullable(),
+  /*
+   * ⚠ NOT `category`. `category` is hers — free text on the item editor, and
+   * she may rename it whenever she likes. This is one of the month's three
+   * themes, written once by the generator and validated in the database
+   * against the month it claims. Grouping the review screen by `category`
+   * would mean a post left its theme the day she retitled it.
+   */
+  theme: z.string().nullable(),
   scheduled_for: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -635,6 +643,64 @@ export async function setContentCheckin(
     error
   );
 }
+
+/* ── The month record ────────────────────────────────────────────────────── */
+
+/** Statuses a generated month moves through. `posted` is never one of them. */
+export const CONTENT_MONTH_STATUSES = [
+  "generating",
+  "proposed",
+  "approved",
+  "failed",
+] as const;
+export type ContentMonthStatus = (typeof CONTENT_MONTH_STATUSES)[number];
+
+export const contentMonthRecordSchema = z.object({
+  id: z.string(),
+  brand_kit_id: z.string(),
+  month: z.string(),
+  themes: z.array(z.string()),
+  status: z.enum(CONTENT_MONTH_STATUSES),
+  created_at: z.string(),
+});
+export type ContentMonthRecord = z.infer<typeof contentMonthRecordSchema>;
+
+/**
+ * The month's provenance row — its themes, and whether it has been approved.
+ *
+ * ⚠ NOT DERIVED FROM THE ITEMS. `month_id` on an item is the link; the date it
+ * is scheduled for is not. A proposal she drags into November still belongs to
+ * October's plan, and still moves with it when she approves that plan.
+ *
+ * Returns null when no month has been generated, which is the state of every
+ * kit in production today. Null is "there is no plan", not "the plan is empty".
+ */
+export async function getContentMonthRecord(
+  supabase: Client,
+  brandKitId: string,
+  month: string
+): Promise<ContentMonthRecord | null> {
+  const { data, error } = await supabase
+    .from("content_months")
+    .select("id, brand_kit_id, month, themes, status, created_at")
+    .eq("brand_kit_id", brandKitId)
+    .eq("month", month)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[content] getContentMonthRecord: ${error.message}`);
+    return null;
+  }
+  if (!data) return null;
+
+  const parsed = contentMonthRecordSchema.safeParse(data);
+  if (!parsed.success) {
+    console.error(`[content] getContentMonthRecord: ${parsed.error.message}`);
+    return null;
+  }
+  return parsed.data;
+}
+
 
 /* ── Approving the month ─────────────────────────────────────────────────── */
 

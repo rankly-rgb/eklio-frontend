@@ -74,6 +74,12 @@ const DB_REFUSED = [
   /* La check-in mensuelle : `set_content_checkin` appelle `content_kit_access`
      en base, comme les autres. La route ne décide rien, elle rend le refus. */
   /\bsetContentCheckin\s*\(/,
+  /* Prendre le mois : `approve_content_month` résout le kit du mois puis
+     appelle `content_kit_access`, qui répond `not_found` avant
+     `payment_required` — un 402 à un inconnu confirmerait que le mois existe.
+     Un second contrôle dans la route serait un second endroit où se tromper
+     d'ordre. */
+  /\bapproveContentMonth\s*\(/,
   /\bgetPublishingLog\s*\(/,
   /\blistUserUploads\s*\(/,
   /\brequestUserUpload\s*\(/,
@@ -314,6 +320,9 @@ describe("les pages du kit sont gardées", () => {
 const CHANTIER_ROOTS = [
   "app/api/check",
   "app/api/content-items",
+  /* Le mois généré : une seule route, `approve`, et elle est dans l'espace
+     payant au même titre que les items qu'elle déplace. */
+  "app/api/content-months",
   "app/app/check",
   "app/app/content",
   "app/app/launch",

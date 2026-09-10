@@ -309,6 +309,48 @@ Session 5's unpaid parts (first month at purchase, the cron shipped disarmed) ar
 
 ---
 
+## DECISION 8 — The plan screen groups by `theme`, and I added the column for it
+
+**Where:** backend `20260910102753`, `components/content/month-plan.tsx`.
+
+The first draft of the review screen grouped the month by `content_items.category`,
+because that field already existed and was free text. That is the `min_tier` mistake in
+miniature: two vocabularies that agree only because both are currently permissive.
+
+`category` is **hers** — an editable 40-character field on the item editor. The day she
+renames one, that post leaves its theme group with no error, no empty state and no way to
+notice. So `theme` is its own column, written once by the generator, validated in the
+database against `content_months.themes` by a trigger (an array element cannot carry a
+foreign key), and deliberately **absent** from `update_content_item`'s allow-list: a post
+re-themed after its ground exists would compose on a photograph about something else.
+
+---
+
+## WHAT THE REVIEW SCREEN LOOKS LIKE, AND WHERE TO SEE IT
+
+`/dev/content-plan` — linked from nowhere, reads no database, calls no model. Twelve
+fixture posts, three themes, cadence 3, the archetype rotation the planner really
+produces.
+
+**Everything on it is labelled twice:** a red `Fixture — not real content` badge, and the
+generator label `stub:no-model-key` under the heading. A test asserts the fixture module is
+imported by that one page and nowhere else.
+
+The production route is `/app/content/plan`, and it is honest about the state every kit is
+in today: **"Eklio has not written this month yet"**, not three empty theme headings. The
+calendar links to it only when `counts.proposed > 0`.
+
+Two things worth your eye on Saturday:
+
+1. **It is Eklio chrome, not her brand.** Deliberate — a review surface's job is to make
+   copy look provisional enough to change, and setting twelve machine-written lines in her
+   own display face makes them look decided. Say the word if you want it the other way.
+2. **Both texts are shown, never the caption alone.** What she sees in the grid is the
+   on-image line; a review that showed only the caption would ask her to approve the half
+   nobody sees first.
+
+---
+
 ## Work log for the weekend
 
 Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
@@ -342,3 +384,7 @@ Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
   (the photograph prompt, reusing the kit's own master direction so her feed does not look
   like two brands), `pipeline.ts` (the six ruled steps), `stub-model.ts` (labelled). See
   Decisions 5, 6 and 7. Suite 2,019 green.
+- **Session 5, the review screen —** `/app/content/plan` and the fixture preview at
+  `/dev/content-plan`; proposals now render greyed and dashed on the calendar, named
+  "Proposed" in text as well as colour, and counted separately as "Waiting for you".
+  `theme` given its own column, see Decision 8. Suite 2,038 green.

@@ -113,6 +113,19 @@ export function ContentCalendar({
 
         <div className="flex items-center gap-5">
           <Counts counts={model.counts} />
+          {/*
+            The way in to the review screen, shown only when there is something
+            to review. A permanent link to an empty plan would teach her the
+            page is usually empty, which is the opposite of what it is for.
+          */}
+          {model.counts.proposed ? (
+            <Link
+              href={`/app/content/plan?month=${month}`}
+              className="text-helper text-ink underline hover:text-ink-2"
+            >
+              Read your month
+            </Link>
+          ) : null}
           <Link href="/app/content/log" className="text-helper text-ink-2 underline hover:text-ink">
             Publishing log
           </Link>
@@ -168,7 +181,13 @@ export function ContentCalendar({
                   {String(dayOf(item) ?? 0).padStart(2, "0")}
                 </MonoLabel>
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-ui text-ink">{item.title ?? "Untitled"}</span>
+                  <span
+                    className={`truncate text-ui ${
+                      item.status === "proposed" ? "text-ink-2" : "text-ink"
+                    }`}
+                  >
+                    {item.title ?? "Untitled"}
+                  </span>
                   <ItemMeta item={item} />
                 </span>
               </Link>
@@ -226,9 +245,15 @@ export function ContentCalendar({
 
 function Counts({ counts }: { counts: ContentMonth["counts"] }) {
   /*
-   * Three counts the database computed over her own rows. "Posted" is derived
-   * from the publishing log, not from a status column someone could have left
+   * Counts the database computed over her own rows. "Posted" is derived from
+   * the publishing log, not from a status column someone could have left
    * behind — which is the whole reason the log is the state.
+   *
+   * ⚠ THE FIRST THREE COUNT HER WORK ONLY. A proposal is something Eklio wrote
+   * and she has not read yet; counting it as `Scheduled` would report twelve
+   * scheduled posts to someone who has seen none of them. `get_content_month`
+   * excludes proposals from all three and returns them separately, and this is
+   * the surface that keeps that distinction visible.
    */
   return (
     <dl className="flex items-baseline gap-5 text-helper text-ink-2">
@@ -244,8 +269,38 @@ function Counts({ counts }: { counts: ContentMonth["counts"] }) {
         <dt>Posted</dt>
         <dd className="text-ink">{counts.posted}</dd>
       </div>
+      {counts.proposed ? (
+        /*
+         * Named for what it is, and set apart from the three above: this is
+         * Eklio's work waiting on her, not hers waiting on the world.
+         */
+        <div className="flex items-baseline gap-1.5 border-l border-line pl-5">
+          <dt>Waiting for you</dt>
+          <dd className="text-ink">{counts.proposed}</dd>
+        </div>
+      ) : null}
     </dl>
   );
+}
+
+/*
+ * ── A PROPOSAL LOOKS LIKE A PROPOSAL ────────────────────────────────────
+ *
+ * Greyed, dashed, and lighter than anything she wrote. Two reasons, and the
+ * second is the one that matters:
+ *
+ *   1. It is not hers yet. A tile that looks identical to a post she wrote
+ *      invites her to treat a machine's draft as a decision she made.
+ *   2. Approving the month is a real gesture with a real cost — twelve posts
+ *      move from `proposed` to `draft` at once. Whatever is about to move has
+ *      to be visibly distinct BEFORE she presses it, or the button is a
+ *      surprise rather than a confirmation.
+ */
+const PROPOSED_TILE = "border-dashed border-line bg-paper-2 text-ink-2";
+const WRITTEN_TILE = "border-line text-ink hover:border-ink-3";
+
+function tileClass(item: ContentItem): string {
+  return item.status === "proposed" ? PROPOSED_TILE : WRITTEN_TILE;
 }
 
 function DayCell({
@@ -283,7 +338,7 @@ function DayCell({
         <Link
           key={item.id}
           href={`/app/content/${item.id}`}
-          className="rounded border border-line px-2 py-1 text-[12px] leading-snug text-ink hover:border-ink-3"
+          className={`rounded border px-2 py-1 text-[12px] leading-snug ${tileClass(item)}`}
         >
           <span className="block truncate">{item.title ?? "Untitled"}</span>
           <ItemMeta item={item} />
@@ -294,10 +349,24 @@ function DayCell({
 }
 
 function ItemMeta({ item }: { item: ContentItem }) {
+  /*
+   * "Proposed" is said out loud rather than left to the colour. Greying is a
+   * signal a colour-blind reader may not receive and a screen-reader user
+   * cannot receive at all, and this is the difference between a post she wrote
+   * and one she has not read.
+   */
+  const state = item.posted
+    ? " · Posted"
+    : item.status === "ready"
+      ? " · Ready"
+      : item.status === "proposed"
+        ? " · Proposed"
+        : "";
+
   return (
     <span className="mt-0.5 block text-[11px] uppercase tracking-[0.08em] text-ink-3">
       {ARCHETYPE_LABELS[item.archetype]}
-      {item.posted ? " · Posted" : item.status === "ready" ? " · Ready" : ""}
+      {state}
     </span>
   );
 }
