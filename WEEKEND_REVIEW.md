@@ -388,3 +388,9 @@ Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
   `/dev/content-plan`; proposals now render greyed and dashed on the calendar, named
   "Proposed" in text as well as colour, and counted separately as "Waiting for you".
   `theme` given its own column, see Decision 8. Suite 2,038 green.
+- **Session 5, the preferences step —** asked once at the top of `/app/content` on the
+  first visit, and permanently editable from Settings. Each register shows the **safety
+  rule from `content_registers`**, not a restatement — it is the same string the generator
+  is held to, so the screen cannot promise one thing while the prompt asks another. All six
+  on by default: an empty month is the failure this chantier exists to end, and the
+  generator refuses to run with no accepted register at all. Suite 2,045 green.

@@ -7,9 +7,12 @@ import {
   contentMonthKey,
   getContentCheckin,
   getContentMonth,
+  getContentPreferences,
+  getContentRegisters,
 } from "@/lib/data/content";
 import { ContentCalendar } from "@/components/content/content-calendar";
 import { CheckInCard } from "@/components/content/check-in-card";
+import { PreferencesForm } from "@/components/content/preferences-form";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -60,9 +63,11 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
   const raw = Array.isArray(requested) ? requested[0] : requested;
   const month = raw && /^\d{4}-\d{2}-01$/.test(raw) ? raw : contentMonthKey(new Date());
 
-  const [result, checkin] = await Promise.all([
+  const [result, checkin, preferences, registers] = await Promise.all([
     getContentMonth(supabase, brandKitId, month),
     getContentCheckin(supabase, brandKitId, month),
+    getContentPreferences(supabase, brandKitId),
+    getContentRegisters(supabase),
   ]);
 
   /*
@@ -81,7 +86,19 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
 
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-8 max-md:px-[var(--gutter-sm)]">
-      {checkinAnswered(checkin) ? null : (
+      {/*
+       * ⚠ ONE CARD AT A TIME, AND PREFERENCES COME FIRST. They are asked once
+       * and they set up everything after; the check-in is monthly and only
+       * makes sense once she knows what a month is. Two cards stacked on the
+       * first visit would be a form, which is the opposite of sixty seconds.
+       *
+       * Neither card blocks the calendar. It is underneath both, and it works.
+       */}
+      {preferences === null ? (
+        <div className="mb-8 max-w-[720px]">
+          <PreferencesForm brandKitId={brandKitId} registers={registers} initial={null} />
+        </div>
+      ) : checkinAnswered(checkin) ? null : (
         <div className="mb-8 max-w-[720px]">
           <CheckInCard
             brandKitId={brandKitId}

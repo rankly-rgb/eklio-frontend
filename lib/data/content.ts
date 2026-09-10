@@ -510,6 +510,51 @@ export const CHANNEL_LABELS: Record<PublishChannel, string> = {
   other: "Somewhere else",
 };
 
+/* ── The register catalogue ──────────────────────────────────────────────── */
+
+export const contentRegisterRowSchema = z.object({
+  id: z.enum(CONTENT_REGISTERS),
+  label: z.string(),
+  safety_rule: z.string(),
+  sort_order: z.number().int(),
+});
+export type ContentRegisterRow = z.infer<typeof contentRegisterRowSchema>;
+
+/**
+ * The six editorial shapes, with the rule that bounds each one.
+ *
+ * ⚠ READ FROM `content_registers`, NEVER RESTATED IN TYPESCRIPT. The safety
+ * rule is what the generator is held to AND what the preferences form shows
+ * her, so the two must be the same string. A copy here would let the screen
+ * promise one thing while the prompt asked for another, and nobody would see
+ * it until a caption said something it should not.
+ *
+ * Returns [] on failure rather than a hard-coded fallback: a form that showed
+ * six registers with invented rules would be worse than a form that says it
+ * could not load.
+ */
+export async function getContentRegisters(
+  supabase: Client
+): Promise<ContentRegisterRow[]> {
+  const { data, error } = await supabase
+    .from("content_registers")
+    .select("id, label, safety_rule, sort_order")
+    .order("sort_order");
+
+  if (error) {
+    console.error(`[content] getContentRegisters: ${error.message}`);
+    return [];
+  }
+
+  const parsed = z.array(contentRegisterRowSchema).safeParse(data ?? []);
+  if (!parsed.success) {
+    console.error(`[content] getContentRegisters: ${parsed.error.message}`);
+    return [];
+  }
+  return parsed.data;
+}
+
+
 /* ── Preferences ─────────────────────────────────────────────────────────── */
 
 /**

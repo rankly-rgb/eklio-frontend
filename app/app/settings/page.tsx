@@ -8,6 +8,8 @@ import { SettingsView } from "@/components/settings/settings-view";
 import { SubscriptionSection } from "@/components/settings/subscription-section";
 import { getSubscription } from "@/lib/billing/entitlements";
 import { formatUsd, MONTHLY_PRESENCE } from "@/lib/billing/plans";
+import { getContentPreferences, getContentRegisters } from "@/lib/data/content";
+import { PreferencesForm } from "@/components/content/preferences-form";
 
 /*
  * /app/settings — practice details (as they feed the signature and the
@@ -42,6 +44,18 @@ export default async function SettingsPage() {
    * dans cette page.
    */
   const subscription = await getSubscription(supabase, user.id);
+
+  /*
+   * Content preferences live here permanently. They are asked once, on the
+   * first visit to /app/content; this is the "whenever you like" that sentence
+   * promises, and a promise with no screen behind it is a lie in the copy.
+   */
+  const [contentPreferences, registers] = header.brandKitId
+    ? await Promise.all([
+        getContentPreferences(supabase, header.brandKitId),
+        getContentRegisters(supabase),
+      ])
+    : [null, []];
   const renewsOn = subscription?.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("en-US", {
         month: "long",
@@ -66,6 +80,18 @@ export default async function SettingsPage() {
         email={user.email ?? ""}
         subscribed={!emailState.unsubscribed}
       />
+
+      {/*
+        Only with a kit. Without one there is nothing to write content for, and
+        a form that saved preferences against no kit would fail at the RPC.
+      */}
+      {header.brandKitId ? (
+        <PreferencesForm
+          brandKitId={header.brandKitId}
+          registers={registers}
+          initial={contentPreferences}
+        />
+      ) : null}
 
       <SubscriptionSection
         status={subscription?.status ?? null}

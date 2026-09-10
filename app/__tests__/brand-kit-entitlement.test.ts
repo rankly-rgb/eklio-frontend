@@ -74,6 +74,9 @@ const DB_REFUSED = [
   /* La check-in mensuelle : `set_content_checkin` appelle `content_kit_access`
      en base, comme les autres. La route ne décide rien, elle rend le refus. */
   /\bsetContentCheckin\s*\(/,
+  /* Les préférences de contenu : `set_content_preferences` appelle
+     `content_kit_access` en base, dans le bon ordre. La route ne décide rien. */
+  /\bsetContentPreferences\s*\(/,
   /* Prendre le mois : `approve_content_month` résout le kit du mois puis
      appelle `content_kit_access`, qui répond `not_found` avant
      `payment_required` — un 402 à un inconnu confirmerait que le mois existe.

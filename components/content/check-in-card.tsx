@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InlineError } from "@/components/ui/text-field";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -64,6 +65,7 @@ export function CheckInCard({
     initial?.taking_clients ?? null
   );
   const [happening, setHappening] = useState(initial?.happening ?? "");
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -87,7 +89,13 @@ export function CheckInCard({
         setError("We couldn't save that. Try again in a moment.");
         return;
       }
-      onSaved?.();
+      /*
+       * Refreshed by default. Without it the card stays on screen after a
+       * successful save, which reads as "that did not work" and invites a
+       * second submission of the same answers.
+       */
+      if (onSaved) onSaved();
+      else router.refresh();
     });
   }
 
