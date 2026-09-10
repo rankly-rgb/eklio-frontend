@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import {
-  authenticate,
   badRequest,
   json,
   notFound,
@@ -15,12 +14,18 @@ import {
   REPHRASE_MIN_CHARS,
   rephrase,
 } from "@/lib/generation/rephrase";
+import { resolveBriefCaller } from "@/lib/anon/session";
+import { consumeAnonSpend, noBriefResponse } from "@/lib/anon/spend";
 
 /*
  * POST /api/briefs/[id]/rephrase — « Help me say it » (§2.1), pas « Write it
- * for me ». `loadBrief` scope la lecture à `userId` : un brief d'autrui répond
- * 404, comme le reste de cette surface (§7) — pas de service-role ici, cette
- * route n'appelle aucune des trois RPC verrouillées du contrat.
+ * for me ». `loadBrief` scope la lecture à l'appelante : un brief d'autrui
+ * répond 404, comme le reste de cette surface (§7) — pas de service-role ici,
+ * cette route n'appelle aucune des trois RPC verrouillées du contrat.
+ *
+ * ⚠ ANONYME, ET COMPTÉE. Un appel modèle de plus sur le chemin gratuit : il
+ * passe par le plafond `assist`, comme `suggest`, `tone-cards` et
+ * `usp-options`.
  */
 
 const bodySchema = z.object({
@@ -34,8 +39,8 @@ export async function POST(
   request: NextRequest,
   ctx: RouteContext<"/api/briefs/[id]/rephrase">
 ) {
-  const auth = await authenticate();
-  if (!auth.ok) return auth.response;
+  const caller = await resolveBriefCaller();
+  if (caller.kind === "none") return noBriefResponse();
 
   const { id } = await ctx.params;
   const parsed = bodySchema.safeParse(await readJson(request));
@@ -45,8 +50,15 @@ export async function POST(
     );
   }
 
-  const bundle = await loadBrief(auth.session.supabase, id, auth.session.userId);
+  const bundle = await loadBrief(caller.supabase, id, caller.userId);
   if (!bundle) return notFound();
+
+  // Le plafond après le 404 : refuser un brief qui n'est pas le sien ne doit
+  // pas coûter un compte à quelqu'un d'autre.
+  if (caller.kind === "anon") {
+    const refusal = await consumeAnonSpend("assist", request);
+    if (refusal) return refusal;
+  }
 
   try {
     const text = await rephrase(parsed.data.field, parsed.data.text);

@@ -15,7 +15,7 @@ import {
 } from "@/lib/generation/job";
 import { rateLimit } from "@/lib/api/rate-limit";
 import { resolveBriefCaller } from "@/lib/anon/session";
-import { clientIp, ipBucket } from "@/lib/anon/token";
+import { consumeAnonSpend, noBriefResponse } from "@/lib/anon/spend";
 import { track } from "@/lib/analytics";
 
 /*
@@ -61,20 +61,7 @@ export async function POST(
   ctx: RouteContext<"/api/briefs/[id]/generate">
 ) {
   const caller = await resolveBriefCaller();
-  if (caller.kind === "none") {
-    /*
-     * No session and no usable cookie. Not an error to explain away: her brief
-     * is genuinely unreachable from this browser, and the only honest thing is
-     * to say so and offer the way back.
-     */
-    return NextResponse.json(
-      {
-        error:
-          "We can't find your brief on this device. If you asked us to email you a link, open that; otherwise you can start again.",
-      },
-      { status: 401 }
-    );
-  }
+  if (caller.kind === "none") return noBriefResponse();
 
   const { id: projectId } = await ctx.params;
   const { supabase, userId } = caller;
@@ -92,28 +79,8 @@ export async function POST(
    * for.
    */
   if (caller.kind === "anon") {
-    const admin = createAdminClient();
-    const { data: verdictRow, error: capError } = await admin.rpc(
-      "consume_anon_generation",
-      { p_ip_hash: ipBucket(clientIp(_request)) }
-    );
-
-    if (capError) {
-      // A meter that cannot be read is "we could not tell", never "go ahead".
-      console.error(`[generate] consume_anon_generation: ${capError.message}`);
-      return NextResponse.json(
-        { error: "We couldn't start that just now. Try again in a moment." },
-        { status: 503 }
-      );
-    }
-
-    const outcome = verdictRow as unknown as { ok?: boolean; reason?: string } | null;
-    if (outcome?.ok !== true) {
-      return NextResponse.json(
-        { error: anonCapMessage(outcome?.reason) },
-        { status: 429, headers: { "retry-after": "3600" } }
-      );
-    }
+    const refusal = await consumeAnonSpend("reveal", _request);
+    if (refusal) return refusal;
   }
 
   const verdict = rateLimit(`generate:${userId ?? caller.token}`, GENERATE_LIMIT);
@@ -290,24 +257,4 @@ export async function POST(
   });
 
   return json({ jobId: kit.id });
-}
-
-
-/*
- * What a stranger reads when a ceiling closes.
- *
- * ⚠ NEVER "you have used your 3 of 3". She has no account, so a number about
- * her is a number about a device — and telling her the global ceiling is full
- * would be telling her the product is popular, which is not her problem. Both
- * refusals say the same true thing: not now, come back.
- */
-function anonCapMessage(reason: string | undefined): string {
-  switch (reason) {
-    case "ip_cap":
-      return "You've built a few of these today. Come back tomorrow, or make an account to keep going.";
-    case "global_cap":
-    case "disabled":
-    default:
-      return "We're at capacity for new brands right now. Try again in a little while — your answers are saved.";
-  }
 }

@@ -2363,7 +2363,7 @@ export type Database = {
         Returns: string
       }
       consume_anon_generation: {
-        Args: { p_ip_hash: string }
+        Args: { p_ip_hash: string; p_kind?: string }
         Returns: Json
       }
       owns_project: {

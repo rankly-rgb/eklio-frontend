@@ -606,7 +606,8 @@ export async function suggestFieldText(input: {
   supabase: Client;
   projectId: string;
   field: string;
-  userId: string;
+  /* `null` = anonymous; the row is reached through RLS on the token alone. */
+  userId: string | null;
   rewrite?: (system: string, instruction: string) => Promise<string>;
 }): Promise<string> {
   const { supabase, projectId, field, userId } = input;

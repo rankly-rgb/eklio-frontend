@@ -316,7 +316,13 @@ export type PatchOutcome =
 export async function patchBrief(
   supabase: Client,
   projectId: string,
-  userId: string,
+  /*
+   * `null` = anonymous. Same rule as `loadBrief`: the filter is applied when
+   * there is a user id to filter on, and otherwise the row is reached through
+   * RLS on the token alone. There is no path here that reads without one or
+   * the other.
+   */
+  userId: string | null,
   patch: BriefPatch
 ): Promise<PatchOutcome> {
   const existing = await loadBrief(supabase, projectId, userId);

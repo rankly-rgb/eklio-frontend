@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import {
-  authenticate,
   badRequest,
   generationErrorResponse,
   json,
@@ -17,14 +16,24 @@ import { generateUspOptions, partialMessageFor } from "@/lib/generation/usp-opti
 import { computeScopeKey } from "@/lib/generation/scope-key";
 import { computeHowYouWorkInputsHash } from "@/lib/generation/how-you-work-hash";
 import { uspOptionsSchema } from "@/lib/generation/how-you-work-shapes";
+import { resolveBriefCaller } from "@/lib/anon/session";
+import { consumeAnonSpend, noBriefResponse } from "@/lib/anon/spend";
 
 /*
  * POST /api/briefs/[id]/usp-options — §2.5.
  *
  * OWNERSHIP D'ABORD, SERVICE-ROLE ENSUITE (contrat §9.6, verbatim) :
- * `loadBrief` avec le client de SESSION vérifie que `id` appartient à
- * `auth.session.userId` avant tout appel service-role. `id` ne part JAMAIS
- * vers `createAdminClient()` sans être passé par cette vérification d'abord.
+ * `loadBrief` avec le client de L'APPELANTE vérifie que `id` lui appartient
+ * avant tout appel service-role. `id` ne part JAMAIS vers
+ * `createAdminClient()` sans être passé par cette vérification d'abord. Ce qui
+ * a changé, ce n'est pas la règle : c'est qu'« elle » peut désormais être une
+ * visiteuse sans compte, dont le droit de lecture tient à un jeton que la BASE
+ * vérifie (`public.owns_project`), pas ce fichier.
+ *
+ * ⚠ ANONYME AUSSI. Cette route appelait `authenticate()` : l'écran de
+ * positionnement répondait 401 à une visiteuse légitime, et ses trois appels
+ * modèle échappaient au plafond anonyme. Corrigé ici et dans `tone-cards`, au
+ * même endroit et pour la même raison.
  */
 
 const bodySchema = z.object({ regenerate: z.boolean().optional() });
@@ -38,14 +47,14 @@ export async function POST(
   request: NextRequest,
   ctx: RouteContext<"/api/briefs/[id]/usp-options">
 ) {
-  const auth = await authenticate();
-  if (!auth.ok) return auth.response;
+  const caller = await resolveBriefCaller();
+  if (caller.kind === "none") return noBriefResponse();
 
   const { id } = await ctx.params;
   const parsed = bodySchema.safeParse((await readJson(request)) ?? {});
   const regenerate = parsed.success ? (parsed.data.regenerate ?? false) : false;
 
-  const bundle = await loadBrief(auth.session.supabase, id, auth.session.userId);
+  const bundle = await loadBrief(caller.supabase, id, caller.userId);
   if (!bundle) return notFound();
 
   const currentHash = computeHowYouWorkInputsHash(bundle.brief);
@@ -77,7 +86,7 @@ export async function POST(
     }
   }
 
-  const limitKey = `usp-options:${auth.session.userId}`;
+  const limitKey = `usp-options:${caller.userId ?? caller.token}`;
   const verdict = rateLimit(limitKey, RATE_LIMIT);
   if (!verdict.allowed) {
     return json(
@@ -86,7 +95,7 @@ export async function POST(
     );
   }
 
-  const catalog = await readCatalog(auth.session.supabase);
+  const catalog = await readCatalog(caller.supabase);
   const scopeKey = computeScopeKey(
     bundle.brief.specialty_ids,
     bundle.brief.state,
@@ -94,6 +103,17 @@ export async function POST(
   );
   if (!scopeKey) {
     return badRequest("Pick at least one specialty before generating positioning.");
+  }
+
+  /*
+   * ⚠ LE PLAFOND ICI, ET PAS PLUS HAUT. Au-dessus, il ferait payer un retour
+   * sur l'écran de positionnement qui rend simplement le lot déjà écrit, et il
+   * compterait une demande que les gardes ci-dessus refusent de toute façon.
+   * À partir d'ici, `generateUspOptions` va vraiment appeler le modèle.
+   */
+  if (caller.kind === "anon") {
+    const refusal = await consumeAnonSpend("assist", request);
+    if (refusal) return refusal;
   }
 
   try {
@@ -114,7 +134,7 @@ export async function POST(
       // non plus, pour que la prochaine visite retente plutôt que de
       // rouvrir un lot à moitié vrai comme s'il était à jour.
       if (regenerate) {
-        const write = await writeBriefData(auth.session.supabase, id, nextData);
+        const write = await writeBriefData(caller.supabase, id, nextData);
         if (!write.ok) return serverError("POST /api/briefs/usp-options", write.detail);
       }
       return json({
@@ -125,7 +145,7 @@ export async function POST(
       });
     }
 
-    const write = await writeUspOptions(auth.session.supabase, id, result.options, {
+    const write = await writeUspOptions(caller.supabase, id, result.options, {
       ...nextData,
       usp_options_inputs_hash: currentHash,
     });

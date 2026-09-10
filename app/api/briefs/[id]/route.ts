@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
 import {
-  authenticate,
   badRequest,
   json,
   notFound,
@@ -14,6 +13,8 @@ import {
   readPreview,
 } from "@/lib/data/brief";
 import { track } from "@/lib/analytics";
+import { resolveBriefCaller } from "@/lib/anon/session";
+import { noBriefResponse } from "@/lib/anon/spend";
 
 /*
  * Le brief d'un projet.
@@ -25,14 +26,24 @@ import { track } from "@/lib/analytics";
  * Le PATCH renvoie le brief ET sa prévisualisation dans le même aller-retour :
  * le rail du brief n'a donc aucune seconde requête à faire, et pas de fenêtre
  * où il montrerait l'état d'avant.
+ *
+ * ⚠ C'EST L'AUTOSAVE, ET IL DOIT MARCHER SANS COMPTE. Cette route appelait
+ * `authenticate()` : une visiteuse anonyme pouvait créer un brief et n'en
+ * sauvegarder aucune réponse — chaque frappe repartait en 401 et le rail
+ * affichait un échec d'enregistrement au milieu de l'étape 1. C'était le
+ * défaut le plus grave laissé par « le brief tourne sans compte » : le mur
+ * était tombé devant un formulaire qui ne retenait rien.
+ *
+ * Le COMPORTEMENT de l'autosave ne change pas d'un octet — même cadence, même
+ * charge utile, même réponse. Ce qui change, c'est qui a le droit de l'appeler.
  */
 
 export async function GET(_request: NextRequest, ctx: RouteContext<"/api/briefs/[id]">) {
-  const auth = await authenticate();
-  if (!auth.ok) return auth.response;
+  const caller = await resolveBriefCaller();
+  if (caller.kind === "none") return noBriefResponse();
 
   const { id } = await ctx.params;
-  const { supabase, userId } = auth.session;
+  const { supabase, userId } = caller;
 
   const bundle = await loadBrief(supabase, id, userId);
   if (!bundle) return notFound();
@@ -49,8 +60,8 @@ export async function PATCH(
   request: NextRequest,
   ctx: RouteContext<"/api/briefs/[id]">
 ) {
-  const auth = await authenticate();
-  if (!auth.ok) return auth.response;
+  const caller = await resolveBriefCaller();
+  if (caller.kind === "none") return noBriefResponse();
 
   const { id } = await ctx.params;
   const body = await readJson(request);
@@ -63,9 +74,9 @@ export async function PATCH(
   }
 
   const outcome = await patchBrief(
-    auth.session.supabase,
+    caller.supabase,
     id,
-    auth.session.userId,
+    caller.userId,
     parsed.data
   );
 

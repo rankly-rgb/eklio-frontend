@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import {
-  authenticate,
   badRequest,
   json,
   notFound,
@@ -14,6 +13,8 @@ import { track } from "@/lib/analytics";
 import { computeScopeKey } from "@/lib/generation/scope-key";
 import { readCatalog } from "@/lib/catalog/read";
 import { uspOptionsSchema } from "@/lib/generation/how-you-work-shapes";
+import { resolveBriefCaller } from "@/lib/anon/session";
+import { noBriefResponse } from "@/lib/anon/spend";
 
 /*
  * POST /api/briefs/[id]/usp-confirm — §2.4.
@@ -25,7 +26,12 @@ import { uspOptionsSchema } from "@/lib/generation/how-you-work-shapes";
  * choix qui gagne, jamais la vérification.
  *
  * Même doctrine d'ownership que les deux routes précédentes : `loadBrief`
- * avec le client de session avant tout appel service-role.
+ * avec le client de L'APPELANTE avant tout appel service-role.
+ *
+ * ⚠ ANONYME, ET SANS PLAFOND — parce qu'elle n'appelle AUCUN modèle. Elle lit
+ * une empreinte et écrit un choix ; ce qui coûte de l'argent, c'est
+ * `usp-options`, qui a produit les trois options en amont et qui, elle, est
+ * comptée.
  */
 
 const bodySchema = z.object({
@@ -40,15 +46,15 @@ export async function POST(
   request: NextRequest,
   ctx: RouteContext<"/api/briefs/[id]/usp-confirm">
 ) {
-  const auth = await authenticate();
-  if (!auth.ok) return auth.response;
+  const caller = await resolveBriefCaller();
+  if (caller.kind === "none") return noBriefResponse();
 
   const { id } = await ctx.params;
   const parsed = bodySchema.safeParse(await readJson(request));
   if (!parsed.success) return badRequest("That positioning doesn't look complete yet.");
   const { selected_usp_id, statement, keepMine } = parsed.data;
 
-  const bundle = await loadBrief(auth.session.supabase, id, auth.session.userId);
+  const bundle = await loadBrief(caller.supabase, id, caller.userId);
   if (!bundle) return notFound();
 
   const options = uspOptionsSchema.safeParse(bundle.brief.usp_options);
@@ -59,7 +65,7 @@ export async function POST(
     return badRequest("Pick one of the three positioning options first.");
   }
 
-  const catalog = await readCatalog(auth.session.supabase);
+  const catalog = await readCatalog(caller.supabase);
   const scopeKey = computeScopeKey(
     bundle.brief.specialty_ids,
     bundle.brief.state,
@@ -94,7 +100,7 @@ export async function POST(
       track("usp_collision_kept", { brief_id: id });
     }
 
-    const { error: patchError } = await auth.session.supabase
+    const { error: patchError } = await caller.supabase
       .from("project_briefs")
       .update({
         selected_usp_id,
