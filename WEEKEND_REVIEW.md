@@ -171,6 +171,54 @@ for a defaulted RPC param (`gen types` types those `string | undefined`), and
 
 ---
 
+## DECISION 4 — I widened the a11y guard rather than duplicate an attribute (done, reversible)
+
+**Where:** `app/__tests__/mobile-and-a11y.test.ts`.
+
+That guard requires any component calling `fetch` to contain a literal `role="alert"`, so an
+error is announced and not merely drawn. The new check-in card routes its error through
+`<InlineError>`, **which already carries `role="alert"`** — so the behaviour was correct and
+the grep had a false negative.
+
+Satisfying it literally would have nested two alert roles: code written for the test rather
+than for a screen-reader user. The guard now accepts either a literal `role="alert"` **or**
+`<InlineError>`, and I added an assertion that `InlineError` really does announce, so that
+second branch cannot outlive the component it rests on.
+
+**Worth knowing:** no other `fetch`-ing component in the repo uses `InlineError` — they all
+inline the attribute. The check-in card is the first to delegate. If you would rather the
+codebase kept inlining it, revert the guard and add the literal; it is one commit.
+
+---
+
+## WHERE SESSION 4 STOPPED
+
+Done and pushed:
+
+- **The check-in card**, at the top of `/app/content` until `taking_clients` is answered.
+  `components/content/check-in-card.tsx`, route `app/api/brand-kits/[id]/check-in`.
+- **The data layer** it and the rest of Session 4 compose against —
+  `getContentPreferences` / `setContentPreferences`, `getContentCheckin` /
+  `setContentCheckin` / `checkinAnswered`, `approveContentMonth` in `lib/data/content.ts`.
+- **Counts corrected** so proposals are not reported as her work, and
+  **`approve_content_month`** so a month can be accepted in one gesture.
+
+**Not built yet, in the order I would take them:**
+
+1. **The preferences step** — first visit, editable from Settings. Data layer and RPC exist;
+   it needs the form and a place to put it. The six registers come from `content_registers`
+   with their safety rules, so the form can explain what each one is.
+2. **The month as a plan on one screen** — the approve-in-one-gesture surface.
+   `approveContentMonth` exists and is tested; nothing renders it yet. **This one is worth
+   waiting for the gate**: designing the screen that shows twelve proposals before seeing
+   twelve real proposals is how art direction goes wrong twice.
+3. **Proposals rendering greyed on their dates** in the existing calendar, and `Ready` /
+   `Posted` reading the corrected counts.
+
+Session 5's unpaid parts (first month at purchase, the cron shipped disarmed) are untouched.
+
+---
+
 ## Work log for the weekend
 
 Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
@@ -186,3 +234,6 @@ Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
 - **Session 4, frontend —** data layer for preferences, the check-in and approval. Reads go
   direct (RLS already bounds them), writes go through the RPCs (their write policies are
   `false`). Frontend types regenerated; typegen guard reframed, see Decision 3.
+- **Session 4, the check-in —** card + route, shown until `taking_clients` is answered. Two
+  guards caught it and both were right; one of them I widened rather than satisfied, see
+  Decision 4. Suite 1,984 green.

@@ -2092,3 +2092,21 @@ union describing a retired table. The typegen guard's premise changed with the f
 
 The interface itself: the check-in card at the top of the calendar, the preferences step,
 and the month-as-a-plan screen. The data layer they compose against is done and typed.
+
+## Session 4, continued: the check-in
+
+`components/content/check-in-card.tsx` + `app/api/brand-kits/[id]/check-in`. Three questions
+on one screen, at the top of `/app/content` until `taking_clients` is answered — one answer,
+not three, because it is the only field that changes what may be generated. Each answer
+states its consequence, because "waitlist only" silently rewriting every call to action is
+something a clinician should be told rather than left to notice.
+
+Two guards fired and both were right. The brand-kits route guard: the route now returns
+through `contentResponse` so `payment_required` stays a 402, and `DB_REFUSED` learned
+`setContentCheckin`. The a11y guard wanted a literal `role="alert"` where the card delegates
+to `<InlineError>`, which already has one — widened to accept either, plus an assertion that
+`InlineError` really announces so the new branch cannot outlive it.
+
+Remaining in Session 4: the preferences step, the month-as-a-plan screen (worth waiting for
+the gate — designing it before seeing twelve real proposals is how art direction goes wrong
+twice), and rendering proposals greyed in the calendar.
