@@ -793,3 +793,182 @@ chars) and the six catalogue ethics rules (840 chars) are measured shapes rather
 strings, and the characters-per-token ratio is stated as 3.6, not measured. **The first
 real invoice is the only thing that settles this**, and it should be compared against
 $0.0871 × the number of reveals that day.
+
+---
+
+# 13. SESSION 3 — THE INSTRUMENTATION
+
+One first-party, server-side event model, from first landing to paid kit. Named steps, one
+table, one writer, and one way to read it that is not a SQL prompt at midnight.
+
+## 13.1 What was there, and what it was worth
+
+`lib/analytics.ts` was right about everything except where it put the data: server-side,
+first-party, single-writer, no vendor, no cookie, no consent banner, properties disciplined
+to ids and machine reasons. And then:
+
+```ts
+console.info(`[analytics] ${event} ${JSON.stringify(properties)}`);
+```
+
+On Vercel, function logs live hours to days without a Log Drain. A week after the emails
+land, the evidence is gone. So this was a **sink and a schema**, not a rewrite — the file's
+judgement was kept and its destination replaced.
+
+## 13.2 The store
+
+| | |
+|---|---|
+| `public.funnel_events` | one table, RLS deny-all, **no foreign keys** — an event is a fact about the past, and the 30-day anonymous purge must not erase the record that a hundred people started a brief |
+| `public.funnel_steps` | the named funnel in order, so renaming or inserting a step is a row rather than a deploy |
+| `record_funnel_events(jsonb)` | the one writer, service-role only |
+| `funnel_report(from, to)` | the one reader |
+| `purge_funnel_events()` | 180 days, from `app_settings` |
+
+**"No content of her answers" is now a mechanism rather than a comment.**
+`funnel_props_are_safe` is a CHECK on the column: flat object, at most 12 keys, no nesting,
+no string over 64 characters. A new call site cannot forget it, and the migration proves it
+bites on five shapes rather than asserting that it does. `safeProps` in the frontend mirrors
+the same thresholds so a bad payload is trimmed rather than losing the whole event to a
+constraint error.
+
+**The retention purge fails *open*** — the opposite of the spend ceilings, deliberately. An
+unreadable setting keeps the data. Fail towards the outcome you can still undo: a day of
+unpurged rows costs storage, a day of wrongly purged rows costs the only copy.
+
+## 13.3 How a visitor is followed, and how far
+
+Two keys, both already in the product, **neither of them cross-site**:
+
+- **`visitor_day`** — the same daily-salted IP hash the spend ceilings use. It joins landing
+  → pricing → the start of the brief. **No cookie was added for this**, and it is useless
+  the next day by construction.
+- **`project_id`** — from the first brief answer onward, and it survives signup. This is the
+  column that follows one person end to end.
+
+⚠ **And its limits, stated wherever the numbers appear.** Two people behind one office
+router are one `visitor_day`. One person who starts on cellular and finishes on wifi is two.
+A walk that crosses midnight UTC is two. **Counts of events are exact; counts of visitors
+are an estimate**, and both the SQL comment and the reader's footnote say so.
+
+## 13.4 The named funnel
+
+| # | Step | Event | Phase |
+|---|---|---|---|
+| 1 | Landed on the site | `landing_viewed` | reach |
+| 2 | Looked at pricing | `pricing_viewed` | reach |
+| 3 | Started the brief | `brief_started` | brief |
+| 4 | Finished "How you work" | `brief_step_completed` where `step = 4` | brief |
+| 5 | Reached the review | `brief_reviewed` | brief |
+| 6 | Pressed generate | `generation_started` | reveal |
+| 7 | Saw three directions | `generation_succeeded` | reveal |
+| 8 | Submitted the signup form | `signup_started` | account |
+| 9 | Created an account | `account_created` | account |
+| 10 | Opened checkout | `checkout_opened` | paid |
+| 11 | Paid | `purchase_completed` | paid |
+| 12 | Chose a direction | `direction_chosen` | paid |
+
+Six of these events did not exist before this session. Step 4 is why `funnel_steps` carries
+`match_prop`/`match_value`: one event name holds several milestones, and finishing step 2 of
+the brief is not a named step of the funnel while finishing step 4 is.
+
+**Step 12 was originally seeded at position 8 and it was wrong.** Reading
+`lib/reveal/use-select-direction.ts` — `if (!paid) { router.push(checkoutHref); return; }` —
+an unpaid visitor pressing a direction never reaches the route at all. Choosing is how she
+takes delivery of something already bought. Left at 8, the report would have shown a cliff
+between "saw three directions" and "chose a direction" and sent someone to fix a step that
+works exactly as designed, while hiding the two steps that actually stand between her and
+paying. **A funnel in the wrong order does not fail loudly; it points at the wrong thing
+forever.** Corrected in `20260910212828`.
+
+## 13.5 The beacon, and the one decision I took
+
+The first two steps are the landing page and the pricing page. **Both are static**, and they
+are the two pages a cold-email campaign hits hardest. Emitting from the server component
+would make them dynamic — paying for the measurement with the thing being measured.
+
+So `POST /api/e` exists, and it is **the only place in this product where an event starts in
+the browser**. What makes that acceptable is that its vocabulary is closed:
+
+- two event names, `landing_viewed` and `pricing_viewed`, and nothing else;
+- **no properties, no ids, no free text** — the body is one word;
+- **no cookie read or written**, nothing stored in the browser;
+- everything the row knows about who sent it — the daily-salted IP hash — is derived on the
+  server from the connection, so a caller cannot claim to be anyone;
+- rate-limited, and it answers `204` whatever happens.
+
+The alternative considered and rejected was emitting from the proxy: it runs on every
+request, including ones that render nothing, and would put a database write on the latency
+path of the page people are arriving at. **The build output confirms `/` and `/pricing` are
+still `○`.**
+
+## 13.6 One way to read it
+
+```
+npm run funnel                    # the last 7 days
+npm run funnel -- --days 1        # today so far
+npm run funnel -- --from 2026-10-01 --to 2026-10-08
+```
+
+Ordered named steps, grouped by phase, with `events` / `visitors` / `projects`, share of the
+first step, share of the previous step, and a bar. **The arithmetic lives in
+`funnel_report`, never in the script**: two definitions of "conversion" would eventually
+disagree, and the one you were not reading would be the one you believed.
+
+**There is no screen, and that is the constraint, not an omission.** It is Eklio's data
+about Eklio's funnel, not the practitioner's, and the moment a number from it appears in the
+product it stops being measurement and becomes a claim about other people. A test walks
+`app/**` and fails if any file so much as names `funnel_events`, `funnel_steps` or
+`funnel_report` — with one named exemption, the retention cron, which deletes and never
+reads.
+
+## 13.7 Four things this turned up that I was not looking for
+
+**1. Two *client* components were importing the server-only writer.**
+`components/kit/asset-library-view.tsx` and `components/kit/in-situ/in-situ-panel.tsx` both
+imported `@/lib/analytics`, whose header has read "SERVEUR UNIQUEMENT" since day one. It
+compiled, because while `track()` was only a `console.info` nothing distinguished a server
+call from a browser call. So `asset_filtered`, `asset_detail_opened` and
+`asset_insitu_viewed` were being written to **the practitioner's own devtools console** and
+nowhere else. `next build` only said so the moment `track()` opened a Supabase client.
+
+They now use `lib/analytics-client.ts`, which does exactly what they always did and says so
+in its name. **A phrase in a header comment is not a boundary**; there is now a test that is
+one. None of the three is a funnel step — they describe what a paying customer does with her
+asset library, not how someone becomes a customer — so nothing was lost by keeping the
+behaviour identical.
+
+**2. `cookies()`/`headers()` inside `after()` throw in a Server Component.** Documented in
+`next/dist/docs/01-app/03-api-reference/04-functions/after.md`, and `checkout_opened` is
+emitted from exactly such a component. Read inside the callback it would have thrown, been
+swallowed by the sink's own catch, and left **funnel step 10 reading zero forever** — a
+measurement bug that would have looked like a product finding. The request context is now
+read in the caller's scope and passed in, which is the shape the docs prescribe.
+
+**3. A module-level event buffer would have been a correctness bug, not an optimisation.**
+One warm serverless instance serves many requests; a shared array drained on a timer would
+stamp whichever request happened to flush onto every event in it, so **one visitor's IP hash
+would land on a stranger's event**. One `after()` per event instead — each callback runs
+inside its own request, which is exactly why `headers()` can be read there and be right.
+
+**4. The sink reaches `service_role`, and `track()` is imported nearly everywhere.**
+`lib/site/__tests__/routes.test.ts` walks the import graph and went red across seven entry
+points. Exempted **by name**, with the four properties that make it safe — calls none of the
+eight contract RPCs, writes only `funnel_events`, never reads, and receives no
+caller-supplied identifier — and a note to delete the exemption if any of them stops
+holding. Hiding it behind a dynamic import would have been gaming the guard rather than
+respecting it.
+
+## 13.8 What this still cannot tell you
+
+- **Where a visitor came from.** No referrer, no campaign parameter, no UTM. A cold-email
+  campaign to a known list does not need one to count arrivals; two campaigns in one week
+  would. It is a column and a beacon field away, and it is not there yet.
+- **Why she left.** The funnel says which step lost her, never what she was looking at when
+  she decided. That is what §9's phone rendering is for.
+- **Anything about a person.** By construction: no word she wrote can be in the table, no
+  identifier follows anyone across a site boundary, and the visitor key is meaningless
+  tomorrow.
+- **Whether any of it is wired correctly in production.** Nothing has been deployed. The
+  first thing to do after the first deploy is walk the brief once and run `npm run funnel
+  -- --days 1`: twelve steps, and the ones you touched should be non-zero.

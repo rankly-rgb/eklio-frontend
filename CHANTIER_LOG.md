@@ -9,6 +9,38 @@ before doing any other work — see its entry below for detail. Do not create or
 
 ---
 
+
+## THE FUNNEL IS EKLIO'S DATA, AND IT NEVER REACHES A SCREEN
+
+*2026-09-10, chantier « acquisition », session 3.*
+
+`public.funnel_events` records Eklio's own funnel: who arrived, how far they got, whether
+they paid. Three rules were fixed at the moment it was built, and each of them is enforced by
+something other than good intentions.
+
+**It informs no screen in the product.** Not a counter, not "twelve practitioners chose this
+direction", not a badge. The moment a number from this table appears in the product it stops
+being measurement and becomes a claim about other people — and Eklio never displays a number
+it cannot measure, least of all one about strangers. A test walks `app/**` and fails if any
+file so much as names the table, its steps table or its report. The one exemption is the
+retention cron, which deletes and never reads.
+
+**No word she wrote can be in it.** Not her positioning, not her referral quote, not the text
+she pasted into Check, not truncated, not hashed. This was a comment in `lib/analytics.ts`
+for months; it is now a CHECK on the column (`funnel_props_are_safe`): flat object, at most
+twelve keys, no nesting, no string over 64 characters. A new call site cannot forget a CHECK.
+
+**No cross-site identifier, and no new cookie.** A visitor is joined by the daily-salted IP
+hash the spend ceilings already derive — useless the next day by construction — and from her
+first brief answer onward by `project_id`. Nothing follows anyone across a site boundary, so
+there is no consent banner to add and nothing to ask for.
+
+The one place an event starts in the browser is `POST /api/e`, and its vocabulary is closed
+to two names with no properties and no identifiers, because the landing and pricing pages are
+static and must stay that way. That is the whole exception; anything wider needs a different
+design and a fresh decision.
+
+
 ## 2026-09-05 — Session 1: the facts
 
 **Session number was not stated by the user.** Checked for evidence before proceeding: no

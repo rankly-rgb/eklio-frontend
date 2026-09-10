@@ -25,6 +25,7 @@ Nothing here is a deploy. Where a deploy is required, the row says so.
 | 6 | `content-month` cron still disarmed | ✅ **verified in `vercel.json`** | Yes |
 | 6b | `anon-briefs` purge cron **newly armed** | ✅ **verified in `vercel.json`** | Yes |
 | 7 | Seven brand images at prompt version 7 | ❌ **all seven are stale** | **Yes — the kit page shows none** |
+| 8 | The funnel records anything at all | **untested in production** | No — but you are flying blind until it is checked |
 
 ---
 
@@ -196,6 +197,7 @@ Four are armed and one is deliberately not. Read `vercel.json` — that file *is
 | `/api/cron/anon-briefs` | `0 5 * * *` | **newly armed this chantier.** Purges anonymous briefs past their 30-day deadline |
 | `/api/cron/nudges` | `0 14 * * *` | armed |
 | `/api/cron/purge-deleted-kits` | `0 6 * * *` | armed |
+| `/api/cron/purge-events` | `0 4 * * *` | **new this chantier.** 180-day retention on `funnel_events` |
 | `/api/cron/trial-ending` | `0 15 * * *` | armed |
 | `/api/cron/content-month` | *(absent)* | ⚠ **stays disarmed.** The route exists and is tested; nothing schedules it |
 
@@ -221,7 +223,7 @@ housekeeping and is allowed to be late — an expired brief is already unreadabl
 `projects_select_own` refuses it on the deadline regardless of whether the row is gone — so a
 missed run is not a data leak. It is still a table that grows.
 
-**Verify it took.** Vercel → the project → Settings → Cron Jobs. Four entries, and
+**Verify it took.** Vercel → the project → Settings → Cron Jobs. **Five** entries, and
 `/api/cron/content-month` is not among them. After the first 05:00 UTC run, the anon-briefs
 job shows a 200 in its log.
 
@@ -294,6 +296,41 @@ select slot, status, left(image_fingerprint, 12) as fp, created_at
 
 ---
 
+## 8. The funnel actually records something
+
+**Why it is here.** Every other row on this list is a setting. This one is a wire, and a
+wire that is not connected fails exactly the way a working one looks: silently, with zeroes,
+which read as "nobody came" rather than "nothing was recorded". On the morning the emails go
+out, the difference between those two sentences is the whole point of having sent them.
+
+**Set.** Nothing. It ships wired. `funnel_retention_days` is seeded at `180` and is the only
+knob:
+
+```sql
+select value from public.app_settings where key = 'funnel_retention_days';
+```
+
+**Where.** `public.app_settings`, no deploy — same as the spend ceilings.
+
+**Verify it took.** After the first deploy, and before the first email:
+
+1. Open the landing page, then the pricing page, in a normal browser.
+2. Walk one brief through to the reveal.
+3. Then:
+
+```bash
+npm run funnel -- --days 1
+```
+
+Twelve named steps come back. **"Landed on the site" and "Started the brief" must be
+non-zero.** If every row is zero, nothing is recording and the funnel is decoration — check
+`SUPABASE_SERVICE_ROLE_KEY` first, since the writer is service-role only and the sink
+swallows its own failures by design (a log line reading `[analytics] sink:` is where it says
+so).
+
+⚠ **A zero on a step you did not perform is not a failure.** Steps 8–12 require an account
+and a card. Read the two you actually walked.
+
 ## WHAT IS NOT ON THIS LIST YET
 
 Named so the gap is visible, not because it is finished.
@@ -306,6 +343,9 @@ Named so the gap is visible, not because it is finished.
   wrong value, dead link in her inbox.
 - **`SUPABASE_SERVICE_ROLE_KEY`.** Anonymous brief creation, the purge cron and the spend
   ceilings all use it. Nothing anonymous works without it.
+- **A campaign source on the funnel.** The instrument counts arrivals but not where they
+  came from — no referrer, no UTM. One cold-email list to a known audience does not need it;
+  two campaigns in one week would, and it is a column and a beacon field away.
 - **The first invoice.** Every cost figure in `ACQUISITION_WALK.md` §12 is arithmetic on
   measured prompt sizes, not billed usage — no request has been made to the Anthropic API from
   any session that built this. Compare the first day's bill against **$0.0871 × the day's
