@@ -71,6 +71,9 @@ const DB_REFUSED = [
   /\bupdateContentItem\s*\(/,
   /\bdeleteContentItem\s*\(/,
   /\bmarkContentPosted\s*\(/,
+  /* La check-in mensuelle : `set_content_checkin` appelle `content_kit_access`
+     en base, comme les autres. La route ne décide rien, elle rend le refus. */
+  /\bsetContentCheckin\s*\(/,
   /\bgetPublishingLog\s*\(/,
   /\blistUserUploads\s*\(/,
   /\brequestUserUpload\s*\(/,

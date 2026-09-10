@@ -141,11 +141,38 @@ describe("une erreur est annoncée, pas seulement affichée", () => {
     expect(fetching.length).toBeGreaterThanOrEqual(3);
   });
 
+  /*
+   * ⚠ DEUX FAÇONS D'ANNONCER, ET LA SECONDE EST LA MEILLEURE.
+   *
+   * Écrire `role="alert"` à la main compte. Passer par `<InlineError>` compte
+   * aussi : ce composant PORTE `role="alert"` (components/ui/text-field.tsx),
+   * et c'est la façon dont un nouveau code devrait le faire — une seule
+   * définition de ce qu'est une erreur annoncée, plutôt qu'un attribut recopié
+   * dans quinze fichiers.
+   *
+   * Sans cette seconde branche, la garde pousse à DUPLIQUER l'attribut dans un
+   * fichier qui délègue déjà l'annonce, ce qui produirait deux `role="alert"`
+   * imbriqués — du code écrit pour le test plutôt que pour la lectrice d'écran.
+   */
+  const ANNOUNCES = [/role="alert"/, /<InlineError\b/];
+
+  it("⚠ et `InlineError` annonce vraiment — l'exemption ne survit pas au composant", () => {
+    // Le jour où `InlineError` perd son `role="alert"`, cette branche cesse
+    // d'être une exemption valable et ce test le dit AVANT les autres.
+    const component = readFileSync(
+      resolve(ROOT, "components/ui/text-field.tsx"),
+      "utf8"
+    );
+    const body = component.slice(component.indexOf("export function InlineError"));
+    expect(body.slice(0, body.indexOf("\n}"))).toContain('role="alert"');
+  });
+
   it.each(fetching)("%s", (path) => {
     expect(
-      code(path).includes('role="alert"'),
+      ANNOUNCES.some((pattern) => pattern.test(code(path))),
       `${path} peut échouer sans rien annoncer. Une erreur qui n'existe que\n` +
-        "visuellement n'existe pas pour un lecteur d'écran."
+        "visuellement n'existe pas pour un lecteur d'écran.\n" +
+        'Deux issues : `role="alert"`, ou `<InlineError>` qui le porte déjà.'
     ).toBe(true);
   });
 });

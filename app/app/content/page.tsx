@@ -2,8 +2,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadHome } from "@/lib/data/home";
 import { isBrandKitEntitled, purchaseWasReversed } from "@/lib/billing/entitlements";
-import { contentMonthKey, getContentMonth } from "@/lib/data/content";
+import {
+  checkinAnswered,
+  contentMonthKey,
+  getContentCheckin,
+  getContentMonth,
+} from "@/lib/data/content";
 import { ContentCalendar } from "@/components/content/content-calendar";
+import { CheckInCard } from "@/components/content/check-in-card";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -54,10 +60,38 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
   const raw = Array.isArray(requested) ? requested[0] : requested;
   const month = raw && /^\d{4}-\d{2}-01$/.test(raw) ? raw : contentMonthKey(new Date());
 
-  const result = await getContentMonth(supabase, brandKitId, month);
+  const [result, checkin] = await Promise.all([
+    getContentMonth(supabase, brandKitId, month),
+    getContentCheckin(supabase, brandKitId, month),
+  ]);
+
+  /*
+   * ⚠ AT THE TOP UNTIL ANSWERED, AND NOT ONE VISIT LONGER. `checkinAnswered`
+   * treats `taking_clients` as the one answer that counts, because it is the
+   * only field that changes what may be generated. Once she has answered it
+   * the card comes down, even with the two optional fields blank — a card that
+   * stayed up for an optional question would be asking for more than sixty
+   * seconds.
+   */
+  const monthLabel = new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-8 max-md:px-[var(--gutter-sm)]">
+      {checkinAnswered(checkin) ? null : (
+        <div className="mb-8 max-w-[720px]">
+          <CheckInCard
+            brandKitId={brandKitId}
+            month={month}
+            monthLabel={monthLabel}
+            initial={checkin}
+          />
+        </div>
+      )}
+
       {result.ok ? (
         <ContentCalendar brandKitId={brandKitId} month={month} model={result.data} />
       ) : (
