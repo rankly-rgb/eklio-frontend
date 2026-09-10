@@ -660,3 +660,39 @@ replaced by what remains true. What follows is the residue, not the original lis
   can be carried by any of the five. The real constraint will be LENGTH — `post_signature_1080` and
   `story_1080x1920` have the least room for text — and that is a Session 3 measurement against real
   captions, not something this schema can assert.
+
+---
+
+## Added during the Content chantier, Session 3 (types + capacity measurement)
+
+- **⚠ THE MEASURED CAPACITIES SIT BETWEEN `title` AND `caption`, AND THAT MAKES STEP 4 AMBIGUOUS.**
+  Measured floors across all six type pairings: `statement` **144** characters, `question` **168**,
+  `signature` **195**, `story` **431**, `notes` **472**. But `content_items.title` is capped at **34**
+  characters and `content_items.caption` at **2200**. So the on-image text is neither: it can hold four to
+  fourteen times more than a title, and a fraction of a caption. Step 4 says "pick the archetype from what
+  the caption's length physically allows" — at 2200 characters no layout allows anything. **What the
+  layout renders needs its own field, or the generator needs to know which slice of the caption goes on
+  the image.** Flagged rather than guessed.
+
+- **`satori` echoes a `height` you pass it.** Give it `{ width, height }` and the root `<svg>` comes back
+  with exactly that height whatever it laid out; give it `{ width }` alone and it auto-sizes honestly. My
+  first capacity run measured every archetype at zero because 4000 > every budget, and it looked like a
+  layout problem rather than a measurement bug. Anything in this repo that reads back a satori height must
+  pass width only.
+
+- **Capacity varies by 60% across the pairings, and the generator does not get to choose.**
+  `cormorant_source` holds 234 characters where `caslon_inter` holds 168 in the same `question` layout —
+  Cormorant Garamond is a narrow face. The generator must respect the FLOOR, not an average, because the
+  typeface is hers.
+
+- **`api.supabase.com` is refused from this environment (curl returns 000), and there is no
+  `SUPABASE_ACCESS_TOKEN`, and Docker is unusable.** All three of the CLI's paths to `gen types` are
+  therefore closed. The Supabase MCP server does reach the project and exposes the same generator, which
+  is what produced the current `eklio-backend/types/supabase.ts` — real generation, not hand-writing. The
+  remaining difference from the documented command is recorded in that file's own header: it reflects the
+  LIVE project rather than a clean replay of `supabase/migrations` + `seed.sql`.
+
+- **`api.anthropic.com` is reachable (401 without a key); there is no `ANTHROPIC_API_KEY` and no
+  `OPENAI_API_KEY` in this environment, and no `.env.local`.** So captions cannot be generated here even
+  though the network would allow it, and grounds cannot be generated at all. The Session 3 gate is not
+  executable from this environment.
