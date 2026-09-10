@@ -586,56 +586,66 @@ expires. Expired, purged and already-claimed all land on one screen, because the
 is not something she can act on and naming it would say something about a brief that may not
 be hers.
 
-## 11.5 The spend guard, and what 200 clicks costs
+## 11.5 The spend guard — the shipped values
 
-Three rows in `app_settings`, checked and incremented in **one statement** by
+> ⚠ **This section was wrong when first written.** Its prose said global 150 and per-IP 3;
+> its worked SQL example said 400 and 5. Below are the values actually in
+> `public.app_settings` in production, read back from the live database, and the example
+> carries those same numbers. Nothing here is illustrative.
+
+Five rows in `app_settings`, checked and incremented in **one statement** by
 `consume_anon_generation` — two statements would let two concurrent requests both read
 "149 of 150", and a generation once started is money already spent. A refused per-IP attempt
 **gives the global count back**, so one visitor refreshing cannot eat the day's ceiling for
 everyone. **A missing or unreadable setting is "no", never "unlimited".**
 
-| Row | Value | Why |
-|---|---|---|
-| `anon_generation_daily_per_ip` | **3** | Enough for a false start and a retry; a fourth in one day from one address is not a prospect |
-| `anon_generation_daily_global` | **150** | See below |
-| `anon_generation_enabled` | **true** | The kill switch |
+| Row | Shipped value | What it counts | Why that number |
+|---|---|---|---|
+| `anon_generation_enabled` | **true** | both kinds | The kill switch. One switch, both ceilings |
+| `anon_generation_daily_per_ip` | **3** | reveals, per hashed IP | Enough for a false start and a retry; a fourth in one day from one address is not a prospect |
+| `anon_generation_daily_global` | **150** | reveals, everyone | ≈ $13/day at the measured realistic cost; see §12.3 |
+| `anon_assist_daily_per_ip` | **45** | assists, per hashed IP | 15 per brief × the 3 briefs an IP may run. One short of the 17 she could physically press |
+| `anon_assist_daily_global` | **750** | assists, everyone | 5 per reveal — the ratio a real population produces, measured |
 
-**The arithmetic, at your figure of $0.09–1.80 for three directions.**
-
-| Scenario | Generations | Worst case |
-|---|---|---|
-| 200 cold-email clicks, **no cap** — every click generates | 200 | **$360/day** |
-| 200 clicks, realistic — ~30% start, most finish | ~60 | ~$108/day |
-| 200 clicks, **capped at 150** | 150 | **$270/day** — the ceiling |
-| A script, uncapped | unbounded | unbounded |
-| A script, **capped** | 150 | **$270/day**, whatever it does |
-
-150 sits above the demand a 200-click day can plausibly produce (~60) and bounds the worst
-case at $270 — which is the number that matters, because it is what a bad morning costs
-while you are asleep. At the low end of your range the same ceiling is $13.50.
-
-**If the numbers are wrong on the morning the emails land**, this is the edit — seconds, no
-deploy, no build:
+Read them back yourself, any time:
 
 ```sql
--- Turn it off entirely
+select key, value from public.app_settings
+ where key like 'anon\_%' order by key;
+```
+
+**If the numbers are wrong on the morning the emails land**, this is the edit — seconds, no
+deploy, no build. The values below are the ones currently live, so pasting this block
+unchanged is a no-op rather than a surprise:
+
+```sql
+-- Turn it off entirely. Closes BOTH kinds; nothing anonymous calls the model after this.
 update public.app_settings set value = 'false'::jsonb
  where key = 'anon_generation_enabled';
 
--- Or move a ceiling
-update public.app_settings set value = '400'::jsonb
+-- Or move a ceiling. These four statements restate what is shipped today.
+update public.app_settings set value = '150'::jsonb
  where key = 'anon_generation_daily_global';
-update public.app_settings set value = '5'::jsonb
+update public.app_settings set value = '3'::jsonb
  where key = 'anon_generation_daily_per_ip';
+update public.app_settings set value = '750'::jsonb
+ where key = 'anon_assist_daily_global';
+update public.app_settings set value = '45'::jsonb
+ where key = 'anon_assist_daily_per_ip';
 ```
 
+⚠ **Move the two global rows together.** They are one budget expressed twice: raising
+reveals without raising assists starves the screens that lead to a reveal, and raising
+assists alone buys nothing. The ratio is 5 assists per reveal (§12.2).
+
 The counter resets by date, so raising a ceiling mid-day immediately admits whatever the new
-number allows. Today's usage:
+number allows. Today's usage — reveal buckets are bare, assist buckets carry an `assist:`
+prefix:
 
 ```sql
 select bucket, used from public.anon_generation_counters
  where day = (now() at time zone 'utc')::date
- order by used desc limit 20;   -- '@global' is the whole day's total
+ order by used desc limit 20;   -- '@global' and 'assist:@global' are the day's totals
 ```
 
 **The IP is hashed with the date as salt** — enough to recognise a repeat visitor within a
@@ -669,3 +679,117 @@ only thing a purchase can attach to. A test enumerates both lists.
 And letting a request through is not the same as letting it see something: every one of
 those four resolves its caller and reads through RLS, where a request without a matching
 token reads nothing.
+
+---
+
+# 12. THE WALL WENT UP IN FRONT OF A FORM THAT SAVED NOTHING
+
+Written after the commit above, from a survey of `app/api/briefs/**` rather than from
+memory. Two things were true at once, and neither showed up in `tsc`, in `next build`, in
+eslint, or in 2,220 passing tests.
+
+## 12.1 Six of nine routes still demanded an account
+
+`POST /api/briefs`, `generate` and `email-link` were converted. The other six were not.
+For a visitor with no account, that is what she met:
+
+| Route | What she was doing | What she got |
+|---|---|---|
+| `PATCH /api/briefs/[id]` | **every keystroke — the autosave** | 401 |
+| `POST /api/briefs/[id]/suggest` | "Write it for me" | 401 |
+| `POST /api/briefs/[id]/rephrase` | "Help me say it" | 401 |
+| `POST /api/briefs/[id]/tone-cards` | step 5 entire | 401 |
+| `POST /api/briefs/[id]/usp-options` | the positioning screen | 401 |
+| `POST /api/briefs/[id]/usp-confirm` | choosing her positioning | 401 |
+
+The first line is the one that matters. The wall came down in front of a seven-step form
+that **could not retain a single answer** — she would have typed her practice's name, seen
+a save error, and left. The mobile work of the previous commit made "Write it for me"
+tappable; it 401'd when tapped.
+
+Every one of those files read correctly on its own. The defect was in what had **not** been
+written, in three files nobody had reason to open. That is the class of thing a
+source-walking test catches and a behaviour test cannot, so there is now one:
+`app/api/briefs/__tests__/anonymous-surface.test.ts` walks the directory and asserts that no
+route under `app/api/briefs` calls `authenticate()`, that all eight brief-reading routes
+resolve the caller, and that the set of routes calling the model equals a declared list —
+every member of which must consume a count. Nine files enumerated (anti-vacuous), one canary
+proving the rule bites.
+
+## 12.2 Four of five model calls were outside the spend ceiling
+
+The same six routes include four that call the model. The ceiling shipped with `generate`
+guarded `generate` alone.
+
+Counting them against the **same** ceiling would have been worse than leaving them out: the
+per-IP ceiling is 3, one honest brief spends about five assist calls, and her own first
+brief would have refused her own reveal. So `consume_anon_generation` now takes a second
+argument — `reveal` spends the ceilings it always did, `assist` spends a new pair under an
+`assist:` bucket prefix. The reveal rows keep meaning exactly what they meant.
+
+## 12.3 What one free reveal actually costs — measured
+
+Not a range. Measured from the **production prompt builders** — `ETHICS_SYSTEM_RULES`, the
+generation tool schema, `systemPrompt()`, `REPHRASE_SYSTEM_PROMPT`, `buildBriefContext` —
+with each call's own `max_tokens` read from source. Prices are `claude-opus-5`: **$5.00 in
+/ $25.00 out per MTok**.
+
+| Call | in (tok) | out ≤ | realistic | worst |
+|---|---|---|---|---|
+| `suggest` — "Write it for me" | 1,698 | 1,000 | $0.0093 | $0.0335 |
+| `rephrase` — "Help me say it" | 295 | 1,000 | $0.0030 | $0.0265 |
+| `tone-cards` — step 5 | 1,158 | 2,000 | $0.0120 | $0.0558 |
+| `usp-options` — positioning | 1,492 | 2,000 | $0.0158 | $0.0575 |
+| `generate` — three directions | 2,803 | 8,000 | $0.0376 | $0.2140 |
+
+"Realistic" is the schema's own output bounds — three directions plus voice guide and social
+is ~3,400 characters, not 8,000 tokens. "Worst" is every response filling its ceiling.
+
+**One visitor's whole walk — the free tier, three directions plus one regeneration, with
+every assist she can reach:**
+
+| | realistic | worst |
+|---|---|---|
+| assist calls | $0.0495 (5 presses) | $0.6578 (17 presses) |
+| the reveal itself | $0.0376 (1 run) | $0.4280 (1 run + 1 regeneration) |
+| **total** | **$0.0871** | **$1.0858** |
+
+**One number, if you want one: 8.7 cents.** That is what a visitor who walks the whole
+thing costs. $1.09 is what one determined person can reach by pressing every button its
+maximum number of times and having every response fill its token ceiling — it is the
+per-person catastrophe number, and the per-IP ceiling is what makes it unreachable at scale.
+
+The $0.09–1.80 range I gave before was not wrong at the ends; it was useless because it
+never said which end was the one to budget with.
+
+## 12.4 The global cap, set from a daily budget
+
+The budget instrument is the **global** pair, and it should be set from the realistic cost
+— a ceiling against loss, as you put it, not against catastrophe. The per-IP pair is the
+catastrophe instrument and is already tight.
+
+| Daily budget | `anon_generation_daily_global` | `anon_assist_daily_global` | Realistic day | Worst day anyone could construct | Distinct IPs needed to construct it |
+|---|---|---|---|---|---|
+| **$10** | **114** | **570** | $9.93 | $46.45 | 38 |
+| **$30** | **344** | **1,720** | $29.95 | $140.17 | 115 |
+| **$100** | **1,148** | **5,740** | $99.96 | $467.79 | 383 |
+| *shipped today* | *150* | *750* | *$13.06* | *$61.12* | *50* |
+
+Read the last two columns together. The worst-case column assumes every visitor is
+adversarial and every response fills its ceiling; the column beside it says how many
+**distinct IP addresses** that would take, because the per-IP ceiling (3 reveals, 45
+assists) caps any one address at **$2.38 a day**. A $100 budget is only a $468 exposure if
+383 separate machines each spend the day grinding your free tier.
+
+What is shipped sits between your $10 and your $30. To move it, edit the two global rows in
+§11.5 together — reveals and assists at 1:5.
+
+## 12.5 What is still not measured
+
+Every figure above is arithmetic on measured prompt sizes, not billed usage: no request has
+been made to the Anthropic API from this environment, and `ANTHROPIC_API_KEY` is still
+absent. The input character counts are exact and read from source; `BRIEF_CONTEXT` (1,800
+chars) and the six catalogue ethics rules (840 chars) are measured shapes rather than exact
+strings, and the characters-per-token ratio is stated as 3.6, not measured. **The first
+real invoice is the only thing that settles this**, and it should be compared against
+$0.0871 × the number of reveals that day.
