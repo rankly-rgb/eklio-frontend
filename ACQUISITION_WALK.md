@@ -21,11 +21,9 @@ Those sections below are therefore **read from the source, not observed**. They 
 about structure, step counts, required fields, redirects and copy, and silent about
 rendering and speed. Where I could not see something I say so rather than describing it.
 
-What that means for you: **the phone rendering of the seven brief steps is still
-unexamined.** It is the single largest unknown left in this walk, and it is the one your
-brief called out first ("if the seven-step brief assumes a 1400px screen, nothing else in
-this chantier matters"). Getting it needs either the keys in this environment or a walk run
-from your Codespace.
+What that meant at the time: the phone rendering of the seven brief steps was unexamined.
+**It has since been measured — see §9, added in Session 2.** The short answer is that the
+brief does not assume a desktop.
 
 ---
 
@@ -388,3 +386,77 @@ and my ranking and your instinct agree on where the cliff is.
   domain reserved by RFC 2606 with no mail server) failed at the network before reaching
   Supabase; `auth.users` was checked afterwards and holds **0** such rows.
 - Screenshots and raw measurements are in the session scratchpad, not the repo.
+
+
+---
+
+# §9 — THE SEVEN BRIEF SCREENS AT 390px
+
+**Added in Session 2.** Rendered without a session at `/dev/brief-phone` — the real step
+bodies in the real shell, from a fixture catalogue built to the live catalogue's measured
+counts and longest labels. Measured in Chromium at iPhone 13 (390×844).
+
+> **The headline: the brief does not assume a desktop.** Zero horizontal overflow on all
+> seven steps, zero page errors. Everything below is a second-order problem, and none of it
+> invalidates the rest of the chantier.
+
+| Step | Height | Screens | Overflow | Taps < 44px | Text < 14px |
+|---|---|---|---|---|---|
+| 1 Practice | 1 612 px | 2.4 | 0 | **22** | 3 |
+| 2 Positioning | 2 314 px | 3.5 | 0 | 2 | 3 |
+| 3 Ideal client | 1 655 px | 2.5 | 0 | 0 | 3 |
+| 4 How you work | **3 572 px** | **5.4** | 0 | 11 | 3 |
+| 5 Voice | 1 311 px | 2.0 | 0 | 0 | 9 |
+| 6 Look | 1 689 px | 2.5 | 0 | 0 | **20** |
+| 7 Website | 1 612 px | 2.4 | 0 | 10 | 2 |
+
+## 9.1 Step 4 is five and a half screens, and it is the one with the blocking free text
+
+**How you work** is 3 572 px on a phone — more than twice step 5, and 60% taller than the
+next-worst. It carries four card grids (8 session styles, 8 not-a-fit, **14 modalities**, 3
+prominence options), a free-text box, and the prior-career fields.
+
+It is also the step that will not let her past without composing a sentence in a colleague's
+voice (§3, the referral quote). Five and a half screens of scrolling ending in the hardest
+question on the path is where a thumb stops.
+
+## 9.2 Every chip in the brief is 34 px tall
+
+Not a step-specific defect — a component one. Licence chips, not-a-fit chips, primary-action
+chips, modality chips: all **34 px**, 10 px under the 44 px minimum (WCAG 2.5.8, Apple HIG).
+Step 1 alone has 22 of them, because there are ten licence types and twelve specialties.
+
+They are wide enough (57–342 px); it is height alone. One padding change in the chip
+component fixes every one of them, which is why this is cheap and worth doing before a
+phone-first campaign.
+
+`"Write it for me"` on step 2 is worse at **91 × 22** — a quarter of the minimum area, and
+it is the affordance that rescues someone stuck on the free-text question.
+
+## 9.3 The 11px text is the mono label, and mostly that is a design decision
+
+The `MonoLabel` eyebrow and the "Step N of 7" counter render at 11 px on every step. Small,
+but uppercase mono at tracking — a label, not prose — and consistent with the design system.
+I would leave it.
+
+The one I would not leave is **step 6**, where 20 items fall under 14 px because the palette
+family names (`PLUM & BONE`, `CLAY & SAND`) use the same 11 px mono. That is the screen
+where she is choosing between six colour families by name, on a phone, and the name is the
+smallest text on it.
+
+## 9.4 A null preview crashes step 6, and only the type knows
+
+`StepBodyProps.preview` is typed `PreviewModel | null`. `components/preview/cards.tsx:41`
+does `{ ...model.tokens, ...family.preview_tokens }` with no guard, so a null preview throws
+`Cannot read properties of null (reading 'tokens')` and step 6 renders nothing.
+
+Found by passing `null` to build this preview page, which is what the type says is allowed.
+In production `brief_preview()` has always returned a model, so nothing has ever reached it
+— but the type and the code disagree, and the type is the one a future caller will read.
+Not patched: this session's four fixes were named, and this is not one of them.
+
+## 9.5 How to look at it yourself
+
+`/dev/brief-phone` — linked from nowhere, reads no database, calls nothing, and says
+**Fixtures — nothing here is real** at the top. All seven bodies on one page, interactive,
+so a filled-in state can be measured as well as an empty one.
