@@ -148,9 +148,23 @@ export const contentMonthSchema = z.object({
   items: z.array(contentItemSchema),
   unscheduled: z.array(contentItemSchema),
   counts: z.object({
+    /*
+     * ⚠ THESE THREE COUNT ONLY WHAT SHE HAS SEEN. `proposed` items are
+     * excluded from all three in `get_content_month` — the only honest count
+     * is one that comes from a row SHE created, and a proposal is a row EKLIO
+     * created. Counting it beside her own work would tell her she has done
+     * something she has not done.
+     */
     scheduled: z.number().int(),
     ready: z.number().int(),
     posted: z.number().int(),
+    /*
+     * Eklio's work, waiting on her — measurable, honest, and kept separate so
+     * the month plan can say "twelve waiting for you" without inflating the
+     * three above. Optional so a response from before the count existed still
+     * parses rather than blanking the calendar.
+     */
+    proposed: z.number().int().optional(),
   }),
 });
 export type ContentMonth = z.infer<typeof contentMonthSchema>;
@@ -170,6 +184,33 @@ export const publishingLogSchema = z.object({
   entries: z.array(publishingLogEntrySchema),
 });
 
+/* ── PREFERENCES, THE CHECK-IN, AND APPROVING A MONTH ────────────────────
+ *
+ * ⚠ READS GO DIRECT, WRITES GO THROUGH RPCs, and the asymmetry is the schema's
+ * not a shortcut. `content_preferences` and `content_checkins` carry
+ * `select_own` policies, so a session client reading them is already bounded
+ * by RLS. Their INSERT/UPDATE policies are `false`, so the only door is a
+ * SECURITY DEFINER function. Wrapping the reads in RPCs too would add a
+ * function whose whole body is the policy that already exists.
+ */
+
+export const contentPreferencesSchema = z.object({
+  brand_kit_id: z.string(),
+  cadence_per_week: z.number().int(),
+  accepted_registers: z.array(z.enum(CONTENT_REGISTERS)),
+  off_limits: z.string().nullable(),
+});
+export type ContentPreferences = z.infer<typeof contentPreferencesSchema>;
+
+export const contentCheckinSchema = z.object({
+  brand_kit_id: z.string(),
+  month: z.string(),
+  sessions_theme: z.string().nullable(),
+  taking_clients: z.enum(TAKING_CLIENTS).nullable(),
+  happening: z.string().nullable(),
+});
+export type ContentCheckin = z.infer<typeof contentCheckinSchema>;
+
 /*
  * The refusal shape every content RPC returns, and the ONE place its code
  * becomes an HTTP status. `not_found` is 404 rather than 403 on purpose: a
@@ -187,6 +228,16 @@ const STATUS_BY_CODE: Record<string, number> = {
   not_found: 404,
   payment_required: 402,
   unknown_field: 400,
+  /*
+   * All four are 400: the caller sent something the schema refuses. They are
+   * listed rather than folded into a default so that a NEW refusal code lands
+   * on 500 and gets noticed, instead of being quietly reported as the client's
+   * fault.
+   */
+  alt_text_required: 400,
+  invalid_preferences: 400,
+  invalid_checkin: 400,
+  month_not_ready: 409,
 };
 
 function refusal(code: string, message: string): ContentResult<never> {
@@ -283,7 +334,18 @@ export async function createContentItem(
   const { data, error } = await supabase.rpc("create_content_item", {
     p_brand_kit_id: brandKitId,
     p_archetype: archetype,
-    p_scheduled_for: scheduledFor,
+    /*
+     * ⚠ `?? undefined` BECAUSE THE GENERATOR RENDERS A DEFAULTED PARAM AS
+     * OPTIONAL, NOT NULLABLE. In the database this argument is `text default
+     * null`, so passing null and omitting it reach the same value — but
+     * `gen types` types it `string | undefined` and refuses the null. Omitting
+     * lets Postgres apply its own default, which IS null.
+     *
+     * Surfaced by regenerating types that had drifted for four days. Coerced
+     * rather than cast: a cast would silence the checker without making the
+     * call correct, and the next defaulted param would drift the same way.
+     */
+    p_scheduled_for: scheduledFor ?? undefined,
   });
   return decode("create_content_item", z.object({ id: z.string() }), data, error);
 }
@@ -333,7 +395,7 @@ export async function markContentPosted(
   const { data, error } = await supabase.rpc("mark_content_posted", {
     p_id: id,
     p_posted: posted,
-    p_channel: channel,
+    p_channel: channel ?? undefined,
   });
   return decode(
     "mark_content_posted",
@@ -417,3 +479,168 @@ export const CHANNEL_LABELS: Record<PublishChannel, string> = {
   newsletter: "Newsletter",
   other: "Somewhere else",
 };
+
+/* ── Preferences ─────────────────────────────────────────────────────────── */
+
+/**
+ * Her content preferences, or `null` if she has never answered.
+ *
+ * `null` is not an error and must not be rendered as one: it is the state of
+ * every kit until the first visit, and the preferences step exists precisely
+ * to fill it.
+ */
+export async function getContentPreferences(
+  supabase: Client,
+  brandKitId: string
+): Promise<ContentPreferences | null> {
+  const { data, error } = await supabase
+    .from("content_preferences")
+    .select("brand_kit_id, cadence_per_week, accepted_registers, off_limits")
+    .eq("brand_kit_id", brandKitId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[content] getContentPreferences", error);
+    return null;
+  }
+  if (!data) return null;
+
+  const parsed = contentPreferencesSchema.safeParse(data);
+  if (!parsed.success) {
+    /*
+     * A row whose `accepted_registers` holds something the six do not cover.
+     * The database trigger makes that impossible today; if it ever happens,
+     * reporting "not answered" is safer than handing the generator a register
+     * it has no safety rule for.
+     */
+    console.error("[content] preferences row does not parse", parsed.error);
+    return null;
+  }
+  return parsed.data;
+}
+
+export async function setContentPreferences(
+  supabase: Client,
+  input: {
+    brandKitId: string;
+    cadencePerWeek: ContentCadence;
+    acceptedRegisters: ContentRegister[];
+    offLimits: string | null;
+  }
+): Promise<ContentResult<{ saved_at: string }>> {
+  const { data, error } = await supabase.rpc("set_content_preferences", {
+    p_brand_kit_id: input.brandKitId,
+    p_cadence_per_week: input.cadencePerWeek,
+    p_accepted_registers: input.acceptedRegisters,
+    p_off_limits: input.offLimits,
+  } as never);
+
+  return decode(
+    "setContentPreferences",
+    z.object({ brand_kit_id: z.string(), saved_at: z.string() }),
+    data,
+    error
+  );
+}
+
+/* ── The monthly check-in ────────────────────────────────────────────────── */
+
+/**
+ * Her answers for this month, or `null` if she has not answered yet.
+ *
+ * ⚠ `null` NEVER BLOCKS A MONTH. An unanswered check-in means "generate from
+ * the brief alone and leave it open at the top of the calendar". The generator
+ * reads it the same way.
+ */
+export async function getContentCheckin(
+  supabase: Client,
+  brandKitId: string,
+  month: string
+): Promise<ContentCheckin | null> {
+  const { data, error } = await supabase
+    .from("content_checkins")
+    .select("brand_kit_id, month, sessions_theme, taking_clients, happening")
+    .eq("brand_kit_id", brandKitId)
+    .eq("month", month)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[content] getContentCheckin", error);
+    return null;
+  }
+  if (!data) return null;
+
+  const parsed = contentCheckinSchema.safeParse(data);
+  return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Has she answered enough for the card to stop asking?
+ *
+ * ⚠ ONE ANSWER IS ENOUGH, and `taking_clients` is the one that counts. It is
+ * the only field that changes what may be GENERATED — whether a post may carry
+ * a call to action, and which. The other two enrich; this one governs.
+ *
+ * Requiring all three would keep the card at the top of her calendar for the
+ * sake of an optional question, which is the opposite of sixty seconds.
+ */
+export function checkinAnswered(checkin: ContentCheckin | null): boolean {
+  return checkin?.taking_clients != null;
+}
+
+export async function setContentCheckin(
+  supabase: Client,
+  input: {
+    brandKitId: string;
+    month: string;
+    sessionsTheme: string | null;
+    takingClients: TakingClients | null;
+    happening: string | null;
+  }
+): Promise<ContentResult<{ saved_at: string }>> {
+  const { data, error } = await supabase.rpc("set_content_checkin", {
+    p_brand_kit_id: input.brandKitId,
+    p_month: input.month,
+    p_sessions_theme: input.sessionsTheme,
+    p_taking_clients: input.takingClients,
+    p_happening: input.happening,
+  } as never);
+
+  return decode(
+    "setContentCheckin",
+    z.object({ brand_kit_id: z.string(), month: z.string(), saved_at: z.string() }),
+    data,
+    error
+  );
+}
+
+/* ── Approving the month ─────────────────────────────────────────────────── */
+
+/**
+ * Moves a whole month of proposals to `draft`, in one statement in the
+ * database.
+ *
+ * `moved` is what actually changed — 0 on a replay, and reported as 0 rather
+ * than repeated to look busy. The caller should refetch the month rather than
+ * patching its own copy: approval also moves items she has dragged out of the
+ * month, which a local patch would miss.
+ */
+export async function approveContentMonth(
+  supabase: Client,
+  monthId: string
+): Promise<ContentResult<{ moved: number }>> {
+  const { data, error } = await supabase.rpc("approve_content_month", {
+    p_month_id: monthId,
+  } as never);
+
+  return decode(
+    "approveContentMonth",
+    z.object({
+      month_id: z.string(),
+      approved_at: z.string(),
+      moved: z.number().int(),
+    }),
+    data,
+    error
+  );
+}

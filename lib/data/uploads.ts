@@ -138,7 +138,7 @@ export async function recordUserUpload(
     p_storage_path: input.storagePath,
     p_mime_type: input.mimeType,
     p_byte_size: input.byteSize,
-    p_original_name: input.originalName,
+    p_original_name: input.originalName ?? undefined,
   });
   return decode(
     "record_user_upload",

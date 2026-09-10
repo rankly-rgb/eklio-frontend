@@ -5,32 +5,41 @@ import { resolve } from "node:path";
 /*
  * ── LE PIÈGE DE LA RÉGÉNÉRATION, RENDU BRUYANT ──────────────────────────
  *
- * « Ne régénère pas types/supabase.ts » est une règle que quelqu'un oubliera,
- * et la perte est SILENCIEUSE : le fichier compile toujours, `Database` reste
- * un type valide, et la première chose qui casse est un appel qui était typé
- * hier et vaut `any` aujourd'hui.
+ * ⚠ LA PRÉMISSE A CHANGÉ, ET LE TEST AVEC ELLE. Ce fichier disait « THIS FILE
+ * IS NOT SAFELY REGENERABLE » parce que des tables et des RPC y avaient été
+ * ÉCRITES À LA MAIN : régénérer les effaçait. Le chantier Content a régénéré
+ * pour de bon, avec le générateur de Supabase, et tout ce qui était manuel
+ * existe maintenant en base — donc le générateur le produit.
  *
- * Deux choses ne sont pas générées et disparaissent à chaque `gen types` :
- * l'addendum manuel (quatre unions de statut, des colonnes `text` sous CHECK
- * que le générateur rend en `string`) et les ajouts écrits à la main par une
- * session qui n'a pas régénéré. Ce test nomme les deux.
+ * Ce qui reste vrai, et ce que ce test garde toujours : l'ADDENDUM manuel
+ * n'est pas généré. Ce sont des colonnes `text` contraintes par un CHECK, que
+ * `gen types` rend en `string` ; les unions vivent ici et disparaissent à
+ * chaque régénération si personne ne les remet.
  *
- * Il ne dit PAS que régénérer est interdit. Il dit qu'après régénération, il
- * faut remettre ce qu'il énumère — et il devient rouge tant que ce n'est pas
- * fait.
+ * Le test ne dit donc plus « ne régénère pas ». Il dit : régénère quand tu
+ * veux, ET REMETS L'ADDENDUM — et il reste rouge tant que ce n'est pas fait.
+ * Les listes ci-dessous ne sont plus « ce qui a été ajouté à la main » mais
+ * « ce qui doit SURVIVRE à une régénération » : si l'une manque, la
+ * régénération a été faite contre la mauvaise base.
  */
 
 const FILE = resolve(__dirname, "../supabase.ts");
 const SOURCE = readFileSync(FILE, "utf8");
 
-/** Les tables ajoutées à la main, avec la migration qui les a créées. */
+/** Les tables qui doivent survivre à une régénération, et leur migration. */
 const HAND_ADDED_TABLES: Record<string, string> = {
   content_items: "20260906155600_content_items",
   content_publications: "20260906155600_content_items",
   user_uploads: "20260906164920_user_uploads",
+  content_registers: "20260910083735_content_system_schema",
+  content_preferences: "20260910083735_content_system_schema",
+  content_checkins: "20260910083735_content_system_schema",
+  content_months: "20260910083735_content_system_schema",
+  content_grounds: "20260910083735_content_system_schema",
+  content_image_allowance: "20260910083735_content_system_schema",
 };
 
-/** Les RPC ajoutées à la main. Sans elles, `supabase.rpc(...)` n'est plus typé. */
+/** Les RPC qui doivent survivre. Sans elles, `supabase.rpc(...)` n'est plus typé. */
 const HAND_ADDED_FUNCTIONS = [
   "create_content_item",
   "update_content_item",
@@ -43,6 +52,12 @@ const HAND_ADDED_FUNCTIONS = [
   "record_user_upload",
   "delete_user_upload",
   "list_user_uploads",
+  "set_content_preferences",
+  "set_content_checkin",
+  "approve_content_month",
+  "reserve_content_image",
+  "settle_content_image",
+  "get_content_image_allowance",
 ];
 
 /** L'addendum manuel : quatre unions que le générateur écrase en `string`. */
@@ -50,7 +65,9 @@ const ADDENDUM_TYPES = [
   "ProjectStatus",
   "SubscriptionStatus",
   "PurchaseStatus",
-  "MonthlyPresenceStatus",
+  // `MonthlyPresenceStatus` stood here until the Content chantier retired the
+  // table it described (backend 20260910082539). Removed rather than kept as a
+  // union nothing can hold.
 ];
 
 describe("le fichier est bien celui qu'on croit", () => {
@@ -62,10 +79,17 @@ describe("le fichier est bien celui qu'on croit", () => {
     expect(SOURCE.length).toBeGreaterThan(50_000);
   });
 
-  it("il porte l'avertissement en tête", () => {
+  it("il porte sa provenance et le rappel de l'addendum en tête", () => {
     // La règle vit à deux endroits : ici, et dans le fichier lui-même. Celui
     // qui régénère lit le fichier avant de lire les tests.
-    expect(SOURCE).toContain("THIS FILE IS NOT SAFELY REGENERABLE");
+    expect(SOURCE).toContain("GENERATED FROM THE DATABASE");
+    expect(SOURCE).toContain("THE ADDENDUM AT THE BOTTOM IS HAND-MAINTAINED");
+  });
+
+  it("⚠ et la table morte n'est jamais revenue", () => {
+    // Une régénération faite contre une base où la retraite n'a pas été
+    // appliquée la ramènerait, silencieusement.
+    expect(SOURCE).not.toContain("monthly" + "_presence_" + "content");
   });
 });
 
