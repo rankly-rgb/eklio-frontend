@@ -121,6 +121,18 @@ export const contentItemSchema = z.object({
   status: z.enum(CONTENT_STATUSES),
   title: z.string().nullable(),
   caption: z.string().nullable(),
+  /*
+   * ⚠ TWO TEXTS, NEVER ONE SLICED. `caption` is the long thought underneath,
+   * up to Instagram's 2,200. This is the line rendered ON the image, in her
+   * typeface, and it carries the register. They are written separately and by
+   * separate calls: cutting the opening off a caption to fill the picture
+   * gives a fragment on the image and the same words repeated under it.
+   *
+   * Null on everything she wrote herself, and on anything generated before the
+   * generator learned to write one. "No line" is a real state; an empty string
+   * would render as a zero-height box.
+   */
+  on_image_text: z.string().nullable(),
   alt_text: z.string().nullable(),
   tags: z.array(z.string()),
   category: z.string().nullable(),
@@ -291,6 +303,16 @@ export const contentPatchSchema = z
     status: z.enum(CONTENT_STATUSES),
     title: z.string().max(34, "A title fits in 34 characters.").nullable(),
     caption: z.string().max(2200, "A caption fits in 2,200 characters.").nullable(),
+    /*
+     * 480 is the column's CHECK: the largest measured archetype floor
+     * (`notes`, 472) plus air. The tighter per-archetype floor is the
+     * generator's to enforce, because it is the thing that knows which layout
+     * it picked; putting 144 here would refuse a legal `notes` line.
+     */
+    on_image_text: z
+      .string()
+      .max(480, "A line on the image fits in 480 characters.")
+      .nullable(),
     alt_text: z.string().max(420, "Alt text fits in 420 characters.").nullable(),
     tags: z.array(z.string().max(24)).max(8, "Eight tags is the ceiling."),
     category: z.string().max(40).nullable(),

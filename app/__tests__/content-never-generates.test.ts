@@ -3,40 +3,56 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 /*
- * ── LOT 6 NE GÉNÈRE RIEN, ET C'EST VÉRIFIÉ PLUTÔT QU'ÉCRIT ──────────────
+ * ── CE TEST EST DEVENU ROUGE, ET C'ÉTAIT PRÉVU ──────────────────────────
  *
- * Le calendrier, l'éditeur et le journal de publication sont de l'ÉCRITURE :
- * chaque mot y est tapé par elle. Aucun de ces chemins ne doit atteindre un
- * crédit de génération, le budget d'images, ni le client du modèle.
+ * Sa version d'origine interdisait TOUT chemin de dépense sur TOUTE surface
+ * de contenu, et elle disait d'elle-même ce qui suit :
  *
- * Deux raisons de le tenir par un test :
+ *   « Le lot suivant remplira ces mêmes légendes avec un modèle. Le jour où
+ *     il le fera, ce test doit devenir rouge et forcer une décision explicite
+ *     — pas laisser un appel s'ajouter en silence dans un fichier d'éditeur. »
  *
- *   1. C'est de l'argent. `consume_generation_credit` prélève un crédit
- *      qu'elle a payé, et un autosave qui l'appellerait une fois par frappe
- *      viderait son compte sans que rien ne casse visiblement.
- *   2. Le lot suivant remplira ces mêmes légendes avec un modèle. Le jour où
- *      il le fera, ce test doit devenir rouge et forcer une décision explicite
- *      — pas laisser un appel s'ajouter en silence dans un fichier d'éditeur.
+ * Ce jour est arrivé : `lib/content/generate/` écrit le mois. La décision est
+ * donc prise ici, explicitement, et la règle est RESSERRÉE plutôt
+ * qu'assouplie — parce que la question n'a jamais été « est-ce que le contenu
+ * dépense » mais « QUELLE bourse ».
  *
- * ⚠ CE QUI EST AUTORISÉ, ET POURQUOI : la page d'un item LIT `brand_images`
- * (`getBrandImages`, `computeImageFingerprint`, `loadImageContext`) pour
- * donner une source à `<PhotoSlot>` quand une photographie existe déjà. Lire
- * n'est pas générer. Ce sont les chemins de DÉPENSE qui sont interdits, et ils
- * sont nommés un par un ci-dessous.
+ * ── LES DEUX RÈGLES, MAINTENANT ─────────────────────────────────────────
+ *
+ * 1. LES SURFACES D'ÉCRITURE NE DÉPENSENT TOUJOURS RIEN, ET C'EST ABSOLU.
+ *    Le calendrier, l'éditeur, le journal, les routes qu'elle touche : chaque
+ *    mot y est tapé par elle. Un autosave qui appellerait un crédit une fois
+ *    par frappe viderait son compte sans que rien ne casse visiblement.
+ *
+ * 2. LE GÉNÉRATEUR DÉPENSE, MAIS SUR UNE SEULE BOURSE. Il y en a trois dans
+ *    ce produit et les confondre serait un vol :
+ *
+ *      • `content_image_allowance` — mensuelle, remise à zéro par
+ *        construction, attachée à l'abonnement à 39 $. LA SIENNE.
+ *      • `plans.image_budget_cents` — une cagnotte À VIE attachée à un achat
+ *        unique. Elle a payé sept photographies avec son kit ; cet argent est
+ *        à elle jusqu'à ce qu'elle le dépense.
+ *      • `consume_generation_credit` — les régénérations de direction.
+ *
+ *    Le générateur ne doit atteindre QUE la première, et ce test le vérifie
+ *    fichier par fichier plutôt que de le faire confiance à une revue.
  */
 
 const ROOT = resolve(__dirname, "../..");
 
-/** Les surfaces de LOT 6, toutes. */
-const CONTENT_PATHS = [
+/** Les surfaces d'ÉCRITURE : ce qu'elle tape, et ce qui l'affiche. */
+const HER_SURFACES = [
   "lib/data/content.ts",
-  "lib/content",
+  "lib/content/respond.ts",
   "app/api/brand-kits/[id]/content",
   "app/api/brand-kits/[id]/publishing-log",
   "app/api/content-items",
   "app/app/content",
   "components/content",
 ];
+
+/** La surface qui GÉNÈRE, et elle seule. */
+const GENERATOR = "lib/content/generate";
 
 /** Tout ce qui coûte de l'argent, par son nom d'appel. */
 const SPENDING = [
@@ -56,6 +72,22 @@ const SPENDING = [
   "Anthropic",
 ];
 
+/**
+ * Les bourses INTERDITES au générateur : les deux qui ne sont pas la sienne.
+ * Tout le reste de `SPENDING` lui est permis — un modèle qui écrit une légende
+ * est précisément ce qu'il est là pour faire.
+ */
+const WRONG_PURSE = [
+  "consume_generation_credit",
+  "consumeGenerationCredit",
+  "hasGenerationCredit",
+  "release_generation_credit",
+  "image_budget_cents",
+  "reserve_image_regeneration",
+  "reserveImageRegeneration",
+  "settleImageRegeneration",
+];
+
 function walk(path: string): string[] {
   const full = join(ROOT, path);
   if (!existsSync(full)) return [];
@@ -66,13 +98,14 @@ function walk(path: string): string[] {
   });
 }
 
-function files(): string[] {
-  return CONTENT_PATHS.flatMap((path) =>
+function expand(paths: string[]): string[] {
+  return paths.flatMap((path) =>
     /\.tsx?$/.test(path) ? (existsSync(join(ROOT, path)) ? [path] : []) : walk(path)
   );
 }
 
-const FILES = files();
+const FILES = expand(HER_SURFACES);
+const GENERATOR_FILES = expand([GENERATOR]);
 
 /** Le code seul : un commentaire qui NOMME un chemin de dépense ne dépense rien. */
 function code(path: string): string {
@@ -93,18 +126,22 @@ describe("l'énumération elle-même", () => {
     expect(FILES.some((path) => path.startsWith("app/api/content-items"))).toBe(true);
     expect(FILES.some((path) => path.startsWith("components/content"))).toBe(true);
   });
+
+  it("trouve le générateur, et ne le range pas parmi ses surfaces à elle", () => {
+    expect(GENERATOR_FILES.length).toBeGreaterThanOrEqual(5);
+    expect(FILES.some((path) => path.startsWith(GENERATOR))).toBe(false);
+  });
 });
 
-describe("aucune surface de contenu n'atteint un chemin de dépense", () => {
+describe("aucune surface d'écriture n'atteint un chemin de dépense", () => {
   it.each(FILES)("%s", (path) => {
     const source = code(path);
     const found = SPENDING.filter((needle) => source.includes(needle));
     expect(
       found,
       `${path} atteint un chemin de dépense : ${found.join(", ")}.\n` +
-        "Écrire une légende n'est pas une génération. Si un lot ultérieur ajoute\n" +
-        "vraiment un modèle ici, c'est une décision explicite : elle change ce\n" +
-        "test, elle ne le contourne pas."
+        "Écrire une légende n'est pas une génération. Ce qu'elle tape ne coûte\n" +
+        "rien, et la génération vit dans lib/content/generate, pas ici."
     ).toEqual([]);
   });
 
@@ -114,6 +151,38 @@ describe("aucune surface de contenu n'atteint un chemin de dépense", () => {
     expect(SPENDING.filter((needle) => canary.includes(needle))).toEqual([
       "consume_generation_credit",
     ]);
+  });
+});
+
+describe("le générateur dépense, et sur la bonne bourse seulement", () => {
+  it.each(GENERATOR_FILES)("%s", (path) => {
+    const source = code(path);
+    const found = WRONG_PURSE.filter((needle) => source.includes(needle));
+    expect(
+      found,
+      `${path} atteint ${found.join(", ")}.\n` +
+        "La dépense d'images de contenu tire sur content_image_allowance, qui se\n" +
+        "remet à zéro chaque mois. Jamais sur la cagnotte à vie du kit, jamais sur\n" +
+        "les crédits de régénération de direction : elle a payé les deux séparément."
+    ).toEqual([]);
+  });
+
+  it("cette règle-là aussi mord", () => {
+    const canary = "const remaining = plan.image_budget_cents - used;";
+    expect(WRONG_PURSE.filter((needle) => canary.includes(needle))).toEqual([
+      "image_budget_cents",
+    ]);
+  });
+
+  it("et le générateur ne dépense que par un port injecté, jamais par une RPC en dur", () => {
+    // ⚠ La réservation et le règlement passent par `AllowancePort`, que
+    //   l'appelant fournit. Le pipeline ne connaît ni supabase ni le nom des
+    //   RPC : c'est ce qui rend le sens interdit — dessiner d'abord, réserver
+    //   ensuite — impossible à écrire par distraction.
+    const pipeline = code("lib/content/generate/pipeline.ts");
+    expect(pipeline).toContain("AllowancePort");
+    expect(pipeline).not.toContain("supabase");
+    expect(pipeline).not.toContain(".rpc(");
   });
 });
 

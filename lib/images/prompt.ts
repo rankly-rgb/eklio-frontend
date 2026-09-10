@@ -52,7 +52,7 @@ import { objectRegisterFor } from "@/lib/images/specialties";
  * brief. Supplied verbatim by the product owner after reviewing the first
  * real generation.
  */
-const MASTER_DIRECTION =
+export const MASTER_DIRECTION =
   "Editorial interiors photograph for a therapist's brand identity, in the register of an " +
   "architecture or design magazine. Warm late-afternoon daylight entering from the upper left, " +
   "directional enough to cast a soft-edged shadow across a wall. Bright and airy: the plaster wall " +
@@ -68,7 +68,7 @@ const MASTER_DIRECTION =
  * after the slot brief and the palette. Every word is the owner's; the split
  * is positional, not editorial.
  */
-const MASTER_EXCLUSIONS =
+export const MASTER_EXCLUSIONS =
   "Strictly excluded: no people, no faces, no hands, no body parts, no text, no lettering, no " +
   "numbers, no logos, no signage, no watermarks, no brand names, no empty armchairs, no couches, " +
   "no clipboards, no lotus flowers, brains, puzzle pieces or meditation imagery, no pill bottles, " +

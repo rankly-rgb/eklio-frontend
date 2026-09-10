@@ -653,6 +653,7 @@ export type Database = {
           id: string
           image_slot: string | null
           month_id: string | null
+          on_image_text: string | null
           register: string | null
           scheduled_for: string | null
           status: string
@@ -670,6 +671,7 @@ export type Database = {
           id?: string
           image_slot?: string | null
           month_id?: string | null
+          on_image_text?: string | null
           register?: string | null
           scheduled_for?: string | null
           status?: string
@@ -687,6 +689,7 @@ export type Database = {
           id?: string
           image_slot?: string | null
           month_id?: string | null
+          on_image_text?: string | null
           register?: string | null
           scheduled_for?: string | null
           status?: string

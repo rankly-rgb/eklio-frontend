@@ -49,10 +49,17 @@ One of these, whichever suits you:
 - Session 5's "first month at purchase" cannot be exercised end-to-end (it can be built
   and unit-tested, which is what I am doing).
 
-**I did not write the generator blind.** Writing an unrunnable pipeline and presenting it
-as done is the across-sessions assumption your scope rules forbid, and it would arrive at
-the gate with nothing to show. Say the word and I will write it against the measured
-capacities so it is ready to run the moment a key exists.
+**The generator is now written, and it is proven as far as a keyless environment allows.**
+`lib/content/generate/` implements the ruled order end to end — register, archetype, the
+on-image line written to the measured floor, the caption, both scanned by the Ethics Guard,
+then the alt text from the composed image. Its model call sits behind one interface, and a
+27-assertion suite exercises the whole pipeline with a **stub**: rotation, refitting, a line
+that trips the scanner and the rewrite that clears it, alt text, and the reservation being
+released when a draw fails.
+
+**What that suite cannot prove is the only thing left: the words.** The moment a key
+exists, `npx tsx scripts/content/generate-month.ts` (Session 5) runs the same code against
+the real model and the gate output lands here.
 
 ---
 
@@ -90,8 +97,12 @@ characters no layout allows anything, and at 34 every layout is three-quarters e
 **My recommendation: (a).** It is the only one where editing her caption cannot break her
 image, and the cap makes the archetype choice trivial rather than a fitting problem.
 
-**Blocked behind it:** step 4 of the generator, therefore the gate, therefore everything
-downstream of the gate.
+> **✅ RULED, AND BUILT.** You chose (a): the on-image line is its own field. Backend
+> `20260910100415` adds `content_items.on_image_text`, capped at **480** rather than 144 —
+> one column cannot carry five different caps, so it is sized to the largest floor
+> (`notes`, 472) plus air, and the tighter per-archetype floor is enforced by the
+> generator, which is the thing that knows which layout it picked. Nothing is blocked
+> behind this any more.
 
 ---
 
@@ -191,6 +202,85 @@ codebase kept inlining it, revert the guard and add the literal; it is one commi
 
 ---
 
+## DECISION 5 — Your OpenAI ruling does not match this repo, and I did the opposite
+
+**Where:** `lib/content/generate/model.ts`, header comment.
+
+Your ruling: *"Captions go through OpenAI. Do not add Anthropic. `OPENAI_API_KEY`, not
+`ANTHROPIC_API_KEY`. One vendor, one key, one bill, one outage surface — every model
+dependency in this product is already OpenAI, and the Check rewrite set the pattern."*
+
+**The premise is factually inverted.** Every text path in this product is Anthropic:
+
+| Where | What it uses |
+|---|---|
+| `lib/ai/client.ts` | `Anthropic`, keyed on `ANTHROPIC_API_KEY` |
+| `lib/generation/model.ts` | `getAnthropicClient`, `claude-opus-5` |
+| `app/api/check/rewrite/route.ts` | `AnthropicNotConfiguredError` — the Check rewrite you cite |
+| `package.json` | `@anthropic-ai/sdk` only; **there is no `openai` package** |
+
+OpenAI appears in exactly one place, `lib/images/`, for `gpt-image-1`. It has never written
+a word in this product.
+
+So following the ruling literally would have **added** a vendor for text rather than removed
+one: a second SDK, a second key, a second bill and a second outage surface — the precise
+outcome its own reasoning was written to prevent.
+
+**What I did.** Took the reversible option, as the weekend mode says. The generator writes
+through `ContentModel`, a four-method interface; `anthropicContentModel()` is one
+implementation of it and the only one that exists. Moving text to OpenAI later is one new
+file implementing one interface, with no change to the pipeline, the tests, or anything
+downstream — which is the other reason the seam is there.
+
+**If you meant it as a forward decision rather than a description** — "I want text on
+OpenAI from here, and I misremembered where we were" — say so and it is a day's work at
+most: one implementation, one key, and the Check rewrite moved across for consistency.
+
+---
+
+## DECISION 6 — One ground per theme, square, and `notes` gets none
+
+**Where:** `lib/content/generate/ground.ts`, `PHOTOGRAPHIC_ARCHETYPES` in `plan.ts`.
+
+This file previously said the month would produce "three square grounds and one vertical
+story ground". `content_grounds` is keyed `unique (month_id, theme)`, so a vertical ground
+would need a fourth theme row — a theme that is not a theme.
+
+So: **one ground per theme, square, and a story post uses its theme's ground.** Three
+photographs a month, 15¢ of a 100¢ allowance.
+
+`notes` posts get no photograph at all. A `notes` layout is a small-caps label over up to
+472 characters of body copy; a photograph under that is either invisible behind a scrim or
+makes the copy unreadable, and it costs 5¢ either way. A theme whose posts are all `notes`
+therefore has no ground drawn — which is what your "a ground is generated only for a theme
+that carries at least one photographic post" asks for, made concrete.
+
+---
+
+## DECISION 7 — I rewrote the "content never generates" guard, which was the point of it
+
+**Where:** `app/__tests__/content-never-generates.test.ts`.
+
+That test banned every spending path from every content surface, and said of itself:
+
+> *"Le lot suivant remplira ces mêmes légendes avec un modèle. Le jour où il le fera, ce
+> test doit devenir rouge et forcer une décision explicite."*
+
+It went red on the generator's first commit, exactly as designed. The rewrite **tightens**
+rather than relaxes, because the real question was never "does content spend" but **which
+purse**:
+
+- Her writing surfaces — calendar, editor, log, the routes she touches — still reach **no**
+  spending path at all. Unchanged, absolute.
+- `lib/content/generate/` may spend, and is checked file by file against the two purses it
+  must never touch: `plans.image_budget_cents` (the kit's lifetime pot, bought outright)
+  and `consume_generation_credit` (direction regenerations). Both carry their own canary.
+- And a third assertion: the pipeline contains no `supabase` and no `.rpc(` at all. It
+  spends only through an injected `AllowancePort`, which is what makes the forbidden order
+  — draw first, reserve after — impossible to write by accident.
+
+---
+
 ## WHERE SESSION 4 STOPPED
 
 Done and pushed:
@@ -237,3 +327,18 @@ Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
 - **Session 4, the check-in —** card + route, shown until `taking_clients` is answered. Two
   guards caught it and both were right; one of them I widened rather than satisfied, see
   Decision 4. Suite 1,984 green.
+- **Session 5, the on-image field —** backend `20260910100415` adds
+  `content_items.on_image_text`, capped at 480. Its follow-up `20260910100758` corrects a
+  regression I introduced in the same hour: adding the field to `content_item_json` by
+  retyping the function dropped `stable`, replaced the lateral join with three subqueries,
+  and let a `posted_at` survive an unpublish — `posted: false` beside a filled date, which
+  the editor renders. Restored, with a guard rail per regression and a test file that
+  reproduces each one. **Recorded and not fixed:** the publication log's tiebreak is a
+  random uuid, so `order by occurred_at desc, id desc` is undefined for two rows sharing a
+  timestamp — unreachable through the product today, and a monotonic column is a change to
+  the publishing model rather than to this one.
+- **Session 5, the generator —** `lib/content/generate/`: `capacity.ts` (the measured
+  floors as data), `plan.ts` (the pure decisions), `model.ts` (the one seam), `ground.ts`
+  (the photograph prompt, reusing the kit's own master direction so her feed does not look
+  like two brands), `pipeline.ts` (the six ruled steps), `stub-model.ts` (labelled). See
+  Decisions 5, 6 and 7. Suite 2,019 green.
