@@ -2045,3 +2045,50 @@ across-sessions assumption this chantier's own scope rules forbid.
 
 **Session 3 stops here. Nothing was generated. Two answers are needed before it resumes** — see the
 report: the layout-text field, and where the generator should run.
+
+---
+
+# CONTENT CHANTIER — Session 4 (weekend mode): counts, approval, data layer
+
+Operating mode changed: decisions are taken and recorded rather than escalated, and
+`WEEKEND_REVIEW.md` is the deliverable. Everything awaiting review is there.
+
+**The gate still did not run.** No `ANTHROPIC_API_KEY`, no `OPENAI_API_KEY`, no
+`.env.local`. That is a missing credential, not a decision — "take the reversible option"
+has nothing to choose between. It also blocks the captions-only adversarial batch. Recorded
+at the top of `WEEKEND_REVIEW.md` with what unblocks it.
+
+**The two pre-Content items were already done** (`c85eb1c`): the trial notice stamps only on
+`outcome.delivered`, and the tier-name sweep shipped with its enforcement test and
+`lib/env/required.ts`. Verified rather than assumed; no action taken.
+
+## Counts stopped counting what she has never seen
+
+`get_content_month`'s `scheduled` was `count(*) filter (where scheduled_for is not null)`,
+which included `proposed`. The first generated month would have reported **"12 scheduled"**
+for twelve captions she had not read. `scheduled`, `ready` and `posted` now all exclude
+proposals; a separate `proposed` count was added, because "twelve waiting for you" is both
+measurable and honest. `items` still returns proposals — we stop counting her content, we
+never hide it.
+
+## Approval is one statement
+
+`approve_content_month` moves the batch `proposed → draft` in a single UPDATE. Twelve
+separate updates can half-succeed, and there is no state in this product that describes
+half a month. Scoped by `month_id`, not by date: a proposal she dragged into November still
+belongs to October's plan and moves with it — selecting by `scheduled_for` would strand it
+as `proposed` forever, greyed inside a month whose plan she had already accepted. Idempotent
+on replay, reporting `moved: 0` rather than repeating a number to look busy.
+
+## The types are generated in both repos now
+
+Frontend and backend both regenerated with Supabase's own generator. The hand-maintained
+ADDENDUM is spliced back into the frontend copy. Two real drifts surfaced and were fixed:
+three call sites passing `null` for a defaulted RPC parameter, and a `MonthlyPresenceStatus`
+union describing a retired table. The typegen guard's premise changed with the file — see
+`WEEKEND_REVIEW.md`, Decision 3.
+
+## Still to do in Session 4
+
+The interface itself: the check-in card at the top of the calendar, the preferences step,
+and the month-as-a-plan screen. The data layer they compose against is done and typed.

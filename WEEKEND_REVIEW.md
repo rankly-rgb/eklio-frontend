@@ -145,10 +145,44 @@ Recorded so you can check I kept them.
 
 ---
 
+## DECISION 3 — I changed the typegen guard's premise (already done, reversible)
+
+**Where:** `types/__tests__/generated-types-drift.test.ts`, `types/supabase.ts` header.
+
+That test said **"THIS FILE IS NOT SAFELY REGENERABLE"** because tables and RPCs had been
+written into `types/supabase.ts` by hand, and regenerating erased them. I regenerated both
+copies for real, so everything that was manual now exists in the database and the generator
+produces it. What still cannot be generated is the ADDENDUM (four `text`-under-CHECK unions
+that `gen types` flattens to `string`).
+
+So the test now says **"regenerate whenever you like, AND put the addendum back"**, its
+lists are reframed as *what must survive a regeneration*, and it gained an assertion that
+the retired monthly-content table never reappears — a regeneration run against a database
+where the retirement had not been applied would bring it back silently.
+
+**If you disagree with the reframing, it is one commit to restore.** I judged that keeping
+a "do not regenerate" warning on a file I had just correctly regenerated would be worse
+than the drift it was written to prevent — the file had gone four days without
+`content_items` in it.
+
+The regeneration also surfaced two real drifts, both fixed: three call sites passed `null`
+for a defaulted RPC param (`gen types` types those `string | undefined`), and
+`MonthlyPresenceStatus` was still exported for a table retired four commits earlier.
+
+---
+
 ## Work log for the weekend
 
 Appended as it happens, newest last. Detail lives in `CHANTIER_LOG.md`.
 
-- **Session 3 —** types regenerated for real (Supabase's own generator; the CLI could not
-  run here — no token, Docker unusable, `api.supabase.com` refused). Archetype capacities
-  measured. Gate blocked on credentials, see above.
+- **Session 3 —** types regenerated for real, both repos (Supabase's own generator; the CLI
+  could not run here — no token, Docker unusable, `api.supabase.com` refused). Archetype
+  capacities measured. **Gate blocked on credentials, see the top of this file.**
+- **Session 4, backend —** `get_content_month` no longer counts proposals as her work
+  (backend `20260910093929`); a separate honest `proposed` count added.
+  `approve_content_month` written (backend `20260910094102`): one statement, scoped by
+  `month_id` so a proposal dragged into next month still moves with its own plan,
+  idempotent on replay.
+- **Session 4, frontend —** data layer for preferences, the check-in and approval. Reads go
+  direct (RLS already bounds them), writes go through the RPCs (their write policies are
+  `false`). Frontend types regenerated; typegen guard reframed, see Decision 3.
