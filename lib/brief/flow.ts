@@ -200,16 +200,24 @@ export function stepIssue(step: StepId, draft: StepDraft): string | null {
       return null;
 
     /*
-     * La seule étape à deux conditions distinctes (§2.1) : au moins une carte
-     * de style de séance, ET vingt caractères ou plus de citation de
-     * collègue. Tout le reste de l'étape est facultatif.
+     * ⚠ UNE SEULE CONDITION DÉSORMAIS, ET LA CITATION N'EN FAIT PLUS PARTIE.
+     *
+     * L'étape demandait AUSSI vingt caractères de citation de collègue. Mesurée
+     * à 390px (`ACQUISITION_WALK.md` §9.1), cette étape fait 3 572px — cinq
+     * écrans et demi — et se terminait par la question la plus difficile du
+     * parcours : composer une phrase dans la voix de quelqu'un d'autre.
+     *
+     * C'était la SEULE exigence de texte libre bloquante du brief, et rien en
+     * aval n'échoue sans elle : la génération lit `referral_quote` quand elle
+     * existe et s'en passe quand elle n'existe pas, exactement comme des huit
+     * autres champs facultatifs de cette étape.
+     *
+     * Cinq écrans et demi de défilement suivis d'un mur d'écriture, sur un
+     * téléphone, le soir, est la forme même d'un abandon.
      */
     case "how_you_work": {
       if (draft.session_style_ids.length === 0) {
         return "Choose at least one — how session usually looks.";
-      }
-      if ((draft.referral_quote ?? "").trim().length < 20) {
-        return "Say a little more about what a colleague would say — twenty characters or more.";
       }
       return null;
     }

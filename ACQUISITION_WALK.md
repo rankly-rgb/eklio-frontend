@@ -460,3 +460,48 @@ Not patched: this session's four fixes were named, and this is not one of them.
 `/dev/brief-phone` — linked from nowhere, reads no database, calls nothing, and says
 **Fixtures — nothing here is real** at the top. All seven bodies on one page, interactive,
 so a filled-in state can be measured as well as an empty one.
+
+
+---
+
+# §10 — THE FIVE MOBILE FIXES, MEASURED BEFORE AND AFTER
+
+Same harness as §9: `/dev/brief-phone`, Chromium, iPhone 13 (390×844).
+
+| Step | Height before | after | Taps < 44px before | after |
+|---|---|---|---|---|
+| 1 Practice | 1 612 px | 1 692 px | **22** | **0** |
+| 2 Positioning | 2 314 px | 2 357 px | 2 | **0** |
+| 3 Ideal client | 1 655 px | 1 655 px | 0 | 0 |
+| 4 How you work | **3 572 px** | **2 749 px** | 11 | **0** |
+| 5 Voice | 1 311 px | 1 311 px | 0 | 0 |
+| 6 Look | 1 689 px | 1 709 px | 0 | 0 |
+| 7 Website | 1 612 px | 1 692 px | 10 | **0** |
+
+**Targets under the touch minimum: 45 → 0.** Step 4: **5.4 screens → 4.1**, a 23% cut.
+Still no horizontal overflow, still no page errors.
+
+The other steps grew 40–80 px, which is the chips getting their 10 px back. That is the
+trade and it is the right way round: a page that scrolls slightly further beats a target a
+thumb misses.
+
+## What changed
+
+1. **The referral quote no longer blocks.** It was the only blocking free-text requirement
+   in the brief, at the end of the longest step. `lib/generation/how-you-work-context.ts`
+   already read it conditionally — nothing downstream ever needed it. The screen now says
+   *Optional* and *"Skip it and we write from everything above."*
+2. **The long tail folds.** Modalities show 6 of 14, session styles 4 of 8, not-a-fit 4 of
+   8, each behind one *Show N more*. **A card already chosen always stays visible**, wherever
+   it sits in the list — folding over a selection would hide it without deselecting it, a
+   state nothing on screen would explain.
+3. **Every chip is 44 px**, via `min-h` rather than `h`, so a long label wraps instead of
+   clipping. Same change to the segmented control and the hand-rendered not-a-fit buttons.
+4. **`tertiary` has a hit box** — `min-h-[44px]` and horizontal padding, with a matching
+   negative margin so nothing shifts but the target. That is *Write it for me*, *Use my
+   original*, and the prior-career disclosure, which was the last one left at 216 × 22.
+5. **The palette names are `text-ui`, not 11 px mono.** Caps and tracking kept; only the
+   size changed.
+6. **Step 6 cannot crash on a null preview.** `components/preview/cards.tsx` now types
+   `model` nullable — as its call site always was — and falls back to `SAMPLE_PREVIEW`. The
+   swatches come from `family` and are right either way.

@@ -2,6 +2,7 @@
 
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { MonoLabel } from "@/components/ui/mono-label";
+import { SAMPLE_PREVIEW } from "@/lib/brand/sample";
 import { BrandPreview } from "@/components/preview/brand-preview";
 import { useBrandFont } from "@/components/preview/use-brand-font";
 import type { PreviewModel } from "@/lib/brand/shapes";
@@ -29,16 +30,40 @@ export function PaletteCard({
   onSelect,
 }: {
   family: PaletteFamily;
-  /** Modèle courant, repeint aux couleurs de CETTE famille pour la vignette. */
-  model: PreviewModel;
+  /**
+   * Modèle courant, repeint aux couleurs de CETTE famille pour la vignette.
+   *
+   * ⚠ NULLABLE, comme `StepBodyProps.preview` l'a toujours été. Le type le dit
+   * maintenant au lieu de le laisser au hasard de l'appelant.
+   */
+  model: PreviewModel | null;
   selected: boolean;
   /** Première famille choisie : elle pilote la prévisualisation. */
   leading: boolean;
   onSelect: () => void;
 }) {
+  /*
+   * ⚠ `model` IS NULLABLE AT THE CALL SITE, AND THIS DEREFERENCED IT.
+   *
+   * `StepBodyProps.preview` is typed `PreviewModel | null`, and this line read
+   * `model.tokens` with no guard: a null preview threw
+   * `Cannot read properties of null (reading 'tokens')` and step 6 — the last
+   * screen before the reveal — rendered nothing at all.
+   *
+   * It has never been hit, because `brief_preview()` has always returned a
+   * model and almost nobody has walked this path. The anonymous brief is about
+   * to multiply the sessions reaching step 6 from devices and states nobody has
+   * exercised, and a latent crash on the screen before the reveal is not
+   * something to leave armed while traffic arrives.
+   *
+   * The fallback is the sample model the empty home already renders: the
+   * swatches are the point of this card, they come from `family`, and they are
+   * correct whatever the preview says.
+   */
+  const base = model ?? SAMPLE_PREVIEW;
   const tinted: PreviewModel = {
-    ...model,
-    tokens: { ...model.tokens, ...family.preview_tokens },
+    ...base,
+    tokens: { ...base.tokens, ...family.preview_tokens },
   };
 
   return (
@@ -68,9 +93,20 @@ export function PaletteCard({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <MonoLabel tracking="14" tone={selected ? "ink" : "ink-2"}>
+        {/*
+          ⚠ NOT `MonoLabel`, WHICH IS 11px. This is the label carrying the
+          decision on the screen where she picks between six colour families BY
+          NAME, and 11px uppercase mono is a size for a state badge, not for the
+          thing being chosen. The tracking and the caps are kept — it still
+          reads as part of the system — and only the size changes.
+        */}
+        <span
+          className={`font-mono text-ui uppercase tracking-mono-14 ${
+            selected ? "text-ink" : "text-ink-2"
+          }`}
+        >
           {family.label}
-        </MonoLabel>
+        </span>
         {leading ? (
           <MonoLabel tracking="14" tone="accent">
             Leading

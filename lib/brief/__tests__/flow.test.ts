@@ -97,14 +97,30 @@ describe("stepIssue — les autres étapes", () => {
     expect(stepIssue("website", draft())).toBeNull();
   });
 
-  it("l'étape 4 (how_you_work) exige une carte de style de séance ET vingt caractères de citation", () => {
+  it("⚠ l'étape 4 n'exige PLUS QUE la carte de style de séance", () => {
+    /*
+     * Ce test exigeait aussi vingt caractères de citation de collègue, et il
+     * était fidèle au produit d'alors. Mesurée à 390px, cette étape faisait
+     * 3 572px — cinq écrans et demi — et se terminait sur la question la plus
+     * difficile du parcours : écrire une phrase dans la voix de quelqu'un
+     * d'autre. C'était la seule exigence de texte libre bloquante du brief.
+     *
+     * Rien en aval n'en dépendait : `how-you-work-context.ts` lit
+     * `referral_quote` sous condition, comme les huit autres champs
+     * facultatifs de l'étape.
+     */
     expect(stepIssue("how_you_work", draft())).toMatch(/session usually looks/);
-    expect(
-      stepIssue(
-        "how_you_work",
-        draft({ session_style_ids: ["reflective"], referral_quote: "too short" })
-      )
-    ).toMatch(/little more/);
+
+    for (const quote of [null, "", "   ", "too short"]) {
+      expect(
+        stepIssue(
+          "how_you_work",
+          draft({ session_style_ids: ["reflective"], referral_quote: quote })
+        ),
+        `la citation ${JSON.stringify(quote)} ne doit plus bloquer`
+      ).toBeNull();
+    }
+
     expect(
       stepIssue(
         "how_you_work",

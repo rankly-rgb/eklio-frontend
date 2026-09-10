@@ -59,7 +59,7 @@ export function SegmentedControl({
             tabIndex={tabbable ? 0 : -1}
             onClick={() => onChange(option.id)}
             onKeyDown={(event) => onKeyDown(event, index)}
-            className={`box-border flex h-[34px] items-center rounded-pill px-4 text-ui transition-colors duration-[var(--dur-select)] ${
+            className={`box-border flex min-h-[44px] items-center rounded-pill px-4 py-2 text-ui transition-colors duration-[var(--dur-select)] ${
               selected
                 ? "border border-accent bg-card text-ink"
                 : "border border-transparent text-ink-2 hover:text-ink"

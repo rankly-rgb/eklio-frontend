@@ -341,6 +341,16 @@ export function HowYouWorkStep({
   const [priorCareerOpen, setPriorCareerOpen] = useState(
     Boolean(draft.prior_career?.trim())
   );
+  const [notAFitExpanded, setNotAFitExpanded] = useState(false);
+
+  const NOT_A_FIT_SHOWN = 4;
+  const notAFitShown = notAFitExpanded
+    ? catalog.notAFitCards
+    : catalog.notAFitCards.filter(
+        (card, index) =>
+          index < NOT_A_FIT_SHOWN || draft.not_a_fit_ids.includes(card.id)
+      );
+  const notAFitHidden = catalog.notAFitCards.length - notAFitShown.length;
 
   const hints = draft.session_style_ids
     .flatMap(
@@ -367,6 +377,7 @@ export function HowYouWorkStep({
           legend="Session style"
           columns={2}
           max={4}
+          collapseAfter={4}
           options={catalog.sessionStyleCards.map((entry) => ({
             id: entry.id,
             label: entry.label,
@@ -391,7 +402,14 @@ export function HowYouWorkStep({
           themselves.
         </p>
         <div className="flex flex-col gap-3">
-          {catalog.notAFitCards.map((card) => {
+          {/*
+            ⚠ SAME LONG-TAIL RULE AS THE CHIP GROUPS, rendered by hand because
+            a selected card reveals its referral note underneath — which
+            `ChipGroup` has no shape for. The rule is the one that matters and
+            it is identical: the first four, plus anything already chosen, and
+            the rest behind one tap.
+          */}
+          {notAFitShown.map((card) => {
             const selected = draft.not_a_fit_ids.includes(card.id);
             return (
               <div key={card.id} className="flex flex-col gap-1.5">
@@ -399,7 +417,7 @@ export function HowYouWorkStep({
                   type="button"
                   aria-pressed={selected}
                   onClick={() => toggleNotAFit(card.id)}
-                  className={`box-border flex h-[34px] w-fit items-center rounded-pill border px-4 text-left transition-colors duration-[var(--dur-select)] ${
+                  className={`box-border flex min-h-[44px] w-fit items-center rounded-pill border px-4 py-2 text-left transition-colors duration-[var(--dur-select)] ${
                     selected
                       ? "border-accent bg-card text-ink"
                       : "border-line text-ink-2 hover:text-ink"
@@ -416,6 +434,15 @@ export function HowYouWorkStep({
             );
           })}
         </div>
+        {notAFitHidden > 0 ? (
+          <button
+            type="button"
+            onClick={() => setNotAFitExpanded(true)}
+            className="inline-flex min-h-[44px] w-fit items-center text-ui text-ink-2 underline decoration-line underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"
+          >
+            {`Show ${notAFitHidden} more`}
+          </button>
+        ) : null}
         <MonoLabel tracking="14" tone="ink-3">
           {`${draft.not_a_fit_ids.length} of 3`}
         </MonoLabel>
@@ -443,6 +470,11 @@ export function HowYouWorkStep({
           legend="Modalities"
           columns={2}
           max={5}
+          /*
+           * Fourteen cards for a question answered with two or three. The tail
+           * is what makes step 4 five and a half screens on a phone.
+           */
+          collapseAfter={6}
           options={catalog.modalityCards.map((entry) => ({
             id: entry.id,
             label: entry.label,
@@ -473,10 +505,12 @@ export function HowYouWorkStep({
 
       <section className="flex flex-col gap-4">
         <h3 className="font-display text-subsection font-medium text-ink">
-          If a colleague referred someone to you, what would they say about you?
+          If a colleague referred someone to you, what would they say about you?{" "}
+          <span className="font-sans text-helper font-normal text-ink-3">Optional.</span>
         </h3>
         <p className="text-helper leading-prose text-ink-2">
           Third person on purpose — it&rsquo;s easier than describing yourself.
+          Skip it and we write from everything above.
         </p>
         <TextAreaField
           id="referral-quote"
@@ -521,7 +555,7 @@ export function HowYouWorkStep({
           <button
             type="button"
             onClick={() => setPriorCareerOpen(true)}
-            className="w-fit text-ui text-ink-2 underline decoration-line underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"
+            className="inline-flex min-h-[44px] w-fit items-center text-ui text-ink-2 underline decoration-line underline-offset-4 hover:text-ink hover:decoration-[var(--accent)]"
           >
             What did you do before this work?
           </button>

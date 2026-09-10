@@ -22,7 +22,18 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary: `${SHAPED} border border-line px-[26px] text-ink hover:bg-card`,
   accent: `${SHAPED} bg-accent px-[26px] font-semibold text-bg hover:opacity-90`,
   // Texte nu, souligné argile au survol. Pas de hauteur, pas de rayon.
-  tertiary: `${BASE} text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4`,
+  /*
+   * ⚠ IT HAS A HIT BOX NOW. `tertiary` had no height and no padding, so
+   * "Write it for me" rendered at 91×22 on a phone — a quarter of the touch
+   * minimum, on the affordance that rescues someone stuck in front of a blank
+   * free-text box. The two failures compounded: the hardest question on the
+   * path, and the way out of it nearly unhittable.
+   *
+   * Still visually tertiary — no fill, no border, underline on hover. The
+   * negative margin keeps the added padding from shifting the text away from
+   * the field it sits under, so nothing moves except the target.
+   */
+  tertiary: `${BASE} min-h-[44px] px-3 -mx-3 text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4`,
 };
 
 export function buttonClasses(variant: ButtonVariant = "primary"): string {
