@@ -48,6 +48,46 @@ is provenance and stays true with two members — and say so in a comment, so no
 a policy to it.
 
 
+## ASK WHO CALLS IT, AND WITH WHAT IDENTITY — NOT WHAT THE OWNER PREDICATE IS
+
+*Standing design rule. 2026-09-11, function-surface chantier, session 2.*
+
+When you gate anything — a `SECURITY DEFINER` body, an RLS policy, a route — the question is
+not "which owner predicate is correct here?". It is **who reaches this, and carrying what
+identity**. Enumerate the callers first; pick the predicate second. The predicate is a
+consequence of the answer, never a substitute for it.
+
+The rule came from a near-miss that cost nothing only because the question got asked in time.
+
+`site_spec_default_target` needed an authority check. `brand_kit_is_owned` is right there, it
+takes a `brand_kit_id`, it is named for exactly this, and it compiles. It also **passes the
+suite, raises nothing, and silently returns `'generic'` instead of her real builder target on
+every anonymous generation** — because its owner predicate is `user_id = auth.uid()`, and the
+caller is a trigger chain on an anonymous brief: `handle_new_brand_kit` → `seed_site_spec` →
+`site_spec_seed_values`. There is no `auth.uid()` anywhere on that path. `owns_project`
+honours the anonymous token as well as the session, so it is the one that fits the callers.
+
+Note what the wrong choice would have looked like from the outside: a working product,
+generating site specs, for a generic target. Same shape as everything else in
+`PREFER THE JOIN THAT FAILS CLOSED` above — **this codebase fails with plausible values.**
+
+**How to ask it, in order.**
+
+1. `select ... from pg_proc` / grep the routes: what calls this, transitively? Triggers count.
+   A trigger fires under whoever wrote the row, and an anonymous insert has no `auth.uid()`.
+2. For each caller, what identity is actually present — a session (`auth.uid()`), a service
+   role (`auth.role() = 'service_role'`), an anonymous token (`anon_token_hash()`), nothing?
+3. Only now choose the predicate, and choose the one that is true for **every** legitimate
+   caller. If no single predicate covers them, the gate is a disjunction, and write the
+   disjunction out rather than picking the common case.
+4. If a caller has no identity at all, that is the finding. Do not paper it with a predicate
+   that happens to return `false` quietly.
+
+⚠ **A gate that returns the fallback instead of raising is not a gate, it is a bug with a
+comment.** Where the honest answer is "this caller may not", raise or return nothing — never a
+default that reads like an answer.
+
+
 ## THE FUNNEL IS EKLIO'S DATA, AND IT NEVER REACHES A SCREEN
 
 *2026-09-10, chantier « acquisition », session 3.*

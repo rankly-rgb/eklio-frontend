@@ -711,3 +711,16 @@ replaced by what remains true. What follows is the residue, not the original lis
   now runs in CI (`supabase/tests/20260911170458_function_surface.test.sql`) against a
   database rebuilt from every migration. 35 anon-callable `SECURITY DEFINER` functions → 18;
   8 gateless → 1 named exemption; 16 anon-callable trigger functions → 0.
+
+- **2026-09-11 — an abandoned tenancy branch exists in both repos, and its migrations are dated
+  in the past.** `origin/claude/tenancy-layer` (frontend `2f514ad`, backend equivalent) carries a
+  whole earlier attempt at this layer — `organizations`, `organization_members`, clinician
+  profiles, an SEO grid, a practice dashboard and landing page — in **twelve migrations all
+  stamped `20260903*`**, plus sixteen `supabase/tests/tenancy_*.test.sql`. It forked long ago
+  (72 migrations against main's 99) and was never merged. **Nothing from it exists in the live
+  database** — no `organizations`, no `organization_id` column, no `*_org_*` function
+  (checked against `information_schema` and `pg_proc` on 2026-09-11). Two reasons not to
+  resurrect it: most of what it contains is the practice UI and per-seat surface, explicitly
+  out of scope for October; and its `20260903*` stamps now sort **before** migrations already
+  applied, which cannot be corrected without renumbering — and migrations are not renumbered.
+  New work takes today's timestamps. Read the branch for ideas, never for files.

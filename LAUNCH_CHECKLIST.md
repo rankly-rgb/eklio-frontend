@@ -28,6 +28,7 @@ Nothing here is a deploy. Where a deploy is required, the row says so.
 | 8 | The funnel records anything at all | **untested in production** | No — but you are flying blind until it is checked |
 | 9 | Stripe payment methods limited to cards | **cannot verify from here** | **Yes — see the row** |
 | 10 | The rehearsal has been run | not yet | **Yes — it is the only test of the live keys** |
+| 11 | ACL rollback of 2–3 Sept — **known unknown, not chased** | cause unknown; bounded by in-body gates + CI | No — read the row if the grants check goes red |
 
 ---
 
@@ -388,6 +389,81 @@ npm run funnel -- --days 1
 ```
 
 A step reading 0 is a step that is not instrumented on production, whatever the code says.
+
+---
+
+## 11. KNOWN UNKNOWN — the ACL rollback of 2–3 September
+
+**This row is not an action. It is a name for something that already happened once, recorded
+so that a second occurrence is recognised in minutes rather than re-investigated from zero.**
+
+Not being chased. It is written down because it cost a day, and because the thing it would
+look like the second time — a grants check going red with no migration to explain it — is
+otherwise indistinguishable from a mistake someone made that afternoon.
+
+### What happened
+
+`20260902*` revoked EXECUTE from `public`, `anon` and `authenticated` on eighteen
+`SECURITY DEFINER` functions. On 11 September, seventeen of the eighteen were **granted
+again** — the PUBLIC grant (`=X/postgres`) and the direct `anon` / `authenticated` grants
+both back — with no migration in either repository that grants them, and the migration ledger
+showing the revoking migration as applied. The eighteenth, `seed_launch_checklist`, is the
+only one a *later* migration (`20260903260000`) re-revoked, and it is the only one still
+closed.
+
+### What is established, by measurement
+
+- The grants really were restored. Read from `pg_proc.proacl`, not inferred.
+- **The revokes of 3, 5, 6, 9, 10 and 11 September all hold.** Checked function by function.
+  Only the 2 September ones came undone.
+- Functions created *after* the event keep their revokes.
+
+### What is ruled out, by test
+
+| Hypothesis | How it was tested | Result |
+|---|---|---|
+| A blanket `grant all on all functions in schema public …`, re-run continuously by the platform | Check every revoke in both repos, by date | **False.** It would have undone 3–11 September too; every one of those holds |
+| `apply_migration` re-grants after applying DDL | Revoke through it, then read `proacl` back on a later connection | **False.** The revoke was intact |
+
+⚠ **Both were my inferences from this repo's known signature — the permissive default — and
+both were wrong.** The signature is real; the cause does not follow from it. Do not re-derive
+a mechanism from the shape of the damage.
+
+### What is NOT established
+
+The cause. What fits every observation is a **discrete past event around 2–3 September** that
+restored ACL state to a point before that migration ran while the ledger moved forward — a
+restore, a branch reset, a rebuild. It cannot be proved from inside the database and is not
+claimed as proved. Nobody is looking for it.
+
+### Why this does not block launch
+
+Because the damage it can do is now bounded by two things that do not depend on knowing what
+it was:
+
+1. **The authority check lives inside the function body**
+   (`20260911170458_authority_moves_inside_the_function_body.sql`). A re-granted EXECUTE gives
+   a caller the right to *run* the function; it does not give them the right to *pass its
+   gate*. A recurrence is a lost lock, not an open door.
+2. **CI enumerates the grants on every push**
+   (`supabase/tests/20260911170458_function_surface.test.sql`, run by `.github/workflows/db-tests.yml`).
+   A `SECURITY DEFINER` function that `anon` or PUBLIC can execute and that does not assert its
+   own caller fails the build. One named exemption: `anon_token_hash`.
+
+### If the grants check goes red and no migration explains it
+
+**This has happened before. Read this row first.**
+
+1. Do **not** re-derive the cause from the shape. Two mechanisms are already eliminated above;
+   start past them.
+2. Establish the blast radius before anything else: which revokes came undone, and **by date**.
+   Only-2-September was the previous signature; a different date range is a different event.
+3. Re-revoke. It is a second lock, not the lock — the in-body gates are the lock, and they are
+   what to verify still stand.
+4. Check the migration ledger against the catalogue. A ledger ahead of the schema is the
+   fingerprint of a restore, and it is the one observation that would turn this from an
+   unnamed event into a named one.
+5. Add what you learn here. This row exists to accumulate.
 
 ---
 
