@@ -701,3 +701,5 @@ replaced by what remains true. What follows is the residue, not the original lis
   walks `app/` and checks metadata only, so `lib/billing/plans.ts` shipped "Everything in
   Starter" and "Everything in Practice" as visible bullets on `/pricing`. Found by the
   acquisition walk; see `ACQUISITION_WALK.md` §5.1. Not fixed here — Session 1 is report-only.
+
+- **2026-09-11 — a revoke that no longer holds.** `20260902090000_revoke_internal_function_surface.sql` closed 18 functions to `anon`; 17 have their grants back, PUBLIC included. The only survivor is the one a later migration re-revoked. 35 `SECURITY DEFINER` functions are `anon`-callable today, 22 of them take arguments. A `REVOKE` is not a durable defence in this database — the check belongs inside the function body, and the enumeration belongs in CI. `TENANCY.md` §1.
