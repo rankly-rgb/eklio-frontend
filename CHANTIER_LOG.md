@@ -48,6 +48,44 @@ is provenance and stays true with two members — and say so in a comment, so no
 a policy to it.
 
 
+## EVERY HAND-WRITTEN LIST IN THIS REPOSITORY HAS BEEN INCOMPLETE. DERIVE IT.
+
+*Standing design rule. 2026-09-11, tenancy chantier, session 3.*
+
+Not "lists tend to rot". **Every single one, without exception, has been wrong when checked.**
+That is now four for four, and the fourth was found while fixing the third:
+
+| The list | How it was wrong | How it was fixed |
+|---|---|---|
+| trigger functions to revoke | hand-listed 11, there were 16 | a loop over `pg_proc` |
+| callers of a gated function | enumerated 3 from memory, there were 4 — the fourth was the database itself | follow the call graph, and name the identityless caller |
+| the notification count after a retirement | corrected in one place, the same number stood in **three** | one `grep`, once |
+| the drift between repo and database | "`direction_asset_daily_spend` is a finding" | fingerprint all 1,910 objects |
+
+**The rule: if a list can be computed, computing it is not an optimisation, it is the only
+correct version.** Enumerate from the catalogue — `pg_proc`, `pg_policies`, `pg_constraint`,
+`pg_class`, `information_schema` — or from the filesystem, or from a `grep`. Never from memory
+and never from reading around.
+
+This applies to: trigger functions, callers, routes, tables, policies, grants, columns,
+validators, exemption lists, **and plural labels**. "The two notifications", "the three
+callers", "the eighteen functions" — every one of those phrases in this repository has been a
+hand-count, and the ones that were checked were wrong.
+
+⚠ **A hand-written list is not merely incomplete, it is ACTIVELY MISLEADING**, because it
+looks like the answer. `direction_asset_daily_spend` had a deny-all policy on a table with RLS
+off: the list of server-only tables was right, the policy was right, and the table enforced
+nothing. Nobody would have found it by reading, because everything read correctly.
+
+**Where a list genuinely cannot be derived** — a set of decisions, like "these three tables are
+per-person on purpose" — then it is not a list, it is a register, and each entry carries its
+reason in the file beside it. The test that reads it fails when a name is present without a
+reason, or absent when the catalogue says it should be there. See
+`20260829112000_null_safe_jsonb_validators.test.sql` and
+`20260911180620_tenancy_layer.test.sql` for the shape: the classification is computed, and only
+the justification is written by hand.
+
+
 ## ASK WHO CALLS IT, AND WITH WHAT IDENTITY — NOT WHAT THE OWNER PREDICATE IS
 
 *Standing design rule. 2026-09-11, function-surface chantier, session 2.*

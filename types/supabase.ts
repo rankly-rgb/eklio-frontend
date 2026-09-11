@@ -20,6 +20,7 @@
 // produce it: those unions are `text` columns constrained by CHECK, which
 // `gen types` renders as `string`. Re-apply it after every regeneration.
 // ─────────────────────────────────────────────────────────────────────────────
+
 export type Json =
   | string
   | number
@@ -1379,22 +1380,43 @@ export type Database = {
       }
       organization_members: {
         Row: {
+          activated_at: string | null
           created_at: string
+          id: string
+          invite_expires_at: string | null
+          invite_token_hash: string | null
+          invited_email: string | null
           organization_id: string
+          project_id: string | null
           role: string
-          user_id: string
+          status: string
+          user_id: string | null
         }
         Insert: {
+          activated_at?: string | null
           created_at?: string
+          id?: string
+          invite_expires_at?: string | null
+          invite_token_hash?: string | null
+          invited_email?: string | null
           organization_id: string
+          project_id?: string | null
           role: string
-          user_id: string
+          status?: string
+          user_id?: string | null
         }
         Update: {
+          activated_at?: string | null
           created_at?: string
+          id?: string
+          invite_expires_at?: string | null
+          invite_token_hash?: string | null
+          invited_email?: string | null
           organization_id?: string
+          project_id?: string | null
           role?: string
-          user_id?: string
+          status?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1402,6 +1424,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -2497,6 +2526,10 @@ export type Database = {
       }
     }
     Functions: {
+      accept_organization_invitation: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       anon_spend_today: { Args: never; Returns: Json }
       anon_token_hash: { Args: never; Returns: string }
       app_search: {
@@ -2614,6 +2647,7 @@ export type Database = {
         Returns: number
       }
       brief_step_renumber_up: { Args: { p_step: number }; Returns: number }
+      caller_is_the_database: { Args: never; Returns: boolean }
       comp_access_active: { Args: never; Returns: boolean }
       comp_grant_active: { Args: { p_user_id: string }; Returns: boolean }
       comp_grant_credits: { Args: { p_user_id: string }; Returns: number }
@@ -2730,6 +2764,10 @@ export type Database = {
       }
       hex_rgb: { Args: { p_hex: string }; Returns: number[] }
       home_recent_activity: { Args: { p_brand_kit_id: string }; Returns: Json }
+      invite_clinician: {
+        Args: { p_email: string; p_organization_id: string }
+        Returns: string
+      }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       kit_paid_access: { Args: { p_brand_kit_id: string }; Returns: string }
       list_deleted_brand_kits: { Args: never; Returns: Json }
@@ -2747,6 +2785,10 @@ export type Database = {
         Returns: boolean
       }
       nearest_color_name: { Args: { p_hex: string }; Returns: string }
+      organization_invitation_preview: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       orphaned_purchases: { Args: never; Returns: Json }
       owns_project: { Args: { p_project_id: string }; Returns: boolean }
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
