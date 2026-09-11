@@ -675,7 +675,12 @@ either. The repository produces every object production has, and produces no obj
 lacks.
 
 **All 43 divergences are function bodies**, and 43 of 233 is not a random scatter — it is a
-class. `pg_get_functiondef` returns the body exactly as stored, comments included, so a
+class.
+
+⚠ **And the class is now settled mechanically rather than inferred.** The second run added the
+comment-insensitive `function.body` fingerprint — 233 more comparable objects — and the total
+stayed at **43**. Zero of them differ once comments and whitespace are removed. Every one of the
+43 differs in prose and none in behaviour. `pg_get_functiondef` returns the body exactly as stored, comments included, so a
 migration file whose **comments were edited after it was applied** yields a body that differs
 from production in prose and not in behaviour. Confirmed on
 `site_spec_hue_tolerance`: identical logic, and the repository's copy carries three trailing
@@ -698,9 +703,12 @@ they rely on, the grants that gate them and the columns they read are the same o
 
 It does not license calling the repository a perfect record. Two things remain true:
 
-1. **The 43 comment divergences are unexplained in detail.** The class is established and one
-   member is confirmed; the other 42 are inferred from the class, and the comment-insensitive
-   fingerprint is what will settle them on the next run.
+1. ~~**The 43 comment divergences are unexplained in detail.**~~ **Settled.** The
+   comment-insensitive fingerprint found zero behavioural differences among them. What remains
+   is a documentation fact, not a schema one: for 43 functions the repository's migration text
+   carries commentary the database never received, because those files were commented after
+   they were applied. Worth knowing when reading a migration as evidence of what ran; not worth
+   a migration to correct, and correcting it would mean editing applied migrations.
 2. **The baseline is a snapshot.** CI cannot read production, so it goes stale the moment a
    migration is applied without regenerating it — and then it reports age as drift. Its header
    says so and carries the command. It was already refreshed once inside this session, after
@@ -746,6 +754,32 @@ it.**
 mistake as enumerating trigger functions from memory, which this repository already made once
 and fixed with a loop over the catalogue.** The list was right about who *uses* the product and
 wrong about who *reaches* the function.
+
+### 11.5 The suite is green
+
+**76 files, 0 failures**, for the first time since the replay broke on 10 September. 13 → 12 →
+2 → 0 across five runs, and the last two were both cases where my first diagnosis was wrong and
+the run corrected me.
+
+Clearing them turned up **three instances of one defect**, which is the finding that outlived
+the twelve: `now()` is the start of the transaction and does not advance inside it, so anything
+ordered by a `now()`-defaulted column has no order at all when two rows are written together.
+
+| Where | What it would have cost | Fixed by |
+|---|---|---|
+| `get_brand_asset_versions` | the current version not first in her version list | `20260911191432` |
+| `get_brand_asset_previous_inputs` | the regeneration path handed a previous palette that is not the previous palette | `20260911191432` |
+| `content_publications.occurred_at` | an item she unpublished reading as published; an unpublish discarded as "no change" | `20260911193259` |
+
+The third was **non-deterministic rather than merely undefined** — it passed one CI run and
+failed the next with nothing changed between them — because its tiebreaker was
+`gen_random_uuid()`. A tiebreaker that looks careful and is a coin flip is worse than none: it
+stops anyone looking. The fix there is not a better tiebreaker but a real clock;
+`clock_timestamp()` is what a journal means.
+
+A fourth of the same shape, `grant_plan_allowance` ordering purchases by `created_at desc` where
+a double submit writes two rows in one transaction, is **named and not touched**: the
+post-purchase space is not this chantier's. `FINDINGS.md`.
 
 ---
 

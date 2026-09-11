@@ -744,8 +744,9 @@ replaced by what remains true. What follows is the residue, not the original lis
   database (`if v_user is not null`), so it is vacuous in CI rather than failing. That one is
   left alone; it did its work against the live database when it was applied.
 
-- **2026-09-11 (OPEN — twelve of them, diagnosed, none caused by the tenancy layer) — what the
-  unblocked CI actually found.** With the replay fixed, **75 test files ran for the first time**
+- **2026-09-11 (CLOSED — all twelve) — what the
+  unblocked CI actually found.** *(Resolved: 76 files, 0 failures. Two were real defects and ten
+  were stale expectations; the detail below is the diagnosis as first written.)* With the replay fixed, **75 test files ran for the first time**
   and **13 failed**. One was mine and is closed (`direction_asset_daily_spend` had RLS off in a
   clean replay — backend `20260911182533`). `20260911170458_function_surface.test.sql` **passed**,
   so Session 2's enumeration is now genuinely enforced. The other twelve are pre-existing rot that
