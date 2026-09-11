@@ -724,3 +724,22 @@ replaced by what remains true. What follows is the residue, not the original lis
   out of scope for October; and its `20260903*` stamps now sort **before** migrations already
   applied, which cannot be corrected without renumbering — and migrations are not renumbered.
   New work takes today's timestamps. Read the branch for ideas, never for files.
+
+- **2026-09-11 (CLOSED) — the backend's CI has been failing in the MIGRATION REPLAY, not in any
+  test, and nobody looked.** `db-tests` run #100 — Session 2's own push — failed, and I shipped
+  the function-surface enumeration without checking whether the workflow that runs it was green.
+  It was not, and the enumeration has therefore never executed in CI. The replay aborts inside
+  `20260910144421_content_months_theme_source.sql`, whose guard rail probes the CHECK with
+  `insert into content_months (...) select bk.id ... from brand_kits limit 1`. On a fresh
+  `supabase db reset` there are no `brand_kits`, so the SELECT returns nothing, the INSERT writes
+  nothing, and **nothing raises** — measured: `rows=0, exception_seen=false`. Its `when others
+  then v_ok := true -- no kit to test against` shows the author saw the empty-database case and
+  reached for the wrong mechanism. The guard now asserts the constraint in `pg_constraint` and
+  probes with a `gen_random_uuid()` brand_kit_id, which works because a CHECK is verified during
+  the insert while a foreign key is an AFTER trigger — so the CHECK raises first and no kit is
+  needed. ⚠ **Corrections are new migrations, except this one, which cannot be:** nothing later
+  can stop an earlier migration's DO block from raising during a replay. No DDL changed; the
+  live database is untouched by the edit. **A guard that depends on seed data asserts the seed,
+  not the constraint** — and the sibling at `20260911133504` is skipped entirely on an empty
+  database (`if v_user is not null`), so it is vacuous in CI rather than failing. That one is
+  left alone; it did its work against the live database when it was applied.
