@@ -415,5 +415,185 @@ underneath us, and that asymmetry is why both exist.
 
 ---
 
-*Session 1 complete and corrected. Session 2 complete. Session 3 — the tenancy layer itself —
-is next, on the amended schema recorded in `TENANCY_DECISION_2026-09-02.md`.*
+## 10. SESSION 3 — THE LAYER
+
+**⚠ BUILT FROM THE BRIEF OF 11 SEPTEMBER, NOT FROM THE 2 SEPTEMBER DOCUMENT.**
+`TENANCY_DECISION_2026-09-02.md` in this repository is still the 100-line stub written on 11
+September, byte-identical on `main`, on the working branch and in every remote ref; no commit
+has touched it since. The paste did not land. What this session was built from is the SESSION 2
+specification in the chantier brief of 11 September — your own words, quoted there — plus the
+amendment you confirmed in writing. Where the two could differ, they cannot: the schema shape
+was settled by you directly (*"Your §6 option 1 is right"*, plus the one addition), so the core
+of this session rests on an instruction, not on a reconstruction. Anything in the 2 September
+document that this does not cover is still uncovered, and I cannot say what it is.
+
+### 10.1 What landed
+
+Three migrations, all applied live and replayed in CI.
+
+| | |
+|---|---|
+| `20260911180620_organizations_and_membership` | the two tables, `is_org_member`, the backfill |
+| `20260911180839_projects_organization_id` | the column, the derivation, the constraint |
+| `20260911180918_server_only_tables_say_so` | seven silent tables made explicit |
+| `supabase/tests/20260911180620_tenancy_layer.test.sql` | the fourth enumeration |
+
+**Nothing in the product changed.** No policy was migrated, no screen moved, no query returns a
+different row than it did yesterday. `tsc`, `next build`, eslint and 2,312 tests are green and
+the frontend diff is two files: regenerated types, and a comment.
+
+### 10.2 The shape
+
+`organizations` — id, a **nullable** name, timestamps. Null is the normal case and means *never
+named, because nobody has looked at it*. A fabricated name (the email local part, "Sarah's
+practice") would be a value the product could not justify if it ever surfaced.
+
+`organization_members` — `(organization_id, user_id)` primary key, `role` checked against
+exactly `owner` and `clinician`. A third role is a decision, not a string.
+
+**One owned organization per person, enforced by a partial unique index** rather than by care.
+The claim has to answer "which organization?" in a single statement, and a scalar subquery that
+can return two rows raises `21000` at runtime — which this repository has already been bitten
+by once, in `orphaned_purchases`. The index makes the second row impossible instead of making
+the query defensive. It is reversible the day one person owns two practices, and the claim
+would then need the choice made explicitly, which is the correct consequence.
+
+`is_org_member(uuid)` — `SECURITY DEFINER`, and that is load-bearing twice. The SELECT policy
+on `organization_members` calls it and it reads `organization_members`; as an invoker function
+that is *infinite recursion detected in policy*. And, per the standing rule, **who calls it**:
+RLS policies, under `authenticated` with a uid or `anon` with none. It returns false for a null
+argument and false with no session, never "any organization".
+
+### 10.3 ⚠ The claim, together or neither — and why no call site was touched
+
+The requirement was that the claim set `user_id` and `organization_id` together or neither. The
+obvious implementation is to read the organization in `claimAnonBrief` and pass both. That is a
+second round trip, a race, and a value the frontend would then be trusted to get right.
+
+Instead, **two mechanisms in the database, each sufficient on its own**:
+
+1. A `BEFORE INSERT OR UPDATE` trigger derives `organization_id` from `user_id` in the same
+   statement. `insert into projects (user_id, name)` — the shape both existing call sites use,
+   in `app/app/actions.ts` and `app/api/briefs/route.ts` — comes out tenanted, unchanged.
+2. The CHECK refuses the half-written row anyway. **Verified with the trigger disabled:** a
+   claimed project forced to a null practice raises `23514` and the whole UPDATE writes
+   nothing, so she keeps her token rather than losing the brief to a half-claim.
+
+The test proves they are two mechanisms rather than one wearing a second name — it disables the
+trigger and requires the constraint to bite on its own.
+
+⚠ **This was not the plan when the session started.** The plan was a `SECURITY DEFINER` claim
+RPC. Reading the two call sites first is what changed it: both insert a project with `user_id`
+and nothing else, so the CHECK as specified would have **broken project creation for every
+signed-in user** on the first insert. The requirement did not change; where it is enforced did.
+
+### 10.4 A hole closed at the moment the column appeared
+
+Adding a writable `organization_id` to `projects` opens something that did not exist before: an
+authenticated caller can set it to a **stranger's** organization and drag their project into
+someone else's practice — which, once Session 4 reads the column, makes her brief visible to
+people she has never met.
+
+The same trigger closes it. Whatever the browser sends is overwritten with the owner's own,
+so no policy had to be touched and none of the fourteen moved. `service_role` **may** still
+name an organization, and that is deliberate: it is the seam Session 4's invitation needs,
+because a clinician's project belongs to the practice rather than to the clinician's personal
+organization. `auth.role()` is what tells them apart, and it survives entry into a
+`SECURITY DEFINER` body where `current_user` has already become the owner.
+
+### 10.5 The fourth enumeration
+
+Every table in `public` must fall into one of four classes, three of them computed:
+
+| Class | How | Count |
+|---|---|---|
+| the layer | named | 4 |
+| **tenanted** — reaches `projects` through foreign keys that already exist | computed closure | 22 |
+| **per person, by decision** | named, with the reason, in the test | 3 |
+| **never tenanted** — reference data and Eklio's own instruments | named | 31 |
+
+A new table that reaches a project needs nothing. A new table that reaches nobody **fails CI**
+until somebody writes its name into one of the two lists and says why. The cost of an
+untenanted table is one sentence of justification, paid at the time, by the person who knows.
+
+The three per-person tables are `check_rewrite_usage` (a daily ceiling on one person's
+rewrites: two clinicians are two people at two screens, and a per-practice ceiling would make
+the second one's afternoon depend on the first one's morning), `subscriptions` (per-seat
+billing is explicitly not October; it moves when that is designed, deliberately, not by drift)
+and `comp_grants` (Eklio's own act, granted to a person, never to a practice).
+
+⚠ **The closure follows `auth.users` as well as `public.profiles`, and the first version did
+not.** That version silently classified `comp_grants` — whose `user_id` references
+`auth.users` directly — as owned by nobody, and would have filed it under reference data. It
+compiled, it ran, it produced a list. A plausible answer, which is this codebase's
+characteristic failure, caught here only because the count looked one short.
+
+The lists also cannot rot: a name whose table no longer exists, or whose table has since gained
+a path to `projects`, fails the test.
+
+### 10.6 Seven tables that now say what they allow
+
+`app_settings`, `banned_phrases`, `brand_image_daily_spend`, `comp_grants`,
+`direction_asset_daily_spend`, `stripe_events`, `usp_stopwords` had RLS on and **not one
+policy**. The effect was already right — zero rows to the browser, everything to
+`service_role`, nothing raised — but it reads identically to a forgotten policy. Each now
+carries `for all using (false) with check (false)`, the idiom `funnel_events` has had since it
+was built. Behaviour is unchanged.
+
+This was not cosmetic: without it the enumeration would have shipped with seven standing
+exemptions on its first run, and a list of seven exemptions is where the eighth hides.
+`comp_grants` in particular now records a decision — a comp grant is Eklio's act, taken outside
+the product; the person it benefits sees the access, never the grant.
+
+### 10.7 ⚠ THE THING THIS SESSION FOUND THAT MATTERS MOST
+
+**The backend's CI has been failing in the migration replay, and Session 2 shipped an
+enumeration into it without checking.**
+
+`db-tests` run #100 — Session 2's own push, carrying
+`20260911170458_function_surface.test.sql` — went red. Not in a test: in `supabase db reset`,
+inside the guard rail of `20260910144421_content_months_theme_source.sql`, which probes its
+CHECK with
+
+```sql
+insert into content_months (...) select bk.id ... from brand_kits limit 1;
+exception when others then v_ok := true;  -- "no kit to test against"
+```
+
+On a fresh replay there are no `brand_kits`. The SELECT returns no rows, the INSERT writes
+nothing, and **nothing raises** — measured: `rows=0, exception_seen=false`. `v_ok` stays false
+and the migration aborts. The author saw the empty-database case and reached for the wrong
+mechanism.
+
+The consequence is the part worth keeping: **the function-surface enumeration has never run in
+CI, and neither would this session's.** A defence written into a pipeline nobody reads is a
+defence that exists only in the commit message. It is fixed — the guard now asserts the
+constraint in `pg_constraint` and probes with a `gen_random_uuid()` brand_kit_id, which works
+because a CHECK is verified during the insert while a foreign key is an AFTER trigger, so the
+CHECK raises first and no kit is needed.
+
+⚠ Corrections are new migrations, **except this one, which cannot be**: nothing later can stop
+an earlier migration's `DO` block from raising during a replay. No DDL changed and the live
+database is untouched by the edit.
+
+**A guard that depends on seed data asserts the seed, not the constraint.** The sibling at
+`20260911133504` is skipped entirely on an empty database (`if v_user is not null`) — vacuous
+in CI rather than failing. It is left alone; it did its work against the live database when it
+was applied. But it is the same family, and the family is worth naming.
+
+### 10.8 What Session 4 inherits
+
+- The fourteen shape-B policies, unchanged and still comparing a denormalised `user_id`.
+  §5 stands: **drop the column from the policy**, reach the org through the kit.
+- The nineteen shape-A policies, each one leaf away: `pr.user_id = auth.uid()` →
+  `is_org_member(pr.organization_id)`.
+- `owns_project` should end up calling `is_org_member` rather than the two coexisting — and
+  it must keep its anonymous-token branch, or every cold visitor loses her own brief.
+- The `service_role` seam in `projects_bind_organization` is where the invitation writes a
+  clinician's project into the practice rather than into their personal organization.
+
+---
+
+*Session 1 complete and corrected. Session 2 complete. Session 3 complete, built from the
+brief of 11 September because the 2 September document is still not in the repository.
+Session 4 migrates the fourteen policies; Session 5 is the audit.*

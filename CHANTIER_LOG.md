@@ -88,6 +88,38 @@ comment.** Where the honest answer is "this caller may not", raise or return not
 default that reads like an answer.
 
 
+## A GUARD THAT DEPENDS ON SEED DATA ASSERTS THE SEED, NOT THE CONSTRAINT
+
+*Standing design rule. 2026-09-11, tenancy chantier, session 3.*
+
+Migrations in this repository carry guard rails, and that is right. But a guard rail runs in
+two places that are not alike: against **production**, once, with data in it; and against a
+**fresh replay** in CI, on every push, with none.
+
+A probe that reads a row to test a constraint passes the first and is meaningless in the
+second — or, worse, fails it. `20260910144421` probed its CHECK with
+`insert into content_months (...) select bk.id from brand_kits limit 1`. On an empty database
+the SELECT returns nothing, the INSERT writes nothing, **nothing raises**, and the guard
+concluded the constraint was missing and aborted the replay. Its own comment —
+`when others then v_ok := true; -- no kit to test against` — shows the author saw the
+empty-database case and reached for the wrong mechanism.
+
+The cost was not the migration. It was that **`supabase db reset` stops at the first failure**,
+so every test file after it never ran: the function-surface enumeration shipped in Session 2
+into a pipeline that could not reach it, and nobody noticed for a day.
+
+**How to write one that holds in both places.**
+
+- Assert the **catalogue** — `pg_constraint`, `pg_policies`, `pg_proc`, `information_schema`.
+  True on an empty database and a full one.
+- Then probe the **behaviour** with data the guard creates itself, never with data it hopes to
+  find. A bogus foreign key is usually fine: a CHECK is verified during the insert while a
+  foreign key is an AFTER trigger, so the CHECK raises first and no parent row is needed.
+- Never `when others then <pass>`. That handler is a guard agreeing with itself.
+- And: **read the CI run of the thing you just pushed.** A defence written into a pipeline
+  nobody reads is a defence that exists only in the commit message.
+
+
 ## THE FUNNEL IS EKLIO'S DATA, AND IT NEVER REACHES A SCREEN
 
 *2026-09-10, chantier « acquisition », session 3.*
