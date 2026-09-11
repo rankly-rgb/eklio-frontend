@@ -11,6 +11,29 @@
  * `lib/funnel/__tests__/funnel.test.ts` enforces both.
  */
 
+/**
+ * A paid purchase that names no project.
+ *
+ * ⚠ SOMEBODY PAID AND GOT NOTHING. `grant_plan_allowance` returns false on a
+ * null project, so no allowance was opened; `brand_kit_entitled` is scoped to
+ * the project, so nothing unlocked either. It is fixable by hand in seconds —
+ * one UPDATE naming the project — which is exactly why it needs to be visible:
+ * a failure nobody can see is a failure nobody will fix.
+ */
+export type Orphans = {
+  total: number;
+  amount_cents: number;
+  oldest: string | null;
+  rows: Array<{
+    id: string;
+    user_id: string;
+    tier: string;
+    amount_cents: number;
+    created_at: string;
+    suggested_project_id: string | null;
+  }>;
+};
+
 export type Glance = {
   day: string;
   enabled: boolean;
@@ -46,7 +69,7 @@ function gauge(pct: number | null): string {
  * cannot be asserted on, and this is the one part of the report someone will
  * read at seven in the morning and act on.
  */
-export function renderCeilingGlance(g: Glance): string[] {
+export function renderCeilingGlance(g: Glance, orphans?: Orphans): string[] {
   const out: string[] = [];
   const say = (line = "") => out.push(line);
 
@@ -60,7 +83,8 @@ export function renderCeilingGlance(g: Glance): string[] {
     !g.enabled ||
     g.refused.total > 0 ||
     (g.reveals.pct ?? 0) >= 80 ||
-    (g.assists.pct ?? 0) >= 80;
+    (g.assists.pct ?? 0) >= 80 ||
+    (orphans?.total ?? 0) > 0;
 
   say();
   say(`  ${alarm ? "⚠ " : ""}TODAY — ${g.day} (UTC)`);
@@ -117,6 +141,52 @@ export function renderCeilingGlance(g: Glance): string[] {
       say("    A GLOBAL refusal is a real therapist who finished the brief and got");
       say("    nothing. Raise anon_generation_daily_global now — it takes effect on");
       say("    the next request, no deploy.");
+    }
+  }
+
+  /*
+   * ── ⚠ SOMEBODY PAID AND GOT NOTHING ──────────────────────────────────
+   *
+   * Beside the cap rather than in a report of its own, because it belongs to
+   * the same glance: this is the other thing that, seen this morning, would
+   * change what you do today. Zero every morning is the answer.
+   *
+   * `undefined` means the query was not run or failed — which is NOT zero, and
+   * the line says which of the two it is rather than printing a comforting 0.
+   */
+  if (orphans === undefined) {
+    say("  ⚠ orphaned      ?     paid purchases with no project — could not be read");
+  } else if (orphans.total === 0) {
+    say("  orphaned            0   every paid purchase names its project");
+  } else {
+    say(
+      `  ⚠ orphaned    ${String(orphans.total).padStart(7)}   ` +
+        `paid purchases with NO project — $${(orphans.amount_cents / 100).toFixed(2)} ` +
+        `taken, nothing opened`
+    );
+    for (const row of orphans.rows.slice(0, 5)) {
+      const when = row.created_at.slice(0, 10);
+      say(
+        `      ${when}  ${row.tier.padEnd(9)} $${(row.amount_cents / 100).toFixed(2).padStart(7)}  purchase ${row.id}`
+      );
+      /*
+       * The suggestion, never the action. Printed as the exact statement to
+       * run, because at seven in the morning the difference between a hint and
+       * a command you can paste is whether it gets fixed today.
+       */
+      if (row.suggested_project_id) {
+        say(
+          `        update public.purchases set project_id = '${row.suggested_project_id}' where id = '${row.id}';`
+        );
+        say(
+          `        then: select public.grant_plan_allowance('${row.suggested_project_id}', '${row.tier}', 'manual-${row.id}');`
+        );
+      } else {
+        say("        no single obvious project — check this account by hand.");
+      }
+    }
+    if (orphans.rows.length > 5) {
+      say(`      … and ${orphans.rows.length - 5} more.`);
     }
   }
 

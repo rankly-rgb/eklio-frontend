@@ -333,6 +333,11 @@ so).
 ⚠ **A zero on a step you did not perform is not a failure.** Steps 8–12 require an account
 and a card. Read the two you actually walked.
 
+**And read the `orphaned` line while you are there.** It should say *every paid purchase names
+its project*. A number there means somebody paid and got no allowance — the report prints the
+two statements that fix it (`ACQUISITION_WALK.md` §14.6). A `?` means the read failed, which
+is not the same as zero.
+
 ## 9. Stripe payment methods, cards only
 
 **Why.** `createCheckoutSession` does not set `payment_method_types`, so the **Stripe
@@ -398,17 +403,10 @@ Named so the gap is visible, not because it is finished.
   wrong value, dead link in her inbox.
 - **`SUPABASE_SERVICE_ROLE_KEY`.** Anonymous brief creation, the purge cron and the spend
   ceilings all use it. Nothing anonymous works without it.
-- **A paid purchase with no project attached.** Measured in Session 4 (§14.6):
-  `grant_plan_allowance` returns false on a null project, so the money is taken and no
-  generation allowance is opened — while `resolveEntitledTier` still counts the purchase for
-  every project she owns. Reachable when the brief claim fails and she pays anyway. Fixable by
-  hand from `purchases` while the volume is one or two; worth a rule of its own if it happens
-  twice. Watch for it with:
-
-  ```sql
-  select id, user_id, tier, status, created_at
-    from public.purchases where project_id is null and status = 'paid';
-  ```
+- ~~**A paid purchase with no project attached.**~~ **Closed.** Three readers were counting an
+  orphaned purchase as paid for every project the account owns; all three are now scoped, and
+  the count is on the top block of `npm run funnel` with the statements to paste when it is
+  not zero. `ACQUISITION_WALK.md` §14.6.
 
 - **A campaign source on the funnel.** The instrument counts arrivals but not where they
   came from — no referrer, no UTM. One cold-email list to a known audience does not need it;

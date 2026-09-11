@@ -125,11 +125,35 @@ export async function resolveEntitledTier(
   supabase: Client,
   projectId: string
 ): Promise<KitTier | null> {
+  /*
+   * ⚠ THIS PROJECT, AND ONLY THIS PROJECT.
+   *
+   * It used to read `project_id.eq.X, or project_id.is.null` — a purchase with
+   * no project attached counted for EVERY project the account owns. That is
+   * not a rare shape and it is not a hypothetical: two different paths produce
+   * one, and both were measured in session 4 (`ACQUISITION_WALK.md` §14.6).
+   *
+   *   1. The brief claim fails at signup, so the checkout page's RLS read finds
+   *      no project and `buildCheckoutMetadata` carries `projectId: null`.
+   *   2. `purchases_project_id_fkey` is ON DELETE SET NULL. Deleting any
+   *      project detaches its purchase rather than removing it — the teardown
+   *      in `REHEARSAL.md` was itself one of the entrances.
+   *
+   * Either way one orphan row said "paid" about work it had never paid for.
+   * `brand_kit_entitled` in the database was always scoped to the project, so
+   * the deliverable stayed shut — which made this worse, not better: the screen
+   * said unlocked, the database said no, and she pressed a direction and was
+   * bounced back to checkout for a kit she had apparently bought.
+   *
+   * One condition closes both entrances. A purchase that names no project buys
+   * nothing, which is also exactly what `grant_plan_allowance` already does
+   * with one (it returns false on a null project).
+   */
   const { data, error } = await supabase
     .from("purchases")
     .select("tier, project_id")
     .eq("status", "paid")
-    .or(`project_id.eq.${projectId},project_id.is.null`);
+    .eq("project_id", projectId);
 
   if (error) {
     console.error("[entitlements] lecture purchases", error);
@@ -220,12 +244,27 @@ export async function isCompAccessActive(supabase: Client): Promise<boolean> {
  * projets NON ADOSSÉS À UN ACHAT, et le refus n'atteint jamais que ceux à qui
  * il est destiné.
  *
- * ── L'achat sans projet ─────────────────────────────────────────────────
+ * ── ⚠ L'ACHAT SANS PROJET NE COMPTE PLUS, ET LE RAISONNEMENT A CHANGÉ ────
  *
- * Un checkout lancé depuis `/pricing`, avant d'avoir choisi un projet, écrit
- * `project_id: null`. `resolveEntitledTier` le fait valoir pour TOUS ses
- * projets ; le même raisonnement s'applique ici, sinon on refuserait un
- * nouveau brief à quelqu'un qui vient de payer.
+ * Ce bloc disait : « un checkout lancé depuis `/pricing` écrit
+ * `project_id: null` ; `resolveEntitledTier` le fait valoir pour TOUS ses
+ * projets, donc le même raisonnement s'applique ici. » La prémisse a été
+ * retirée en session 4 — `resolveEntitledTier` est désormais scopé au projet —
+ * donc la conclusion tombe avec elle.
+ *
+ * Ce qu'on a appris en la retirant : cette règle ne faisait pas MARCHER
+ * l'achat depuis `/pricing`, elle le faisait SEMBLER marcher. `grant_plan_
+ * allowance` rend `false` sur un projet nul, et `brand_kit_entitled` en base a
+ * toujours été scopé au projet. Une ligne orpheline n'ouvrait donc rien du
+ * tout : elle faisait seulement dire « payé » à l'écran pendant que la base
+ * refusait. Une seule ligne orpheline désactivait aussi ce plafond-ci pour
+ * toujours, sur ce compte.
+ *
+ * Le plafond reste généreux (trois briefs) et reste FAIL-OPEN sur une erreur
+ * de lecture : c'est une mesure anti-abus, pas une garde de sécurité. Et une
+ * acheteuse partie de `/pricing` est maintenant VISIBLE — `npm run funnel`
+ * affiche les achats sans projet en tête de rapport, pour qu'on rattache le
+ * sien à la main plutôt qu'un droit fantôme le fasse en silence.
  */
 export async function countUnpaidProjects(
   supabase: Client,
@@ -248,11 +287,16 @@ export async function countUnpaidProjects(
     return 0;
   }
 
-  const paid = purchases ?? [];
-  // Un achat sans projet vaut pour tous : rien n'est « non payé ».
-  if (paid.some((row) => row.project_id === null)) return 0;
-
-  const paidProjects = new Set(paid.map((row) => row.project_id));
+  /*
+   * Un achat NOMME le projet qu'il a payé, ou il n'en paye aucun. C'est la
+   * même phrase que `resolveEntitledTier` et que `grant_plan_allowance`
+   * disent déjà, et les trois doivent la dire pareil.
+   */
+  const paidProjects = new Set(
+    (purchases ?? [])
+      .map((row) => row.project_id)
+      .filter((id): id is string => id !== null)
+  );
   return (projects ?? []).filter((project) => !paidProjects.has(project.id)).length;
 }
 
@@ -290,10 +334,16 @@ export async function purchaseWasReversed(
   supabase: Client,
   projectId: string
 ): Promise<boolean> {
+  /*
+   * ⚠ SCOPED, for the same reason as `resolveEntitledTier` above. An orphaned
+   * REFUNDED purchase would otherwise tell an unrelated project that its
+   * purchase had been reversed — a sentence about someone else's money, on her
+   * screen.
+   */
   const { data, error } = await supabase
     .from("purchases")
     .select("status")
-    .or(`project_id.eq.${projectId},project_id.is.null`)
+    .eq("project_id", projectId)
     .in("status", [...REVERSED_STATUSES]);
 
   if (error) {

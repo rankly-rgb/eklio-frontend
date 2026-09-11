@@ -1169,11 +1169,28 @@ the review and reveal screens (`/brief/resume?t=…` sets the cookie on whicheve
 it). If she never asked for that email, there is no recovery from device two — the token is
 the only key, and it is in the other browser.
 
-**Not fixed, deliberately.** The obvious patch is copy on `/login` when `next` points at a
-brief or a reveal. But she cannot *act* on it from there — she cannot request the email
-without the cookie — so it would be an explanation with no exit, which is worse than a plain
-login form. The real fix is to make the email offer harder to miss earlier, and that is a
-design change, not a patch.
+**⚠ I GOT THIS WRONG, AND IT IS NOW FIXED.** I wrote that copy on `/login` would be "an
+explanation with no exit", because she cannot request the email from there. That reasoning
+skipped the people the sentence is actually for: **the offer was made to her twice already**,
+at the end of the brief and again on the reveal. If she took it, the exit is already in her
+inbox and the link sets the cookie on whichever device opens it. For those visitors the
+sentence turns a dead end into a door; for the rest it at least explains where their work is,
+which is strictly better than a bare sign-in form.
+
+So `/login` now says, and only when `next` points at a surface that is reachable without an
+account:
+
+> Started a brief without an account? It lives on the device you started it on. If you asked
+> us to email you a link to come back to it, open that link on this device and it'll be here.
+
+The condition is `reachableWithoutAccount(next)` — **the same function the proxy uses to let
+her through**, not a second list. Two lists would have diverged, and the one that won would be
+the one nobody re-reads. On `/app/checkout` or `/app/settings` the sentence does not appear:
+there is no account-less brief to recover there, and suggesting one would be the noise I was
+worried about.
+
+**Still true, and still the real fix:** making the email offer harder to miss in the first
+place. That is a design change, and it is not this.
 
 ---
 
@@ -1203,18 +1220,47 @@ E3 grant with project_id = null
 `grant_plan_allowance` returns `false` immediately on a null project. The charge succeeds, the
 `purchases` row is written `paid`, and **no generation allowance is opened.**
 
-It is not a total loss: `resolveEntitledTier` counts `project_id is null` purchases for every
-project she owns, so the *tier* resolves and the paid sections unlock. What does not open is
-the credit — she has paid and the generator still treats her as free.
+### ⚠ And I had this half wrong. It was worse than I said, and it was one hole with three doors
 
-**What a therapist sees.** A successful payment, a receipt, and a product that still behaves
-as though she has not paid when she asks it to generate.
+I reported this and the `ON DELETE SET NULL` teardown trap as two findings. **They are one
+finding**, and I should have seen it: both produce a `purchases` row with `project_id = null`,
+and that single shape was being read as "paid" by three different functions.
 
-**Not fixed, and I want your call on it.** The honest repair is to attach an unattached paid
-purchase to the next project she creates — but that is a new rule about what a purchase
-*means*, it touches the post-purchase space this chantier was told not to touch, and it can
-be done by hand today from `purchases` while the volume is one or two. Recorded here and in
-`LAUNCH_CHECKLIST.md` as a thing to watch rather than something I changed unasked.
+I also said "the paid sections unlock". **They do not.** `brand_kit_entitled` — the actual
+gate on every paid deliverable, in the database — has always been scoped to the project. What
+honoured the orphan was three *TypeScript* readers:
+
+| Reader | What it drove | What an orphan did |
+|---|---|---|
+| `resolveEntitledTier` | `paid` on the reveal, the checkout hint | said **paid** for every project she owns |
+| `purchaseWasReversed` | the sentence on a locked kit | said **"your purchase was reversed"** about someone else's refund |
+| `countUnpaidProjects` | the 3-brief anti-abuse ceiling | **disabled the ceiling** for that account, permanently |
+
+So the screen said unlocked and the database said no. She chooses a direction, and is bounced
+back to checkout for a kit she appears to have already bought. **That is worse than a clean
+refusal**, because it looks like a bug in her purchase rather than a state anyone can name.
+
+**Three doors lead to this row, and one of them is not a failure at all:**
+
+1. **`/pricing` links to `/app/checkout?plan=…` with no project.** A first-class path — buy
+   before you brief. It has never worked: `grant_plan_allowance` returns `false` on a null
+   project, so nothing was ever opened. The orphan rule did not make that path work, it made
+   it *look* like it worked.
+2. **The claim fails at signup** (§14.4), so the checkout page's RLS read finds no project.
+3. **`purchases_project_id_fkey` is `ON DELETE SET NULL`.** Deleting a project detaches its
+   purchase instead of removing it — and the teardown in `REHEARSAL.md` was itself one of the
+   entrances, which is how I came to look.
+
+**Fixed this session, in one condition per reader.** A purchase that names no project pays for
+no project — which is exactly what `grant_plan_allowance` and `brand_kit_entitled` already
+said. Nothing about the post-purchase space changed; three readers stopped disagreeing with
+the database.
+
+**What a therapist sees now.** A successful payment and a product that is honestly locked,
+rather than one that shows her an unlocked kit and then refuses her at the door.
+
+**And somebody has still paid and got nothing** — that part is real and unchanged. It is
+fixable by hand in seconds, so the only thing it needed was to be *visible*: §14.8.
 
 ---
 
@@ -1296,6 +1342,31 @@ formatter so the shape is exact:
   ──────────────────────────────────────────────────────────────────────────
 ```
 
+And the same block carries **orphaned purchases**, because it is the other thing that, seen
+this morning, changes what you do today (§14.6). Zero every morning is the answer:
+
+```
+  orphaned            0   every paid purchase names its project
+```
+
+Any other number prints the rows and the exact statements to paste:
+
+```
+  ⚠ orphaned          2   paid purchases with NO project — $228.00 taken, nothing opened
+      2026-10-05  starter   $  79.00  purchase 1111…
+        update public.purchases set project_id = '3333…' where id = '1111…';
+        then: select public.grant_plan_allowance('3333…', 'starter', 'manual-1111…');
+      2026-10-06  practice  $ 149.00  purchase 4444…
+        no single obvious project — check this account by hand.
+```
+
+Three deliberate choices in those six lines. **The second statement matters as much as the
+first** — attaching the purchase does not reopen the allowance, `grant_plan_allowance` has to
+be called behind it. **A suggestion is only offered when exactly one of her projects has no
+paid purchase**; otherwise it says so and stops, because guessing which project someone meant
+to buy is a person's judgement. And **a read that fails prints `?`, never `0`** — "none" and
+"I could not tell" read identically on a report, and only one of them is safe to ignore.
+
 Three things make this readable at seven in the morning rather than merely true:
 
 - **The ⚠ mark appears at 80%, or at the first refusal, whichever comes first.** Headroom is
@@ -1320,7 +1391,7 @@ Three things make this readable at seven in the morning rather than merely true:
 | 3b | Double submit | ⚠ **Charged twice, $158 for a $79 kit** | ✅ guarded before the charge |
 | 4 | Email already has an account | Correct *only* with confirmation off | ✅ coupling documented |
 | 4b | Sign-in did not claim the brief | ⚠ **Brief orphaned, then purged** | ✅ both doors claim |
-| 5 | Reveal on a second device | Login form, no explanation, no exit | Deliberately not patched |
+| 5 | Reveal on a second device | Login form, no explanation | ✅ one sentence, on anonymous surfaces only |
 | 6 | Claim race at purchase | Does not exist — the order is forced | — |
-| 6b | Claim failure, then payment | ⚠ **Paid, no allowance opened** | Your call — §14.6 |
+| 6b | Orphaned purchase (3 doors) | ⚠ **Screen said paid, database said no** | ✅ three readers scoped + on the daily report |
 | 7 | Cap reached mid-brief | Nothing lost, but the copy lied about when | ✅ names the day, retry-after to midnight |

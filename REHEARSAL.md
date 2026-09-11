@@ -233,6 +233,12 @@ On the phone, sign in with the account you just made.
 **Verify.** Your project and your paid kit are both there. This is the check that the purchase
 belongs to the *account* and not to the browser.
 
+**And check the sentence a stranger would get.** Still on the phone, sign out and open the
+reveal URL from step 5. You should land on sign-in **with a line above the form** explaining
+that a brief started without an account lives on the device it was started on, and that the
+emailed link will bring it here. If that line is missing, the second-device dead end from
+§14.5 is back.
+
 ---
 
 ## PART THREE — THE SUBSCRIPTION
@@ -310,14 +316,23 @@ begin;
 commit;
 ```
 
-Then confirm nothing was left floating:
+Then confirm nothing was left floating — and you no longer have to remember to:
 
-```sql
-select id, tier, status from public.purchases where project_id is null;
+```bash
+npm run funnel -- --days 1
 ```
 
-Any row here is a purchase that applies to every project its owner has. If the rehearsal left
-one, delete it.
+The top block carries an `orphaned` line. It should read **"every paid purchase names its
+project"**. If the teardown went backwards it will say so, name the row, and print the
+statement that reattaches it.
+
+⚠ **An orphan no longer grants anything** (that hole was closed in the same session that found
+it), so a leftover row is not a security problem — it is somebody who paid and got nothing, or
+in this case a rehearsal that did not finish putting itself back. Delete it:
+
+```sql
+select id, tier, status, created_at from public.purchases where project_id is null;
+```
 
 Leave the **user** in place; an extra account costs nothing and deleting auth rows has more
 edges than it is worth.

@@ -72,15 +72,39 @@ describe("countUnpaidProjects", () => {
     expect(await countUnpaidProjects(supabase, USER)).toBe(0);
   });
 
-  it("un achat SANS projet vaut pour tous", async () => {
-    // Checkout lancé depuis `/pricing`, avant d'avoir choisi un projet.
-    // `resolveEntitledTier` le fait déjà valoir partout ; refuser un nouveau
-    // brief à quelqu'un qui vient de payer serait la même erreur à l'envers.
+  it("⚠ un achat SANS projet ne vaut plus pour tous — et c'était un trou", () => {
+    /*
+     * Ce test disait l'inverse, et sa raison était : « `resolveEntitledTier` le
+     * fait déjà valoir partout ; refuser un nouveau brief à quelqu'un qui vient
+     * de payer serait la même erreur à l'envers. » La prémisse a été retirée en
+     * session 4, donc la conclusion tombe.
+     *
+     * Ce qu'on a appris en la retirant : la règle ne faisait pas MARCHER
+     * l'achat sans projet, elle le faisait SEMBLER marcher. `grant_plan_
+     * allowance` rend `false` sur un projet nul et `brand_kit_entitled` est
+     * scopé au projet — la ligne orpheline n'ouvrait rien, elle faisait juste
+     * dire « payé » à l'écran pendant que la base refusait. Et UNE ligne
+     * orpheline désactivait ce plafond pour toujours, sur ce compte.
+     *
+     * Deux chemins en produisent une sans que personne n'achète deux fois : la
+     * réclamation du brief qui échoue à l'inscription, et
+     * `purchases_project_id_fkey ON DELETE SET NULL`, qui détache l'achat dès
+     * qu'on supprime un projet.
+     */
     const supabase = client(
       [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }],
       [{ project_id: null }]
     );
-    expect(await countUnpaidProjects(supabase, USER)).toBe(0);
+    return expect(countUnpaidProjects(supabase, USER)).resolves.toBe(4);
+  });
+
+  it("un achat qui NOMME son projet compte toujours pour lui", async () => {
+    // Le cas normal ne bouge pas : ce qui a été payé est payé.
+    const supabase = client(
+      [{ id: "a" }, { id: "b" }],
+      [{ project_id: "a" }]
+    );
+    expect(await countUnpaidProjects(supabase, USER)).toBe(1);
   });
 
   it("ne compte rien pour un compte tout neuf", async () => {

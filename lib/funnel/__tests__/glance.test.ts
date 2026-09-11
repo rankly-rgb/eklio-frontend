@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { renderCeilingGlance, unreadableCeiling, type Glance } from "@/lib/funnel/glance";
+import {
+  renderCeilingGlance,
+  unreadableCeiling,
+  type Glance,
+  type Orphans,
+} from "@/lib/funnel/glance";
 
 /*
  * ── LE SEUL BLOC QUE QUELQU'UN LIRA À SEPT HEURES DU MATIN ──────────────
@@ -23,7 +28,10 @@ const LIVE_2026_09_11: Glance = {
   refused: { total: 0, ip_cap: 0, global_cap: 0, disabled: 0, unreadable: 0 },
 };
 
-const text = (g: Glance) => renderCeilingGlance(g).join("\n");
+const NO_ORPHANS: Orphans = { total: 0, amount_cents: 0, oldest: null, rows: [] };
+
+const text = (g: Glance, o: Orphans | undefined = NO_ORPHANS) =>
+  renderCeilingGlance(g, o).join("\n");
 
 describe("la vue du plafond — journée calme", () => {
   const out = text(LIVE_2026_09_11);
@@ -115,5 +123,90 @@ describe("⚠ un plafond illisible n'est jamais un zéro rassurant", () => {
     expect(out).toContain("unknown spend, not as no spend");
     // Et surtout : aucun chiffre inventé.
     expect(out).not.toMatch(/\$\s*0\.00/);
+  });
+});
+
+/*
+ * ── QUELQU'UN A PAYÉ ET N'A RIEN EU ─────────────────────────────────────
+ *
+ * Trois chemins produisent un achat sans projet : `/pricing` qui mène au
+ * checkout sans projet, la réclamation du brief qui échoue à l'inscription, et
+ * `purchases_project_id_fkey ON DELETE SET NULL` qui détache l'achat dès qu'on
+ * supprime un projet. Aucun des trois n'ouvre quoi que ce soit — et sans cette
+ * ligne, aucun des trois ne se voit.
+ */
+describe("⚠ les achats orphelins", () => {
+  const ORPHANS: Orphans = {
+    total: 2,
+    amount_cents: 22800,
+    oldest: "2026-10-05T09:12:00Z",
+    rows: [
+      {
+        id: "11111111-1111-1111-1111-111111111111",
+        user_id: "22222222-2222-2222-2222-222222222222",
+        tier: "starter",
+        amount_cents: 7900,
+        created_at: "2026-10-05T09:12:00Z",
+        suggested_project_id: "33333333-3333-3333-3333-333333333333",
+      },
+      {
+        id: "44444444-4444-4444-4444-444444444444",
+        user_id: "55555555-5555-5555-5555-555555555555",
+        tier: "practice",
+        amount_cents: 14900,
+        created_at: "2026-10-06T18:40:00Z",
+        suggested_project_id: null,
+      },
+    ],
+  };
+
+  it("dit explicitement qu'il n'y en a pas, plutôt que de taire la ligne", () => {
+    // Une ligne absente se lit comme « rien à signaler » ET comme « pas
+    // mesuré ». Elle est toujours écrite.
+    expect(text(LIVE_2026_09_11)).toContain("every paid purchase names its project");
+  });
+
+  it("un orphelin met la marque d'alerte sur la journée", () => {
+    const out = text(LIVE_2026_09_11, ORPHANS);
+    expect(out).toContain("⚠ TODAY");
+    expect(out).toContain("⚠ orphaned");
+  });
+
+  it("donne l'argent pris, parce que c'est ce qui rend la chose urgente", () => {
+    expect(text(LIVE_2026_09_11, ORPHANS)).toContain("$228.00");
+    expect(text(LIVE_2026_09_11, ORPHANS)).toContain("nothing opened");
+  });
+
+  it("⚠ donne la commande à coller quand le projet est évident", () => {
+    /*
+     * À sept heures du matin, l'écart entre un indice et une instruction
+     * qu'on peut coller, c'est si la chose est réparée aujourd'hui ou jamais.
+     * Et la seconde commande compte autant : rattacher l'achat ne rouvre pas
+     * l'allocation, `grant_plan_allowance` doit être appelée derrière.
+     */
+    const out = text(LIVE_2026_09_11, ORPHANS);
+    expect(out).toContain(
+      "update public.purchases set project_id = '33333333-3333-3333-3333-333333333333'"
+    );
+    expect(out).toContain("grant_plan_allowance('33333333-3333-3333-3333-333333333333', 'starter'");
+  });
+
+  it("ne propose RIEN quand le projet n'est pas évident", () => {
+    const out = text(LIVE_2026_09_11, ORPHANS);
+    expect(out).toContain("no single obvious project");
+    // Et surtout : pas de commande inventée pour la deuxième ligne.
+    expect(out).not.toContain("project_id = 'null'");
+    expect(out).not.toContain("project_id = ''");
+  });
+
+  it("⚠ une lecture impossible n'est PAS zéro", () => {
+    // C'est la distinction qui compte : « aucun » et « je ne sais pas » se
+    // lisent pareil sur un rapport, et l'un des deux demande d'agir.
+    // ⚠ Appelé sans le second argument, pas avec `undefined` passé au helper :
+    // une valeur par défaut de paramètre se déclenche sur `undefined`, donc le
+    // helper aurait rendu « zéro orphelin » et ce test aurait menti.
+    const out = renderCeilingGlance(LIVE_2026_09_11).join("\n");
+    expect(out).toContain("could not be read");
+    expect(out).not.toContain("every paid purchase names its project");
   });
 });
