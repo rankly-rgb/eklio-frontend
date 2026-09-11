@@ -26,6 +26,8 @@ Nothing here is a deploy. Where a deploy is required, the row says so.
 | 6b | `anon-briefs` purge cron **newly armed** | ✅ **verified in `vercel.json`** | Yes |
 | 7 | Seven brand images at prompt version 7 | ❌ **all seven are stale** | **Yes — the kit page shows none** |
 | 8 | The funnel records anything at all | **untested in production** | No — but you are flying blind until it is checked |
+| 9 | Stripe payment methods limited to cards | **cannot verify from here** | **Yes — see the row** |
+| 10 | The rehearsal has been run | not yet | **Yes — it is the only test of the live keys** |
 
 ---
 
@@ -331,6 +333,59 @@ so).
 ⚠ **A zero on a step you did not perform is not a failure.** Steps 8–12 require an account
 and a card. Read the two you actually walked.
 
+## 9. Stripe payment methods, cards only
+
+**Why.** `createCheckoutSession` does not set `payment_method_types`, so the **Stripe
+dashboard** decides which methods appear. If a delayed method is enabled — ACH, SEPA, bank
+transfer — a payment that later fails produces this sequence, measured by reading the path in
+Session 4 (`ACQUISITION_WALK.md` §14.1):
+
+1. Stripe returns her to the success page with `payment_status: "unpaid"`.
+2. She reads **"Payment received."**
+3. Forty-five seconds later she reads **"Your payment went through."**
+4. Hours later the payment fails, the purchase is written `failed`, and **nothing tells her.**
+   There is no notification anywhere in `lib/stripe/` for that transition.
+
+The product tells her twice that it worked and never corrects itself.
+
+**Set.** In Stripe → Settings → Payment methods, for the account the live keys belong to:
+enable **cards only** for now. Turn the delayed methods off.
+
+**Where.** Stripe dashboard, **live** mode. No deploy, no code.
+
+**Verify it took.** Open a real checkout (step 8 of `REHEARSAL.md`) and look at what Stripe
+offers. Card fields, and nothing that says "pay by bank" or asks for an account number.
+
+⚠ **This is a stopgap, and it should be named as one.** The honest fix is to notify on
+`checkout.session.async_payment_failed` and to stop the success page claiming a payment went
+through before the webhook says so. Turning the methods off makes the path unreachable
+instead, which is the right trade for launch week and the wrong one forever.
+
+---
+
+## 10. The rehearsal
+
+**Why.** Every row above this one is a setting you can check. The live Stripe keys, the live
+webhook endpoint and its signing secret, the live price ids, the production site URL that
+builds every resume link — none of those is checkable except by using them, and each is only
+ever exercised by the first person who pays.
+
+**Set.** Run `REHEARSAL.md`, end to end, on production, with a real card. Starter, $79,
+refunded in Part Four. Budget 45 minutes and **do it the day before the campaign**, not the
+morning of — the reveal you generate counts against that day's ceiling of 150.
+
+**Where.** Production, in a browser you have never used on the site, plus a phone on cellular.
+
+**Verify it took.** The last section of `REHEARSAL.md`: twelve funnel steps, all reading 1.
+
+```bash
+npm run funnel -- --days 1
+```
+
+A step reading 0 is a step that is not instrumented on production, whatever the code says.
+
+---
+
 ## WHAT IS NOT ON THIS LIST YET
 
 Named so the gap is visible, not because it is finished.
@@ -343,6 +398,18 @@ Named so the gap is visible, not because it is finished.
   wrong value, dead link in her inbox.
 - **`SUPABASE_SERVICE_ROLE_KEY`.** Anonymous brief creation, the purge cron and the spend
   ceilings all use it. Nothing anonymous works without it.
+- **A paid purchase with no project attached.** Measured in Session 4 (§14.6):
+  `grant_plan_allowance` returns false on a null project, so the money is taken and no
+  generation allowance is opened — while `resolveEntitledTier` still counts the purchase for
+  every project she owns. Reachable when the brief claim fails and she pays anyway. Fixable by
+  hand from `purchases` while the volume is one or two; worth a rule of its own if it happens
+  twice. Watch for it with:
+
+  ```sql
+  select id, user_id, tier, status, created_at
+    from public.purchases where project_id is null and status = 'paid';
+  ```
+
 - **A campaign source on the funnel.** The instrument counts arrivals but not where they
   came from — no referrer, no UTM. One cold-email list to a known audience does not need it;
   two campaigns in one week would, and it is a column and a beacon field away.

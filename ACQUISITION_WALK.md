@@ -972,3 +972,355 @@ respecting it.
 - **Whether any of it is wired correctly in production.** Nothing has been deployed. The
   first thing to do after the first deploy is walk the brief once and run `npm run funnel
   -- --days 1`: twelve steps, and the ones you touched should be non-zero.
+
+---
+
+# 14. SESSION 4 — THE PATHS WHERE MONEY LEAKS
+
+## 14.0 What I could and could not exercise, said first
+
+**Stripe test mode could not be used.** There is no `.env.local` in this checkout, no
+`STRIPE_SECRET_KEY` in the environment, and `api.stripe.com` returns nothing from this
+session (`curl` exits with code `000`). Nothing below was run against Stripe, in test mode or
+otherwise.
+
+What was run, and how each thing below is labelled:
+
+| Label | Means |
+|---|---|
+| **EXERCISED (live DB)** | Run against the production database inside `begin … rollback`. Real constraints, real functions, real RLS. Nothing persisted. |
+| **EXERCISED (suite)** | Run through the repo's own test suite against the real module. |
+| **READ** | Traced in source. No claim that it was observed. |
+
+The three fixes this session shipped all came from **EXERCISED (live DB)** results, not from
+reading.
+
+---
+
+## 14.1 A declined card
+
+**What I did.** Read the checkout and webhook paths end to end; there is no code of ours
+between her and the decline.
+
+**What actually happens.** A card decline is handled inside Stripe's hosted page. She never
+leaves it, our server is never called, and no `purchases` row exists. She retries there or
+she closes the tab. **Nothing leaks.**
+
+**The variant that does leak.** A *delayed* payment method — ACH, SEPA, bank transfer —
+behaves completely differently, and `HANDLED_EVENT_TYPES` shows someone anticipated it:
+
+1. Stripe returns her to `success_url` with `payment_status: "unpaid"`.
+2. `app/app/checkout/success/page.tsx` finds no `paid` row and shows **"Payment received."**
+   with "We're confirming it with our payment provider."
+3. `ConfirmationPoll` gives up after 45 seconds and shows: **"Your payment went through, but
+   the confirmation is taking longer than usual to reach us."**
+4. Hours or days later `checkout.session.async_payment_failed` arrives, the purchase is
+   written `failed`, and **nothing tells her.** ⚠ There is no notification, no email, no
+   status change she would ever see. Grep for `notify` in `lib/stripe/` returns nothing.
+
+So for one delayed-payment failure the product tells her, in order, that her payment was
+received, then that it went through, then never corrects either.
+
+**What a therapist sees.** With cards: Stripe's own decline message, and she retries. With a
+delayed method: a confirmation that is wrong twice and never withdrawn.
+
+**⚠ THE FIX IS A SETTING, NOT CODE.** `createCheckoutSession` does not set
+`payment_method_types`, so the Stripe **dashboard** decides which methods appear. Restrict
+the payment methods to cards for launch and this path becomes unreachable. Added to
+`LAUNCH_CHECKLIST.md`.
+
+---
+
+## 14.2 An abandoned checkout, and whether she can come back
+
+**What I did.** READ `app/app/checkout/canceled/page.tsx` and the `cancel_url` wiring.
+
+**What actually happens.** `cancel_url` is `/app/checkout/canceled`. Nothing is written
+anywhere — no session row, no purchase, no pending state. She can come back and pay: the
+checkout page takes `?plan=` and `?project=` from the URL and rebuilds the session.
+
+**What a therapist sees.** A page headed **"Nothing was charged."** — "You closed the payment
+page before finishing. Your brief and your creative directions are exactly where you left
+them." Two buttons: *Back to my projects* and *See the plans again*.
+
+**This one is right, and it is the best screen in the payment path.** No retargeting, no
+last-chance offer, no urgency.
+
+**One gap.** Both buttons are generic. She was one click from buying a specific kit and lands
+on a list of projects; the path back to *the thing she was buying* is not offered. Not a
+leak, but the single cheapest conversion fix in this section.
+
+---
+
+## 14.3 A double submit, and a webhook delivered twice
+
+These are two different questions and they have opposite answers.
+
+### The webhook delivered twice — safe. EXERCISED (live DB)
+
+**What I did.** Inserted a `purchases` row for session `cs_E2`, granted the allowance, then
+replayed both: the same session id and the same grant key.
+
+**What actually happened.**
+
+```
+E2 first delivery              grant=t
+E2 same session delivered twice second row: refused by
+                               purchases_stripe_checkout_session_id_key;
+                               replayed grant=f
+E4 same event id twice          refused by stripe_events_pkey
+```
+
+Three independent guards, and all three hold: the event lock (`stripe_events_pkey`), the
+purchase uniqueness (`purchases_stripe_checkout_session_id_key`), and the grant key
+(`plan_grants.grant_key`). **A replay charges nothing and grants nothing.**
+
+### The double submit — ⚠ IT CHARGED TWICE. EXERCISED (live DB)
+
+**What I did.** Two *different* Checkout sessions for the same project and the same tier —
+what happens when she goes back and presses pay again.
+
+**What actually happened.**
+
+```
+E1 two different sessions, same project+tier
+   2 paid rows, $158 charged; grants: first=t second=t
+```
+
+**$158 for one $79 kit, and both allowances opened.** Nothing in the schema noticed, and
+nothing could: `purchases` is unique on the Stripe *session* id, and a second press gets a
+second session id. There was no check anywhere that this project had already been paid for.
+
+**What a therapist saw.** Two charges on her card, two receipts from Stripe, and a product
+that showed no sign anything was wrong. And there is **no refund primitive anywhere in this
+product** — that is the whole reason every paid path is verify-then-consume.
+
+**Fixed this session.** `createCheckoutSession` now refuses when a paid purchase of the same
+tier or higher already exists for the project, and she reads: *"You've already paid for this
+project's kit — it's unlocked. Open it from your projects; nothing new was charged."*
+
+⚠ **The guard is in front of the charge, and it is not atomic.** Two genuinely simultaneous
+presses can still both read "nothing paid". The atomic alternative — a partial unique index
+on `(project_id, tier) where status = 'paid'` — would make the second **webhook** fail, which
+takes the money and loses the row: strictly worse. A guard before a payment can only ever
+fail towards not charging; a guard after it can only fail towards keeping money with nothing
+recorded.
+
+---
+
+## 14.4 An email address that already has an account
+
+**What I did.** READ `lib/actions/auth.ts` and `lib/auth/signup-message.ts`.
+
+**What actually happens — and it depends on a Supabase setting.**
+
+- **Email confirmation OFF** (what `LAUNCH_CHECKLIST.md` §2 tells you to set): Supabase
+  returns `user_already_exists`, and `signUpMessage` maps it to *"There's already an account
+  with that email. Sign in instead, or reset your password."* Correct, and actionable.
+- **Email confirmation ON**: Supabase obfuscates to prevent user enumeration and returns a
+  *success* with no session. She is sent to `/signup/check-your-email` and waits for an email
+  that describes an account she already has.
+
+⚠ **So checklist item 2 is not only about the seam — it is what makes this case legible at
+all.** Two settings that look independent are not.
+
+**The leak this exposed, and it was the big one.** Told to sign in instead, she signs in —
+and **`signIn` never claimed the anonymous brief.** Only `signUp` did.
+
+**EXERCISED (live DB).** I set up an anonymous project with a 43-character token and walked
+the RLS as each caller:
+
+```
+E5a with her cookie, before signup   1 row(s) visible
+E5b the claim fails                  0 row(s) updated -- the brief stays unowned
+E5c signed in, no token sent         0 row(s) visible
+E5d the row itself                   1 unowned row, deleted by the purge on 2026-10-11
+```
+
+**Line E5c is the whole finding.** Her project keeps `user_id = null`; `resolveBriefCaller`
+prefers a session over a cookie, so the token she is still carrying is never sent again.
+Seven steps and three finished directions, still in the database, unreachable from her own
+account, deleted thirty days later by the purge.
+
+**What a therapist saw.** She signs in, lands on `/app`, and it is empty. Nothing explains
+it. Her evening's work is gone as far as she can tell, and she is exactly the person who was
+about to pay.
+
+**Fixed this session.** Both doors now go through one `claimBriefInThisBrowser()`. Three
+paths were losing the brief, not one: she already has an account; she made one on an earlier
+visit; she opens the reveal on a second device and is sent to `/login`.
+
+---
+
+## 14.5 The reveal opened from a second device
+
+**What I did.** READ the middleware patterns and `requireBriefAccess`.
+
+**What actually happens.** The cookie is on device one. On device two there is no cookie, so
+`resolveBriefCaller` returns `none` and `requireBriefAccess` redirects to
+`/login?next=/app/brand-kits/…/reveal`.
+
+**What a therapist sees.** A sign-in form, for work she made twenty minutes ago on a device
+where she has no account. Nothing on that page explains why, mentions the other device, or
+offers the way back.
+
+**The way back exists and she has to have used it in advance:** the *email me a link* offer on
+the review and reveal screens (`/brief/resume?t=…` sets the cookie on whichever device opens
+it). If she never asked for that email, there is no recovery from device two — the token is
+the only key, and it is in the other browser.
+
+**Not fixed, deliberately.** The obvious patch is copy on `/login` when `next` points at a
+brief or a reveal. But she cannot *act* on it from there — she cannot request the email
+without the cookie — so it would be an explanation with no exit, which is worse than a plain
+login form. The real fix is to make the email offer harder to miss earlier, and that is a
+design change, not a patch.
+
+---
+
+## 14.6 The claim fails or races at purchase
+
+**What I did.** Traced the ordering, then EXERCISED (live DB) the failure state (§14.4, E5).
+
+**The race does not exist, and here is why.** `/app/checkout` is **not** in
+`reachableWithoutAccount`, so an anonymous visitor cannot reach the payment page at all. The
+order is forced: sign up → claim → checkout → webhook. The claim is always finished before
+Stripe is ever called, so there is no window in which the webhook and the claim are both
+writing.
+
+**What happens when the claim FAILS — and this is where the money is.** She has an account
+with no project. If she then reaches checkout with a stale `?project=` link, the page reads
+the project through her session's RLS, finds nothing (E5c), and proceeds with
+`projectId: null`. That is a legitimate shape — it is what a checkout started from `/pricing`
+produces — so nothing refuses it.
+
+**EXERCISED (live DB):**
+
+```
+E3 grant with project_id = null
+   returns f -- money taken, no allowance opened
+```
+
+`grant_plan_allowance` returns `false` immediately on a null project. The charge succeeds, the
+`purchases` row is written `paid`, and **no generation allowance is opened.**
+
+It is not a total loss: `resolveEntitledTier` counts `project_id is null` purchases for every
+project she owns, so the *tier* resolves and the paid sections unlock. What does not open is
+the credit — she has paid and the generator still treats her as free.
+
+**What a therapist sees.** A successful payment, a receipt, and a product that still behaves
+as though she has not paid when she asks it to generate.
+
+**Not fixed, and I want your call on it.** The honest repair is to attach an unattached paid
+purchase to the next project she creates — but that is a new rule about what a purchase
+*means*, it touches the post-purchase space this chantier was told not to touch, and it can
+be done by hand today from `purchases` while the volume is one or two. Recorded here and in
+`LAUNCH_CHECKLIST.md` as a thing to watch rather than something I changed unasked.
+
+---
+
+## 14.7 The cap is reached mid-brief
+
+**What I did.** Traced the refusal from `consume_anon_generation` to the pixel, and
+EXERCISED (suite) the copy.
+
+**What actually happens.** She presses *Build my brand* on the review screen.
+`consumeAnonSpend("reveal", …)` is the first thing the route does, before anything is read or
+written. On a refusal the route answers `429` with the message and a `retry-after` header;
+`useBuildBrand` puts `body.error` in a `role="alert"` paragraph under the button. She stays
+exactly where she is. **Nothing is lost:** every answer was already written by the autosave,
+and the cookie is good for thirty days.
+
+**What a therapist saw — before this session.**
+
+> We're at capacity for new brands right now. Try again in a little while — your answers are
+> saved.
+
+The counters are keyed on the **UTC date**. A therapist in California reading that at eight in
+the evening is **nine hours** from "a little while", and the `retry-after` header said `3600`
+— an hour — which is wrong by up to twenty-three of them, in the direction that invites a
+retry that will also fail. She has just answered seven screens. **That is the most expensive
+moment in this product to tell a small lie.**
+
+**Fixed this session.**
+
+> We're at capacity for new brands today — your answers are saved. Come back tomorrow, or
+> have us email you a link so you don't lose them.
+
+`retry-after` now counts to midnight UTC. The email offer named in that sentence is on the
+same screen (`EmailMeALink` renders for anonymous callers on the review page), so the exit is
+in view at the moment she reads about it — and it is the only exit that survives her closing
+the laptop.
+
+**And now you see it coming.** §14.8.
+
+---
+
+## 14.8 The ceiling, at the top of the morning report
+
+`npm run funnel` now opens with today, whatever window the funnel below covers. Rendered from
+the JSON `public.anon_spend_today()` returned in production on 2026-09-11, through the real
+formatter:
+
+```
+  TODAY — 2026-09-11 (UTC)
+  ──────────────────────────────────────────────────────────────────────────
+  reveals      0 / 150   ························      0%   150 left
+  assists      0 / 750   ························      0%   750 left
+
+  spent today   $   0.00   (at worst $0.00)
+  headroom      $  13.07   what the rest of today's ceiling would cost
+  visitors            0   distinct addresses; busiest one used 0 of 3 reveals
+  refusals            0   nobody has been turned away today
+
+  Dollars are ESTIMATES: $0.0376 per reveal, $0.0099 per assist
+  (worst case $0.214 / $0.0387), from app_settings, not from an invoice.
+  ──────────────────────────────────────────────────────────────────────────
+```
+
+And a bad morning — **a constructed state, not an observation**, rendered through the same
+formatter so the shape is exact:
+
+```
+  ⚠ TODAY — 2026-10-06 (UTC)
+  ──────────────────────────────────────────────────────────────────────────
+  reveals    150 / 150   ████████████████████████    100%   0 left
+  assists    609 / 750   ███████████████████·····   81.2%   141 left
+
+  spent today   $  11.67   (at worst $55.67)
+  headroom      $   1.40   what the rest of today's ceiling would cost
+  visitors           63   distinct addresses; busiest one used 3 of 3 reveals
+  ⚠ refusals          7   4 per-IP, 3 GLOBAL CAP
+    A GLOBAL refusal is a real therapist who finished the brief and got
+    nothing. Raise anon_generation_daily_global now — it takes effect on
+    the next request, no deploy.
+  ──────────────────────────────────────────────────────────────────────────
+```
+
+Three things make this readable at seven in the morning rather than merely true:
+
+- **The ⚠ mark appears at 80%, or at the first refusal, whichever comes first.** Headroom is
+  the warning; a refusal is the confirmation that it was already too late to be early.
+- **A per-IP refusal and a GLOBAL refusal are not the same event, and the report says which.**
+  The first is usually one person pressing again, and costs nothing. The second is a therapist
+  who finished the whole brief and got nothing.
+- **Refusals had to be made recordable first.** `consume_anon_generation` refuses and writes
+  nothing — it is a counter, not a log — so `consumeAnonSpend` now emits `generation_refused`
+  with the machine reason. Without that, the count above could only ever read zero.
+
+---
+
+## 14.9 The scoreboard
+
+| # | Path | Verdict | Fixed |
+|---|---|---|---|
+| 1 | Declined card (card) | Safe — never reaches our code | — |
+| 1b | Delayed payment that later fails | ⚠ **Told twice that it worked, never corrected** | Setting, in the checklist |
+| 2 | Abandoned checkout | Correct, and well said | — |
+| 3 | Webhook delivered twice | Safe — three independent guards | — |
+| 3b | Double submit | ⚠ **Charged twice, $158 for a $79 kit** | ✅ guarded before the charge |
+| 4 | Email already has an account | Correct *only* with confirmation off | ✅ coupling documented |
+| 4b | Sign-in did not claim the brief | ⚠ **Brief orphaned, then purged** | ✅ both doors claim |
+| 5 | Reveal on a second device | Login form, no explanation, no exit | Deliberately not patched |
+| 6 | Claim race at purchase | Does not exist — the order is forced | — |
+| 6b | Claim failure, then payment | ⚠ **Paid, no allowance opened** | Your call — §14.6 |
+| 7 | Cap reached mid-brief | Nothing lost, but the copy lied about when | ✅ names the day, retry-after to midnight |
