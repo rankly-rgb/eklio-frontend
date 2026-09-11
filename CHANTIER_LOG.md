@@ -10,6 +10,44 @@ before doing any other work — see its entry below for detail. Do not create or
 ---
 
 
+
+## PREFER THE JOIN THAT FAILS CLOSED OVER THE COLUMN THAT FAILS QUIETLY
+
+*Standing design rule. 2026-09-11, tenancy chantier.*
+
+When a row can be reached two ways — through a foreign key to its parent, or through a
+copied `user_id` on the row itself — **use the join.** Always, and even though it is the
+slower query and the longer policy.
+
+The reason is not purity. It is what each one does when it is wrong.
+
+A policy that reaches the owner through `projects`, and is wrong, returns **nothing**. She
+sees an empty screen, knows something is broken, and writes in. It is visible, it is
+reported, and it is fixed the same day.
+
+A policy bound to a copied `user_id`, and wrong, returns **her own rows** — correctly formed,
+plausible, just not the practice's. Nobody reports "slightly emptier than it should be" as a
+bug. They report it as "the product feels a bit empty", months later, if at all.
+
+⚠ **This codebase does not fail with errors. It fails with plausible values.** Every
+expensive thing found in the last two weeks is that shape: an orphaned purchase that resolved
+a paid tier for every project, a sign-in that silently did not claim a brief, a funnel step in
+the wrong order that would have blamed the wrong screen forever, a "payment received" that was
+never withdrawn. None of them raised anything.
+
+So the rule generalises past RLS: **given a choice between a mechanism that fails loudly and
+one that fails plausibly, take the loud one, and pay whatever it costs.** A denormalised
+column, a cached copy, a default value that stands in for a missing one, a `catch` that
+returns a fallback — each is a place where wrong looks like right.
+
+Session 3 of the tenancy chantier makes this choice fourteen times, once per policy in
+`TENANCY.md` §5. The answer is the same fourteen times: drop the copied `user_id` from the
+policy and reach the organization through the kit. Keep the column only where it answers a
+different question than access — `brand_assets.user_id` records who generated an asset, which
+is provenance and stays true with two members — and say so in a comment, so nobody reattaches
+a policy to it.
+
+
 ## THE FUNNEL IS EKLIO'S DATA, AND IT NEVER REACHES A SCREEN
 
 *2026-09-10, chantier « acquisition », session 3.*

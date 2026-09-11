@@ -56,12 +56,30 @@ seed_launch_checklist       postgres=X | service_role=X          ← the only su
 the eighteen that a *later* migration (`20260903260000`) re-revoked. It is the only one still
 closed. Everything revoked once and never again has been re-opened.
 
-**What I can state, and what I am inferring.** The restored grants are a fact, read from the
-catalogue. The *cause* is an inference: the shape — PUBLIC plus all three Supabase roles,
-across functions that no later migration touches — is what a blanket
+**What I can state, and what I inferred wrongly.** The restored grants are a fact, read from
+the catalogue.
+
+⚠ **My inference about the cause was wrong, and Session 2 disproved it.** I wrote that the
+shape looked like a blanket
 `grant all on all functions in schema public to postgres, anon, authenticated, service_role`
-produces. That statement is part of Supabase's standard privileges bootstrap and is re-run by
-routine platform operations. I cannot prove from here which operation ran it.
+re-run by a routine platform operation. **A blanket grant would have re-opened the revokes
+written on 3, 5, 6, 9, 10 and 11 September as well. Every one of those holds** — measured
+function by function. Two mechanisms were then tested and both are disproved:
+
+| Hypothesis | Test | Result |
+|---|---|---|
+| A blanket platform re-grant, continuous | Check every revoke in the repo, by date | Only the 2 September ones are undone |
+| The migration tooling re-grants after applying | Revoke through it, read the ACL back on a later connection | Revoke intact |
+
+What remains is a **discrete past event around 2–3 September** that restored ACL state to a
+point before that migration ran while the migration ledger moved forward. It fits every
+observation — functions created after it keep their revokes, and `seed_launch_checklist`, the
+one of the eighteen that a later migration re-revoked, is the one still closed — but it cannot
+be proved from inside the database and is not claimed as proved.
+
+**Nothing is re-granting continuously.** Which does not soften the conclusion below: an event
+nobody can name or reproduce undid a verified security migration, and the defence has to be
+one that does not depend on knowing what it was.
 
 ### Why this changes Session 2
 
@@ -350,4 +368,52 @@ than in a migration where it ran once.
 
 ---
 
-*Session 1 complete. Nothing was changed. Awaiting the §6 ruling before Session 2.*
+---
+
+## 9. WHAT SESSION 2 DID ABOUT §1
+
+The tenancy layer moved to Session 3; the function surface was closed first. Backend
+`20260911170458_authority_moves_inside_the_function_body`:
+
+| | before | after |
+|---|---|---|
+| `SECURITY DEFINER` functions `anon` can call | 35 | **18** |
+| …of those, with no authority check anywhere | 8 | **1** |
+| trigger / event-trigger functions `anon` can call | 16 | **0** |
+
+The one remaining is `anon_token_hash()`, and it is named as the single exemption in both the
+migration and the test: the RLS policies on `projects` call it, a policy executes as the
+caller's role, and revoking it would lock every anonymous visitor out of her own brief.
+
+Three functions gained an in-body check on the rule **the server is the server, and everyone
+else must own the row** — `auth.role()` survives entry into a `SECURITY DEFINER` body where
+`current_user` has already become the owner. `purchase_status_before` folds it into the
+predicate rather than raising, because a raise would confirm that a uuid exists.
+
+⚠ **One bug was caught before commit and it is the doctrine's own shape.**
+`site_spec_default_target` is reached through `handle_new_brand_kit → seed_site_spec →
+site_spec_seed_values` on *every* anonymous generation. Gating it with `brand_kit_is_owned`
+(`auth.uid()`-only) compiles, passes, raises nothing — and silently returns `'generic'`
+instead of her real builder target for every anonymous brief. It uses `owns_project`, which
+honours the token. Found by asking who calls it, not by a test.
+
+**The enumeration is in CI, not in a migration:**
+`supabase/tests/20260911170458_function_surface.test.sql`, run by the existing `db-tests`
+workflow on every push against a database rebuilt by replaying every migration. It fails the
+build if any `SECURITY DEFINER` function is callable by `anon` or `PUBLIC` without an in-body
+check, where "has a check" is a **transitive closure over function bodies** rather than a list
+of helper names — the list-of-names version produced a false accusation against
+`brand_kit_select_direction`, which gates correctly through `site_spec_entitlement_error`.
+
+It carries a canary that creates a gateless anon-callable function and requires the rule to
+catch it, and an anti-vacuous floor. Both were run against production inside a rolled-back
+transaction before being committed.
+
+⚠ **CI rebuilds from migrations, so it cannot see production drift.** It stops the *next*
+function being written without a check. The in-body check is what holds when the grants move
+underneath us, and that asymmetry is why both exist.
+
+---
+
+*Session 1 complete and corrected. Session 2 complete. Session 3 — the tenancy layer itself —
+is next, on the amended schema recorded in `TENANCY_DECISION_2026-09-02.md`.*

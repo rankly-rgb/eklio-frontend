@@ -702,4 +702,12 @@ replaced by what remains true. What follows is the residue, not the original lis
   Starter" and "Everything in Practice" as visible bullets on `/pricing`. Found by the
   acquisition walk; see `ACQUISITION_WALK.md` §5.1. Not fixed here — Session 1 is report-only.
 
-- **2026-09-11 — a revoke that no longer holds.** `20260902090000_revoke_internal_function_surface.sql` closed 18 functions to `anon`; 17 have their grants back, PUBLIC included. The only survivor is the one a later migration re-revoked. 35 `SECURITY DEFINER` functions are `anon`-callable today, 22 of them take arguments. A `REVOKE` is not a durable defence in this database — the check belongs inside the function body, and the enumeration belongs in CI. `TENANCY.md` §1.
+- **2026-09-11 (CLOSED, and the diagnosis was corrected) — a revoke that no longer holds.** `20260902090000_revoke_internal_function_surface.sql` closed 18 functions to `anon`; 17 have their grants back, PUBLIC included. The only survivor is the one a later migration re-revoked. 35 `SECURITY DEFINER` functions are `anon`-callable today, 22 of them take arguments. A `REVOKE` is not a durable defence in this database — the check belongs inside the function body, and the enumeration belongs in CI. `TENANCY.md` §1.
+  **Correction, same day:** the "blanket platform re-grant" reading was wrong — a blanket
+  grant would have undone the revokes of 3–11 September too, and those all hold. The tooling
+  was tested and cleared as well. The cause remains unnamed; the fix does not depend on it.
+  Closed by backend `20260911170458`: the authority check moved inside the function body,
+  trigger functions were revoked by enumeration rather than by a hand-kept list, and the rule
+  now runs in CI (`supabase/tests/20260911170458_function_surface.test.sql`) against a
+  database rebuilt from every migration. 35 anon-callable `SECURITY DEFINER` functions → 18;
+  8 gateless → 1 named exemption; 16 anon-callable trigger functions → 0.
