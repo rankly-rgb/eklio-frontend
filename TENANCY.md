@@ -581,6 +581,35 @@ database is untouched by the edit.
 in CI rather than failing. It is left alone; it did its work against the live database when it
 was applied. But it is the same family, and the family is worth naming.
 
+**And then the tests ran.** 75 files, for the first time, and 13 failed.
+
+`20260911170458_function_surface.test.sql` **passed** — Session 2's enumeration is now actually
+enforced rather than merely committed.
+
+**The tenancy enumeration failed, correctly, on its first run.** `RLS is off on:
+direction_asset_daily_spend`. The table is created by `20260901074421`, which never enables row
+level security, and `rls_auto_enable` is only codified eleven migrations later by
+`20260901190000` — so a clean replay produces the table with RLS **off**, and §10.6's deny-all
+policy sits on a table that does not enforce policies. **Live it is on**, by a route that is not
+in this repository. Drift in the safe direction, which is why nobody noticed: production is
+correct and the source of truth is wrong. Nothing about reading would have found it — the
+dashboard looks right, the policy is in a migration, the effect in production is right. Closed by
+`20260911182533`; a no-op live, not a no-op on a rebuild.
+
+That is the answer to "why enumerate at all", earned rather than argued, on the first run.
+
+**The remaining twelve are pre-existing and none is caused by this session.** They are diagnosed
+row by row in `FINDINGS.md`: stale expectations after deliberate changes (a budget raised, a
+constraint added, two function signatures moved), one test that depends on tie-breaking between
+two rows written in the same transaction with the same `created_at`, and four not yet diagnosed.
+One of them is mine from the acquisition chantier — `consume_anon_generation` gained a `p_kind`
+argument in `20260910210435` and its test still calls the one-argument form. I changed a
+signature four sessions ago and the suite could not tell me.
+
+Not fixed here: twelve files across four chantiers is a separate piece of work, and this session
+was the tenancy layer. **13 → 12 is the number to watch.** Any number above zero that includes
+`tenancy_layer` or `function_surface` is a regression; the rest is inherited debt with a name.
+
 ### 10.8 What Session 4 inherits
 
 - The fourteen shape-B policies, unchanged and still comparing a denormalised `user_id`.

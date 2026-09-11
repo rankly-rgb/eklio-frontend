@@ -743,3 +743,33 @@ replaced by what remains true. What follows is the residue, not the original lis
   not the constraint** — and the sibling at `20260911133504` is skipped entirely on an empty
   database (`if v_user is not null`), so it is vacuous in CI rather than failing. That one is
   left alone; it did its work against the live database when it was applied.
+
+- **2026-09-11 (OPEN — twelve of them, diagnosed, none caused by the tenancy layer) — what the
+  unblocked CI actually found.** With the replay fixed, **75 test files ran for the first time**
+  and **13 failed**. One was mine and is closed (`direction_asset_daily_spend` had RLS off in a
+  clean replay — backend `20260911182533`). `20260911170458_function_surface.test.sql` **passed**,
+  so Session 2's enumeration is now genuinely enforced. The other twelve are pre-existing rot that
+  was invisible while the pipeline could not reach the tests. Diagnosed from the run log:
+
+  | File | Error | Cause |
+  |---|---|---|
+  | `20260910083735_content_system_schema` | `content_months_themes_have_source_check` | inserts a month with themes and no `theme_source` |
+  | `20260910094102_approve_content_month` | same | same |
+  | `20260910102753_content_items_theme` | same | same |
+  | `20260910192157_anonymous_briefs` | `consume_anon_generation(text) does not exist` | **mine, from the acquisition chantier**: `20260910210435` added `p_kind` and the test still calls the one-argument form |
+  | `20260905182335_asset_downloads` | `record_asset_download(uuid, text, text) does not exist` | signature drift |
+  | `20260906112044_image_regeneration_budget` | expects 100 cents, gets 200 | `20260909100346` raised the budget deliberately; the expectation was never moved |
+  | `20260905191203_asset_version_history` | "la plus récente vient en tête", got the older one | **both rows share a `created_at`** — written in one transaction, so the order is a coin toss. A test that depends on tie-breaking |
+  | `20260905175222_notifications_and_workspaces` | "a second sync must not have created duplicate rows" | not yet diagnosed |
+  | `20260829100000_site_spec` · `20260829103000_site_spec_endpoints` · `20260829112000_null_safe_jsonb_validators` · `20260829123000_entitlement_and_generation_credits` | not captured in the log tail | not yet diagnosed |
+
+  Three groups, and the third is the one to think about. **Stale expectations after a deliberate
+  change** (the budget, the themes constraint, two signatures) are cheap and mechanical. **A test
+  that depends on tie-breaking** is a test that was never right. And `consume_anon_generation` is
+  mine: I changed a signature four sessions ago and the suite could not tell me, which is the same
+  sentence as the one above about pipelines nobody reads.
+
+  Not fixed here: twelve files across four chantiers is a separate piece of work, and this session
+  was the tenancy layer. **The count is the number to watch** — 13 → 12 today, and any number
+  above zero that includes `tenancy_layer` or `function_surface` is a real regression rather than
+  inherited debt.
