@@ -49,6 +49,21 @@ export async function claimAnonBrief(
        */
       anon_token_hash: null,
       anon_expires_at: null,
+      /*
+       * ⚠ AND `organization_id` ARRIVES WITH `user_id`, WITHOUT BEING NAMED
+       * HERE. That is deliberate, and it is not an omission to fix.
+       *
+       * A BEFORE trigger on `projects` (backend 20260911180839) derives the
+       * practice from the user in this same statement, and the CHECK
+       * `projects_tenant_present_check` refuses the row if it somehow did not
+       * — a claimed project with no practice cannot be written at all, so the
+       * whole UPDATE fails and she keeps her token rather than losing the
+       * brief to a half-claim. Together or neither, by constraint.
+       *
+       * Setting it from here would mean reading the organization first: a
+       * second round trip, a race, and a value this process would then be
+       * trusted to get right. The database already knows it.
+       */
     })
     .eq("anon_token_hash", hashAnonToken(input.token))
     /*
