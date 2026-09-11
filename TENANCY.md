@@ -623,6 +623,133 @@ was the tenancy layer. **13 → 12 is the number to watch.** Any number above ze
 
 ---
 
-*Session 1 complete and corrected. Session 2 complete. Session 3 complete, built from the
-brief of 11 September because the 2 September document is still not in the repository.
-Session 4 migrates the fourteen policies; Session 5 is the audit.*
+## 11. DOES THIS REPOSITORY DESCRIBE THE DATABASE?
+
+**Asked mechanically, of the whole schema, and the answer is: almost.**
+
+`direction_asset_daily_spend` was one table. The question was whether it was the only one —
+and it is the condition the tenancy work has to clear, because cabinets are about to be built
+on top and every guarantee written this month is a guarantee about a schema built by replaying
+`supabase/migrations`.
+
+### 11.1 The instrument
+
+CI cannot reach production, and this session cannot run Docker, so neither side could simply be
+dumped and diffed. What exists instead:
+
+- `supabase/tests/helpers/schema_fingerprint.sql` — one comparable line per schema object.
+  **1,910 of them**: RLS flags, policies, constraints, indexes, triggers, function bodies,
+  grants and columns.
+- `supabase/tests/helpers/schema_fingerprint.production.txt` — a dated recording of production.
+- `.github/workflows/schema-drift.yml` — replays every migration into a fresh Postgres,
+  fingerprints it, and prints three lists: only in production, only in the replay, different.
+
+Two details that decide whether the answer means anything. **Grants are normalised** through
+`aclexplode` and sorted, because `relacl`'s array order is an artefact of the order grants were
+issued and two identical permission sets compare unequal if dumped raw. And **a NULL `proacl`
+fingerprints as `DEFAULT=EXECUTE-TO-PUBLIC`** rather than as "no grants", because that is what
+it means in PostgreSQL and the entire function-surface question turns on it.
+
+The baseline is a **proven copy, not a retyping**: all nine per-kind hashes were recomputed from
+the file and matched what the database itself reported, and so did an order-independent
+canonical hash over every line. The committed `.sql` reproduces that same canonical hash, so the
+file and the query agree. The report refuses to compare at all if either side has under 1,000
+objects — a truncated side would empty every list, which reads exactly like "no drift".
+
+### 11.2 The answer
+
+| | |
+|---|---|
+| production objects | 1,675 |
+| replay objects | 1,675 |
+| **only in production** | **0** |
+| **only in the replay** | **0** |
+| **different** | **43** |
+
+*(counts from the first run, before this session's later migrations; the baseline has since been
+refreshed.)*
+
+**Nothing is missing from either side.** Not a table, not a column, not a policy, not a
+constraint, not an index, not a trigger, not a grant. After `20260911182533`, not an RLS flag
+either. The repository produces every object production has, and produces no object production
+lacks.
+
+**All 43 divergences are function bodies**, and 43 of 233 is not a random scatter — it is a
+class. `pg_get_functiondef` returns the body exactly as stored, comments included, so a
+migration file whose **comments were edited after it was applied** yields a body that differs
+from production in prose and not in behaviour. Confirmed on
+`site_spec_hue_tolerance`: identical logic, and the repository's copy carries three trailing
+`--` comments that production's stored body does not.
+
+That is a real divergence — the repository no longer says exactly what ran — and it is not a
+behavioural one. Conflating the two would either cry wolf or bury a genuine difference in noise,
+so the fingerprint now carries a second, comment-insensitive hash per function.
+
+⚠ **Its normalisation is approximate in the unsafe direction**: it strips `--` and block comments
+without knowing whether they sit inside a string literal, so it could in principle make two
+different functions look equal. It is therefore only ever used to EXPLAIN a difference the raw
+comparison already found, never to dismiss one on its own.
+
+### 11.3 What this licenses, and what it does not
+
+It licenses the tenancy work to continue: **there is no structural divergence between the
+repository and production.** The policies the fourteen will be migrated onto, the constraints
+they rely on, the grants that gate them and the columns they read are the same objects in both.
+
+It does not license calling the repository a perfect record. Two things remain true:
+
+1. **The 43 comment divergences are unexplained in detail.** The class is established and one
+   member is confirmed; the other 42 are inferred from the class, and the comment-insensitive
+   fingerprint is what will settle them on the next run.
+2. **The baseline is a snapshot.** CI cannot read production, so it goes stale the moment a
+   migration is applied without regenerating it — and then it reports age as drift. Its header
+   says so and carries the command. It was already refreshed once inside this session, after
+   two further migrations, for exactly that reason.
+
+### 11.4 ⚠ And the drift check found a defect of mine on its first run
+
+Not a divergence — a defect, and the same one twice.
+
+`20260911170458` moved the authority check inside three function bodies and gated each on
+`auth.role() = 'service_role' or <owns the row>`. It was written immediately after I caught a
+near-miss where an `auth.uid()`-only predicate would have returned `'generic'` instead of a real
+builder target, and its own comment records the lesson: **ask who calls it and with what
+identity.**
+
+I asked, and enumerated three callers: the server, the owner, the anonymous token holder. There
+is a fourth, and it has no identity at all — **a direct database connection**: a migration, a
+backfill, `psql`, a cron job. For that caller every branch of the gate is false and the function
+returns its fallback. Not an error. A plausible value. Measured against production:
+
+```
+no jwt        site_spec_default_target = 'generic'      ← wrong
+service_role  site_spec_default_target = 'squarespace'
+owner         site_spec_default_target = 'squarespace'
+stranger      site_spec_default_target = 'generic'      ← correct
+```
+
+No production path is affected today — the browser always carries a JWT and the server always
+uses the service role. What was affected is every future data migration, every cron job, and
+four test files, which is the only reason it surfaced at all, and only because the CI replay had
+been unblocked the same day.
+
+Closed by `20260911190810`. `caller_is_the_database()` requires **both** `request.jwt.claims` and
+`request.headers` to be absent; PostgREST sets both on every request it serves and a request
+with no key never reaches SQL. It concedes nothing, because anyone holding a direct connection
+already outranks these functions and can read the tables they read. `anon_token_hash()` has
+reasoned this way in its own body since it was written; this names the condition instead of
+leaving each function to rediscover it. Guard rails assert all four callers, including that a
+stranger and a tokenless anonymous caller still get `'generic'` — **widening a gate must not open
+it.**
+
+**The lesson is not "I missed a caller". It is that enumerating callers from memory is the same
+mistake as enumerating trigger functions from memory, which this repository already made once
+and fixed with a loop over the catalogue.** The list was right about who *uses* the product and
+wrong about who *reaches* the function.
+
+---
+
+*Session 1 complete and corrected. Session 2 complete, and corrected in turn. Session 3
+complete, built from the brief of 11 September because the 2 September document is still not in
+the repository. The replay-versus-production question is answered in §11: no structural
+divergence. Session 4 migrates the fourteen policies; Session 5 is the audit.*

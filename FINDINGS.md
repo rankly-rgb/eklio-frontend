@@ -773,3 +773,40 @@ replaced by what remains true. What follows is the residue, not the original lis
   was the tenancy layer. **The count is the number to watch** — 13 → 12 today, and any number
   above zero that includes `tenancy_layer` or `function_surface` is a real regression rather than
   inherited debt.
+
+- **2026-09-11 (OPEN, deliberately not fixed) — `grant_plan_allowance` has the ordering tie the
+  asset-version functions had.** It picks a purchase with `order by pu.created_at desc`, and
+  `now()` is the start of the transaction rather than a moving clock — so a **double submit**,
+  which writes two purchase rows in one transaction, produces two rows with an identical
+  `created_at` and the sort has nothing to separate them. Postgres may take either. Found by
+  enumerating every function that orders by `created_at desc` (there are eight; the other six are
+  list-newest-first where a tie is cosmetic). **Not touched, because the post-purchase space is
+  not this chantier's to change** — and because the right fix there may not be a tiebreaker at
+  all but a reason two rows exist. Backend `20260911191432` fixes the same shape in
+  `get_brand_asset_versions` and `get_brand_asset_previous_inputs` and names this one in its
+  header.
+
+- **2026-09-11 (OPEN) — an organization survives its last member.** Deleting an `auth.users` row
+  cascades to `profiles`, to `projects`, and to the `organization_members` row — but **not** to
+  the `organizations` row, which nothing then points at. Found the hard way: the guard rail in
+  backend `20260911190810` created a fixture user, deleted it, and left one orphaned practice in
+  production, which had to be swept by hand (the guard rail now deletes it). Whether a practice
+  should disappear with its owner is a **decision**, not a cascade rule to add in passing — with
+  two members the answer is obviously no, and with one it is probably yes. Session 4 or 5.
+
+- **2026-09-11 (OPEN — needs a human) — the abandoned `claude/tenancy-layer` branches cannot be
+  deleted from this environment.** `git push origin --delete` fails with *"fatal: the remote end
+  hung up unexpectedly"* against the agent proxy in both repos, and the GitHub MCP server exposes
+  no delete-branch tool. The two refs, so the deletion is one command each:
+
+  ```
+  eklio-frontend  claude/tenancy-layer  2f514ad3c8291e98134d9dcf3beaa4036f0268af
+  eklio-backend   claude/tenancy-layer  6adeb85ac04bf55e0b7cecde8b46d82a52b8c33e
+  ```
+
+  Why they are a trap rather than merely stale: they carry **twelve migrations stamped
+  `20260903*`**, which now sort BEFORE migrations already applied to production, plus the practice
+  UI and per-seat surface that are explicitly out of scope for October. Nothing from them exists
+  in the live database (checked against `information_schema` and `pg_proc`). A future session that
+  mistakes them for work in progress would either renumber applied migrations or replay them out
+  of order.
