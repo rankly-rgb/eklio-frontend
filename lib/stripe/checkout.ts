@@ -6,7 +6,7 @@ import {
   kitPriceId,
   monthlyPresencePriceId,
 } from "@/lib/stripe/client";
-import { includesMonthlyPresence } from "@/lib/billing/plans";
+import { includesMonthlyPresence, tierRank } from "@/lib/billing/plans";
 import { siteUrl } from "@/lib/site-url";
 import { buildCheckoutMetadata } from "@/lib/stripe/metadata";
 import type { KitTier } from "@/lib/kit/tiers";
@@ -149,11 +149,82 @@ function lineItems(
  * deux chemins : le webhook peut ainsi rattacher le paiement même si la
  * correspondance customer → user n'a pas pu être écrite au moment du checkout.
  */
+/**
+ * A kit this project has already been paid for.
+ *
+ * ⚠ MEASURED, NOT SUPPOSED. Two Checkout sessions for the same project and
+ * tier were exercised against the live database: both wrote a `purchases` row
+ * and BOTH opened an allowance, because `purchases` is unique on the Stripe
+ * session id and a second press gets a second session id. $158 for one $79
+ * kit, and nothing in the schema noticed.
+ *
+ * ⚠ AND IT IS NOT ATOMIC, WHICH IS WHY IT SITS BEFORE THE CHARGE RATHER THAN
+ * AFTER IT. Two genuinely simultaneous presses can still both read "nothing
+ * paid" and both proceed. The alternative -- a unique index on
+ * (project_id, tier) where status = 'paid' -- would make the SECOND WEBHOOK
+ * fail, which means the money is taken and the row is lost: strictly worse,
+ * because there is no refund primitive anywhere in this product. A guard in
+ * front of the payment can only ever fail towards not charging.
+ */
+export class AlreadyPurchasedError extends Error {
+  constructor(public readonly tier: KitTier) {
+    super(`This project already has a paid ${tier} kit.`);
+    this.name = "AlreadyPurchasedError";
+  }
+}
+
+async function alreadyPaidFor(
+  supabase: Client,
+  projectId: string,
+  tier: KitTier
+): Promise<KitTier | null> {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("tier")
+    .eq("project_id", projectId)
+    .eq("status", "paid");
+
+  /*
+   * ⚠ A READ THAT FAILS DOES NOT BLOCK THE SALE. Every other fail-closed rule
+   * in this product guards a deliverable; this one guards a PAYMENT, and the
+   * two point in opposite directions. Refusing a checkout because a read
+   * failed would turn a database hiccup into a lost customer, and the failure
+   * it is protecting against -- a second charge -- is visible, refundable by
+   * hand, and remembered in `purchases`.
+   */
+  if (error) {
+    console.error(`[checkout] paid-already read: ${error.message}`);
+    return null;
+  }
+
+  /*
+   * The same tier or better. An UPGRADE is a real purchase and must go
+   * through: she bought Starter and wants Signature, and `highestTier` is
+   * already the rule everywhere else that what she owns is the most generous
+   * thing she bought.
+   */
+  for (const row of data ?? []) {
+    const owned = row.tier as KitTier;
+    if (tierRank(owned) >= tierRank(tier)) return owned;
+  }
+  return null;
+}
+
 export async function createCheckoutSession(
   supabase: Client,
   input: CheckoutInput
 ): Promise<string> {
   const { userId, email, tier, projectId, withMonthlyPresence } = input;
+
+  /*
+   * Before Stripe, before the customer: a second charge for a kit she already
+   * owns is the one failure here that costs her money rather than costing us
+   * a sale.
+   */
+  if (projectId) {
+    const owned = await alreadyPaidFor(supabase, projectId, tier);
+    if (owned) throw new AlreadyPurchasedError(owned);
+  }
 
   const customerId = await ensureStripeCustomer(supabase, { userId, email });
   const metadata = buildCheckoutMetadata({ userId, projectId, tier });

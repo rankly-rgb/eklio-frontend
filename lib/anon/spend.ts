@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { clientIp, ipBucket } from "@/lib/anon/token";
+import { track } from "@/lib/analytics";
 
 /*
  * ── THE WALL, IN ONE PLACE ──────────────────────────────────────────────
@@ -71,6 +72,7 @@ export async function consumeAnonSpend(
   if (error) {
     // A meter that cannot be read is "we could not tell", never "go ahead".
     console.error(`[anon-spend] consume_anon_generation: ${error.message}`);
+    track("generation_refused", { kind, reason: "unreadable" });
     return NextResponse.json(
       { error: "We couldn't start that just now. Try again in a moment." },
       { status: 503 }
@@ -80,10 +82,38 @@ export async function consumeAnonSpend(
   const outcome = data as unknown as { ok?: boolean; reason?: string } | null;
   if (outcome?.ok === true) return null;
 
+  /*
+   * ⚠ THE ONLY TRACE A REFUSAL LEAVES. `consume_anon_generation` refuses and
+   * writes nothing — by design, it is a counter, not a log. Without this line
+   * the first sign of the daily ceiling is a therapist seven screens into her
+   * evening getting nothing, and nobody finds out until she writes in.
+   *
+   * The machine reason, never the sentence she read, and never her address:
+   * the hashed bucket is already in the counters table if you need it.
+   */
+  track("generation_refused", { kind, reason: outcome?.reason ?? "unknown" });
+
   return NextResponse.json(
     { error: anonCapMessage(outcome?.reason) },
-    { status: 429, headers: { "retry-after": "3600" } }
+    { status: 429, headers: { "retry-after": String(secondsUntilReset()) } }
   );
+}
+
+/**
+ * Seconds until the ceilings reset.
+ *
+ * ⚠ THE COUNTERS ARE KEYED ON THE UTC DATE, so the reset is midnight UTC and
+ * nothing else. The header used to say a flat 3600 — an hour — which is wrong
+ * by up to twenty-three of them, and wrong in the direction that invites a
+ * retry that will also fail.
+ */
+export function secondsUntilReset(now: Date = new Date()): number {
+  const midnightUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1
+  );
+  return Math.max(1, Math.ceil((midnightUtc - now.getTime()) / 1000));
 }
 
 /*
@@ -93,6 +123,13 @@ export async function consumeAnonSpend(
  * her is a number about a device — and telling her the global ceiling is full
  * would be telling her the product is popular, which is not her problem. Both
  * refusals say the same true thing: not now, come back.
+ *
+ * ⚠ AND NEVER "IN A LITTLE WHILE", WHICH IS WHAT THIS USED TO SAY. The
+ * ceilings reset at midnight UTC; a therapist in California reading this at
+ * eight in the evening is nine hours from "a little while". She has just
+ * answered seven screens, and a small lie at that exact moment is the most
+ * expensive one this product can tell. It names the day, and it names the way
+ * not to lose the work — the email offer is on the same screen.
  */
 export function anonCapMessage(reason: string | undefined): string {
   switch (reason) {
@@ -101,6 +138,6 @@ export function anonCapMessage(reason: string | undefined): string {
     case "global_cap":
     case "disabled":
     default:
-      return "We're at capacity for new brands right now. Try again in a little while — your answers are saved.";
+      return "We're at capacity for new brands today — your answers are saved. Come back tomorrow, or have us email you a link so you don't lose them.";
   }
 }

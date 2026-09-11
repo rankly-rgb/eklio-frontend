@@ -3,7 +3,10 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { createCheckoutSession } from "@/lib/stripe/checkout";
+import {
+  AlreadyPurchasedError,
+  createCheckoutSession,
+} from "@/lib/stripe/checkout";
 import { StripeConfigError } from "@/lib/stripe/client";
 import { kitTierSchema } from "@/lib/kit/tiers";
 
@@ -61,6 +64,20 @@ export async function startCheckout(input: {
       withMonthlyPresence: parsed.data.withMonthlyPresence,
     });
   } catch (error) {
+    /*
+     * ⚠ ELLE A DÉJÀ PAYÉ CE KIT. Pas une panne : une phrase, et un chemin vers
+     * ce qu'elle a acheté. Le cas a été mesuré en base — deux sessions
+     * Checkout pour le même projet écrivaient deux achats et ouvraient deux
+     * allocations, soit $158 pour un kit à $79.
+     */
+    if (error instanceof AlreadyPurchasedError) {
+      return {
+        ok: false,
+        error:
+          "You've already paid for this project's kit — it's unlocked. Open it from your projects; nothing new was charged.",
+      };
+    }
+
     /*
      * Une variable Stripe manquante est une panne de CONFIGURATION, pas une
      * panne utilisateur : on la nomme côté serveur pour qu'elle soit réparable,

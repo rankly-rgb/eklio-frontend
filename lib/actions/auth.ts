@@ -14,6 +14,47 @@ import { currentAnonToken } from "@/lib/anon/session";
 
 export type AuthFormState = { error: string } | null;
 
+/**
+ * Attach the anonymous brief in this browser to `userId`, if there is one.
+ *
+ * ⚠ BOTH DOORS, NOT JUST THE NEW ONE. This lived inline in `signUp` and
+ * nowhere else, so every path that ended in SIGNING IN rather than signing up
+ * lost the brief — and there are at least three of them:
+ *
+ *   1. she already has an account, so signup answers "sign in instead";
+ *   2. she made an account on an earlier visit and uses it;
+ *   3. she opens the reveal on a second device and is sent to `/login`.
+ *
+ * In every one of those her project keeps `user_id = null`, and from that
+ * moment it is invisible to her: `resolveBriefCaller` prefers a session over a
+ * cookie, so the token she still holds is never sent again. Seven steps and
+ * three finished directions, still in the database, unreachable, deleted
+ * thirty days later by the purge.
+ *
+ * It never fails the sign-in or the sign-up. Her account exists either way; a
+ * brief that could not be attached is a brief, not an account.
+ */
+async function claimBriefInThisBrowser(userId: string): Promise<string | null> {
+  const token = await currentAnonToken();
+  if (!token) return null;
+
+  const outcome = await claimAnonBrief(createAdminClient(), { token, userId });
+
+  if (!outcome.claimed) {
+    console.info(`[auth] brief not claimed: ${outcome.reason}`);
+    return null;
+  }
+
+  /*
+   * The cookie is spent. Leaving it would point at a row that no longer
+   * answers to it, and on a shared device the next person would carry a token
+   * for someone else's claimed project.
+   */
+  const jar = await cookies();
+  jar.delete(ANON_COOKIE);
+  return outcome.projectId;
+}
+
 export async function signIn(
   _prevState: AuthFormState,
   formData: FormData
@@ -22,7 +63,7 @@ export async function signIn(
   const password = String(formData.get("password") ?? "");
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -52,6 +93,31 @@ export async function signIn(
    * `next` refusé ne fait jamais échouer la connexion — il est simplement
    * ignoré au profit du tableau de bord.
    */
+  /*
+   * ⚠ THE USER FROM THE SIGN-IN ITSELF, NOT A SECOND `getUser()`. One fewer
+   * round trip, and it is the same answer — `signInWithPassword` has just
+   * established who this is. The anonymous cookie is untouched by the auth
+   * cookies it wrote and is still here; after `redirect()` nothing runs, so
+   * the claim has to happen on this line or not at all.
+   */
+  const user = data?.user;
+  if (user) {
+    const claimed = await claimBriefInThisBrowser(user.id);
+    if (claimed) {
+      track("account_created", {
+        userId: user.id,
+        projectId: claimed,
+        claimed: true,
+        /*
+         * ⚠ NOT A NEW ACCOUNT, AND THE FUNNEL MUST NOT PRETEND IT IS. This is
+         * an existing account picking up a brief it did not have a minute ago.
+         * `via_sign_in` is what tells the two apart when the numbers are read.
+         */
+        via_sign_in: true,
+      });
+    }
+  }
+
   redirect(signedInRedirectPath(String(formData.get("next") ?? "")));
 }
 
@@ -75,14 +141,6 @@ export async function signUp(
   if (password.length < 8) {
     return { error: "Use a password of at least 8 characters." };
   }
-
-  /*
-   * ⚠ READ BEFORE SIGNING UP. `signUp` may issue a session, which changes what
-   * `resolveBriefCaller` reports — and by then it would report the new user
-   * and forget the cookie entirely. The brief she is looking at is identified
-   * now, while nothing has changed yet.
-   */
-  const anonToken = await currentAnonToken();
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
@@ -127,27 +185,9 @@ export async function signUp(
    * It never fails the signup. Her account exists either way; a brief that
    * could not be attached is a brief, not an account.
    */
-  let claimedProjectId: string | null = null;
-
-  if (data.user && anonToken) {
-    const outcome = await claimAnonBrief(createAdminClient(), {
-      token: anonToken,
-      userId: data.user.id,
-    });
-
-    if (outcome.claimed) {
-      claimedProjectId = outcome.projectId;
-      /*
-       * The cookie is spent. Leaving it would point at a row that no longer
-       * answers to it, and on a shared device the next person would carry a
-       * token for someone else's claimed project.
-       */
-      const jar = await cookies();
-      jar.delete(ANON_COOKIE);
-    } else {
-      console.info(`[signUp] brief not claimed: ${outcome.reason}`);
-    }
-  }
+  const claimedProjectId = data.user
+    ? await claimBriefInThisBrowser(data.user.id)
+    : null;
 
   /*
    * ⚠ THE PROJECT ID IS WHAT MAKES THIS STEP JOINABLE. Without it, the funnel

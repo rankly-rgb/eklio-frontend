@@ -2428,6 +2428,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      anon_spend_today: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       consume_anon_generation: {
         Args: { p_ip_hash: string; p_kind?: string }
         Returns: Json

@@ -103,13 +103,39 @@ describe("réclamer", () => {
   });
 });
 
-describe("l'inscription", () => {
+describe("les deux portes réclament le brief", () => {
   const AUTH = read("lib/actions/auth.ts");
 
-  it("⚠ lit le cookie AVANT de créer le compte", () => {
-    // `signUp` peut ouvrir une session, et `resolveBriefCaller` rendrait alors
-    // la nouvelle utilisatrice en oubliant le cookie.
-    expect(AUTH.indexOf("currentAnonToken")).toBeLessThan(AUTH.indexOf("auth.signUp"));
+  /*
+   * ⚠ CE BLOC A CHANGÉ DE PRÉMISSE, ET IL AVAIT RAISON DE LE FAIRE.
+   *
+   * Il vérifiait que `signUp` lisait le cookie AVANT `auth.signUp`, et que la
+   * réclamation tenait dans `if (data.user && anonToken)`. Les deux décrivaient
+   * une forme qui n'existe plus, et surtout ils ne regardaient qu'UNE porte.
+   *
+   * La session 4 a mesuré ce que ça coûtait : `signIn` ne réclamait rien. Donc
+   * chaque chemin qui finit par une CONNEXION plutôt qu'une inscription
+   * perdait le brief — et il y en a au moins trois (elle a déjà un compte et
+   * l'inscription lui répond « connectez-vous » ; elle avait créé un compte
+   * lors d'une visite précédente ; elle ouvre la révélation sur un second
+   * appareil et atterrit sur `/login`). Son projet gardait `user_id = null`,
+   * et `resolveBriefCaller` préférant la session au cookie, le jeton qu'elle
+   * détenait encore n'était plus jamais envoyé : sept étapes et trois
+   * directions, toujours en base, injoignables, supprimées trente jours plus
+   * tard par la purge.
+   */
+  it("⚠ signIn ET signUp passent par la même réclamation", () => {
+    const helper = AUTH.indexOf("async function claimBriefInThisBrowser");
+    const signIn = AUTH.indexOf("export async function signIn(");
+    const signUp = AUTH.indexOf("export async function signUp(");
+    expect(helper).toBeGreaterThan(-1);
+    expect(signIn).toBeGreaterThan(-1);
+    expect(signUp).toBeGreaterThan(-1);
+
+    const inSignIn = AUTH.slice(signIn, signUp);
+    const inSignUp = AUTH.slice(signUp);
+    expect(inSignIn).toContain("claimBriefInThisBrowser");
+    expect(inSignUp).toContain("claimBriefInThisBrowser");
   });
 
   it("⚠ réclame SANS attendre de session", () => {
@@ -120,16 +146,42 @@ describe("l'inscription", () => {
      * attaché tout de suite et l'attend, qu'elle entre directement ou qu'elle
      * doive confirmer d'abord.
      */
-    expect(AUTH).toMatch(/if \(data\.user && anonToken\)/);
-    expect(AUTH).toContain("claimAnonBrief");
+    expect(AUTH).toMatch(/data\.user\s*\n?\s*\?\s*await claimBriefInThisBrowser\(data\.user\.id\)/);
     // La redirection dépend de la session, la réclamation non.
     expect(AUTH).toMatch(/data\.session \? "\/app" : "\/signup\/check-your-email"/);
+  });
+
+  it("lit le cookie dans le bocal, pas à travers resolveBriefCaller", () => {
+    /*
+     * C'est ce qui rend sûr de lire le cookie APRÈS `auth.signUp`, alors que
+     * l'ancienne version devait le lire avant. `currentAnonToken` ouvre le
+     * bocal ; `resolveBriefCaller`, lui, préfère une session à un jeton et
+     * rendrait « utilisatrice, pas de jeton » une fois le compte créé.
+     */
+    const helper = AUTH.slice(
+      AUTH.indexOf("async function claimBriefInThisBrowser"),
+      AUTH.indexOf("export async function signIn(")
+    );
+    expect(helper).toContain("currentAnonToken");
+    expect(helper).not.toContain("resolveBriefCaller");
   });
 
   it("et le cookie dépensé est supprimé", () => {
     // Sur un appareil partagé, le suivant porterait sinon un jeton vers le
     // projet réclamé de quelqu'un d'autre.
     expect(AUTH).toMatch(/jar\.delete\(ANON_COOKIE\)/);
+  });
+
+  it("un échec de réclamation ne fait jamais échouer la connexion", () => {
+    // Son compte existe de toute façon. Un brief non rattaché est un brief,
+    // pas un compte — et c'est la seule branche qui ne doit pas lever.
+    const helper = AUTH.slice(
+      AUTH.indexOf("async function claimBriefInThisBrowser"),
+      AUTH.indexOf("export async function signIn(")
+    );
+    expect(helper).toMatch(/if \(!outcome\.claimed\)/);
+    expect(helper).toContain("return null");
+    expect(helper).not.toContain("throw");
   });
 });
 

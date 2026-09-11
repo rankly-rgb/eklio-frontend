@@ -7,9 +7,18 @@
  *   npx tsx scripts/funnel.ts --from 2026-10-01 --to 2026-10-08
  *
  * One command, one table, and every number labelled with what it actually
- * counts. The arithmetic lives in `public.funnel_report` (eklio-backend),
- * never here: two definitions of "conversion" would eventually disagree, and
- * the one you were not reading would be the one you believed.
+ * counts. The arithmetic lives in `public.funnel_report` and
+ * `public.anon_spend_today` (eklio-backend), never here: two definitions of
+ * "conversion" would eventually disagree, and the one you were not reading
+ * would be the one you believed.
+ *
+ * ── WHAT IS AT THE TOP, AND WHY ─────────────────────────────────────────
+ *
+ * TODAY'S CEILING, whatever window the funnel below covers. This is the thing
+ * that would make you act on the morning of a campaign, and until it existed
+ * the first sign of the daily cap was a real therapist being refused seven
+ * screens into her evening. Headroom is the warning; a non-zero refusal count
+ * is the confirmation that it is already too late to be early.
  *
  * ── WHAT IT NEEDS ───────────────────────────────────────────────────────
  *
@@ -31,6 +40,11 @@
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../types/supabase";
+import {
+  renderCeilingGlance,
+  unreadableCeiling,
+  type Glance,
+} from "../lib/funnel/glance";
 
 /* ── .env.local, without a dependency ──────────────────────────────────── */
 function loadEnvLocal(): void {
@@ -95,6 +109,19 @@ function bar(pct: number | null): string {
   return "█".repeat(filled) + "·".repeat(20 - filled);
 }
 
+
+/* ── Today's ceiling ───────────────────────────────────────────────────── */
+
+async function printCeilingGlance(
+  supabase: ReturnType<typeof createClient<Database>>
+): Promise<void> {
+  const { data, error } = await supabase.rpc("anon_spend_today");
+  const lines = error
+    ? unreadableCeiling(error.message)
+    : renderCeilingGlance(data as unknown as Glance);
+  for (const line of lines) console.log(line);
+}
+
 async function main(): Promise<void> {
   loadEnvLocal();
 
@@ -113,6 +140,8 @@ async function main(): Promise<void> {
   const supabase = createClient<Database>(url, key, {
     auth: { persistSession: false },
   });
+
+  await printCeilingGlance(supabase);
 
   const { data, error } = await supabase.rpc("funnel_report", {
     p_from: from.toISOString(),

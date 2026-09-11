@@ -30,6 +30,15 @@ export type AnalyticsEvent =
   | "account_created"
   | "checkout_opened"
   | "purchase_completed"
+  /* ── Le plafond, vu venir plutôt que rencontré ────────────────────────
+   * `generation_refused` porte `kind` (reveal/assist) et la RAISON MACHINE
+   * (`ip_cap`, `global_cap`, `disabled`, `unreadable`) — jamais la phrase
+   * qu'elle a lue, jamais son adresse. C'est la seule trace qu'un refus a
+   * eu lieu : `consume_anon_generation` refuse sans rien écrire, donc sans
+   * cet événement le premier signe du plafond est une thérapeute qui n'a
+   * rien obtenu, et personne ne l'apprend.
+   */
+  | "generation_refused"
   | "brief_started"
   | "brief_step_completed"
   | "brief_reviewed"
