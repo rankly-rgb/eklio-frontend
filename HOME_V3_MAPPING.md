@@ -125,7 +125,15 @@ number one screen-height away is a decoration, not a fact.
    and the linen token. The mockup's green `READY` pill is not reproduced in
    green.
 
-## A defect in the reference itself
+## Defects in the reference itself
+
+The mockup is a GENERATED IMAGE, not an authored design. Its measurements are
+reliable for **position, proportion and structure**; they are NOT a type scale,
+and it contains outright errors. Two are known:
+
+**The mockup's app header measures ~59px.** `--header-h` is 72px, and all eight
+reference screens in `design/reference/` draw it at 72. The image is wrong, the
+token is right, and the header was left alone.
 
 **The mockup's week strip draws EIGHT day columns.** Its letter row reads
 `S S M T W T F S` above seven real dates (8 through 14). A week has seven days,
@@ -137,3 +145,40 @@ recorded here rather than in a commit message because this file is what a
 session reads before touching the week strip: an eighth column is not a missing
 feature to restore, and matching the mockup there would mean drawing a day that
 does not exist.
+
+
+## Measured differences deliberately NOT adopted
+
+Found by measuring `design/reference/home-v3/mockup.png` at 1:1 (scale
+confirmed against two known tokens: `--text-body` 16px on the header sub-line,
+`--text-card-title` 22px on the stats value). **These are not unfixed defects.
+They were read, judged and refused on source.**
+
+| Zone | Image measures | Ships as | Why not adopted |
+| --- | --- | --- | --- |
+| Header serif line | cap 33px → ≈46px | `--text-question` 40px | No token between 40 and 46 |
+| Hero canvas headline | cap 32px → ≈44px | `clamp(24px, 3.4vw, 38px)` | Her site's inline type, no token scale applies |
+| Next-step card title | cap 20px → ≈28px | **`--text-tone` 25px** | Moved to the one token that sits between 22 and 28 |
+
+The reason is the same for all three: **adopting the image's type sizes means
+leaving the token scale for one screen, on the authority of a generated image
+whose header height this same file records as wrong.** A pixel measurement off
+that image settles where a thing sits; it does not settle how big the type is.
+The rule applied instead: where an existing token sits between what shipped and
+what the image measures, move to it and name it; where none does, ship
+unchanged.
+
+## What measurement caught that eye comparison did not
+
+The by-eye pass (`1ad3443`) added a **border around the emphasised checklist
+row**. The mockup has none: sampling a vertical slice through that block's top
+edge goes straight from page background `(251,249,246)` to linen `(246,241,232)`
+with no darker line between. The border was invented by the comparison, not
+read from the reference, and it shipped for three commits before the file could
+be measured. Removed.
+
+That is the argument for committing the visual contract **before** a chantier
+rather than after: an eye comparison against a pasted image can add something
+that is not there and be perfectly confident about it. Five other differences
+came out of the same measured pass; this one was a regression, and only the
+file could have found it.

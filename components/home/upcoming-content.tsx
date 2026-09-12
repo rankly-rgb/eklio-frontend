@@ -58,7 +58,7 @@ export function UpcomingContent({
               <PhotoSlot
                 tokens={{ primary: primaryColor, dark_neutral: darkNeutral }}
                 src={item.photoUrl}
-                className="aspect-[16/10] w-[68px] flex-none rounded-preview"
+                className="aspect-[2/1] w-[72px] flex-none rounded-preview"
               />
 
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">

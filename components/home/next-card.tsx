@@ -94,7 +94,7 @@ function LaunchStepBody({
 
   return (
     <div className="mt-3 flex flex-col gap-4">
-      <h3 className="text-pretty font-display text-card-title font-medium leading-card tracking-card-title text-ink">
+      <h3 className="text-pretty font-display text-tone font-medium leading-card tracking-card-title text-ink">
         {next.step.label}
       </h3>
 
@@ -216,7 +216,7 @@ function ContentItemBody({
         {ARCHETYPE_LABELS[next.item.archetype]}
         {next.item.scheduled_for ? ` · ${scheduledLabel(next.item.scheduled_for)}` : ""}
       </MonoLabel>
-      <h3 className="text-pretty font-display text-card-title font-medium leading-card tracking-card-title text-ink">
+      <h3 className="text-pretty font-display text-tone font-medium leading-card tracking-card-title text-ink">
         {next.item.title ?? "Untitled"}
       </h3>
       {next.item.caption ? (

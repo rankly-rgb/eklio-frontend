@@ -41,7 +41,7 @@ export function RailChecklist({ progress }: { progress: LaunchProgress }) {
             key={item.key}
             aria-current={isCurrent ? "step" : undefined}
             className={`flex items-start gap-3 border-t border-line py-2.5 first:border-t-0 ${
-              isCurrent ? "-mx-2 rounded-preview border border-line bg-card px-2" : ""
+              isCurrent ? "-mx-2 rounded-preview bg-card px-2" : ""
             }`}
           >
             <span
