@@ -2747,3 +2747,67 @@ A session that cannot see the file **says so once and stops.** It does not
 search a second way, and it does not accept a filename, a folder listing or a
 screenshot as evidence that a file is on the ref. `git ls-tree` on the remote
 is the whole check.
+---
+
+## 2026-09-12 — Chantier home-v3: merged
+
+Merge commit **`eb3211f`** — `fc809ab` (main) + `a3773fe` (branch tip), eighteen
+commits, merged with `--no-ff`.
+
+**Not squashed, on purpose.** The commits are the record of what was judged
+against what: `1ad3443` states its comparison was BY EYE against an image
+pasted into a session, `a3773fe` states its comparison was MEASURED against the
+committed reference and names the border the by-eye pass had invented.
+Squashing collapses a by-eye claim and a measured one into one undifferentiated
+diff, and that distinction is what this branch spent the session establishing.
+
+### ⚠ No signed-in render of `/app` was verified by anyone before this merge
+
+Every image produced during the chantier came from a harness with hand-written
+props, and is labelled as such wherever it appears. Nothing on this screen was
+seen rendering from the production read path, by a person or by a session,
+before it went to main.
+
+### What was run, and what it returned
+
+| Check | Result |
+| --- | --- |
+| `vitest run` | 2382 passed, 120 files, 0 failed |
+| `tsc --noEmit` | clean |
+| `eslint .` | clean |
+| `next build` | exit 0, from a cleared `.next` |
+
+All four on `a3773fe`; the suite and the typechecker were run again on the merge
+commit itself and stayed green.
+
+### A repository oddity found while merging
+
+The local `main` ref pointed at `75aeca0`, which has **no merge-base** with
+`origin/main` — an unrelated lineage that also lives on
+`origin/claude/brand-kit-sections`. `git merge` refused it outright. The merge
+was made against `origin/main` (`fc809ab`), which is what deploys and what a
+clone gets. Nothing was lost: that tip is still reachable from its own branch.
+Worth knowing before the next session trusts a bare `main`.
+
+### Deployment
+
+Vercel reported **success** on `eb3211f` via its GitHub commit status —
+`https://vercel.com/naimas-projects-97ad9385/eklio-frontend/HjyRjqVDpHWuq1QFSoF289E2HYCR`.
+
+⚠ **Not confirmed from here, and not confirmable from here.** This environment's
+network policy allows GitHub and refuses everything else (`403 to CONNECT`), so
+the production URL was never fetched and the served build was never checked.
+Whether `main` is the project's production branch is a Vercel setting this
+session cannot read. No Vercel setting, branch target or environment variable
+was touched.
+
+### Open, and assigned to the chantier's author
+
+1. The signed-in pass at 375px and 1440px on the real `/app`, against a real kit.
+2. Brand kit, Content and Check after the LOT 7 chrome deltas — the header is
+   shared, and it is the one place this chantier could break another screen.
+3. Confirming that the production URL serves this build.
+
+`FINDINGS.md` carries what was noticed and deliberately not fixed.
+`HOME_V3_MAPPING.md` carries the zone → source table, the reference's own two
+defects, and the three measured differences refused on source.
