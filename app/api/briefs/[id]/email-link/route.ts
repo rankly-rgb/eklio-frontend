@@ -93,9 +93,9 @@ export async function POST(
      * nothing else — the same rule the analytics module has carried since it
      * was written.
      */
-    track("email_sent", { kind: "resume_brief", delivered: outcome.delivered });
+    track("email_sent", { kind: "resume_brief", accepted: outcome.accepted });
 
-    if (!outcome.delivered) {
+    if (!outcome.accepted) {
       return NextResponse.json(
         { error: "We couldn't send that just now. Try again in a moment." },
         { status: 502 }

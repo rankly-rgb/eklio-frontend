@@ -4,6 +4,7 @@ import {
   unreadableCeiling,
   type Glance,
   type Orphans,
+  type Unwarned,
 } from "@/lib/funnel/glance";
 
 /*
@@ -30,8 +31,13 @@ const LIVE_2026_09_11: Glance = {
 
 const NO_ORPHANS: Orphans = { total: 0, amount_cents: 0, oldest: null, rows: [] };
 
-const text = (g: Glance, o: Orphans | undefined = NO_ORPHANS) =>
-  renderCeilingGlance(g, o).join("\n");
+const NO_UNWARNED: Unwarned = { total: 0, soonest: null, within_days: 14, rows: [] };
+
+const text = (
+  g: Glance,
+  o: Orphans | undefined = NO_ORPHANS,
+  u: Unwarned | undefined = NO_UNWARNED
+) => renderCeilingGlance(g, o, u).join("\n");
 
 describe("la vue du plafond — journée calme", () => {
   const out = text(LIVE_2026_09_11);
@@ -94,7 +100,11 @@ describe("⚠ ce qui doit sauter aux yeux", () => {
     const out = text({ ...LIVE_2026_09_11, enabled: false });
     expect(out).toContain("ANONYMOUS GENERATION IS OFF");
     expect(out).toContain("anon_generation_enabled");
-    const lines = renderCeilingGlance({ ...LIVE_2026_09_11, enabled: false });
+    const lines = renderCeilingGlance(
+      { ...LIVE_2026_09_11, enabled: false },
+      NO_ORPHANS,
+      NO_UNWARNED
+    );
     // Au-dessus des compteurs, qui à ce moment-là ne veulent plus rien dire.
     const off = lines.findIndex((l) => l.includes("IS OFF"));
     const reveals = lines.findIndex((l) => l.includes("reveals"));
@@ -208,5 +218,75 @@ describe("⚠ les achats orphelins", () => {
     const out = renderCeilingGlance(LIVE_2026_09_11).join("\n");
     expect(out).toContain("could not be read");
     expect(out).not.toContain("every paid purchase names its project");
+  });
+});
+
+/*
+ * ── ⚠ SHE IS ABOUT TO BE CHARGED AND WAS NOT TOLD ───────────────────────
+ *
+ * The § 17602 line. Unlike the orphans beside it, this one has a deadline: a
+ * notice is only lawful 3 to 21 days before the charge, so a row under three
+ * days cannot be fixed by sending the email — and the block has to say so
+ * rather than leave someone to work it out at seven in the morning.
+ */
+describe("les essais sur le point de se convertir sans préavis", () => {
+  const row = {
+    user_id: "u1",
+    stripe_subscription_id: "sub_x",
+    trial_end: "2026-09-20T00:00:00.000Z",
+    days_left: 8.2,
+    notice_state: "none",
+    stamped_for: null,
+    extensions: 0,
+  };
+
+  it("zéro se dit, et se dit comme une bonne nouvelle vérifiée", () => {
+    expect(text(LIVE_2026_09_11)).toContain("unwarned            0");
+  });
+
+  it("⚠ un essai non prévenu porte la marque et nomme l'exposition", () => {
+    const out = text(LIVE_2026_09_11, NO_ORPHANS, {
+      total: 1,
+      soonest: row.trial_end,
+      within_days: 14,
+      rows: [row],
+    });
+    expect(out).toContain("⚠ TODAY");
+    expect(out).toContain("⚠ unwarned");
+    expect(out).toContain("17602");
+    expect(out).toContain("never sent");
+  });
+
+  it("sous le plancher légal de trois jours, il dit que l'envoyer ne suffit plus", () => {
+    const out = text(LIVE_2026_09_11, NO_ORPHANS, {
+      total: 1,
+      soonest: row.trial_end,
+      within_days: 14,
+      rows: [{ ...row, days_left: 1.5 }],
+    });
+    expect(out).toContain("under the 3-day legal floor");
+    expect(out).toContain("does NOT make the charge lawful");
+  });
+
+  it("au-dessus du plancher, il dit que le balayage peut encore la prévenir", () => {
+    const out = text(LIVE_2026_09_11, NO_ORPHANS, {
+      total: 1,
+      soonest: row.trial_end,
+      within_days: 14,
+      rows: [{ ...row, days_left: 6 }],
+    });
+    expect(out).toContain("still inside the window");
+  });
+
+  /*
+   * ⚠ ILLISIBLE N'EST PAS ZÉRO, et ici moins qu'ailleurs : ne pas savoir si
+   * quelqu'un va être débité sans avoir été prévenu vaut une alerte, pas un
+   * silence rassurant.
+   */
+  it("⚠ illisible alerte, et ne se lit jamais comme zéro", () => {
+    const out = renderCeilingGlance(LIVE_2026_09_11, NO_ORPHANS, undefined).join("\n");
+    expect(out).toContain("⚠ TODAY");
+    expect(out).toContain("could not be read");
+    expect(out).not.toContain("unwarned            0");
   });
 });

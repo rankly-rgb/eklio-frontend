@@ -3,31 +3,37 @@
  * chacune doit faire tomber.
  *
  * ══════════════════════════════════════════════════════════════════════════
- * ⚠ POURQUOI CE FICHIER A DEUX REGISTRES ET PAS UN
+ * ⚠ POURQUOI CE FICHIER A DEUX REGISTRES, ET POURQUOI LE PREMIER EST VIDE
  * ══════════════════════════════════════════════════════════════════════════
  *
- * Le 2026-09-12, ce fichier a mis la production par terre. `CRON_SECRET` y a
- * été ajoutée le matin même, avec la bonne intention — son absence rendait un
- * 404 et les cinq crons tournaient sans jamais atteindre la base. Le garde a
- * fonctionné exactement comme écrit : `next start` a refusé de préparer le
- * serveur, et le site a répondu `Internal Server Error` en texte brut À CHAQUE
- * REQUÊTE, page d'accueil et tarifs compris.
+ * Le 2026-09-12, ce fichier a mis la production par terre. `CRON_SECRET` y
+ * avait été ajoutée le matin même, avec la bonne intention. Elle n'était pas
+ * réglée sur Vercel. Le garde a fonctionné exactement comme écrit : le serveur
+ * a refusé de préparer, et le site a répondu `Internal Server Error` en texte
+ * brut À CHAQUE REQUÊTE — accueil, tarifs, brief anonyme — pour une variable
+ * que seules cinq routes de cron utilisent.
  *
- * Reproduit à l'identique sur ce dépôt, build de production, une seule
- * variable changée : sans `CRON_SECRET`, HTTP 500 et le corps « Internal
- * Server Error » ; avec, HTTP 200 et la page.
+ * ── LA LEÇON PLUS PROFONDE, QUI A VIDÉ LE REGISTRE 1 ─────────────────────
  *
- * LA LEÇON N'EST PAS « NE PAS ÉCHOUER FORT ». C'est que le lieu de l'échec
- * doit être proportionné à ce qui manque. `CRON_SECRET` sert cinq routes de
- * cron et RIEN de ce qu'une visiteuse touche. Mettre hors ligne le site
- * vitrine, la page de tarifs et le brief anonyme parce qu'un ordonnanceur ne
- * peut pas s'authentifier, c'est transformer un problème silencieux en
- * problème total.
+ * `RESEND_API_KEY` y était pour protéger le préavis d'avant-prélèvement. Elle
+ * ne protégeait rien de tel. Un garde au démarrage ne se déclenche que si la
+ * clé manque AU MOMENT DU DÉPLOIEMENT. Il ne fait RIEN si :
  *
- * Et ce dépôt avait DÉJÀ écrit la bonne forme, trois jours plus tôt, dans
- * `app/api/cron/content-month/route.ts` : échouer fort LÀ OÙ LA CHOSE SERT.
- * La route rend 503 en nommant la variable. C'est la doctrine qui existait et
- * qui n'a pas été appliquée.
+ *   - la clé est révoquée après coup ;
+ *   - le compte Resend est suspendu ou hors quota ;
+ *   - l'API de Resend est en panne une semaine ;
+ *   - le message est accepté puis rebondit.
+ *
+ * Dans chacun de ces cas l'application démarre, continue de servir, et le
+ * préavis n'arrive toujours pas — ce qui est toute l'exposition § 17602,
+ * intacte. Le refus de démarrer couvrait UN cas étroit, laissait le cas
+ * général ouvert, et installait un interrupteur de panne totale pour le faire.
+ *
+ * LA VRAIE GARANTIE N'EST PAS ICI. Elle est dans
+ * `app/api/cron/trial-guard/route.ts` : un essai dont le préavis n'a pas pu
+ * être remis NE SE CONVERTIT PAS. C'est la seule mécanique qui tienne contre
+ * les quatre pannes ci-dessus, parce qu'elle vérifie au moment qui compte et
+ * pas au démarrage.
  *
  * ── LE CRITÈRE D'ENTRÉE, REGISTRE 1 : REQUIS POUR SERVIR ──────────────────
  *
@@ -36,65 +42,45 @@
  * que le site montre à une visiteuse devient faux ». Refuser de démarrer est
  * alors la bonne réponse, parce que servir serait pire que ne rien servir.
  *
- * C'est un registre qui doit rester TRÈS court. Chaque entrée est un
- * interrupteur qui met tout le produit hors ligne si quelqu'un oublie de la
- * régler.
+ * ⚠ IL EST VIDE AUJOURD'HUI, ET C'EST LE BON ÉTAT. Aucune variable connue ne
+ * remplit ce critère : chaque panne qu'on sait nommer se rattrape LÀ OÙ ELLE
+ * SERT. Un registre vide n'est pas un registre mort — la mécanique est testée
+ * et le jour où une variable le mérite vraiment, elle a sa place. Mais y
+ * mettre quelque chose est une décision qui met tout le produit hors ligne si
+ * quelqu'un oublie de la régler, et ce fichier a déjà payé ça une fois.
  *
  * ── LE CRITÈRE D'ENTRÉE, REGISTRE 2 : REQUIS POUR UNE FONCTIONNALITÉ ──────
  *
  * Une variable entre dans `REQUIRED_FOR_A_FEATURE` quand son absence casse UNE
- * PARTIE du produit en silence, pendant que le reste continue légitimement de
+ * PARTIE du produit en silence pendant que le reste continue légitimement de
  * servir. Elle NE DOIT PAS empêcher le démarrage. Elle doit :
  *
  *   1. hurler au démarrage, dans les journaux, là où un exploitant regarde ; et
  *   2. être refusée BRUYAMMENT à l'usage — 503 nommant la variable, jamais un
- *      404 qui ressemble à une mauvaise adresse.
+ *      404 qui ressemble à une mauvaise adresse, jamais un succès silencieux.
  *
  * ── CE QUI N'EST DANS NI L'UN NI L'AUTRE ─────────────────────────────────
  *
  * Les clés Stripe : `requireEnv` dans `lib/stripe/client.ts` lève une
- * `StripeConfigError` au premier appel. Un checkout sans clé échoue bruyamment,
- * tout de suite, et l'erreur nomme la variable. La panne est déjà impossible à
- * rater. `SUPABASE_SERVICE_ROLE_KEY` non plus : `lib/email/state.ts` lève
- * dessus.
- *
- * ⚠ UNE LISTE S'EST ENCORE RÉVÉLÉE ÊTRE DEUX LISTES. Cinquième fois dans ce
- * chantier. Voir CHANTIER_LOG.
+ * `StripeConfigError` au premier appel, et l'erreur nomme la variable.
+ * `SUPABASE_SERVICE_ROLE_KEY` non plus : `lib/email/state.ts` lève dessus. Une
+ * panne déjà impossible à rater n'a rien à faire dans un registre.
  */
 
 /**
  * REGISTRE 1 — sans elles, refuser de démarrer.
  *
- * La raison est dans la donnée et pas dans un commentaire à côté : elle est
- * imprimée dans le message d'erreur, donc la personne qui voit le boot échouer
- * lit pourquoi cette variable comptait sans ouvrir ce fichier.
- *
- * ⚠ RESEND_API_KEY EST ICI, ET C'EST DISCUTABLE. Son absence ne casse pas le
- * site vitrine ; elle casse l'envoi. Elle a été mise ici quand `sendEmail`
- * rendait `{ ok: true }` sans clé — le balayage du préavis lisait ce succès et
- * marquait la ligne « prévenue », si bien qu'un déploiement mal configuré
- * pouvait marquer trente jours d'avis envoyés sans qu'aucun parte, et le
- * prélèvement partait quand même. La loi californienne sur la reconduction
- * automatique (Cal. Bus. & Prof. Code § 17602) fait de ce préavis une
- * obligation.
- *
- * MAIS CE TROU EST DÉJÀ BOUCHÉ À L'USAGE : `lib/email/transport.ts` rend
- * désormais `{ ok: false }` en production quand la clé manque, et le balayage
- * laisse la ligne due. Au critère écrit ci-dessus, RESEND_API_KEY est donc
- * candidate au registre 2. Elle reste ici en attendant un arbitrage explicite,
- * parce que déplacer une garde légale sans qu'on me le demande serait
- * exactement l'inverse de la prudence. Voir FINDINGS.md.
+ * ⚠ VIDE, DÉLIBÉRÉMENT. Voir l'en-tête. La raison de chaque entrée est
+ * imprimée dans le message d'erreur, pour que la personne qui voit le boot
+ * échouer lise POURQUOI sans ouvrir ce fichier.
  */
-export const REQUIRED_TO_SERVE: Record<string, string> = {
-  RESEND_API_KEY:
-    "sans elle, le préavis d'avant-prélèvement (obligation légale, Cal. Bus. & Prof. Code § 17602) n'est jamais envoyé",
-};
+export const REQUIRED_TO_SERVE: Record<string, string> = {};
 
 /**
  * REGISTRE 2 — sans elles, une fonctionnalité tombe, le site continue.
  *
- * `feature` nomme ce qui tombe ; `reason` dit pourquoi c'est silencieux sans
- * ce registre. Les deux sont imprimés dans l'avertissement de démarrage.
+ * `feature` nomme ce qui tombe ; `reason` dit pourquoi ce serait silencieux
+ * sans ce registre. Les deux sont imprimés dans l'avertissement de démarrage.
  */
 export const REQUIRED_FOR_A_FEATURE: Record<
   string,
@@ -105,16 +91,29 @@ export const REQUIRED_FOR_A_FEATURE: Record<
     reason:
       "`authorizeCron` ne peut authentifier personne : les crons partent à l'heure dite et n'atteignent jamais la base. La route répond 503 en nommant la variable, et le site continue de servir.",
   },
+  RESEND_API_KEY: {
+    feature: "tout envoi d'e-mail (préavis d'avant-prélèvement, lien de reprise, relances)",
+    reason:
+      "`sendEmail` rend `ok: false` en production plutôt qu'un faux succès, et AUCUN essai ne se convertit sans préavis accepté (`app/api/cron/trial-guard`). C'est là que l'obligation § 17602 est tenue — pas au démarrage, qui ne voyait ni une clé révoquée, ni un compte suspendu, ni une API en panne.",
+  },
 };
 
-/** Les variables manquantes du registre 1, dans l'ordre de déclaration. */
+/**
+ * Les variables manquantes du registre 1.
+ *
+ * Le registre est INJECTABLE pour que la mécanique du refus reste testable
+ * pendant qu'il est légitimement vide. Un mécanisme non testé parce qu'il n'a
+ * rien à faire aujourd'hui est un mécanisme cassé le jour où on lui confie
+ * quelque chose.
+ */
 export function missingRequired(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
+  register: Record<string, string> = REQUIRED_TO_SERVE
 ): string[] {
-  return Object.keys(REQUIRED_TO_SERVE).filter((name) => !env[name]);
+  return Object.keys(register).filter((name) => !env[name]);
 }
 
-/** Les variables manquantes du registre 2, dans l'ordre de déclaration. */
+/** Les variables manquantes du registre 2. */
 export function missingFeatureEnv(
   env: Record<string, string | undefined> = process.env
 ): string[] {
@@ -122,8 +121,11 @@ export function missingFeatureEnv(
 }
 
 /** Le message d'échec — une ligne par variable, avec sa raison. */
-export function missingRequiredMessage(missing: string[]): string {
-  const lines = missing.map((name) => `  - ${name} : ${REQUIRED_TO_SERVE[name]}`);
+export function missingRequiredMessage(
+  missing: string[],
+  register: Record<string, string> = REQUIRED_TO_SERVE
+): string {
+  const lines = missing.map((name) => `  - ${name} : ${register[name] ?? "?"}`);
   return [
     `Démarrage refusé : ${missing.length} variable(s) d'environnement requise(s) manquante(s) en production.`,
     ...lines,
@@ -154,13 +156,9 @@ export function degradedFeaturesMessage(missing: string[]): string {
 /**
  * Vérifie la configuration.
  *
- * ⚠ NE LÈVE QUE POUR LE REGISTRE 1, ET QU'EN PRODUCTION. Le registre 2
- * avertit et laisse démarrer — c'est précisément la distinction que l'incident
- * du 2026-09-12 a payée.
- *
- * En développement et en test, rien ne lève : une clé d'envoi absente est le
- * cas normal en local, et exiger la clé empêcherait de lancer le projet ou de
- * faire tourner la suite.
+ * ⚠ N'AVERTIT QUE, tant que le registre 1 est vide — et c'est le cas
+ * aujourd'hui. Le registre 2 avertit et laisse démarrer : c'est précisément la
+ * distinction que l'incident du 2026-09-12 a payée.
  *
  * ── CE QUE ÇA FAIT VRAIMENT, MESURÉ ET PAS SUPPOSÉ ───────────────────────
  *
@@ -169,9 +167,9 @@ export function degradedFeaturesMessage(missing: string[]): string {
  *   - `next build` RÉUSSIT : le hook d'instrumentation n'est pas exécuté à la
  *     construction, donc un déploiement se construit normalement.
  *   - avec une variable du REGISTRE 1 manquante, `next start` affiche « Failed
- *     to prepare server » et le serveur répond **500 à chaque requête**, corps
- *     « Internal Server Error » en texte brut. Le processus ne meurt pas ; il
- *     ne sert plus rien. C'est exactement ce qui est arrivé en production.
+ *     to prepare server » et le serveur répond 500 à chaque requête, corps
+ *     « Internal Server Error » en texte brut. C'est ce qui est arrivé en
+ *     production, et pourquoi ce registre est vide.
  *   - avec une variable du REGISTRE 2 manquante, le serveur démarre, `/` rend
  *     200, et l'avertissement est dans les journaux.
  */

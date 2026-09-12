@@ -45,6 +45,7 @@ import {
   unreadableCeiling,
   type Glance,
   type Orphans,
+  type Unwarned,
 } from "../lib/funnel/glance";
 
 /* ── .env.local, without a dependency ──────────────────────────────────── */
@@ -121,20 +122,25 @@ async function printCeilingGlance(
    * the ceiling from printing: `undefined` reaches the renderer, which says it
    * could not be read rather than printing a zero.
    */
-  const [ceiling, orphans] = await Promise.all([
+  const [ceiling, orphans, unwarned] = await Promise.all([
     supabase.rpc("anon_spend_today"),
     supabase.rpc("orphaned_purchases"),
+    supabase.rpc("unwarned_trials", { p_within_days: 14 }),
   ]);
 
   if (orphans.error) {
     console.error(`orphaned_purchases: ${orphans.error.message}`);
+  }
+  if (unwarned.error) {
+    console.error(`unwarned_trials: ${unwarned.error.message}`);
   }
 
   const lines = ceiling.error
     ? unreadableCeiling(ceiling.error.message)
     : renderCeilingGlance(
         ceiling.data as unknown as Glance,
-        orphans.error ? undefined : (orphans.data as unknown as Orphans)
+        orphans.error ? undefined : (orphans.data as unknown as Orphans),
+        unwarned.error ? undefined : (unwarned.data as unknown as Unwarned)
       );
   for (const line of lines) console.log(line);
 }

@@ -161,6 +161,6 @@ async function send(
   }
 
   await recordSend(admin, userId, user.user_metadata, kind);
-  track("email_sent", { kind, delivered: outcome.delivered });
+  track("email_sent", { kind, accepted: outcome.accepted });
   return true;
 }

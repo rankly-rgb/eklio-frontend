@@ -77,6 +77,15 @@ export type AnalyticsEvent =
   | "email_sent"
   | "billing_portal_opened"
   | "trial_ending_notice_sent"
+  /*
+   * Le garde de conversion : un essai dont le préavis n'est pas prouvé est
+   * prolongé, et au bout de trois prolongations annulé plutôt que converti.
+   * Les deux sont des ÉVÉNEMENTS D'EXPLOITATION, pas des mesures produit : ils
+   * ne devraient jamais se produire, et leur apparition dans le funnel est le
+   * signal que l'envoi est en panne depuis des jours.
+   */
+  | "trial_guard_extended"
+  | "trial_guard_cancelled"
   /* ── Positionnement USP (§2.5) ────────────────────────────────────────
    * `usp_gate_rejected` porte le nom de la porte et l'id du candidat —
    * jamais le texte, qui EST la donnée libre que ce fichier interdit

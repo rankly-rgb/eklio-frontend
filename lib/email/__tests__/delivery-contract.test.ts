@@ -56,34 +56,47 @@ describe("le verrou d'exécution", () => {
     const outcome = await sendEmail(email);
 
     expect(outcome.ok).toBe(false);
-    expect(outcome.delivered).toBe(false);
+    expect(outcome.accepted).toBe(false);
   });
 
   it("en développement, rien ne part et c'est dit explicitement", async () => {
     setEnv("development");
     const outcome = await sendEmail(email);
 
-    // `ok` parce que rien n'a cassé ; `delivered: false` parce que rien
+    // `ok` parce que rien n'a cassé ; `accepted: false` parce que rien
     // n'est parti. Les deux comptent, et seul le second autorise un marquage.
     expect(outcome.ok).toBe(true);
-    expect(outcome.delivered).toBe(false);
-    expect(outcome.ok && !outcome.delivered && outcome.reason).toBe(
+    expect(outcome.accepted).toBe(false);
+    expect(outcome.ok && !outcome.accepted && outcome.reason).toBe(
       "not_configured_dev"
     );
   });
 
   /*
    * ⚠ LE CŒUR DU DÉFAUT. Aucune branche de `sendEmail` ne doit pouvoir rendre
-   * `delivered: true` sans qu'un envoi ait réussi. Le type l'interdit déjà —
+   * `accepted: true` sans qu'un envoi ait réussi. Le type l'interdit déjà —
    * ce test est là pour que le jour où quelqu'un le rouvre en
-   * `delivered: boolean`, la promesse reste écrite quelque part.
+   * `accepted: boolean`, la promesse reste écrite quelque part.
    */
-  it("aucune branche non configurée ne prétend avoir remis", async () => {
+  it("aucune branche non configurée ne prétend avoir été acceptée", async () => {
     for (const nodeEnv of ["production", "development", "test"]) {
       setEnv(nodeEnv);
       const outcome = await sendEmail(email);
-      expect(outcome.delivered, nodeEnv).toBe(false);
+      expect(outcome.accepted, nodeEnv).toBe(false);
     }
+  });
+
+  /*
+   * ⚠ LE MOT LUI-MÊME. « delivered » promettait plus que ce que ce module peut
+   * savoir : un 2xx de Resend est une PRISE EN CHARGE, pas une remise. Le
+   * champ s'appelle `accepted` pour cette raison, et ce test existe pour que
+   * personne ne le renomme en arrière sans lire pourquoi.
+   */
+  it("⚠ ne promet jamais « delivered » — le transport ne sait pas ça", () => {
+    const transport = readFileSync("lib/email/transport.ts", "utf8");
+    expect(transport).not.toMatch(/\bdelivered\s*:/);
+    expect(transport).toContain("accepted");
+    expect(transport).toContain("providerId");
   });
 });
 
@@ -100,7 +113,7 @@ describe("le balayage du préavis", () => {
     .replace(/^\s*\/\/.*$/gm, "");
 
   it("sort AVANT le marquage quand rien n'a été remis", () => {
-    const guard = source.indexOf("if (!outcome.delivered)");
+    const guard = source.indexOf("if (!outcome.accepted)");
     const mark = source.indexOf("trial_notice_sent_for: row.trial_end");
 
     expect(guard).toBeGreaterThan(-1);
@@ -121,7 +134,7 @@ describe("le balayage du préavis", () => {
      * caractères, qui déborderait sur le marquage placé juste en dessous et
      * ferait échouer le test pour une raison qui n'est pas la sienne.
      */
-    const guard = source.indexOf("if (!outcome.delivered)");
+    const guard = source.indexOf("if (!outcome.accepted)");
     const block = source.slice(
       guard,
       source.indexOf("continue;", guard) + "continue;".length
@@ -159,9 +172,26 @@ describe("les deux registres de variables silencieuses", () => {
    * pas, par un futur déplacement d'une ligne, reprendre le site avec elle.
    */
 
-  it("RESEND_API_KEY est dans le registre « requis pour servir », avec sa raison", () => {
-    expect(Object.keys(REQUIRED_TO_SERVE)).toContain("RESEND_API_KEY");
-    expect(REQUIRED_TO_SERVE.RESEND_API_KEY).toMatch(/17602|préavis/);
+  /*
+   * ⚠ LE REGISTRE 1 EST VIDE, ET C'EST UNE DÉCISION.
+   *
+   * `RESEND_API_KEY` en est sortie le 2026-09-12 : un garde au démarrage ne
+   * voit qu'une clé absente AU DÉPLOIEMENT — pas une clé révoquée, pas un
+   * compte suspendu, pas une API en panne — donc il ne tenait pas la promesse
+   * qu'on lui prêtait, tout en pouvant mettre le site entier hors ligne. La
+   * promesse est tenue par `app/api/cron/trial-guard`.
+   *
+   * Ce test n'interdit pas d'y remettre quelque chose un jour. Il exige que
+   * quiconque le fait vienne lire pourquoi c'est vide.
+   */
+  it("⚠ le registre « requis pour servir » est VIDE, délibérément", () => {
+    expect(Object.keys(REQUIRED_TO_SERVE)).toEqual([]);
+  });
+
+  it("RESEND_API_KEY est dans le registre « fonctionnalité », et sa raison nomme la garantie", () => {
+    expect(Object.keys(REQUIRED_FOR_A_FEATURE)).toContain("RESEND_API_KEY");
+    expect(REQUIRED_FOR_A_FEATURE.RESEND_API_KEY.reason).toMatch(/17602/);
+    expect(REQUIRED_FOR_A_FEATURE.RESEND_API_KEY.reason).toMatch(/trial-guard/);
   });
 
   it("CRON_SECRET est dans le registre « fonctionnalité », et sa raison nomme le 503", () => {
@@ -201,10 +231,25 @@ describe("les deux registres de variables silencieuses", () => {
     }
   });
 
-  it("refuse le démarrage en production quand il manque une variable du registre 1", () => {
-    expect(() => assertRequiredEnv({ NODE_ENV: "production" })).toThrow(
-      /RESEND_API_KEY/
+  /*
+   * ⚠ LA MÉCANIQUE DU REFUS RESTE TESTÉE PENDANT QUE LE REGISTRE EST VIDE.
+   * Un mécanisme non testé parce qu'il n'a rien à faire aujourd'hui est un
+   * mécanisme cassé le jour où on lui confie quelque chose. Le registre est
+   * injecté pour ça, et pour rien d'autre.
+   */
+  it("la mécanique du refus marche encore, registre injecté", () => {
+    const synthetic = { SOME_FUTURE_KEY: "sans elle le produit mentirait" };
+    expect(missingRequired({ NODE_ENV: "production" }, synthetic)).toEqual([
+      "SOME_FUTURE_KEY",
+    ]);
+    expect(missingRequired({ SOME_FUTURE_KEY: "x" }, synthetic)).toEqual([]);
+    expect(missingRequiredMessage(["SOME_FUTURE_KEY"], synthetic)).toContain(
+      "sans elle le produit mentirait"
     );
+  });
+
+  it("⚠ et ne refuse RIEN aujourd'hui, puisque le registre est vide", () => {
+    expect(() => assertRequiredEnv({ NODE_ENV: "production" })).not.toThrow();
   });
 
   /*
@@ -221,9 +266,9 @@ describe("les deux registres de variables silencieuses", () => {
   });
 
   it("et le message de refus dit POURQUOI, pas seulement quoi", () => {
-    const message = missingRequiredMessage(["RESEND_API_KEY"]);
-    expect(message).toContain("RESEND_API_KEY");
-    expect(message).toMatch(/17602/);
+    const message = missingRequiredMessage(["X"], { X: "la raison lisible" });
+    expect(message).toContain("X");
+    expect(message).toContain("la raison lisible");
     expect(message).toMatch(/SERVIR/);
   });
 
@@ -268,9 +313,16 @@ describe("les deux registres de variables silencieuses", () => {
     expect(missingRequired(complet)).toEqual([]);
     expect(missingFeatureEnv(complet)).toEqual([]);
 
-    // Gardes anti-vacuité : les deux listes ont de quoi mordre.
-    expect(Object.keys(REQUIRED_TO_SERVE).length).toBeGreaterThan(0);
+    /*
+     * Garde anti-vacuité sur le SEUL registre qui doit mordre. Le registre 1
+     * est légitimement vide ; exiger qu'il ne le soit pas pousserait quelqu'un
+     * à y remettre une variable pour faire passer un test, ce qui est
+     * exactement l'accident du 2026-09-12.
+     */
     expect(Object.keys(REQUIRED_FOR_A_FEATURE).length).toBeGreaterThan(0);
+    expect(Object.keys(REQUIRED_FOR_A_FEATURE)).toEqual(
+      expect.arrayContaining(["CRON_SECRET", "RESEND_API_KEY"])
+    );
   });
 
   it("et instrumentation.ts l'appelle vraiment au démarrage", () => {

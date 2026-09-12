@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/trial-ending",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/trial-guard",
+      "schedule": "0 17 * * *"
     }
   ]
 }

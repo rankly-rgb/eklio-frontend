@@ -203,14 +203,23 @@ export async function GET(request: Request) {
      * préavis est une obligation légale (Cal. Bus. & Prof. Code § 17602) : le
      * supprimer en silence est une faute de conformité, pas un e-mail perdu.
      *
-     * `delivered === true` veut dire « Resend a accepté le message ». Tout le
-     * reste — clé absente, 4xx, réseau coupé — laisse la ligne INTACTE, donc
-     * `owedNotice` la retrouve demain et le balayage réessaie. Sept jours de
-     * fenêtre contre un plancher légal de trois : il y a de la place pour
-     * quatre réessais avant que ça devienne un problème, et c'est exactement
-     * pour ça que la fenêtre est à sept.
+     * ⚠ `accepted === true` veut dire « Resend a pris le message en charge ».
+     * PAS « remis », pas « lu » — voir `lib/email/transport.ts`, qui porte le
+     * vocabulaire. C'est le plus fort de ce que ce produit sait prouver, et
+     * c'est pour ça que la ligne enregistre l'ÉTAT et l'ID du message plutôt
+     * qu'un booléen : le jour où le webhook de Resend est branché, `accepted`
+     * devient `delivered` ou `bounced` sur cette même ligne, sans migration.
+     *
+     * Tout le reste — clé absente, 4xx, réseau coupé — laisse la ligne INTACTE,
+     * donc `owedNotice` la retrouve demain et le balayage réessaie. Sept jours
+     * de fenêtre contre un plancher légal de trois : il y a de la place pour
+     * quatre réessais avant que ça devienne un problème.
+     *
+     * Et si les réessais n'aboutissent jamais, `app/api/cron/trial-guard` PROLONGE
+     * l'essai plutôt que de le laisser se convertir : c'est là, et pas ici, que
+     * la promesse « on ne facture pas sans avoir prévenu » est tenue.
      */
-    if (!outcome.delivered) {
+    if (!outcome.accepted) {
       console.error(
         `[cron/trial-ending] NON REMIS pour ${row.user_id} — ligne laissée non marquée, réessai au prochain balayage :`,
         outcome.ok ? outcome.reason : outcome.error
@@ -228,14 +237,19 @@ export async function GET(request: Request) {
      */
     const { error: markError } = await admin
       .from("subscriptions")
-      .update({ trial_notice_sent_for: row.trial_end })
+      .update({
+        trial_notice_sent_for: row.trial_end,
+        trial_notice_state: "accepted",
+        trial_notice_provider_id: outcome.providerId,
+        trial_notice_accepted_at: new Date().toISOString(),
+      })
       .eq("user_id", row.user_id);
 
     if (markError) {
       console.error("[cron/trial-ending] marquage", markError);
     }
 
-    track("trial_ending_notice_sent", { delivered: true });
+    track("trial_ending_notice_sent", { accepted: true });
     sent += 1;
   }
 

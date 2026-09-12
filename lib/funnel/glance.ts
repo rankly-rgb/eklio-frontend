@@ -34,6 +34,39 @@ export type Orphans = {
   }>;
 };
 
+/**
+ * A trial that is about to convert without provable notice.
+ *
+ * ⚠ SHE IS ABOUT TO BE CHARGED WITHOUT HAVING BEEN TOLD. California's
+ * automatic-renewal law (Bus. & Prof. Code § 17602) makes the pre-charge
+ * notice an obligation for a trial over 31 days, and ours are 90. This is the
+ * one line here that is a legal exposure rather than a lost sale.
+ *
+ * `app/api/cron/trial-guard` extends such a trial rather than letting it
+ * convert — but that guard is itself a cron, and crons in this product have
+ * already spent a week not running. So the number is printed where a human
+ * looks every morning, and ZERO IS THE EXPECTED ANSWER.
+ *
+ * ⚠ `notice_state` is the honest word: 'accepted' means Resend took the
+ * message, NOT that it arrived. 'none' means a row stamped by code that
+ * recorded an attempt. Both are counted as unwarned, because the whole defect
+ * being fixed is a stamp that proved nothing.
+ */
+export type Unwarned = {
+  total: number;
+  soonest: string | null;
+  within_days: number;
+  rows: Array<{
+    user_id: string;
+    stripe_subscription_id: string;
+    trial_end: string;
+    days_left: number;
+    notice_state: string;
+    stamped_for: string | null;
+    extensions: number;
+  }>;
+};
+
 export type Glance = {
   day: string;
   enabled: boolean;
@@ -69,7 +102,11 @@ function gauge(pct: number | null): string {
  * cannot be asserted on, and this is the one part of the report someone will
  * read at seven in the morning and act on.
  */
-export function renderCeilingGlance(g: Glance, orphans?: Orphans): string[] {
+export function renderCeilingGlance(
+  g: Glance,
+  orphans?: Orphans,
+  unwarned?: Unwarned
+): string[] {
   const out: string[] = [];
   const say = (line = "") => out.push(line);
 
@@ -84,7 +121,9 @@ export function renderCeilingGlance(g: Glance, orphans?: Orphans): string[] {
     g.refused.total > 0 ||
     (g.reveals.pct ?? 0) >= 80 ||
     (g.assists.pct ?? 0) >= 80 ||
-    (orphans?.total ?? 0) > 0;
+    (orphans?.total ?? 0) > 0 ||
+    (unwarned?.total ?? 0) > 0 ||
+    unwarned === undefined;
 
   say();
   say(`  ${alarm ? "⚠ " : ""}TODAY — ${g.day} (UTC)`);
@@ -187,6 +226,56 @@ export function renderCeilingGlance(g: Glance, orphans?: Orphans): string[] {
     }
     if (orphans.rows.length > 5) {
       say(`      … and ${orphans.rows.length - 5} more.`);
+    }
+  }
+
+  /*
+   * ── ⚠ SHE IS ABOUT TO BE CHARGED AND WAS NOT TOLD ─────────────────────
+   *
+   * Beside the orphans for the same reason they are here: it is the other
+   * thing that, seen this morning, changes what happens today. Unlike the
+   * orphans, this one has a deadline attached — the notice is only valid 3 to
+   * 21 days before the charge, so a row at 2 days left cannot be fixed by
+   * sending the email.
+   */
+  if (unwarned === undefined) {
+    say("  ⚠ unwarned       ?     trials converting without provable notice — could not be read");
+  } else if (unwarned.total === 0) {
+    say(
+      `  unwarned            0   every trial converting in ${unwarned.within_days} days has an accepted notice`
+    );
+  } else {
+    say(
+      `  ⚠ unwarned    ${String(unwarned.total).padStart(7)}   ` +
+        `trials converting with NO provable notice — § 17602 exposure`
+    );
+    for (const row of unwarned.rows.slice(0, 5)) {
+      const when = row.trial_end.slice(0, 10);
+      const state = row.notice_state === "none" ? "never sent" : row.notice_state;
+      say(
+        `      ${when}  ${String(row.days_left).padStart(5)}d left  ${state.padEnd(10)}` +
+          `${row.extensions > 0 ? `  extended ${row.extensions}×` : ""}`
+      );
+      /*
+       * The two facts that decide what to do, printed rather than implied: a
+       * notice is only lawful 3+ days ahead, so under that the only honest
+       * moves are to extend or not to charge.
+       */
+      if (row.days_left < 3) {
+        say(
+          `        ⚠ under the 3-day legal floor — sending now does NOT make the charge lawful.`
+        );
+        say(
+          `        stripe subscriptions update ${row.stripe_subscription_id} --trial-end <later>  (or let trial-guard do it at 17:00 UTC)`
+        );
+      } else {
+        say(
+          `        still inside the window — the next trial-ending sweep (15:00 UTC) can still warn her.`
+        );
+      }
+    }
+    if (unwarned.rows.length > 5) {
+      say(`      … and ${unwarned.rows.length - 5} more.`);
     }
   }
 

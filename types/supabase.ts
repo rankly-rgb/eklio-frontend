@@ -2350,7 +2350,12 @@ export type Database = {
           stripe_price_id: string | null
           stripe_subscription_id: string
           trial_end: string | null
+          trial_extensions: number
+          trial_guard_acted_at: string | null
+          trial_notice_accepted_at: string | null
+          trial_notice_provider_id: string | null
           trial_notice_sent_for: string | null
+          trial_notice_state: string | null
           updated_at: string
           user_id: string
         }
@@ -2364,7 +2369,12 @@ export type Database = {
           stripe_price_id?: string | null
           stripe_subscription_id: string
           trial_end?: string | null
+          trial_extensions?: number
+          trial_guard_acted_at?: string | null
+          trial_notice_accepted_at?: string | null
+          trial_notice_provider_id?: string | null
           trial_notice_sent_for?: string | null
+          trial_notice_state?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2378,7 +2388,12 @@ export type Database = {
           stripe_price_id?: string | null
           stripe_subscription_id?: string
           trial_end?: string | null
+          trial_extensions?: number
+          trial_guard_acted_at?: string | null
+          trial_notice_accepted_at?: string | null
+          trial_notice_provider_id?: string | null
           trial_notice_sent_for?: string | null
+          trial_notice_state?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -3167,6 +3182,7 @@ export type Database = {
         Args: { p_max: number; p_text: string }
         Returns: string
       }
+      unwarned_trials: { Args: { p_within_days?: number }; Returns: Json }
       update_content_item: {
         Args: { p_id: string; p_patch: Json }
         Returns: Json
