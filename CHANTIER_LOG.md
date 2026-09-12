@@ -2512,21 +2512,18 @@ Ten commits: one per lot 0–8, plus one fix pass after them.
 and the committed reference landed afterwards.** No PNG existed in either
 repo's `design/` folder while the work was done. The reference is
 
-    design/reference/home-v3-mockup.png
-    design/reference/home-v3-current-01.png
-    design/reference/home-v3-current-02.png
-    design/reference/home-v3-current-03.png
+    design/reference/home-v3/mockup.png
+    design/reference/home-v3/current-01.png
+    design/reference/home-v3/current-02.png
+    design/reference/home-v3/current-03.png
 
-⚠ **AS OF THIS COMMIT THOSE FILES DO NOT EXIST.** Two upload attempts were
-made and neither reached the remote. Checked without relying on a filename:
-
-    git fetch --all --prune
-    git log --all --diff-filter=A --name-only -- '*.png'
-
-returns NOTHING — no `.png` has ever been added on any ref of this repository,
-under any name, in any folder, on any of its eighteen branches. (The same
-command shape over `'*.md'` lists commits, so the search works; it is the files
-that are absent.) The reference is still to be landed by its author.
+**It was absent from the pushed repo at `cab02c3` and landed at `82bc852`,
+committed by the chantier's author.** The first clause is the one that matters
+and it was true when written: a session clones what is pushed, and until
+`82bc852` no `.png` had ever been added on any ref of this repository — which
+is why the build that preceded it had nothing to open. What looked like a
+failed upload was a local working copy on another branch; the files were real,
+just not where a clone could see them.
 
 So a session reading those files is reading the reference this work was
 *checked against by eye*, not a file any commit here was produced from. **Where
@@ -2731,3 +2728,22 @@ succeed are a guess or a fabricated stand-in. Both are worse than the failure.
 commits the file first; the prompt points at it. This chantier ran the other
 way round, and the cost was three stops and a mockup that arrived after the
 work it was meant to govern.
+
+### 3. A visual contract is confirmed on the remote ref, not in a file tree
+
+Before a chantier starts, the reference is confirmed **present on the ref the
+session will clone**:
+
+    git ls-tree -r origin/<branch> -- design/reference/<dir>/
+
+A local file tree proves nothing. It can hold files that are untracked, staged
+but never committed, committed on a different branch, or sitting in a different
+clone or Codespace entirely — and every one of those looks identical to
+"landed" when you are looking at a folder. This chantier lost several rounds to
+exactly that: the author's tree showed four PNGs and a texture file, the pushed
+repo had never contained a single `.png`, and both observations were correct.
+
+A session that cannot see the file **says so once and stops.** It does not
+search a second way, and it does not accept a filename, a folder listing or a
+screenshot as evidence that a file is on the ref. `git ls-tree` on the remote
+is the whole check.
