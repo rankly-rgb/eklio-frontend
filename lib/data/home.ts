@@ -33,6 +33,8 @@ import {
   type Notification,
 } from "@/lib/data/notifications";
 import { loadAssetStats } from "@/lib/data/asset-stats";
+import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
+import { STEP_ASSET_KEY } from "@/lib/home/next-step";
 
 /*
  * L'agrégat de l'accueil (Écran 7) : une seule lecture pour la salutation, le
@@ -377,6 +379,17 @@ export type HomeCanvas = {
   /** Her real, enabled page labels, in `envelope.preview.pages` order. */
   pages: string[];
   next: NextAction;
+  /**
+   * Where the chosen step sits in the seven — the card's `1 OF 7`. Null when
+   * `next` is not a launch step, and then the counter does not render: a
+   * content item is not step N of anything.
+   */
+  nextIndex: number | null;
+  /**
+   * The catalogue entry for the file the chosen step needs, when it needs one
+   * AND the catalogue has it. Null otherwise, and the asset row is absent.
+   */
+  nextAsset: AssetManifestEntry | null;
   week: WeekDay[];
   since: SinceRow[];
   stats: HomeStats;
@@ -423,18 +436,30 @@ export async function loadHomeCanvas(
 
   const todayKey = nyDateKey(now);
 
+  const next = pickNextAction({
+    checklist: home.checklist,
+    month: home.month,
+    todayKey,
+    launchContext,
+    photoUrlFor: (slot) => photoUrls.get(slot) ?? null,
+  });
+
+  const stepIndex =
+    next.kind === "launch_step"
+      ? home.checklist.items.findIndex((item) => item.key === next.step.key)
+      : -1;
+
+  const assetKey = next.kind === "launch_step" ? STEP_ASSET_KEY[next.step.key] : undefined;
+
   return {
     tokens: preview.tokens,
     hero: spec.hero,
     heroPhotoUrl: photoUrls.get("hero") ?? null,
     pages: preview.pages.map((page) => page.label),
-    next: pickNextAction({
-      checklist: home.checklist,
-      month: home.month,
-      todayKey,
-      launchContext,
-      photoUrlFor: (slot) => photoUrls.get(slot) ?? null,
-    }),
+    next,
+    nextIndex: stepIndex >= 0 ? stepIndex + 1 : null,
+    nextAsset:
+      (assetKey ? assetStats?.manifest.find((entry) => entry.key === assetKey) : null) ?? null,
     week: buildWeekStrip(home.month, todayKey),
     since: buildSinceRows({ kit, month: home.month, notifications }),
     stats: {

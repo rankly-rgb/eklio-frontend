@@ -106,6 +106,9 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
           <NextCard
             brandKitId={kit.row.id}
             next={canvas.next}
+            nextIndex={canvas.nextIndex}
+            nextAsset={canvas.nextAsset}
+            totalSteps={home.checklist.total}
             primaryColor={canvas.tokens.primary}
             ctaInk={canvas.tokens.cta_ink}
           />
