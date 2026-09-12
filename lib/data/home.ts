@@ -85,7 +85,24 @@ export type HomeModel = {
    * construction. No fallback, no Eklio house quote: the slot collapses.
    */
   quote: HomeQuote | null;
+  /**
+   * The rail's quote card — her positioning paragraph, the longer answer the
+   * header's one-sentence USP was distilled from. Same rule as `quote`: hers
+   * or nothing.
+   */
+  railQuote: HomeQuote | null;
+  /** What the rail's meta footer needs before the catalogue is consulted. */
+  practice: PracticeFacts;
 };
+
+/** The brief's own answers about where and what she practises. */
+export type PracticeFacts = {
+  specialtyIds: string[];
+  city: string | null;
+  state: string | null;
+};
+
+const NO_PRACTICE_FACTS: PracticeFacts = { specialtyIds: [], city: null, state: null };
 
 /** A sentence of hers, and where in her brief it came from. */
 export type HomeQuote = {
@@ -151,13 +168,15 @@ export async function loadHome(
       nudge: null,
       deletedKits,
       quote: null,
+      railQuote: null,
+      practice: NO_PRACTICE_FACTS,
     };
   }
 
   const [{ data: brief }, brandKit] = await Promise.all([
     supabase
       .from("project_briefs")
-      .select("progress_step, completed_steps, usp_statement")
+      .select("progress_step, completed_steps, usp_statement, positioning, specialty_ids, city, state")
       .eq("project_id", project.id)
       .maybeSingle(),
     loadBrandKitByProject(supabase, project.id, userId),
@@ -195,6 +214,12 @@ export async function loadHome(
     nudge: pickNudge({ project, brief, brandKit, month: contentMonth }),
     deletedKits,
     quote: quoteFromBrief(brief?.usp_statement),
+    railQuote: quoteFromBrief(brief?.positioning),
+    practice: {
+      specialtyIds: brief?.specialty_ids ?? [],
+      city: brief?.city ?? null,
+      state: brief?.state ?? null,
+    },
   };
 }
 
@@ -393,6 +418,15 @@ export type HomeCanvas = {
   week: WeekDay[];
   since: SinceRow[];
   stats: HomeStats;
+  /**
+   * The rail's mono footer, already resolved: her direction, her specialty,
+   * her city. Each line is present only if its own source is — a kit with no
+   * specialty chosen prints two lines, not a blank one.
+   *
+   * This is the `PRACTICE · DIRECTION · AS OF …` caption that used to sit
+   * under the canvas, moved where the mockup puts it.
+   */
+  meta: string[];
 };
 
 /**
@@ -415,13 +449,14 @@ export async function loadHomeCanvas(
 
   const { spec, preview } = siteSpec.data;
 
-  const [photoUrls, notifications, assetStats] = await Promise.all([
+  const [photoUrls, notifications, assetStats, specialty] = await Promise.all([
     currentBrandImageUrls(supabase, kit),
     syncNotifications(supabase, kit.row.id),
     // The same reader the kit band's counts use, not a second count of the
     // same rows: `summarizeManifest` is where "how many assets" is decided,
     // and two places deciding it is how the two start to disagree.
     loadAssetStats(supabase, kit),
+    primarySpecialty(supabase, home.practice.specialtyIds),
   ]);
 
   const launchContext: LaunchStepContext = {
@@ -467,6 +502,9 @@ export async function loadHomeCanvas(
       pagesReady: preview.pages.length,
       lastRebuiltAt: assetStats?.lastUpdated ?? null,
     },
+    meta: [kit.selectedDirection.name, specialty, locationLine(home.practice)].filter(
+      (line): line is string => Boolean(line)
+    ),
   };
 }
 
@@ -633,6 +671,32 @@ export function hrefForNotification(brandKitId: string, notification: Notificati
     default:
       return "/app";
   }
+}
+
+/**
+ * Her first specialty's LABEL, or null.
+ *
+ * ⚠ ORDERED BY THE CATALOGUE, NOT BY THE ARRAY. `specialty_ids` is a raw
+ * column with no guaranteed order, so `[0]` would name a different specialty
+ * on different reads of the same row. `sort_order` is the catalogue's own
+ * ranking and it is stable — the same choice `lib/generation/scope-key.ts`
+ * already makes, for the same reason.
+ */
+async function primarySpecialty(supabase: Client, ids: string[]): Promise<string | null> {
+  if (ids.length === 0) return null;
+  const { data } = await supabase
+    .from("specialties")
+    .select("label")
+    .in("id", ids)
+    .order("sort_order")
+    .limit(1)
+    .maybeSingle();
+  return data?.label ?? null;
+}
+
+/** `Portland, OR` — or just the city, or just the state, or nothing. */
+function locationLine(practice: PracticeFacts): string | null {
+  return [practice.city, practice.state].filter(Boolean).join(", ") || null;
 }
 
 /** `2026-09-06` for `date`, in the product's own time zone (see `contentMonthKey`). */

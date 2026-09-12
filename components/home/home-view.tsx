@@ -6,6 +6,7 @@ import { BrandCanvas } from "@/components/home/brand-canvas";
 import { NextCard } from "@/components/home/next-card";
 import { WeekStrip } from "@/components/home/week-strip";
 import { LaunchRing } from "@/components/home/launch-ring";
+import { QuickTools, RailChecklist, RailMeta, RailQuote } from "@/components/home/rail";
 import { MonthlyPresenceCard } from "@/components/home/monthly-presence-card";
 import { SinceYouWereHere } from "@/components/home/since-you-were-here";
 import { RecentlyDeletedSection } from "@/components/home/recently-deleted-section";
@@ -127,9 +128,14 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
           aria-label="Your first week"
           className="col-start-3 col-end-4 row-start-1 row-end-5 sticky top-0 flex flex-col gap-6 self-start pl-6 pr-[var(--gutter)] max-lg:contents"
         >
-          <div className="order-5 max-lg:mt-0">
+          {/*
+           * The ring and the seven rows. When every step is resolved the ring
+           * gives way to the completion line and the Monthly Presence card,
+           * exactly as it already did — the rail changed shape, not that rule.
+           */}
+          <div className="order-5 flex flex-col gap-5">
             {everyStepDone ? (
-              <div className="flex flex-col gap-5">
+              <>
                 <p className="text-ui leading-body text-ink">
                   Your brand is live in seven places.
                 </p>
@@ -138,10 +144,22 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
                   entitled={home.entitled}
                   monthLabel={home.monthLabel}
                 />
-              </div>
+              </>
             ) : home.checklist.total > 0 ? (
-              <LaunchRing progress={home.checklist} />
+              <>
+                <LaunchRing progress={home.checklist} />
+                <RailChecklist progress={home.checklist} />
+              </>
             ) : null}
+          </div>
+
+          {/* Order 7 puts these AFTER the sub-grid at 375px, which is the
+              stacking the chantier specifies. On the desktop rail they simply
+              follow the checklist. */}
+          <div className="order-7 flex flex-col gap-6">
+            <QuickTools brandKitId={kit.row.id} />
+            {home.railQuote ? <RailQuote quote={home.railQuote} /> : null}
+            <RailMeta lines={canvas.meta} />
           </div>
         </aside>
       </div>
