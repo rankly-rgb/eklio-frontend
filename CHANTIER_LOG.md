@@ -2508,15 +2508,23 @@ Ten commits: one per lot 0–8, plus one fix pass after them.
 
 ### What the target was, and a note on the contract
 
-⚠ **This chantier was built against an image pasted into the session, NOT
-against `design/reference/home-v3/mockup.png`.** At the time the work was done
-that path did not exist — it and `current-01/02/03.png` were absent from both
-repos on every ref, and no PNG existed in either `design/` folder. The files
-were committed to this branch afterwards, by hand, by the chantier's author. A
-session reading `design/reference/home-v3/mockup.png` is therefore reading the
-reference this work was *checked against by eye*, not a file any commit here
-was produced from; where the two differ, the committed PNG is the one to trust
-and the difference is a real finding. `design/reference/Screen 7
+⚠ **This chantier was built BY EYE against an image pasted into the session,
+and the committed reference landed afterwards.** No PNG existed in either
+repo's `design/` folder while the work was done. The reference is
+
+    design/reference/home-v3-mockup.png
+    design/reference/home-v3-current-01.png
+    design/reference/home-v3-current-02.png
+    design/reference/home-v3-current-03.png
+
+committed by the chantier's author from their own machine — flat in
+`design/reference/`, not in a `home-v3/` subfolder.
+
+So a session reading those files is reading the reference this work was
+*checked against by eye*, not a file any commit here was produced from. **Where
+the committed PNG and what shipped differ, the PNG is the one to trust and the
+difference is a real finding** — the zone-by-zone table is where those get
+recorded. `design/reference/Screen 7
 - Home.dc.html` is a *different, earlier* home: three nav items, a URL bar, a
 2fr/1fr grid, no rail, no next-step card, no week strip. It was not used.
 
@@ -2666,3 +2674,52 @@ acquired and none were asked for.
   a route off this screen is that `/app` does not import it.
 
 `FINDINGS.md` carries what was noticed and deliberately not fixed.
+
+
+---
+
+## Standing rules — not enforced by any test
+
+Both of these come out of the home-v3 chantier, and both are conventions a
+session has to keep on purpose. Nothing in the suite checks either one. They
+are written here because the next session reads this file and does not read the
+prompt that held the line last time.
+
+### 1. A render is labelled by where its data came from
+
+- A render built from hand-written props is called a **harness**, in the same
+  sentence as the image or the claim — never in a caption, a footnote, or the
+  next paragraph.
+- The words **verified**, **confirmed** and **matches the mockup** are not
+  written about anything that was not rendered from the production read path.
+  A harness shows geometry. It shows nothing whatever about data: every value
+  in it was chosen by whoever wrote the props, so it is the most convincing way
+  there is to be wrong about a number.
+- A harness route is **deleted before committing**. It exists for one
+  screenshot pass and leaves no trace in the tree.
+
+`app/__tests__/home-reads-production-only.test.ts` is NOT this rule. It walks
+the import graph from `app/app/page.tsx`, so it catches a fixture the home
+route *loads* — proven by probe: a module added under `app/app/**` and imported
+by the route turns it red. A harness route living *beside* `/app` is outside
+that graph and the guard cannot see it. What kept harness output from being
+reported as production was a person writing the rule down, and then this
+paragraph. If you want it enforced, that is a test someone still has to write.
+
+### 2. A visual contract is committed by its author, before the chantier starts
+
+A session in this environment **cannot reach the author's filesystem**. There is
+no `~/Downloads`, no `~/Téléchargements`, no `~/Bureau`, no user home in the
+ordinary sense; the repos are cloned fresh into a remote container and nothing
+of the author's machine is mounted. **Images attached to a message do not land
+on disk either** — they are rendered into the session's context and have no
+path, no bytes to copy and no hash to take.
+
+Therefore: any prompt that asks a session to *find*, *copy*, *move* or *hash* a
+file on the author's machine will fail, and the only ways it can appear to
+succeed are a guess or a fabricated stand-in. Both are worse than the failure.
+
+**A prompt that needs a reference names its committed path.** The author
+commits the file first; the prompt points at it. This chantier ran the other
+way round, and the cost was three stops and a mockup that arrived after the
+work it was meant to govern.
