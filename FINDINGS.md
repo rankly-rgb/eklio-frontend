@@ -899,3 +899,27 @@ replaced by what remains true. What follows is the residue, not the original lis
   row due. So the boot refusal is guarding a failure mode that no longer exists, and it is a
   second latent total-outage switch of exactly the kind that just fired. Left in place pending
   an explicit ruling, because moving a legal guard unasked is the opposite of caution.
+
+## Home v3 (chantier home-v3) — noticed, not fixed
+
+- `components/home/home-view.tsx`'s empty state renders `SAMPLE_PREVIEW` from
+  `lib/brand/sample.ts` — a seeded illustration on the `/app` route. The new
+  fixture guard allows it as its single documented exception; whether a demo
+  kit belongs on this screen at all is a product call, not a chantier one.
+- The step → copyable-text mapping now exists twice: `LaunchStepDetail`
+  (`components/checklist/launch-checklist.tsx`) renders it for `/app/launch`,
+  `launchStepCopy` (`lib/home/next-step.ts`) returns the string for the home
+  card. Both call the same four helpers; neither may change alone.
+- `buildWeekStrip` reads only the calendar month `todayKey` falls in, so a week
+  spanning a month boundary under-counts the adjacent month's days. Pre-existing;
+  a second `get_content_month` call would close it.
+- `loadHomeCanvas` now also pays `loadAssetStats` (one RPC plus a `brand_assets`
+  select) and one `specialties` lookup. Home-only — `loadHome` is unchanged for
+  the five routes that read it for a single field.
+- `styles/tokens.css` has no success/green token, so the mockup's green `READY`
+  pill reads in ink through the existing `STATUSES` vocabulary. Adding one would
+  break that file's own rule that every value comes from the eight references.
+- The `Your workspace` sub-line of LOT 7's third chrome delta is NOT shipped: it
+  is forbidden by name in `app/__tests__/kit-defects.test.ts` ("défaut 3"), which
+  asserts `not.toContain('?? "Your workspace"')`. Reversing a tested defect fix
+  needs its author, not a mockup. The monogram half of that delta already exists.
