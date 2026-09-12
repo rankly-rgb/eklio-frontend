@@ -1,0 +1,93 @@
+import Link from "next/link";
+import { MonoLabel } from "@/components/ui/mono-label";
+import { StatusChip } from "@/components/ui/status-chip";
+import { PhotoSlot } from "@/components/kit/photo-slot";
+import type { UpcomingItem } from "@/lib/data/home";
+
+/*
+ * "Upcoming content" — her scheduled posts from today forward, three at most.
+ *
+ * The thumbnail is the REAL rendered photograph for the item's own image slot,
+ * signed on the same read as the hero's, with `<PhotoSlot>`'s deterministic
+ * gradient behind it until one exists. No stock, no placeholder tile.
+ *
+ * The status pill is the product's one status vocabulary (`STATUSES`), not a
+ * colour invented for this row. The mockup draws READY in green; there is no
+ * green in `styles/tokens.css`, whose own header forbids adding a value that
+ * did not come from the eight reference screens, so READY reads in ink with
+ * its check the way it reads everywhere else in the app.
+ */
+export function UpcomingContent({
+  items,
+  viewContentHref,
+  primaryColor,
+  darkNeutral,
+}: {
+  items: UpcomingItem[];
+  viewContentHref: string;
+  primaryColor: string;
+  darkNeutral: string;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <section aria-labelledby="upcoming-content" className="flex flex-col gap-3">
+      <div className="flex items-baseline gap-4">
+        <MonoLabel tracking="16" as="h2" id="upcoming-content">
+          Upcoming content
+        </MonoLabel>
+        <Link
+          href={viewContentHref}
+          className="ml-auto text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+        >
+          View content &rarr;
+        </Link>
+      </div>
+
+      <ul className="flex flex-col rounded-card border border-line">
+        {items.map((item) => (
+          <li key={item.id} className="border-t border-line first:border-t-0">
+            <div className="flex items-center gap-3.5 p-[12px_16px]">
+              <PhotoSlot
+                tokens={{ primary: primaryColor, dark_neutral: darkNeutral }}
+                src={item.photoUrl}
+                className="aspect-[4/3] w-[64px] flex-none rounded-preview"
+              />
+
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate text-ui font-medium leading-body text-ink">
+                  {`Post ${item.position} — ${postDate(item.scheduledFor)}`}
+                </span>
+                {item.caption ? (
+                  <span className="truncate text-meta leading-body text-ink-2">
+                    &ldquo;{item.caption}&rdquo;
+                  </span>
+                ) : null}
+              </span>
+
+              <span className="flex-none rounded-pill bg-card px-2.5 py-1">
+                <StatusChip status={item.status} />
+              </span>
+
+              <Link
+                href={item.href}
+                className="flex-none whitespace-nowrap text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4 max-md:hidden"
+              >
+                Edit &rarr;
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** `2026-09-14` → `September 14`, in UTC so the key is not shifted by a zone. */
+function postDate(scheduledFor: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${scheduledFor}T12:00:00Z`));
+}

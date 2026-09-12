@@ -8,7 +8,9 @@ import { WeekStrip } from "@/components/home/week-strip";
 import { LaunchRing } from "@/components/home/launch-ring";
 import { QuickTools, RailChecklist, RailMeta, RailQuote } from "@/components/home/rail";
 import { MonthlyPresenceCard } from "@/components/home/monthly-presence-card";
-import { SinceYouWereHere } from "@/components/home/since-you-were-here";
+import { RecentUpdates } from "@/components/home/recent-updates";
+import { BrandGlance } from "@/components/home/brand-glance";
+import { UpcomingContent } from "@/components/home/upcoming-content";
 import { RecentlyDeletedSection } from "@/components/home/recently-deleted-section";
 import { StartBriefButton } from "@/components/brief/start-brief-button";
 import { SAMPLE_PREVIEW } from "@/lib/brand/sample";
@@ -120,7 +122,30 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
         </div>
 
         <div className="order-6 col-start-1 col-end-3 row-start-4 mt-6 border-t border-line pt-6 pl-[var(--gutter)] max-lg:mt-0 max-lg:pl-0">
-          <SinceYouWereHere rows={canvas.since} />
+          {/*
+           * Two columns: recent updates on the left, the glance over upcoming
+           * content on the right. Each of the three renders only when it has
+           * rows — a kit with no notifications and no scheduled post shows the
+           * glance alone, and the grid stays correct.
+           */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-7 max-lg:grid-cols-1">
+            <RecentUpdates rows={canvas.since} viewAllHref="/app/launch" />
+            <div className="flex min-w-0 flex-col gap-7">
+              {kit.selectedDirection ? (
+                <BrandGlance
+                  direction={kit.selectedDirection}
+                  imageryCount={canvas.imageryCount}
+                  viewKitHref={`/app/brand-kits/${kit.row.id}`}
+                />
+              ) : null}
+              <UpcomingContent
+                items={canvas.upcoming}
+                viewContentHref="/app/content"
+                primaryColor={canvas.tokens.primary}
+                darkNeutral={canvas.tokens.dark_neutral}
+              />
+            </div>
+          </div>
           <RecentlyDeletedSection kits={home.deletedKits} />
         </div>
 

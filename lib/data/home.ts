@@ -29,10 +29,11 @@ import { computeImageFingerprint } from "@/lib/images/fingerprint";
 import { getBrandImages } from "@/lib/images/rpc";
 import {
   syncNotifications,
-  notificationLine,
+  notificationRow,
   type Notification,
 } from "@/lib/data/notifications";
 import { loadAssetStats } from "@/lib/data/asset-stats";
+import type { StatusKey } from "@/lib/status";
 import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
 import { STEP_ASSET_KEY } from "@/lib/home/next-step";
 
@@ -373,7 +374,25 @@ export type WeekDay = {
 export type SinceRow = {
   id: string;
   href: string;
-  text: string;
+  title: string;
+  /** The grey line under the title, or null when the row is a single thought. */
+  detail: string | null;
+  /** `created_at`, for the right-aligned relative time. Null on the folded-in row. */
+  at: string | null;
+  /** `read_at === null` — the small state dot. */
+  unread: boolean;
+};
+
+/** One row of "upcoming content", already resolved down to what it draws. */
+export type UpcomingItem = {
+  id: string;
+  href: string;
+  /** Her own ordering within the month: `Post 1`, `Post 2`. */
+  position: number;
+  scheduledFor: string;
+  caption: string | null;
+  status: StatusKey;
+  photoUrl: string | null;
 };
 
 /**
@@ -418,6 +437,10 @@ export type HomeCanvas = {
   week: WeekDay[];
   since: SinceRow[];
   stats: HomeStats;
+  /** Scheduled posts from today forward, at most three. */
+  upcoming: UpcomingItem[];
+  /** Current photographs, for "Brand at a glance". The same map the hero reads. */
+  imageryCount: number;
   /**
    * The rail's mono footer, already resolved: her direction, her specialty,
    * her city. Each line is present only if its own source is — a kit with no
@@ -502,6 +525,12 @@ export async function loadHomeCanvas(
       pagesReady: preview.pages.length,
       lastRebuiltAt: assetStats?.lastUpdated ?? null,
     },
+    upcoming: buildUpcoming({
+      month: home.month,
+      todayKey,
+      photoUrlFor: (slot) => photoUrls.get(slot) ?? null,
+    }),
+    imageryCount: photoUrls.size,
     meta: [kit.selectedDirection.name, specialty, locationLine(home.practice)].filter(
       (line): line is string => Boolean(line)
     ),
@@ -632,20 +661,77 @@ export function buildSinceRows(params: {
     rows.push({
       id: "site-ready",
       href: `/app/brand-kits/${params.kit.row.id}/site-editor`,
-      text: "Your site instructions are ready. Shape them before you paste.",
+      title: "Your site instructions are ready",
+      detail: "Shape them before you paste",
+      // ⚠ NO TIMESTAMP, AND NONE INVENTED. This row is a CONDITION, not an
+      // event: it is raised by the same test that used to raise the retired
+      // top banner, and nothing recorded when that became true. The relative
+      // time simply does not render, rather than showing `now`.
+      at: null,
+      unread: false,
     });
   }
 
   for (const notification of params.notifications) {
     if (rows.length >= SINCE_ROW_LIMIT) break;
+    const row = notificationRow(notification);
     rows.push({
       id: notification.id,
       href: hrefForNotification(params.kit.row.id, notification),
-      text: notificationLine(notification),
+      title: row.title,
+      detail: row.detail,
+      at: notification.created_at,
+      unread: notification.read_at === null,
     });
   }
 
   return rows.slice(0, SINCE_ROW_LIMIT);
+}
+
+const UPCOMING_LIMIT = 3;
+
+/**
+ * The next few scheduled posts, in date order.
+ *
+ * ⚠ `proposed` IS EXCLUDED, for the reason `get_content_month`'s own counts
+ * exclude it: a proposal is a row EKLIO wrote, not one she has seen, and
+ * listing it under "upcoming content" beside her own work would tell her she
+ * has planned something she has not planned. `archived` is out for the
+ * obvious reason. `position` is her place in the month's scheduled order, so
+ * `Post 2` means the second post of the month, not the second row on screen.
+ */
+export function buildUpcoming(params: {
+  month: ContentMonth;
+  todayKey: string;
+  photoUrlFor: (slot: string) => string | null;
+}): UpcomingItem[] {
+  const scheduled = params.month.items
+    .filter(
+      (item): item is ContentItem & { scheduled_for: string } =>
+        item.scheduled_for !== null &&
+        (item.status === "draft" || item.status === "ready")
+    )
+    .sort((a, b) => (a.scheduled_for < b.scheduled_for ? -1 : 1));
+
+  return scheduled
+    .map((item, index) => ({ item, position: index + 1 }))
+    .filter(({ item }) => item.scheduled_for >= params.todayKey)
+    .slice(0, UPCOMING_LIMIT)
+    .map(({ item, position }) => ({
+      id: item.id,
+      href: `/app/content/${item.id}`,
+      position,
+      scheduledFor: item.scheduled_for,
+      caption: item.caption,
+      status: upcomingStatus(item),
+      photoUrl: item.image_slot ? params.photoUrlFor(item.image_slot) : null,
+    }));
+}
+
+/** Her row's own state, in the product's one status vocabulary. */
+function upcomingStatus(item: ContentItem): StatusKey {
+  if (item.posted) return "posted";
+  return item.status === "ready" ? "ready" : "draft";
 }
 
 /**

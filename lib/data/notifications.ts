@@ -53,6 +53,35 @@ export async function markNotificationsRead(
   return !error && data === true;
 }
 
+/**
+ * A notification as the home screen's "recent updates" rows draw it: a title
+ * and the line under it.
+ *
+ * ⚠ ADDITIVE, NOT A REPLACEMENT. `notificationLine` below still serves the
+ * bell, which has room for one sentence and no second line. Changing it to
+ * return a pair would have re-shaped the bell to suit a different screen.
+ */
+export type NotificationRow = { title: string; detail: string | null };
+
+export function notificationRow(notification: Notification): NotificationRow {
+  switch (notification.kind) {
+    case "asset_rendered": {
+      const key = typeof notification.payload.key === "string" ? notification.payload.key : null;
+      return {
+        title: key ? `${key.replace(/_/g, " ")} was rebuilt` : "An asset was rebuilt",
+        detail: "Rendered again under your current brand",
+      };
+    }
+    case "site_stale":
+      return {
+        title: "Your site instructions changed",
+        detail: "Since you last copied them",
+      };
+    default:
+      return { title: "Something changed", detail: null };
+  }
+}
+
 /** One short, human line per notification kind — used by the bell's list. */
 export function notificationLine(notification: Notification): string {
   switch (notification.kind) {
