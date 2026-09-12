@@ -17,6 +17,7 @@ Nothing here is a deploy. Where a deploy is required, the row says so.
 
 | # | Item | State today | Blocks launch? |
 |---|---|---|---|
+| **0** | **The site answers 200 on `/`** | ⚠ **it did not, on 2026-09-12** | **Yes — and it precedes every other row** |
 | 1 | `ANON_TOKEN_SECRET` in Vercel | **cannot verify from here** | No — but see the row |
 | 2 | Supabase email confirmation off | **cannot verify from here** | No |
 | 3 | The five spend ceilings | ✅ **verified live** | Yes |
@@ -29,6 +30,42 @@ Nothing here is a deploy. Where a deploy is required, the row says so.
 | 9 | Stripe payment methods limited to cards | **cannot verify from here** | **Yes — see the row** |
 | 10 | The rehearsal has been run | not yet | **Yes — it is the only test of the live keys** |
 | 11 | ACL rollback of 2–3 Sept — **known unknown, not chased** | cause unknown; bounded by in-body gates + CI | No — read the row if the grants check goes red |
+
+---
+
+## 0bis. ⚠ THE SITE ANSWERS 200 ON `/` — CHECK THIS AFTER EVERY DEPLOY, BEFORE ANYTHING ELSE
+
+**Every other row on this list assumes the application boots. Nothing on it checked that it
+does.** On 2026-09-12 production served a bare `Internal Server Error` — no Next error page,
+no React boundary — on every path including the landing page, the pricing page and the
+anonymous brief, and this list had no row that would have caught it.
+
+**Set.** Nothing. This is an observation, not a change.
+
+**Where.** `https://eklio-frontend.vercel.app/`, from outside the deployment.
+
+**Verify.**
+
+```
+curl -s -o /dev/null -w '%{http_code}\n' https://eklio-frontend.vercel.app/
+```
+
+**200 and nothing else is acceptable.** Then confirm the body is the real page rather than a
+one-line error: `curl -s https://eklio-frontend.vercel.app/ | head -c 200` must begin
+`<!DOCTYPE html>`. A bare `Internal Server Error` in monospace is the signature of a failure
+**before rendering** — the instrumentation hook, middleware, or a module-scope throw — and
+neither a Next error page nor a React boundary will appear to tell you so.
+
+⚠ **Where to look when it is not 200.** Vercel → the deployment → **Runtime Logs**. A boot
+refusal prints `Failed to prepare server` followed by the reason. If the reason names an
+environment variable, the variable is missing from that environment — and if it is a variable
+only a cron or a background feature uses, the guard is in the wrong register: see
+`lib/env/required.ts`, which now has two.
+
+**State today:** the incident of 2026-09-12 is understood and fixed in code (`CRON_SECRET`
+moved to the feature register), but **this row cannot be verified from the agent session** —
+`eklio-frontend.vercel.app` is refused by the network policy here. It must be checked by a
+human, from outside, after the deploy that carries the fix.
 
 ---
 

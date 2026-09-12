@@ -859,3 +859,43 @@ replaced by what remains true. What follows is the residue, not the original lis
   your own practice's charter") is true under all three candidate rulings, so it is not blocked
   on the decision; it is only blocked on there being a write path to attach it to. Ship it with
   the propagation, not after.
+
+- **2026-09-12 (INCIDENT, fixed) — a fix for an invisible failure produced a total one, and
+  the doctrine that would have prevented it was already written in this repo three days
+  earlier.** `CRON_SECRET` was added to `lib/env/required.ts` in the morning, so that
+  production would refuse to boot without it. It was not set in Vercel. The guard worked
+  exactly as designed: `next start` refused to prepare the server, and **every path returned a
+  bare `Internal Server Error`** — landing page, pricing, anonymous brief — for a variable that
+  only five cron routes use. A silent problem was converted into a total one.
+
+  Reproduced here on the production build, one variable changed: absent → HTTP 500 with the
+  body `Internal Server Error`; present → HTTP 200 and the page. The deployment's own logs were
+  **not** readable from this session (`eklio-frontend.vercel.app` is refused by the network
+  policy, and there is no Vercel CLI or token here), so the mechanism is proven and the
+  attribution to this specific deploy is a strong inference from a matching symptom, not a log
+  reading. What would confirm it outright: `Failed to prepare server … Démarrage refusé …
+  CRON_SECRET` in Vercel's Runtime Logs.
+
+  ⚠ **The part worth keeping.** `app/api/cron/content-month/route.ts` had said it three days
+  before, about a different variable: *"a 404 would say the route does not exist… 503 with the
+  variable's name says what is actually true."* **Fail loud where the thing is used.** The
+  repository had the rule, applied it once, and did not apply it to the guard that took the
+  site down. Having a doctrine is not the same as reaching for it.
+
+  Fixed: `lib/env/required.ts` now has two registers with their entry criteria written in the
+  file — **required to serve** (refuse to boot; serving would be worse than not serving) and
+  **required for a feature** (warn loudly at startup, 503 at the point of use, never refuse to
+  serve). `CRON_SECRET` is in the second. `authorizeCron` returns **503 naming the variable**
+  when it is absent, and keeps **404** for a wrong secret. A test pins the regression: if
+  anyone moves `CRON_SECRET` back into the serve register, the suite fails.
+
+- **2026-09-12 (OPEN — needs a ruling) — `RESEND_API_KEY` may now be in the wrong register
+  too.** Applying the criterion just written: its absence does not stop the site serving
+  honestly, it stops *email*. It was put in the refuse-to-boot register when `sendEmail`
+  returned `{ ok: true }` without a key, so the trial sweep marked rows "notified" that were
+  never notified — thirty days of false stamps ahead of a charge, against a legal obligation
+  (Cal. Bus. & Prof. Code § 17602). **But that hole is already closed at the point of use:**
+  `lib/email/transport.ts` now returns `{ ok: false }` in production and the sweep leaves the
+  row due. So the boot refusal is guarding a failure mode that no longer exists, and it is a
+  second latent total-outage switch of exactly the kind that just fired. Left in place pending
+  an explicit ruling, because moving a legal guard unasked is the opposite of caution.

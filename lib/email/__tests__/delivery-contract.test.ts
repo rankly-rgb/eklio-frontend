@@ -2,9 +2,12 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { sendEmail } from "@/lib/email/transport";
 import {
-  REQUIRED_IN_PRODUCTION,
+  REQUIRED_TO_SERVE,
+  REQUIRED_FOR_A_FEATURE,
   missingRequired,
+  missingFeatureEnv,
   missingRequiredMessage,
+  degradedFeaturesMessage,
   assertRequiredEnv,
 } from "@/lib/env/required";
 
@@ -139,110 +142,159 @@ describe("le balayage du préavis", () => {
 /*
  * ── LE VERROU DE DÉMARRAGE ───────────────────────────────────────────────
  */
-describe("les variables dont l'absence est silencieuse", () => {
-  it("RESEND_API_KEY en fait partie, avec sa raison", () => {
-    expect(Object.keys(REQUIRED_IN_PRODUCTION)).toContain("RESEND_API_KEY");
-    expect(REQUIRED_IN_PRODUCTION.RESEND_API_KEY).toMatch(/17602|préavis/);
+describe("les deux registres de variables silencieuses", () => {
+  /*
+   * ══════════════════════════════════════════════════════════════════════
+   * ⚠ CE BLOC EXISTE PARCE QUE CE FICHIER A MIS LA PRODUCTION PAR TERRE
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * Le 2026-09-12, `CRON_SECRET` a été mise dans le registre « refuser de
+   * démarrer ». Elle n'était pas réglée sur Vercel. Le serveur a refusé de
+   * préparer, et le site entier a rendu « Internal Server Error » en texte
+   * brut — page d'accueil, tarifs, brief anonyme compris — pour une variable
+   * que seules cinq routes de cron utilisent.
+   *
+   * Les tests ci-dessous ne vérifient pas « le garde marche ». Ils vérifient
+   * QUE LE GARDE EST PROPORTIONNÉ : qu'une variable de fonctionnalité ne peut
+   * pas, par un futur déplacement d'une ligne, reprendre le site avec elle.
+   */
+
+  it("RESEND_API_KEY est dans le registre « requis pour servir », avec sa raison", () => {
+    expect(Object.keys(REQUIRED_TO_SERVE)).toContain("RESEND_API_KEY");
+    expect(REQUIRED_TO_SERVE.RESEND_API_KEY).toMatch(/17602|préavis/);
+  });
+
+  it("CRON_SECRET est dans le registre « fonctionnalité », et sa raison nomme le 503", () => {
+    expect(Object.keys(REQUIRED_FOR_A_FEATURE)).toContain("CRON_SECRET");
+    expect(REQUIRED_FOR_A_FEATURE.CRON_SECRET.feature).toMatch(/cron/i);
+    expect(REQUIRED_FOR_A_FEATURE.CRON_SECRET.reason).toMatch(/503/);
   });
 
   /*
-   * CRON_SECRET répond au même critère et pour la même raison : son absence
-   * ne casse rien de visible. `authorizeCron` rend 404, les cinq crons
-   * partent à l'heure et n'atteignent jamais la base, et le panneau de
-   * Vercel montre des invocations. Mesuré le 12 septembre 2026 : aucune
-   * trace PostgREST des passages de 04:00, 05:00 et 06:00.
+   * ⚠ LA RÉGRESSION ELLE-MÊME. Si quelqu'un redéplace CRON_SECRET dans le
+   * registre 1, ce test tombe, et le message dit pourquoi.
    */
-  it("CRON_SECRET aussi, et sa raison nomme le 404", () => {
-    expect(Object.keys(REQUIRED_IN_PRODUCTION)).toContain("CRON_SECRET");
-    expect(REQUIRED_IN_PRODUCTION.CRON_SECRET).toMatch(/404/);
+  it("⚠ CRON_SECRET ne peut PAS revenir dans « requis pour servir »", () => {
+    expect(Object.keys(REQUIRED_TO_SERVE)).not.toContain("CRON_SECRET");
   });
 
-  it("et le démarrage refuse en nommant les deux", () => {
-    const message = missingRequiredMessage(
-      missingRequired({ NODE_ENV: "production" })
+  it("les deux registres sont disjoints", () => {
+    const both = Object.keys(REQUIRED_TO_SERVE).filter(
+      (name) => name in REQUIRED_FOR_A_FEATURE
     );
-    expect(message).toContain("RESEND_API_KEY");
-    expect(message).toContain("CRON_SECRET");
+    expect(both).toEqual([]);
   });
 
   /*
-   * Le critère d'entrée est étroit : « son absence ne casse rien de visible ».
-   * Les clés Stripe lèvent une StripeConfigError au premier appel, donc elles
-   * n'ont rien à faire ici — et si quelqu'un les ajoute, c'est le signe que le
-   * critère a été oublié.
+   * Le critère d'entrée reste étroit : « son absence ne casse rien de
+   * visible ». Les clés Stripe lèvent une StripeConfigError au premier appel,
+   * donc elles n'ont leur place dans NI l'un NI l'autre.
    */
-  it("et les variables qui lèvent déjà d'elles-mêmes n'y sont pas", () => {
+  it("et les variables qui lèvent déjà d'elles-mêmes ne sont dans aucun registre", () => {
     for (const name of [
       "STRIPE_SECRET_KEY",
       "STRIPE_WEBHOOK_SECRET",
       "SUPABASE_SERVICE_ROLE_KEY",
     ]) {
-      expect(Object.keys(REQUIRED_IN_PRODUCTION)).not.toContain(name);
+      expect(Object.keys(REQUIRED_TO_SERVE)).not.toContain(name);
+      expect(Object.keys(REQUIRED_FOR_A_FEATURE)).not.toContain(name);
     }
   });
 
-  it("refuse le démarrage en production quand il en manque une", () => {
-    expect(() =>
-      assertRequiredEnv({ NODE_ENV: "production" })
-    ).toThrow(/RESEND_API_KEY/);
+  it("refuse le démarrage en production quand il manque une variable du registre 1", () => {
+    expect(() => assertRequiredEnv({ NODE_ENV: "production" })).toThrow(
+      /RESEND_API_KEY/
+    );
   });
 
-  it("et le message dit POURQUOI, pas seulement quoi", () => {
+  /*
+   * ⚠ LE TEST QUI AURAIT ÉVITÉ L'INCIDENT. Une variable de fonctionnalité
+   * absente AVERTIT et LAISSE DÉMARRER.
+   */
+  it("⚠ mais LAISSE DÉMARRER quand il ne manque qu'une variable du registre 2", () => {
+    const serveOk = Object.fromEntries(
+      Object.keys(REQUIRED_TO_SERVE).map((name) => [name, "valeur"])
+    );
+    expect(() =>
+      assertRequiredEnv({ NODE_ENV: "production", ...serveOk })
+    ).not.toThrow();
+  });
+
+  it("et le message de refus dit POURQUOI, pas seulement quoi", () => {
     const message = missingRequiredMessage(["RESEND_API_KEY"]);
     expect(message).toContain("RESEND_API_KEY");
     expect(message).toMatch(/17602/);
-    expect(message).toMatch(/SILENCIEUSE/);
+    expect(message).toMatch(/SERVIR/);
+  });
+
+  it("et l'avertissement de dégradation nomme la fonctionnalité qui tombe", () => {
+    const message = degradedFeaturesMessage(["CRON_SECRET"]);
+    expect(message).toContain("CRON_SECRET");
+    expect(message).toMatch(/cron/i);
+    expect(message).toMatch(/continue de servir/);
   });
 
   it("laisse démarrer quand tout est là", () => {
     /*
-     * L'environnement complet est DÉRIVÉ du registre, jamais réécrit à la
-     * main. La version manuscrite ne fournissait que RESEND_API_KEY et devait
-     * tomber à la première variable ajoutée : c'est arrivé le 2026-09-12 avec
-     * CRON_SECRET. Le test n'était pas faux, il était écrit au singulier.
+     * Les deux environnements sont DÉRIVÉS des registres, jamais réécrits à la
+     * main : la version manuscrite ne fournissait que RESEND_API_KEY et devait
+     * tomber à la première variable ajoutée. C'est arrivé le 2026-09-12.
      */
-    const toutesPresentes = Object.fromEntries(
-      Object.keys(REQUIRED_IN_PRODUCTION).map((name) => [name, "valeur"])
+    const complet = Object.fromEntries(
+      [...Object.keys(REQUIRED_TO_SERVE), ...Object.keys(REQUIRED_FOR_A_FEATURE)].map(
+        (name) => [name, "valeur"]
+      )
     );
     expect(() =>
-      assertRequiredEnv({ NODE_ENV: "production", ...toutesPresentes })
+      assertRequiredEnv({ NODE_ENV: "production", ...complet })
     ).not.toThrow();
   });
 
-  /*
-   * ⚠ ET NE LÈVE JAMAIS HORS PRODUCTION. Une clé d'envoi absente est le cas
-   * normal en local ; exiger la clé empêcherait de lancer le projet et de
-   * faire tourner cette suite.
-   */
   it("ne lève ni en développement ni en test", () => {
     for (const nodeEnv of ["development", "test", undefined]) {
-      expect(() =>
-        assertRequiredEnv({ NODE_ENV: nodeEnv })
-      ).not.toThrow();
+      expect(() => assertRequiredEnv({ NODE_ENV: nodeEnv })).not.toThrow();
     }
   });
 
-  it("missingRequired énumère, et l'énumération n'est pas vide", () => {
-    // Dérivé du registre : un environnement vide manque TOUT le registre.
-    expect(missingRequired({})).toEqual(Object.keys(REQUIRED_IN_PRODUCTION));
+  it("les deux énumérations sont dérivées, et aucune n'est vide", () => {
+    expect(missingRequired({})).toEqual(Object.keys(REQUIRED_TO_SERVE));
+    expect(missingFeatureEnv({})).toEqual(Object.keys(REQUIRED_FOR_A_FEATURE));
 
-    const toutesPresentes = Object.fromEntries(
-      Object.keys(REQUIRED_IN_PRODUCTION).map((name) => [name, "valeur"])
+    const complet = Object.fromEntries(
+      [...Object.keys(REQUIRED_TO_SERVE), ...Object.keys(REQUIRED_FOR_A_FEATURE)].map(
+        (name) => [name, "valeur"]
+      )
     );
-    expect(missingRequired(toutesPresentes)).toEqual([]);
+    expect(missingRequired(complet)).toEqual([]);
+    expect(missingFeatureEnv(complet)).toEqual([]);
 
-    // Garde anti-vacuité : la liste a de quoi mordre.
-    expect(Object.keys(REQUIRED_IN_PRODUCTION).length).toBeGreaterThan(0);
-
-    // Canarie : le registre porte au moins les deux qu'on sait y être.
-    expect(Object.keys(REQUIRED_IN_PRODUCTION)).toEqual(
-      expect.arrayContaining(["RESEND_API_KEY", "CRON_SECRET"])
-    );
+    // Gardes anti-vacuité : les deux listes ont de quoi mordre.
+    expect(Object.keys(REQUIRED_TO_SERVE).length).toBeGreaterThan(0);
+    expect(Object.keys(REQUIRED_FOR_A_FEATURE).length).toBeGreaterThan(0);
   });
 
   it("et instrumentation.ts l'appelle vraiment au démarrage", () => {
     const source = readFileSync("instrumentation.ts", "utf8");
     expect(source).toContain("assertRequiredEnv");
     expect(source).toContain("lib/env/required");
+  });
+});
+
+/*
+ * ── LA GARDE DES CRONS, DU CÔTÉ DE L'USAGE ───────────────────────────────
+ * « Échouer fort là où la chose sert » n'est vrai que si la route le fait.
+ */
+describe("authorizeCron échoue là où la chose sert", () => {
+  const source = readFileSync("lib/api/cron.ts", "utf8");
+
+  it("rend 503 en nommant la variable quand CRON_SECRET est absente", () => {
+    expect(source).toContain("CRON_SECRET");
+    expect(source).toMatch(/status:\s*503/);
+    expect(source).toContain("missing_env");
+  });
+
+  it("et garde le 404 pour un mauvais secret — une porte fermée ne se présente pas", () => {
+    expect(source).toMatch(/status:\s*404/);
+    expect(source).toContain("Not found.");
   });
 });
