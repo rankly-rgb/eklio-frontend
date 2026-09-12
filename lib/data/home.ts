@@ -70,7 +70,36 @@ export type HomeModel = {
   nudge: Nudge | null;
   /** Recently deleted kits still inside their 30-day window, this user's own. */
   deletedKits: DeletedBrandKit[];
+  /**
+   * The header's quote slot, or `null` when she has no line of her own to put
+   * in it.
+   *
+   * ⚠ THIS SLOT CARRIES HER WORDS OR IT CARRIES NOTHING. The mockup fills it
+   * with a house aphorism under a `YOUR MANTRA THIS WEEK` label; attributing a
+   * sentence she never wrote to her own practice is the one thing this screen
+   * cannot do. `usp_statement` is the positioning line she was shown, edited
+   * and confirmed — the only single sentence in the schema that is hers by
+   * construction. No fallback, no Eklio house quote: the slot collapses.
+   */
+  quote: HomeQuote | null;
 };
+
+/** A sentence of hers, and where in her brief it came from. */
+export type HomeQuote = {
+  text: string;
+  /** Rendered in mono under the line. Never her practice name. */
+  provenance: string;
+};
+
+/** The provenance label both quote slots carry. */
+export const QUOTE_PROVENANCE = "From your positioning";
+
+/** Her confirmed positioning line, trimmed, or `null` when there isn't one. */
+export function quoteFromBrief(uspStatement: string | null | undefined): HomeQuote | null {
+  const text = uspStatement?.trim();
+  if (!text) return null;
+  return { text, provenance: QUOTE_PROVENANCE };
+}
 
 export async function loadHome(
   supabase: Client,
@@ -118,13 +147,14 @@ export async function loadHome(
       entitled,
       nudge: null,
       deletedKits,
+      quote: null,
     };
   }
 
   const [{ data: brief }, brandKit] = await Promise.all([
     supabase
       .from("project_briefs")
-      .select("progress_step, completed_steps")
+      .select("progress_step, completed_steps, usp_statement")
       .eq("project_id", project.id)
       .maybeSingle(),
     loadBrandKitByProject(supabase, project.id, userId),
@@ -161,6 +191,7 @@ export async function loadHome(
     entitled,
     nudge: pickNudge({ project, brief, brandKit, month: contentMonth }),
     deletedKits,
+    quote: quoteFromBrief(brief?.usp_statement),
   };
 }
 
