@@ -899,3 +899,67 @@ replaced by what remains true. What follows is the residue, not the original lis
   row due. So the boot refusal is guarding a failure mode that no longer exists, and it is a
   second latent total-outage switch of exactly the kind that just fired. Left in place pending
   an explicit ruling, because moving a legal guard unasked is the opposite of caution.
+
+## Home v3 (chantier home-v3) — noticed, not fixed
+
+- `components/home/home-view.tsx`'s empty state renders `SAMPLE_PREVIEW` from
+  `lib/brand/sample.ts` — a seeded illustration on the `/app` route. The new
+  fixture guard allows it as its single documented exception; whether a demo
+  kit belongs on this screen at all is a product call, not a chantier one.
+- The step → copyable-text mapping now exists twice: `LaunchStepDetail`
+  (`components/checklist/launch-checklist.tsx`) renders it for `/app/launch`,
+  `launchStepCopy` (`lib/home/next-step.ts`) returns the string for the home
+  card. Both call the same four helpers; neither may change alone.
+- `buildWeekStrip` reads only the calendar month `todayKey` falls in, so a week
+  spanning a month boundary under-counts the adjacent month's days. Pre-existing;
+  a second `get_content_month` call would close it.
+- `loadHomeCanvas` now also pays `loadAssetStats` (one RPC plus a `brand_assets`
+  select) and one `specialties` lookup. Home-only — `loadHome` is unchanged for
+  the five routes that read it for a single field.
+- **The V2 spec's success colour was never implemented.** `#5E8C61` and its
+  `-soft` tint appear nowhere in either repo — not in `styles/tokens.css`, not
+  in any working tree, and `git log --all -S` finds them in no commit on any
+  ref of either repo. There is no `--success` / `--color-success` token name
+  either. So the `READY` pill stays in ink through the existing `STATUSES`
+  vocabulary, and this is the gap, not a choice: the token has to be
+  implemented against the V2 spec before any pill can use it.
+- The `Your workspace` sub-line of LOT 7's third chrome delta is NOT shipped: it
+  is forbidden by name in `app/__tests__/kit-defects.test.ts` ("défaut 3"), which
+  asserts `not.toContain('?? "Your workspace"')`. Reversing a tested defect fix
+  needs its author, not a mockup. The monogram half of that delta already exists.
+- `Mark done` (40px) and `Skip for now` (21px) sit under the 44px touch minimum
+  on `/app`. Both are `LaunchStepActions`, which `/app/launch` renders too, so
+  they are pre-existing members of the 45 the acquisition chantier counted.
+- The mockup labels that button `Mark as done`; the shared component says
+  `Mark done`. Changing the string changes `/app/launch` too.
+- The third stats tile reads `2d / Since rebuild`. Honest, and it duplicates
+  nothing else on the screen, but a duration under a count-shaped tile is an
+  odd pairing worth a second look.
+
+- **The hero overlay's scrim should read a persisted luminance, not measure or
+  guess.** The right fix is to persist the measured luminance ONCE, at image
+  generation, as a column on `brand_images` — not to measure it on the read
+  path. Decoding the hero photograph on every home load to save a few percent
+  of scrim is the wrong trade; a worst-case floor (`solveOverlayScrim`) is the
+  safe direction to be wrong in, and is what ships. Persisting it is a backend
+  change and was out of this chantier's scope. Accepted as shipped, with the
+  column as the known next step.
+
+## Home v3 — deliberate divergences from the mockup (decided, not oversights)
+
+Each of these was walked, judged and settled with the chantier's author. They
+are divergences on purpose; a future session should not "fix" them back.
+
+- **The quote card carries no leaf glyph.** The mockup draws an organic sprig
+  above the quote. This app's marks are discs, frames, rules and lines —
+  geometric, and drawn in borders. A single organic ornament would be a one-off
+  idiom, and the brand's own branch ornament is a per-direction asset that does
+  not exist yet. Not shipped.
+- **The nav icons are the app's existing glyphs, not the mockup's shapes.** The
+  mockup draws a box for Brand kit and a document for Content; the header uses
+  `SectionGlyph`'s `identity` and `words`. Same reason — new icon art for four
+  slots that already have marks in the vocabulary. All four items carry an
+  icon, which was the delta.
+- **The button reads `Mark done`, the mockup `Mark as done`.** It lives in
+  `LaunchStepActions`, which `/app/launch` renders too. Two words are not worth
+  a diff in a component outside this chantier's scope. Known divergence.

@@ -5,28 +5,43 @@ import { PracticeHeader } from "@/components/home/practice-header";
 import { BrandCanvas } from "@/components/home/brand-canvas";
 import { NextCard } from "@/components/home/next-card";
 import { WeekStrip } from "@/components/home/week-strip";
-import { LaunchRingCard } from "@/components/home/launch-ring-card";
+import { LaunchRing } from "@/components/home/launch-ring";
+import { QuickTools, RailChecklist, RailMeta, RailQuote } from "@/components/home/rail";
 import { MonthlyPresenceCard } from "@/components/home/monthly-presence-card";
-import { SinceYouWereHere } from "@/components/home/since-you-were-here";
+import { RecentUpdates } from "@/components/home/recent-updates";
+import { BrandGlance } from "@/components/home/brand-glance";
+import { UpcomingContent } from "@/components/home/upcoming-content";
 import { RecentlyDeletedSection } from "@/components/home/recently-deleted-section";
 import { StartBriefButton } from "@/components/brief/start-brief-button";
 import { SAMPLE_PREVIEW } from "@/lib/brand/sample";
 import type { HomeCanvas, HomeModel } from "@/lib/data/home";
-import { greeting, homeAsOfDate, homeHeaderDate } from "@/lib/data/home";
+import { greeting, homeHeaderDate } from "@/lib/data/home";
 
 /*
- * The home screen — "your practice this week."
+ * ── THE HOME SHELL ───────────────────────────────────────────────────────
  *
- * Replaces the greeting-as-hero, the static "Your brand" thumbnail, and the
- * always-on nudge banner with six pieces built from data that already
- * exists: the header (date + practice name), her real site hero rendered at
- * full fidelity with her generated photograph, one rule-chosen next action,
- * a week glance, "since you were here" from her notifications, and the
- * launch ring / Monthly Presence swap.
+ * Three zones under the header row, and a rail down the right:
  *
- * A kit whose direction isn't chosen yet has none of that to render (no site,
- * no checklist, no month), so it keeps the earlier, simpler prompt below --
- * unchanged in spirit from before this rewrite, just under the same header.
+ *   main   ≈48%  the hero canvas
+ *   middle ≈26%  the one NEXT STEP card
+ *   rail   ≈22%  sticky, with a full-height rule down its left edge
+ *
+ * The week strip and the sub-grid below them span main AND middle — the
+ * chantier's prose puts them inside the main column, the mockup runs them the
+ * full width of the content area, and the mockup wins.
+ *
+ * ── HOW THE TWO LAYOUTS ARE ONE TREE ────────────────────────────────────
+ *
+ * Desktop is a grid with every item placed explicitly. Mobile is a flex
+ * column, and the rail becomes `display: contents` so its blocks stop being
+ * one unit and join the single column as siblings. That is what lets the
+ * checklist sit between the week strip and "recent updates" at 375px while
+ * quick tools and the meta footer fall to the end — the stacking order the
+ * chantier specifies — without rendering the rail twice or duplicating an id.
+ *
+ * `order-*` drives the mobile column. On the desktop grid it changes nothing:
+ * every item there carries an explicit `col-start`/`row-start`, and explicit
+ * placement ignores order.
  */
 export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas | null }) {
   const kit = home.brandKit;
@@ -34,64 +49,145 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
   if (!home.projectId) return <EmptyHome />;
 
   const now = new Date();
-  const dateLabel = homeHeaderDate(now);
   const practiceName = kit?.practiceName ?? "Your practice";
 
+  if (!kit || !canvas) {
+    return (
+      <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)] max-md:pt-10">
+        <PracticeHeader
+          dateLabel={homeHeaderDate(now)}
+          practiceName={practiceName}
+          quote={home.quote}
+        />
+        <StartingOut home={home} />
+        <RecentlyDeletedSection kits={home.deletedKits} />
+      </main>
+    );
+  }
+
+  const everyStepDone =
+    home.checklist.total > 0 && home.checklist.resolvedCount === home.checklist.total;
+
   return (
-    <main className="route-enter flex-1 px-[var(--gutter)] pb-16 pt-8 max-md:px-[var(--gutter-sm)] max-md:pt-10">
-      <PracticeHeader dateLabel={dateLabel} practiceName={practiceName} />
+    <main className="route-enter flex-1 pb-16 pt-8 max-lg:pt-10">
+      <div className="grid grid-cols-[48fr_26fr_22fr] items-start gap-x-8 max-lg:flex max-lg:flex-col max-lg:gap-8 max-lg:px-[var(--gutter-sm)]">
+        {/*
+         * The rule, and only the rule. It is its own grid item, stretched over
+         * every row, because the rail beside it is `sticky` — and a sticky item
+         * sits at `align-self: start`, so a border on the rail itself would
+         * stop wherever the rail's content stops instead of running the page.
+         */}
+        <div
+          aria-hidden="true"
+          className="col-start-3 col-end-4 row-start-1 row-end-5 h-full border-l border-line max-lg:hidden"
+        />
 
-      {kit && canvas ? (
-        <>
-          <div className="mt-6">
-            <BrandCanvas
-              practiceName={kit.practiceName}
-              tokens={canvas.tokens}
-              hero={canvas.hero}
-              photoUrl={canvas.heroPhotoUrl}
-              pages={canvas.pages}
-            />
-          </div>
-          <MonoLabel tracking="14" tone="ink-3" className="mt-2.5 block">
-            {`${practiceName} · ${kit.selectedDirection?.name ?? ""} · AS OF ${homeAsOfDate(now)}`}
-          </MonoLabel>
+        <div className="order-1 col-start-1 col-end-3 row-start-1 pl-[var(--gutter)] max-lg:pl-0">
+          <PracticeHeader
+            dateLabel={homeHeaderDate(now)}
+            practiceName={practiceName}
+            quote={home.quote}
+          />
+        </div>
 
-          <div className="mt-6 grid grid-cols-[2fr_1fr] gap-6 max-lg:grid-cols-1">
-            <div className="flex flex-col">
-              <NextCard
-                brandKitId={kit.row.id}
-                next={canvas.next}
+        <div className="order-2 col-start-1 col-end-2 row-start-2 min-w-0 pt-7 pl-[var(--gutter)] max-lg:pt-0 max-lg:pl-0">
+          {/* The `PRACTICE · DIRECTION · AS OF …` caption that used to sit
+              under this canvas is gone from here on purpose: the mockup moves
+              it to the rail's meta footer, and LOT 4 puts it there. */}
+          <BrandCanvas
+            practiceName={kit.practiceName}
+            tokens={canvas.tokens}
+            hero={canvas.hero}
+            photoUrl={canvas.heroPhotoUrl}
+            pages={canvas.pages}
+            toneKeywords={kit.selectedDirection?.tone_keywords ?? []}
+            stats={canvas.stats}
+          />
+        </div>
+
+        <div className="order-3 col-start-2 col-end-3 row-start-2 min-w-0 pt-7 max-lg:pt-0">
+          <NextCard
+            brandKitId={kit.row.id}
+            next={canvas.next}
+            nextIndex={canvas.nextIndex}
+            nextAsset={canvas.nextAsset}
+            totalSteps={home.checklist.total}
+            primaryColor={canvas.tokens.primary}
+            ctaInk={canvas.tokens.cta_ink}
+          />
+        </div>
+
+        <div className="order-4 col-start-1 col-end-3 row-start-3 mt-7 border-t border-line pt-5 pl-[var(--gutter)] max-lg:mt-0 max-lg:pl-0">
+          <WeekStrip days={canvas.week} primaryColor={canvas.tokens.primary} />
+        </div>
+
+        <div className="order-6 col-start-1 col-end-3 row-start-4 mt-6 border-t border-line pt-6 pl-[var(--gutter)] max-lg:mt-0 max-lg:pl-0">
+          {/*
+           * Two columns: recent updates on the left, the glance over upcoming
+           * content on the right. Each of the three renders only when it has
+           * rows — a kit with no notifications and no scheduled post shows the
+           * glance alone, and the grid stays correct.
+           */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-7 max-lg:grid-cols-1">
+            <RecentUpdates rows={canvas.since} viewAllHref="/app/launch" />
+            <div className="flex min-w-0 flex-col gap-7">
+              {kit.selectedDirection ? (
+                <BrandGlance
+                  direction={kit.selectedDirection}
+                  imageryCount={canvas.imageryCount}
+                  viewKitHref={`/app/brand-kits/${kit.row.id}`}
+                />
+              ) : null}
+              <UpcomingContent
+                items={canvas.upcoming}
+                viewContentHref="/app/content"
                 primaryColor={canvas.tokens.primary}
-                ctaInk={canvas.tokens.cta_ink}
+                darkNeutral={canvas.tokens.dark_neutral}
               />
-              <WeekStrip days={canvas.week} primaryColor={canvas.tokens.primary} />
             </div>
+          </div>
+          <RecentlyDeletedSection kits={home.deletedKits} />
+        </div>
 
-            {home.checklist.total > 0 ? (
-              home.checklist.resolvedCount === home.checklist.total ? (
-                <div className="flex flex-col gap-5">
-                  <p className="text-ui leading-body text-ink">
-                    Your brand is live in seven places.
-                  </p>
-                  <MonthlyPresenceCard
-                    month={home.month}
-                    entitled={home.entitled}
-                    monthLabel={home.monthLabel}
-                  />
-                </div>
-              ) : (
-                <LaunchRingCard progress={home.checklist} />
-              )
+        <aside
+          aria-label="Your first week"
+          className="col-start-3 col-end-4 row-start-1 row-end-5 sticky top-0 flex flex-col gap-6 self-start pl-6 pr-[var(--gutter)] max-lg:contents"
+        >
+          {/*
+           * The ring and the seven rows. When every step is resolved the ring
+           * gives way to the completion line and the Monthly Presence card,
+           * exactly as it already did — the rail changed shape, not that rule.
+           */}
+          <div className="order-5 flex flex-col gap-5">
+            {everyStepDone ? (
+              <>
+                <p className="text-ui leading-body text-ink">
+                  Your brand is live in seven places.
+                </p>
+                <MonthlyPresenceCard
+                  month={home.month}
+                  entitled={home.entitled}
+                  monthLabel={home.monthLabel}
+                />
+              </>
+            ) : home.checklist.total > 0 ? (
+              <>
+                <LaunchRing progress={home.checklist} />
+                <RailChecklist progress={home.checklist} />
+              </>
             ) : null}
           </div>
 
-          <SinceYouWereHere rows={canvas.since} />
-        </>
-      ) : (
-        <StartingOut home={home} />
-      )}
-
-      <RecentlyDeletedSection kits={home.deletedKits} />
+          {/* Order 7 puts these AFTER the sub-grid at 375px, which is the
+              stacking the chantier specifies. On the desktop rail they simply
+              follow the checklist. */}
+          <div className="order-7 flex flex-col gap-6">
+            <QuickTools brandKitId={kit.row.id} />
+            {home.railQuote ? <RailQuote quote={home.railQuote} /> : null}
+            <RailMeta lines={canvas.meta} />
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }

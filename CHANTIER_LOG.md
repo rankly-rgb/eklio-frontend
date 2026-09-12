@@ -2495,3 +2495,255 @@ Superseded by this entry: the OpenAI-for-captions ruling recorded as Decision 5 
 seam stands unchanged. The seam itself is worth keeping for its own reason, not this one:
 `ContentModel` is four methods, and every model call in a month goes through it, which is
 what let the whole pipeline be tested before any key existed.
+
+---
+
+## 2026-09-12 — Chantier home-v3: the signed-in home at `/app`
+
+Branch: `claude/bold-bohr-o9kv30`, frontend only. **Backend diff: zero**, as
+expected — every zone was already readable, and nothing here added a column, a
+migration, a dependency or an RPC.
+
+Ten commits: one per lot 0–8, plus one fix pass after them.
+
+### What the target was, and a note on the contract
+
+⚠ **This chantier was built BY EYE against an image pasted into the session,
+and the committed reference landed afterwards.** No PNG existed in either
+repo's `design/` folder while the work was done. The reference is
+
+    design/reference/home-v3/mockup.png
+    design/reference/home-v3/current-01.png
+    design/reference/home-v3/current-02.png
+    design/reference/home-v3/current-03.png
+
+**It was absent from the pushed repo at `cab02c3` and landed at `82bc852`,
+committed by the chantier's author.** The first clause is the one that matters
+and it was true when written: a session clones what is pushed, and until
+`82bc852` no `.png` had ever been added on any ref of this repository — which
+is why the build that preceded it had nothing to open. What looked like a
+failed upload was a local working copy on another branch; the files were real,
+just not where a clone could see them.
+
+So a session reading those files is reading the reference this work was
+*checked against by eye*, not a file any commit here was produced from. **Where
+the committed PNG and what shipped differ, the PNG is the one to trust and the
+difference is a real finding** — the zone-by-zone table is where those get
+recorded. `design/reference/Screen 7
+- Home.dc.html` is a *different, earlier* home: three nav items, a URL bar, a
+2fr/1fr grid, no rail, no next-step card, no week strip. It was not used.
+
+### What shipped
+
+| Lot | What landed |
+| --- | --- |
+| 0 | `HOME_V3_MAPPING.md` — every zone traced to its read. No code. |
+| 1 | The 48/26/22 shell, header row, sticky rail with a full-height rule, the 375px stacking order. |
+| 2 | The hero canvas: browser chrome dropped, her three tone words over the photograph, the three stats tiles. |
+| 3 | The next-step card re-skinned: `1 OF 7`, the asset row, the copy well, clay `Mark done`. |
+| 4 | The rail: seven real states, four quick tools, her positioning quote, the mono meta footer. |
+| 5 | The week strip: seven dates, content dots, the dates spelled out. |
+| 6 | The sub-grid: recent updates, brand at a glance, upcoming content. |
+| 7 | Chrome: nav icons and the active linen pill. **The third delta was refused — see below.** |
+| 8 | The guards: purged strings, emoji, quote attribution, and the fixture-import guard. |
+| — | A fix pass on four defects a 375px harness render exposed. |
+
+### The mapping table
+
+It lives in `HOME_V3_MAPPING.md` rather than being copied here, because it is
+the artifact the next session checks a change against, and two copies of it
+would disagree within a month. It names the source of every number, string and
+image on the screen, the zones that collapse when their source is null, and the
+two places the chantier's brief asserted something this repo does not carry.
+
+### Zones that collapse, and why
+
+- **Both quote slots** when `usp_statement` / `positioning` is null. No
+  placeholder, no house quote.
+- **The third stats tile** when nothing has been rendered yet.
+- **The next-step asset row and copy well**, independently, when the step
+  carries neither.
+- **The `POSTS ON THE …` line** when no scheduled post falls in the visible week.
+- **Recent updates** and **upcoming content** entirely, when empty.
+- **Each meta-footer line** on its own.
+
+### The third stats tile
+
+`Rebuilt <N>`, from `summarizeManifest().lastUpdated` — the most recent current
+asset's `created_at`. Chosen over image-slot count and colour count, which the
+brief also offered, because both of those already appear in "Brand at a glance"
+two rows below: a tile repeating a number one screen-height away is a
+decoration, not a fact.
+
+### The three substitutions
+
+1. **`+42% Brand clarity`** → `Rebuilt 2d`, as above. The guard test caught the
+   forbidden phrase in a *comment* of mine on the first run — it scans raw text,
+   which is the point — so no comment in the new code writes it either.
+2. **`Welcome back, <name> 👋`** → the mono date over the practice name, with a
+   calm grey sub-line (`Your practice this week.`). Both the greeting register
+   and the emoji are now named in the guard.
+3. **The two quote slots** → `usp_statement` in the header, `positioning` in the
+   rail, each labelled `FROM YOUR POSITIONING` and never with her practice name.
+   A structural guard holds it: no `<figcaption>` in this repo may name the
+   cabinet, and those two slots are held by name to carrying their provenance.
+
+### The chrome
+
+Two of three deltas shipped: icons in the four nav items (three of the four
+marks already existed; only the home mark is new), and the active item as a
+filled linen pill. Search and the bell were already there.
+
+**The third delta is not shipped.** `Your workspace` under the account button
+is forbidden *by name* in `app/__tests__/kit-defects.test.ts` ("défaut 3"),
+which asserts `not.toContain('?? "Your workspace"')`, and `account-menu.tsx`
+carries the reasoning: with one workspace the line names nothing. The monogram
+half of that delta already exists and is unchanged. Reversing a tested defect
+fix needs its author, not a mockup. It is a one-line change on request.
+
+### What was run, and what it returned
+
+| Check | Result |
+| --- | --- |
+| `vitest run` | 2382 passed, 120 files, 0 failed |
+| `tsc --noEmit` | clean, from a cleared `.next` |
+| `next build` | exit 0 |
+| `eslint .` | clean |
+| Extended purged-strings guard | passes — 19 assertions in `forbidden-metrics.test.ts` |
+| `home-reads-production-only` | passes — 5 assertions, graph of 40+ modules from `app/app/page.tsx` |
+| `prefers-reduced-motion` | nothing new needed: `app/globals.css` already flattens every animation and transition with `!important`, and nothing added here moves by other means |
+
+Two tests were changed rather than added. `kit-has-no-hero-band` bound its
+intent to `BrowserFrame`; the intent (the slot is alive, the photograph is
+bounded, never a full-bleed band) is unchanged, and the assertion now holds the
+chrome *out* instead of in. `forbidden-metrics` gained two phrases, an emoji
+rule and an attribution rule.
+
+### Harness renders — geometry only, NOT the production path
+
+A temporary `/dev` route rendered `HomeView` against hand-built props typed from
+the generated Supabase types, was screenshotted at 1440px and 375px, and was
+**deleted before committing**. It is a harness. It says nothing about data:
+every value in it was written by hand, which is exactly what the new
+`home-reads-production-only` guard forbids on the real route.
+
+What the harness measured:
+
+- Rail at x=1125 of 1440, width 315 → **21.9%**, `position: sticky`.
+- At 375px the vertical order is: header, hero canvas, next step, week strip,
+  rail checklist, recent updates, brand at a glance, upcoming content, quick
+  tools, meta — the stacking the chantier specifies.
+- Touch targets under 44px: **2**, both pre-existing (`LaunchStepActions`).
+  The four this chantier introduced were found by the same pass and fixed.
+
+The harness is also what surfaced the four defects in the last commit,
+including an upcoming-content row whose only anchor was hidden under `md`.
+
+### Still open, and assigned to you
+
+Nothing below was verified by anyone in this session; no credentials were
+acquired and none were asked for.
+
+1. **The signed-in pass at 375px and 1440px on the real `/app`**, against a real
+   kit with real data. Every screenshot in this entry is a harness render.
+2. **Brand kit, Content and Check** after the LOT 7 chrome deltas. The header is
+   shared, and it is the one place this chantier could break another screen.
+3. **The `Your workspace` sub-line** — ship it or leave it, as above.
+
+### Closed before merge — verification, not build
+
+- **The success token was never implemented.** `#5E8C61` and a `-soft` tint
+  appear in no working tree and in no commit on any ref of either repo, and no
+  `--success` token name exists. The `READY` pill stays in ink; the gap is in
+  `FINDINGS.md`. No token was added here.
+- **No placeholder URL can reach the copy well.** The chain is closed at every
+  link: the spec seeds `'cta_target_url', null` (`20260830061318_site_spec_
+  paper.sql:538`), no migration carries a URL column default, the validator
+  admits null/empty or a string matching `^(https?://|mailto:|tel:)\S`,
+  `bookingUrlFrom` coerces empty to null, `emailSignatureText` appends the link
+  only `if (bookingUrl)`, `launchStepCopy`'s `booking_link` branch returns null
+  without one, and `NextCard` renders the well only when copy exists — so the
+  block is ABSENT, never empty or placeholder-filled. The `example.com` seen in
+  the harness render came from hand-written harness props, which is precisely
+  why a harness is not evidence about data. The only `example.com` on any
+  source path is `components/kit/in-situ/frames.tsx`, which draws a picture of
+  an email on the kit's in-situ panel and is not reachable from `/app`.
+- **The harness never landed.** `app/dev/home-harness` appears in no commit on
+  any ref, and no tree of any commit on this branch contains a path matching
+  `harness`. The guard was then proven rather than asserted: a fixture module
+  added under `app/app/**` and imported by the home route turned
+  `home-reads-production-only` red, naming the file; removing it turned it
+  green. Note the guard's real boundary — it follows the import graph from
+  `app/app/page.tsx`, so it catches anything the home route *loads*. A `/dev`
+  route outside that graph is not caught by it, and never was: what keeps such
+  a route off this screen is that `/app` does not import it.
+
+`FINDINGS.md` carries what was noticed and deliberately not fixed.
+
+
+---
+
+## Standing rules — not enforced by any test
+
+Both of these come out of the home-v3 chantier, and both are conventions a
+session has to keep on purpose. Nothing in the suite checks either one. They
+are written here because the next session reads this file and does not read the
+prompt that held the line last time.
+
+### 1. A render is labelled by where its data came from
+
+- A render built from hand-written props is called a **harness**, in the same
+  sentence as the image or the claim — never in a caption, a footnote, or the
+  next paragraph.
+- The words **verified**, **confirmed** and **matches the mockup** are not
+  written about anything that was not rendered from the production read path.
+  A harness shows geometry. It shows nothing whatever about data: every value
+  in it was chosen by whoever wrote the props, so it is the most convincing way
+  there is to be wrong about a number.
+- A harness route is **deleted before committing**. It exists for one
+  screenshot pass and leaves no trace in the tree.
+
+`app/__tests__/home-reads-production-only.test.ts` is NOT this rule. It walks
+the import graph from `app/app/page.tsx`, so it catches a fixture the home
+route *loads* — proven by probe: a module added under `app/app/**` and imported
+by the route turns it red. A harness route living *beside* `/app` is outside
+that graph and the guard cannot see it. What kept harness output from being
+reported as production was a person writing the rule down, and then this
+paragraph. If you want it enforced, that is a test someone still has to write.
+
+### 2. A visual contract is committed by its author, before the chantier starts
+
+A session in this environment **cannot reach the author's filesystem**. There is
+no `~/Downloads`, no `~/Téléchargements`, no `~/Bureau`, no user home in the
+ordinary sense; the repos are cloned fresh into a remote container and nothing
+of the author's machine is mounted. **Images attached to a message do not land
+on disk either** — they are rendered into the session's context and have no
+path, no bytes to copy and no hash to take.
+
+Therefore: any prompt that asks a session to *find*, *copy*, *move* or *hash* a
+file on the author's machine will fail, and the only ways it can appear to
+succeed are a guess or a fabricated stand-in. Both are worse than the failure.
+
+**A prompt that needs a reference names its committed path.** The author
+commits the file first; the prompt points at it. This chantier ran the other
+way round, and the cost was three stops and a mockup that arrived after the
+work it was meant to govern.
+
+### 3. A visual contract is confirmed on the remote ref, not in a file tree
+
+Before a chantier starts, the reference is confirmed **present on the ref the
+session will clone**:
+
+    git ls-tree -r origin/<branch> -- design/reference/<dir>/
+
+A local file tree proves nothing. It can hold files that are untracked, staged
+but never committed, committed on a different branch, or sitting in a different
+clone or Codespace entirely — and every one of those looks identical to
+"landed" when you are looking at a folder. This chantier lost several rounds to
+exactly that: the author's tree showed four PNGs and a texture file, the pushed
+repo had never contained a single `.png`, and both observations were correct.
+
+A session that cannot see the file **says so once and stops.** It does not
+search a second way, and it does not accept a filename, a folder listing or a
+screenshot as evidence that a file is on the ref. `git ls-tree` on the remote
+is the whole check.

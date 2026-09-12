@@ -19,10 +19,15 @@ import { join, resolve } from "node:path";
  * than remembered.
  *
  * ⚠ THE SLOT ITSELF IS ALIVE AND MUST STAY THAT WAY. `hero` is generated,
- * stored, and rendered by the HOME screen inside a browser frame at a sane
+ * stored, and rendered by the HOME screen inside a bounded card at a sane
  * size — which is where an image of her brand belongs. This file asserts
  * that too, so that "remove the band" can never be read as "stop making the
  * photograph".
+ *
+ * The card used to be a browser frame. The home-v3 mockup drops the chrome
+ * and the URL bar, so the assertion below now binds what actually matters —
+ * the photograph is rendered, and it is BOUNDED — and holds the chrome out
+ * rather than in.
  */
 
 const ROOT = resolve(__dirname, "../..");
@@ -102,7 +107,7 @@ describe("le bandeau `hero` a quitté le kit", () => {
 });
 
 describe("mais le slot lui-même est toujours vivant", () => {
-  it("l'accueil le rend, dans un cadre de navigateur", () => {
+  it("l'accueil le rend, dans une carte bornée et sans chrome de navigateur", () => {
     /*
      * C'est la moitié qui empêche « retirer le bandeau » d'être lu comme
      * « arrêter de faire la photo ». Le pipeline la génère toujours ; c'est
@@ -114,7 +119,11 @@ describe("mais le slot lui-même est toujours vivant", () => {
 
     const canvas = code(join(ROOT, "components/home/brand-canvas.tsx"));
     expect(canvas).toContain("PhotoSlot");
-    expect(canvas).toContain("BrowserFrame");
+    // Bornée : la photo vit dans la carte, jamais en pleine largeur.
+    expect(canvas).toContain("rounded-card");
+    // Et sans chrome : c'est la décision de la maquette home-v3, tenue ici
+    // pour qu'un retour du cadre soit un test rouge et non une surprise.
+    expect(canvas).not.toContain("BrowserFrame");
   });
 
   it("et le catalogue des slots le déclare toujours", () => {

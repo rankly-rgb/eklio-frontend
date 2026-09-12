@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonVariant } from "@/components/ui/button";
 import type { LaunchStepKey, LaunchStepStatus } from "@/lib/data/checklist";
 
 /*
@@ -19,10 +19,18 @@ export function LaunchStepActions({
   brandKitId,
   stepKey,
   status,
+  variant = "primary",
 }: {
   brandKitId: string;
   stepKey: LaunchStepKey;
   status: LaunchStepStatus;
+  /**
+   * The affirmative button's fill. `primary` (ink) everywhere by default, so
+   * `/app/launch` is untouched; the home card passes `accent` because the
+   * mockup draws it in clay and the home screen spends its one clay CTA here
+   * (`components/ui/button.tsx`: at most one primary or accent per screen).
+   */
+  variant?: ButtonVariant;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -57,7 +65,7 @@ export function LaunchStepActions({
             Mark not done
           </Button>
         ) : (
-          <Button disabled={busy} onClick={() => void set("done")}>
+          <Button variant={variant} disabled={busy} onClick={() => void set("done")}>
             Mark done
           </Button>
         )}

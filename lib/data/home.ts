@@ -29,9 +29,13 @@ import { computeImageFingerprint } from "@/lib/images/fingerprint";
 import { getBrandImages } from "@/lib/images/rpc";
 import {
   syncNotifications,
-  notificationLine,
+  notificationRow,
   type Notification,
 } from "@/lib/data/notifications";
+import { loadAssetStats } from "@/lib/data/asset-stats";
+import type { StatusKey } from "@/lib/status";
+import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
+import { STEP_ASSET_KEY } from "@/lib/home/next-step";
 
 /*
  * L'agrégat de l'accueil (Écran 7) : une seule lecture pour la salutation, le
@@ -70,7 +74,53 @@ export type HomeModel = {
   nudge: Nudge | null;
   /** Recently deleted kits still inside their 30-day window, this user's own. */
   deletedKits: DeletedBrandKit[];
+  /**
+   * The header's quote slot, or `null` when she has no line of her own to put
+   * in it.
+   *
+   * ⚠ THIS SLOT CARRIES HER WORDS OR IT CARRIES NOTHING. The mockup fills it
+   * with a house aphorism under a `YOUR MANTRA THIS WEEK` label; attributing a
+   * sentence she never wrote to her own practice is the one thing this screen
+   * cannot do. `usp_statement` is the positioning line she was shown, edited
+   * and confirmed — the only single sentence in the schema that is hers by
+   * construction. No fallback, no Eklio house quote: the slot collapses.
+   */
+  quote: HomeQuote | null;
+  /**
+   * The rail's quote card — her positioning paragraph, the longer answer the
+   * header's one-sentence USP was distilled from. Same rule as `quote`: hers
+   * or nothing.
+   */
+  railQuote: HomeQuote | null;
+  /** What the rail's meta footer needs before the catalogue is consulted. */
+  practice: PracticeFacts;
 };
+
+/** The brief's own answers about where and what she practises. */
+export type PracticeFacts = {
+  specialtyIds: string[];
+  city: string | null;
+  state: string | null;
+};
+
+const NO_PRACTICE_FACTS: PracticeFacts = { specialtyIds: [], city: null, state: null };
+
+/** A sentence of hers, and where in her brief it came from. */
+export type HomeQuote = {
+  text: string;
+  /** Rendered in mono under the line. Never her practice name. */
+  provenance: string;
+};
+
+/** The provenance label both quote slots carry. */
+export const QUOTE_PROVENANCE = "From your positioning";
+
+/** Her confirmed positioning line, trimmed, or `null` when there isn't one. */
+export function quoteFromBrief(uspStatement: string | null | undefined): HomeQuote | null {
+  const text = uspStatement?.trim();
+  if (!text) return null;
+  return { text, provenance: QUOTE_PROVENANCE };
+}
 
 export async function loadHome(
   supabase: Client,
@@ -118,13 +168,16 @@ export async function loadHome(
       entitled,
       nudge: null,
       deletedKits,
+      quote: null,
+      railQuote: null,
+      practice: NO_PRACTICE_FACTS,
     };
   }
 
   const [{ data: brief }, brandKit] = await Promise.all([
     supabase
       .from("project_briefs")
-      .select("progress_step, completed_steps")
+      .select("progress_step, completed_steps, usp_statement, positioning, specialty_ids, city, state")
       .eq("project_id", project.id)
       .maybeSingle(),
     loadBrandKitByProject(supabase, project.id, userId),
@@ -161,6 +214,13 @@ export async function loadHome(
     entitled,
     nudge: pickNudge({ project, brief, brandKit, month: contentMonth }),
     deletedKits,
+    quote: quoteFromBrief(brief?.usp_statement),
+    railQuote: quoteFromBrief(brief?.positioning),
+    practice: {
+      specialtyIds: brief?.specialty_ids ?? [],
+      city: brief?.city ?? null,
+      state: brief?.state ?? null,
+    },
   };
 }
 
@@ -314,7 +374,52 @@ export type WeekDay = {
 export type SinceRow = {
   id: string;
   href: string;
-  text: string;
+  /**
+   * Which mark the row carries, one per KIND. The mockup draws a different
+   * one on each row; the same mark three times says nothing about what
+   * changed. Reuses `SectionGlyph`'s vocabulary rather than new icon art.
+   */
+  icon: "colors" | "site";
+  title: string;
+  /** The grey line under the title, or null when the row is a single thought. */
+  detail: string | null;
+  /** `created_at`, for the right-aligned relative time. Null on the folded-in row. */
+  at: string | null;
+  /** `read_at === null` — the small state dot. */
+  unread: boolean;
+};
+
+/** One row of "upcoming content", already resolved down to what it draws. */
+export type UpcomingItem = {
+  id: string;
+  href: string;
+  /** Her own ordering within the month: `Post 1`, `Post 2`. */
+  position: number;
+  scheduledFor: string;
+  caption: string | null;
+  status: StatusKey;
+  photoUrl: string | null;
+};
+
+/**
+ * The three tiles under the hero canvas.
+ *
+ * ⚠ THE THIRD TILE IS NOT A SCORE. The mockup fills it with a percentage of an
+ * invented quality metric — one of the five phrases
+ * `app/__tests__/forbidden-metrics.test.ts` exists to keep out, which is why
+ * this comment does not write its name either. Eklio computes no such number,
+ * and a percentage of something unmeasured is an invented figure presented as
+ * measured. The slot keeps its shape and carries the one fact left on this
+ * read that the rest of the screen does not already say: when her assets were
+ * last rebuilt.
+ */
+export type HomeStats = {
+  /** Rendered and current under the kit's fingerprint. */
+  assetCount: number;
+  /** Her enabled pages — the same list the canvas's nav line draws. */
+  pagesReady: number;
+  /** The most recent current asset's `created_at`, or null before any render. */
+  lastRebuiltAt: string | null;
 };
 
 export type HomeCanvas = {
@@ -324,8 +429,33 @@ export type HomeCanvas = {
   /** Her real, enabled page labels, in `envelope.preview.pages` order. */
   pages: string[];
   next: NextAction;
+  /**
+   * Where the chosen step sits in the seven — the card's `1 OF 7`. Null when
+   * `next` is not a launch step, and then the counter does not render: a
+   * content item is not step N of anything.
+   */
+  nextIndex: number | null;
+  /**
+   * The catalogue entry for the file the chosen step needs, when it needs one
+   * AND the catalogue has it. Null otherwise, and the asset row is absent.
+   */
+  nextAsset: AssetManifestEntry | null;
   week: WeekDay[];
   since: SinceRow[];
+  stats: HomeStats;
+  /** Scheduled posts from today forward, at most three. */
+  upcoming: UpcomingItem[];
+  /** Current photographs, for "Brand at a glance". The same map the hero reads. */
+  imageryCount: number;
+  /**
+   * The rail's mono footer, already resolved: her direction, her specialty,
+   * her city. Each line is present only if its own source is — a kit with no
+   * specialty chosen prints two lines, not a blank one.
+   *
+   * This is the `PRACTICE · DIRECTION · AS OF …` caption that used to sit
+   * under the canvas, moved where the mockup puts it.
+   */
+  meta: string[];
 };
 
 /**
@@ -348,9 +478,14 @@ export async function loadHomeCanvas(
 
   const { spec, preview } = siteSpec.data;
 
-  const [photoUrls, notifications] = await Promise.all([
+  const [photoUrls, notifications, assetStats, specialty] = await Promise.all([
     currentBrandImageUrls(supabase, kit),
     syncNotifications(supabase, kit.row.id),
+    // The same reader the kit band's counts use, not a second count of the
+    // same rows: `summarizeManifest` is where "how many assets" is decided,
+    // and two places deciding it is how the two start to disagree.
+    loadAssetStats(supabase, kit),
+    primarySpecialty(supabase, home.practice.specialtyIds),
   ]);
 
   const launchContext: LaunchStepContext = {
@@ -365,20 +500,46 @@ export async function loadHomeCanvas(
 
   const todayKey = nyDateKey(now);
 
+  const next = pickNextAction({
+    checklist: home.checklist,
+    month: home.month,
+    todayKey,
+    launchContext,
+    photoUrlFor: (slot) => photoUrls.get(slot) ?? null,
+  });
+
+  const stepIndex =
+    next.kind === "launch_step"
+      ? home.checklist.items.findIndex((item) => item.key === next.step.key)
+      : -1;
+
+  const assetKey = next.kind === "launch_step" ? STEP_ASSET_KEY[next.step.key] : undefined;
+
   return {
     tokens: preview.tokens,
     hero: spec.hero,
     heroPhotoUrl: photoUrls.get("hero") ?? null,
     pages: preview.pages.map((page) => page.label),
-    next: pickNextAction({
-      checklist: home.checklist,
-      month: home.month,
-      todayKey,
-      launchContext,
-      photoUrlFor: (slot) => photoUrls.get(slot) ?? null,
-    }),
+    next,
+    nextIndex: stepIndex >= 0 ? stepIndex + 1 : null,
+    nextAsset:
+      (assetKey ? assetStats?.manifest.find((entry) => entry.key === assetKey) : null) ?? null,
     week: buildWeekStrip(home.month, todayKey),
     since: buildSinceRows({ kit, month: home.month, notifications }),
+    stats: {
+      assetCount: assetStats?.currentCount ?? 0,
+      pagesReady: preview.pages.length,
+      lastRebuiltAt: assetStats?.lastUpdated ?? null,
+    },
+    upcoming: buildUpcoming({
+      month: home.month,
+      todayKey,
+      photoUrlFor: (slot) => photoUrls.get(slot) ?? null,
+    }),
+    imageryCount: photoUrls.size,
+    meta: [kit.selectedDirection.name, specialty, locationLine(home.practice)].filter(
+      (line): line is string => Boolean(line)
+    ),
   };
 }
 
@@ -506,20 +667,79 @@ export function buildSinceRows(params: {
     rows.push({
       id: "site-ready",
       href: `/app/brand-kits/${params.kit.row.id}/site-editor`,
-      text: "Your site instructions are ready. Shape them before you paste.",
+      title: "Your site instructions are ready",
+      detail: "Shape them before you paste",
+      icon: "site",
+      // ⚠ NO TIMESTAMP, AND NONE INVENTED. This row is a CONDITION, not an
+      // event: it is raised by the same test that used to raise the retired
+      // top banner, and nothing recorded when that became true. The relative
+      // time simply does not render, rather than showing `now`.
+      at: null,
+      unread: false,
     });
   }
 
   for (const notification of params.notifications) {
     if (rows.length >= SINCE_ROW_LIMIT) break;
+    const row = notificationRow(notification);
     rows.push({
       id: notification.id,
       href: hrefForNotification(params.kit.row.id, notification),
-      text: notificationLine(notification),
+      title: row.title,
+      detail: row.detail,
+      icon: notification.kind === "asset_rendered" ? "colors" : "site",
+      at: notification.created_at,
+      unread: notification.read_at === null,
     });
   }
 
   return rows.slice(0, SINCE_ROW_LIMIT);
+}
+
+const UPCOMING_LIMIT = 3;
+
+/**
+ * The next few scheduled posts, in date order.
+ *
+ * ⚠ `proposed` IS EXCLUDED, for the reason `get_content_month`'s own counts
+ * exclude it: a proposal is a row EKLIO wrote, not one she has seen, and
+ * listing it under "upcoming content" beside her own work would tell her she
+ * has planned something she has not planned. `archived` is out for the
+ * obvious reason. `position` is her place in the month's scheduled order, so
+ * `Post 2` means the second post of the month, not the second row on screen.
+ */
+export function buildUpcoming(params: {
+  month: ContentMonth;
+  todayKey: string;
+  photoUrlFor: (slot: string) => string | null;
+}): UpcomingItem[] {
+  const scheduled = params.month.items
+    .filter(
+      (item): item is ContentItem & { scheduled_for: string } =>
+        item.scheduled_for !== null &&
+        (item.status === "draft" || item.status === "ready")
+    )
+    .sort((a, b) => (a.scheduled_for < b.scheduled_for ? -1 : 1));
+
+  return scheduled
+    .map((item, index) => ({ item, position: index + 1 }))
+    .filter(({ item }) => item.scheduled_for >= params.todayKey)
+    .slice(0, UPCOMING_LIMIT)
+    .map(({ item, position }) => ({
+      id: item.id,
+      href: `/app/content/${item.id}`,
+      position,
+      scheduledFor: item.scheduled_for,
+      caption: item.caption,
+      status: upcomingStatus(item),
+      photoUrl: item.image_slot ? params.photoUrlFor(item.image_slot) : null,
+    }));
+}
+
+/** Her row's own state, in the product's one status vocabulary. */
+function upcomingStatus(item: ContentItem): StatusKey {
+  if (item.posted) return "posted";
+  return item.status === "ready" ? "ready" : "draft";
 }
 
 /**
@@ -545,6 +765,32 @@ export function hrefForNotification(brandKitId: string, notification: Notificati
     default:
       return "/app";
   }
+}
+
+/**
+ * Her first specialty's LABEL, or null.
+ *
+ * ⚠ ORDERED BY THE CATALOGUE, NOT BY THE ARRAY. `specialty_ids` is a raw
+ * column with no guaranteed order, so `[0]` would name a different specialty
+ * on different reads of the same row. `sort_order` is the catalogue's own
+ * ranking and it is stable — the same choice `lib/generation/scope-key.ts`
+ * already makes, for the same reason.
+ */
+async function primarySpecialty(supabase: Client, ids: string[]): Promise<string | null> {
+  if (ids.length === 0) return null;
+  const { data } = await supabase
+    .from("specialties")
+    .select("label")
+    .in("id", ids)
+    .order("sort_order")
+    .limit(1)
+    .maybeSingle();
+  return data?.label ?? null;
+}
+
+/** `Portland, OR` — or just the city, or just the state, or nothing. */
+function locationLine(practice: PracticeFacts): string | null {
+  return [practice.city, practice.state].filter(Boolean).join(", ") || null;
 }
 
 /** `2026-09-06` for `date`, in the product's own time zone (see `contentMonthKey`). */
