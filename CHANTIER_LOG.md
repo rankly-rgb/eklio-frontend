@@ -53,7 +53,8 @@ a policy to it.
 *Standing design rule. 2026-09-11, tenancy chantier, session 3.*
 
 Not "lists tend to rot". **Every single one, without exception, has been wrong when checked.**
-That is now four for four, and the fourth was found while fixing the third:
+That is now five for five, and the fifth was found inside this chantier, in a list I had
+written myself two commits earlier:
 
 | The list | How it was wrong | How it was fixed |
 |---|---|---|
@@ -61,6 +62,7 @@ That is now four for four, and the fourth was found while fixing the third:
 | callers of a gated function | enumerated 3 from memory, there were 4 — the fourth was the database itself | follow the call graph, and name the identityless caller |
 | the notification count after a retirement | corrected in one place, the same number stood in **three** | one `grep`, once |
 | the drift between repo and database | "`direction_asset_daily_spend` is a finding" | fingerprint all 1,910 objects |
+| the register of silently-absent env vars | two tests hand-wrote it as `["RESEND_API_KEY"]`, and as an environment holding only that key; both fell the moment `CRON_SECRET` joined | derive both the environment and the expected list from `REQUIRED_IN_PRODUCTION` |
 
 **The rule: if a list can be computed, computing it is not an optimisation, it is the only
 correct version.** Enumerate from the catalogue — `pg_proc`, `pg_policies`, `pg_constraint`,
@@ -84,6 +86,51 @@ reason, or absent when the catalogue says it should be there. See
 `20260829112000_null_safe_jsonb_validators.test.sql` and
 `20260911180620_tenancy_layer.test.sql` for the shape: the classification is computed, and only
 the justification is written by hand.
+
+
+## A SUMMARY IS NOT THE SOURCE. GO BACK TO WHAT WAS ACTUALLY SAID.
+
+*Standing working rule. 2026-09-12, tenancy chantier, session 4.*
+
+Session 3 was about to record that "the brief quoted the schema without the invitation
+columns". **That was false, and checking it before writing it down was the whole lesson.**
+
+The brief arrived at **2026-09-11 13:55:02Z** and carried the block in full:
+
+```
+organizations        id, name, slug, owner_user_id, brand_charter_kit_id, created_at
+organization_members org_id, user_id (nullable until they sign up), role ('owner'|'clinician'),
+                     status ('invited'|'active'|'removed'), invite_token, invited_email,
+                     project_id, created_at, activated_at
+```
+
+Every column supposedly missing — `user_id` nullable, `status`, `invite_token`,
+`invited_email`, `activated_at` — was there. So were `organizations.slug` and
+`owner_user_id`, which went unnoticed in the same reading.
+
+At **17:58:32Z** a compaction summary replaced that block with a placeholder:
+
+> `## SESSION 2 — the layer itself [organizations / organization_members schema;`
+> `is_org_member(org_id); the test that enumerates tables; Two roles. owner and`
+> `clinician.; Invisible to solo users.]`
+
+Session 3 was built at ~18:00, from the summary. **The source was still in the transcript the
+entire time, and I did not go back to it.**
+
+⚠ **This was a READING failure, not a gap in the brief — and the two call for opposite care.**
+A gap is answered by asking. A reading failure is answered by returning to a source that was
+available all along; asking would have wasted someone's time re-typing what they had already
+written.
+
+**The rule: a summary of an instruction is evidence that an instruction exists, never evidence
+of what it said.** Anything arriving as a recap, a paraphrase, a compaction or a quotation is a
+pointer. Follow it to the original before building on it — and above all before recording that
+something was absent from it.
+
+The same discipline was applied correctly, in this same chantier, to someone else's text: the
+2 September document was refused with "I do not have the document" rather than reconstructed
+from the passages quoted at me. The failure was applying it to a text I did not have, and not
+to a lossy copy of a text I had been given.
 
 
 ## ASK WHO CALLS IT, AND WITH WHAT IDENTITY — NOT WHAT THE OWNER PREDICATE IS

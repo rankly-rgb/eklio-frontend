@@ -811,3 +811,41 @@ replaced by what remains true. What follows is the residue, not the original lis
   in the live database (checked against `information_schema` and `pg_proc`). A future session that
   mistakes them for work in progress would either renumber applied migrations or replay them out
   of order.
+
+## Added during the tenancy chantier, Session 4 (the invitation, eu-west-1, the crons)
+
+- **2026-09-12 (OPEN — needs a deploy, then a same-day read) — no scheduled cron has been shown
+  to reach the database.** The five `vercel.json` crons are registered and enabled on the
+  declared schedules, and `/api/cron/monthly` is absent from the platform as well as the repo,
+  so the disarming holds. But production's PostgREST log carries **no trace** of the 04:00,
+  05:00 and 06:00 runs of 2026-09-12, and that silence is not a retention artefact: the same
+  window held `postgres_logs` events at 04:00 and 10:00. The likely mechanism is a missing
+  `CRON_SECRET`, which made `authorizeCron` return 404 before touching the database — now fixed
+  by refusing to boot production without it (`lib/env/required.ts`). **Still unproven either
+  way.** Closing it needs a *scheduled* run, not a manual one: after the fix is deployed, read
+  the Supabase API Gateway log the same day as the next 04:00 UTC. One of these five carries the
+  pre-charge notice, which is a legal obligation, so "probably fine" is not the standard.
+
+- **2026-09-12 (OPEN — a tool defect we do not own) — the Supabase MCP `query_logs` window is a
+  rolling ~24 hours and silently ignores a wider filter.** `where timestamp > '2026-09-05'` was
+  accepted and disregarded: the earliest row returned was `2026-09-11T17:00`, and it slides with
+  the clock. Nothing in the result says the range was narrowed. This is the same defect class
+  this chantier keeps finding — a filter that is accepted and then not applied — and it belongs
+  to a tool we cannot fix. **Consequence, which is the part that matters: every log-based
+  investigation here is a same-day investigation.** A question asked about yesterday's 04:00 run
+  cannot be answered tomorrow, and an absence read out of this tool proves nothing unless a
+  second source shows the window was live over the hours in question.
+
+- **2026-09-12 (OPEN — needs a human) — the eu-west-1 project must be deleted from the
+  dashboard.** `enolgemfqeajrwpftppm` is `ACTIVE_HEALTHY`, has had no write since 2026-08-16 and
+  no API traffic at all, and nothing in either repository references it in code. Its full
+  contents are committed as backend `supabase/fixtures/eu_west_1_final_state.json` — seven
+  tables, ten rows, all of them the author's own August test data — and the enumeration found
+  nothing else: zero storage buckets, zero storage objects, zero vault secrets, no edge
+  functions, no custom schemas, and one `auth.users` row which is the author's own account. It
+  cannot be paused by this session and **should not be**: the plan is set per *organization*, so
+  "downgrade to free tier first" — which is what the pause API tells you to do — would take
+  production off Pro with it and, past the free-project limit, pause every project in the
+  organization. The dashboard path is a project transfer to a free organization, then a pause
+  that starts a 90-day restore clock. Deletion is simpler and loses nothing now that the rows
+  are in git. No `delete_project` tool exists here.

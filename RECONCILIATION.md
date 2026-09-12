@@ -100,6 +100,65 @@ with itself.
 
 ## Supabase schema — audited, not applied
 
+> ⚠ **SUPERSEDED 2026-09-12.** What follows was true of the session that wrote
+> it and is false today. It is kept, not deleted, because the conclusion it
+> reached — "there is nothing to diff against" — is what the decision not to
+> apply migrations rested on. **Read the correction first.**
+
+### The correction (2026-09-12, tenancy chantier, session 4)
+
+**Two Supabase projects exist, both in the `eklio` organization
+(`mvrhhyusekksnthqumbn`), and both reachable:**
+
+| Ref | Name | Region | What it is |
+|---|---|---|---|
+| `fobgdsupyfslxbswfuay` | `eklio-backend-us` | us-east-1 | **Production.** Created 2026-08-23. The only project ever to hold Eklio production data, and the one every guarantee written in this chantier is scoped to. |
+| `enolgemfqeajrwpftppm` | `eklio-backend` | eu-west-1 | **A pre-migration artefact, being decommissioned.** See below. |
+
+**`upqakxuatlshhqiagbqw` is not an Eklio project and never was.** It is
+"Sentio AI dev", inside a *different organization* ("Sentio AI",
+`tyapcmqubnbszzythxds`) — a separate product of the author's. The session that
+wrote the section below was authenticated against that account and concluded,
+correctly for what it could see, that no Eklio project was reachable.
+
+⚠ The mistake was not in the reading but in the **scope**: it took the absence
+of Eklio projects *in one account* for the absence of Eklio projects. The fix
+is the derived-lists rule applied one level up — enumerate organizations, then
+projects per organization, rather than trusting a single `list_projects`. Done
+that way on 2026-09-12, it returns exactly one organization, `eklio`, holding
+the two projects above and nothing else.
+
+### What the eu-west-1 project actually is
+
+Not a backup, and not a safety net. **A pre-migration artefact:**
+
+- created **2026-08-08**, fifteen days before the US project;
+- **built by hand through the SQL editor**, never through migrations — it
+  carries no `supabase_migrations` ledger at all;
+- **seven tables, ten rows**, every one of them the author's own August test
+  data from the original French freelance-oriented product, before the pivot
+  to US therapists in private practice;
+- **frozen since 2026-08-16** (last write), last sign-in 2026-08-22, and no
+  API traffic of any kind since;
+- zero storage buckets, zero storage objects, zero vault secrets, no edge
+  functions, and one `auth.users` row — the author's own account.
+
+It **predates every schema decision taken from 23 August onward, and could
+restore nothing.** The real backup is the Pro plan's point-in-time recovery on
+the US project. Its contents are preserved in full as backend
+`supabase/fixtures/eu_west_1_final_state.json`, and the project itself is to
+be deleted — see `FINDINGS.md` for why deletion rather than a pause, and why
+the pause API's own advice must not be followed.
+
+**This also resolves the open question below.** The session described in
+`supabase/migrations/20260816090000_fix_directions_schema.sql` — the one that
+"did have access to a live project" — was almost certainly working against
+eu-west-1: that project existed from 8 August, and its `directions` rows carry
+`created_at` of **2026-08-16**, the same day the migration is stamped. It was
+not a vanished project and not a different account; it was this one.
+
+### What the session of record saw (kept, superseded)
+
 **No Eklio Supabase project is reachable from this session.** Checked twice,
 including an organization-level check to rule out account scoping:
 
