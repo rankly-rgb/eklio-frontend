@@ -2517,8 +2517,16 @@ repo's `design/` folder while the work was done. The reference is
     design/reference/home-v3-current-02.png
     design/reference/home-v3-current-03.png
 
-committed by the chantier's author from their own machine — flat in
-`design/reference/`, not in a `home-v3/` subfolder.
+⚠ **AS OF THIS COMMIT THOSE FILES DO NOT EXIST.** Two upload attempts were
+made and neither reached the remote. Checked without relying on a filename:
+
+    git fetch --all --prune
+    git log --all --diff-filter=A --name-only -- '*.png'
+
+returns NOTHING — no `.png` has ever been added on any ref of this repository,
+under any name, in any folder, on any of its eighteen branches. (The same
+command shape over `'*.md'` lists commits, so the search works; it is the files
+that are absent.) The reference is still to be landed by its author.
 
 So a session reading those files is reading the reference this work was
 *checked against by eye*, not a file any commit here was produced from. **Where

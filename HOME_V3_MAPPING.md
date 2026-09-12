@@ -124,3 +124,16 @@ number one screen-height away is a decoration, not a fact.
    reference screens. The status pill uses the existing `STATUSES` vocabulary
    and the linen token. The mockup's green `READY` pill is not reproduced in
    green.
+
+## A defect in the reference itself
+
+**The mockup's week strip draws EIGHT day columns.** Its letter row reads
+`S S M T W T F S` above seven real dates (8 through 14). A week has seven days,
+and `buildWeekStrip` renders exactly seven — Sunday through Saturday, the window
+containing today.
+
+The implementation is right and the reference is wrong on this one. It is
+recorded here rather than in a commit message because this file is what a
+session reads before touching the week strip: an eighth column is not a missing
+feature to restore, and matching the mockup there would mean drawing a day that
+does not exist.

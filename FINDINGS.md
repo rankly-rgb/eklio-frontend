@@ -944,3 +944,22 @@ replaced by what remains true. What follows is the residue, not the original lis
   safe direction to be wrong in, and is what ships. Persisting it is a backend
   change and was out of this chantier's scope. Accepted as shipped, with the
   column as the known next step.
+
+## Home v3 — deliberate divergences from the mockup (decided, not oversights)
+
+Each of these was walked, judged and settled with the chantier's author. They
+are divergences on purpose; a future session should not "fix" them back.
+
+- **The quote card carries no leaf glyph.** The mockup draws an organic sprig
+  above the quote. This app's marks are discs, frames, rules and lines —
+  geometric, and drawn in borders. A single organic ornament would be a one-off
+  idiom, and the brand's own branch ornament is a per-direction asset that does
+  not exist yet. Not shipped.
+- **The nav icons are the app's existing glyphs, not the mockup's shapes.** The
+  mockup draws a box for Brand kit and a document for Content; the header uses
+  `SectionGlyph`'s `identity` and `words`. Same reason — new icon art for four
+  slots that already have marks in the vocabulary. All four items carry an
+  icon, which was the delta.
+- **The button reads `Mark done`, the mockup `Mark as done`.** It lives in
+  `LaunchStepActions`, which `/app/launch` renders too. Two words are not worth
+  a diff in a component outside this chantier's scope. Known divergence.
