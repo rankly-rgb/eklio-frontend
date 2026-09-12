@@ -781,7 +781,7 @@ A fourth of the same shape, `grant_plan_allowance` ordering purchases by `create
 a double submit writes two rows in one transaction, is **named and not touched**: the
 post-purchase space is not this chantier's. `FINDINGS.md`.
 
-## 12. THE CHARTER, AND WHAT DERIVES FROM IT — COLUMNS SHIPPED, DECISIONS PROPOSED
+## 12. THE CHARTER, AND WHAT DERIVES FROM IT — COLUMNS SHIPPED, DECISIONS RULED
 
 *Session 4, 2026-09-12. Migration `20260912144121_the_charter_and_what_derives_from_it`.*
 
@@ -896,6 +896,87 @@ allowed to touch rather than by a flag someone has to remember to check.
    SET NULL` means a deleted charter leaves the practice and its members intact,
    which is right; what a derived kit should show in that window is part of
    Decision 2.
+
+### RULED — 2026-09-12, and what each ruling bought
+
+All three approved. Migration `20260912145638_the_charter_rulings`, pinned by
+`supabase/tests/20260912145638_the_charter.test.sql`.
+
+**Decision 1 — approved with a refinement, and the refinement needed no column.**
+"Voice bounds" was doing too much work as one item: `voice_guide` holds both the
+claims discipline and how she sounds, and only the first is the practice's. The
+question put back was *split the column, or split the rule across it, and say
+which*. **Neither — the seam already exists.** `voice_guide` is
+`{ sounds_like: [3], never_write: [3] }`, so the boundary falls exactly on the
+existing keys: **`never_write` inherits, `sounds_like` never does.**
+
+That is not a convenient reading to avoid a migration. `lib/generation/pipeline.ts`
+already treats the two keys as different KINDS of thing for a completely
+unrelated reason — `never_write` is deliberately exempt from the ethics check,
+because those lines *name* the fault and checking them would fail the generation
+on its own pedagogy, while `sounds_like` goes through it as publishable prose.
+Two independent readings landing on the same seam is evidence the seam is real.
+The ruling is carried in the column comment, and a test pins the comment, because
+nothing enforces it until something inherits and a comment nobody tests is a
+comment the next `comment on` drops.
+
+**Decision 2 — approved; `charter_accepted_state`, not a boolean.** She has to
+see *what* changed, not *that* something did. A flag that says "the charter
+moved" is the dot people learn to dismiss; the state she accepted, kept, is a
+ten-second decision. `charter_accepted_state jsonb` + `charter_accepted_at`,
+constrained to move together and to be an object — `[1,2,3]` would make a
+key-by-key diff quietly meaningless.
+
+**Decision 3 — approved as proposed.** No columns: an override is the *absence*
+of inheritance, enforced by which columns the write path may touch.
+
+**Decision 4 — what happens when a clinician leaves.** Nobody had asked, and
+`status = 'removed'` existed while meaning nothing for her kit. Ruling: **the
+derived kit detaches and keeps its current rendered state.** She keeps what
+exists, the link breaks, nothing inherits after.
+
+It follows the same standing law as Decision 2: Eklio never hosts, publishes,
+deploys or shares, so her files are already downloaded and on her own site.
+Revoking them inside the app achieves nothing except pretending — and Eklio has
+no standing to adjudicate who owns a practice's palette. `detached_from_charter_kit_id`
++ `detached_at`, kept as history so "this kit once belonged to that practice"
+stays answerable. **Columns only: no departure flow, and no trigger on membership
+status.**
+
+### The guard — I was overruled, and the ruling was right
+
+I proposed shipping the cross-practice guard *with* the propagation. Overruled:
+an inert wrong value becomes a live wrong value the moment something reads it,
+and nobody re-derives the guard at that moment. It costs a line today and is
+forgotten in November.
+
+`brand_kit_charter_is_own_practice()` — `BEFORE INSERT OR UPDATE OF
+derived_from_charter_kit_id, project_id`, `SECURITY DEFINER`, revoked from
+`anon` and `authenticated`. It fires on `project_id` too, or the invariant is
+escapable by moving the kit instead of changing the pointer.
+
+It deliberately does **not** concede to `caller_is_the_database()`. That
+concession is right for an *authority* gate — a migration outranks a policy.
+This is a *data integrity* invariant, and a backfill pointing a kit at another
+practice's charter is exactly as wrong as a browser doing it.
+
+**Proved, not assumed**, in a rolled-back transaction against production: a
+rival practice's charter is refused; its own is accepted (so the guard is not
+simply a wall); a charter cannot derive from itself; carrying a charter into
+another practice by moving the kit's project is refused; and both paired columns
+refuse half-set state. Production row counts were re-checked afterwards —
+nothing leaked, which is not a rhetorical flourish: a guard rail in this chantier
+has already left an orphaned organization in production by cleaning up less than
+it created.
+
+### The three flagged, resolved
+
+- **`owner_user_id` — dropped.** The owner is the membership row with
+  `role = 'owner'`; derived, not stored. Storing it re-digs §5's trap, which this
+  week has paid for four times.
+- **`slug` — deferred.** Needed when a practice has a URL, which is the UI, which
+  is out.
+- **The cross-practice pointer — shipped now**, per above.
 
 ---
 

@@ -88,6 +88,44 @@ reason, or absent when the catalogue says it should be there. See
 the justification is written by hand.
 
 
+## A CHECKLIST ROW NAMES AN OBSERVATION, AND THE OBSERVATION MUST BE ON A SURFACE WE CAN READ.
+
+*Standing design rule. 2026-09-12, tenancy chantier, session 4.*
+
+`LAUNCH_CHECKLIST.md` carried `CRON_SECRET`. It had carried it since the trial
+notice shipped. **It could not detect the failure it warned about.**
+
+Its verification step said: *"after the first 05:00 UTC run, the anon-briefs job
+shows a 200 in its log"* — pointing at Vercel's panel. Two things were wrong with
+that instrument, and either alone is fatal:
+
+1. a missing `CRON_SECRET` makes `authorizeCron` return **404**, which in that
+   panel reads as *"the route does not exist"* — so the operator goes looking for
+   a deployment problem that is not there; and
+2. the panel's history sits behind a paid retention upgrade, so beyond a short
+   window there is nothing to read at all.
+
+⚠ **A verification step aimed at the wrong instrument turns "unknown" into
+"checked", which is strictly worse than having no row.** An unchecked row is
+honest about its ignorance. A row that cannot fail manufactures confidence.
+
+**The rule: every checklist row must name (a) the observation that distinguishes
+the good state from the bad one, and (b) a surface where that observation is
+actually visible to us.** If the only instrument is one we cannot read — a
+third-party panel, a paywalled log, a mailbox nobody owns — the row is not done,
+and saying so is the row's real content.
+
+The fix here was to move the instrument, not to reword the row: every cron route
+reaches PostgREST on an authorised run, so **Supabase's** API Gateway log
+answers the question, on a retention we control and a vendor whose silence we
+can cross-check against `postgres_logs` in the same hours.
+
+Related, and the reason this is a rule rather than an anecdote: the same session
+found that the Supabase MCP log window silently ignores a wider time filter and
+returns ~24 hours. An instrument that answers a question you did not ask is the
+same defect one layer out. See `FINDINGS.md`.
+
+
 ## A SUMMARY IS NOT THE SOURCE. GO BACK TO WHAT WAS ACTUALLY SAID.
 
 *Standing working rule. 2026-09-12, tenancy chantier, session 4.*
