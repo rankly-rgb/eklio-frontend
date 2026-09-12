@@ -5,12 +5,14 @@ import type { HomeQuote } from "@/lib/data/home";
  * The header row: a mono date, the practice name, a calm sub-line, and — over
  * the middle column — the quote slot.
  *
- * ⚠ WHAT THIS SLOT IS NOT. The mockup puts `Welcome back, Coline 👋` on the
- * serif line. Emoji are out by the voice rules, "Welcome back" is the hype
- * register the product avoids, and the name is data in any case — the mockup
- * says Coline, production says whatever her kit says. The shape stays (mono
- * date over a large serif line); what fills it is the practice name, which is
- * the one thing a header for "your practice this week" has to say.
+ * ⚠ WHAT THIS SLOT IS NOT. The mockup greets her by first name, with an
+ * emoji, in a register this product does not use. Both the greeting and the
+ * emoji are named in `app/__tests__/forbidden-metrics.test.ts` — which scans
+ * raw text, comments included, so this one does not quote them either. The
+ * name was data in any case: the mockup says one, production says whatever
+ * her kit says. The shape stays (mono date over a large serif line); what
+ * fills it is the practice name, which is the one thing a header for "your
+ * practice this week" has to say.
  */
 export function PracticeHeader({
   dateLabel,
