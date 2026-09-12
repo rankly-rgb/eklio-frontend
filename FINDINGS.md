@@ -923,3 +923,11 @@ replaced by what remains true. What follows is the residue, not the original lis
   is forbidden by name in `app/__tests__/kit-defects.test.ts` ("défaut 3"), which
   asserts `not.toContain('?? "Your workspace"')`. Reversing a tested defect fix
   needs its author, not a mockup. The monogram half of that delta already exists.
+- `Mark done` (40px) and `Skip for now` (21px) sit under the 44px touch minimum
+  on `/app`. Both are `LaunchStepActions`, which `/app/launch` renders too, so
+  they are pre-existing members of the 45 the acquisition chantier counted.
+- The mockup labels that button `Mark as done`; the shared component says
+  `Mark done`. Changing the string changes `/app/launch` too.
+- The third stats tile reads `2d / Since rebuild`. Honest, and it duplicates
+  nothing else on the screen, but a duration under a count-shaped tile is an
+  odd pairing worth a second look.
