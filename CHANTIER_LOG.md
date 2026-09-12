@@ -2508,10 +2508,15 @@ Ten commits: one per lot 0–8, plus one fix pass after them.
 
 ### What the target was, and a note on the contract
 
-`design/reference/home-v3/mockup.png` and `current-01/02/03.png` are **not in
-either repo**, on any ref, and never have been — no PNG exists in either
-`design/` folder. The mockup was supplied in-session as an image instead, and
-that image is what this chantier was built against. `design/reference/Screen 7
+⚠ **This chantier was built against an image pasted into the session, NOT
+against `design/reference/home-v3/mockup.png`.** At the time the work was done
+that path did not exist — it and `current-01/02/03.png` were absent from both
+repos on every ref, and no PNG existed in either `design/` folder. The files
+were committed to this branch afterwards, by hand, by the chantier's author. A
+session reading `design/reference/home-v3/mockup.png` is therefore reading the
+reference this work was *checked against by eye*, not a file any commit here
+was produced from; where the two differ, the committed PNG is the one to trust
+and the difference is a real finding. `design/reference/Screen 7
 - Home.dc.html` is a *different, earlier* home: three nav items, a URL bar, a
 2fr/1fr grid, no rail, no next-step card, no week strip. It was not used.
 
@@ -2631,5 +2636,33 @@ acquired and none were asked for.
 2. **Brand kit, Content and Check** after the LOT 7 chrome deltas. The header is
    shared, and it is the one place this chantier could break another screen.
 3. **The `Your workspace` sub-line** — ship it or leave it, as above.
+
+### Closed before merge — verification, not build
+
+- **The success token was never implemented.** `#5E8C61` and a `-soft` tint
+  appear in no working tree and in no commit on any ref of either repo, and no
+  `--success` token name exists. The `READY` pill stays in ink; the gap is in
+  `FINDINGS.md`. No token was added here.
+- **No placeholder URL can reach the copy well.** The chain is closed at every
+  link: the spec seeds `'cta_target_url', null` (`20260830061318_site_spec_
+  paper.sql:538`), no migration carries a URL column default, the validator
+  admits null/empty or a string matching `^(https?://|mailto:|tel:)\S`,
+  `bookingUrlFrom` coerces empty to null, `emailSignatureText` appends the link
+  only `if (bookingUrl)`, `launchStepCopy`'s `booking_link` branch returns null
+  without one, and `NextCard` renders the well only when copy exists — so the
+  block is ABSENT, never empty or placeholder-filled. The `example.com` seen in
+  the harness render came from hand-written harness props, which is precisely
+  why a harness is not evidence about data. The only `example.com` on any
+  source path is `components/kit/in-situ/frames.tsx`, which draws a picture of
+  an email on the kit's in-situ panel and is not reachable from `/app`.
+- **The harness never landed.** `app/dev/home-harness` appears in no commit on
+  any ref, and no tree of any commit on this branch contains a path matching
+  `harness`. The guard was then proven rather than asserted: a fixture module
+  added under `app/app/**` and imported by the home route turned
+  `home-reads-production-only` red, naming the file; removing it turned it
+  green. Note the guard's real boundary — it follows the import graph from
+  `app/app/page.tsx`, so it catches anything the home route *loads*. A `/dev`
+  route outside that graph is not caught by it, and never was: what keeps such
+  a route off this screen is that `/app` does not import it.
 
 `FINDINGS.md` carries what was noticed and deliberately not fixed.

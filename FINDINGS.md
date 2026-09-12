@@ -916,9 +916,13 @@ replaced by what remains true. What follows is the residue, not the original lis
 - `loadHomeCanvas` now also pays `loadAssetStats` (one RPC plus a `brand_assets`
   select) and one `specialties` lookup. Home-only — `loadHome` is unchanged for
   the five routes that read it for a single field.
-- `styles/tokens.css` has no success/green token, so the mockup's green `READY`
-  pill reads in ink through the existing `STATUSES` vocabulary. Adding one would
-  break that file's own rule that every value comes from the eight references.
+- **The V2 spec's success colour was never implemented.** `#5E8C61` and its
+  `-soft` tint appear nowhere in either repo — not in `styles/tokens.css`, not
+  in any working tree, and `git log --all -S` finds them in no commit on any
+  ref of either repo. There is no `--success` / `--color-success` token name
+  either. So the `READY` pill stays in ink through the existing `STATUSES`
+  vocabulary, and this is the gap, not a choice: the token has to be
+  implemented against the V2 spec before any pill can use it.
 - The `Your workspace` sub-line of LOT 7's third chrome delta is NOT shipped: it
   is forbidden by name in `app/__tests__/kit-defects.test.ts` ("défaut 3"), which
   asserts `not.toContain('?? "Your workspace"')`. Reversing a tested defect fix
@@ -931,3 +935,12 @@ replaced by what remains true. What follows is the residue, not the original lis
 - The third stats tile reads `2d / Since rebuild`. Honest, and it duplicates
   nothing else on the screen, but a duration under a count-shaped tile is an
   odd pairing worth a second look.
+
+- **The hero overlay's scrim should read a persisted luminance, not measure or
+  guess.** The right fix is to persist the measured luminance ONCE, at image
+  generation, as a column on `brand_images` — not to measure it on the read
+  path. Decoding the hero photograph on every home load to save a few percent
+  of scrim is the wrong trade; a worst-case floor (`solveOverlayScrim`) is the
+  safe direction to be wrong in, and is what ships. Persisting it is a backend
+  change and was out of this chantier's scope. Accepted as shipped, with the
+  column as the known next step.
