@@ -23,6 +23,7 @@ function kit(overrides: Partial<BrandKit> = {}): BrandKit {
       updated_at: "",
       deleted_at: null,
       delivered_seen_at: null,
+      derived_from_charter_kit_id: null,
       home_content_seen_at: null,
       notifications_synced_at: null,
       direction_id: null,

@@ -306,6 +306,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           delivered_seen_at: string | null
+          derived_from_charter_kit_id: string | null
           direction_id: string | null
           directions: Json | null
           ethics_check: Json | null
@@ -330,6 +331,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           delivered_seen_at?: string | null
+          derived_from_charter_kit_id?: string | null
           direction_id?: string | null
           directions?: Json | null
           ethics_check?: Json | null
@@ -354,6 +356,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           delivered_seen_at?: string | null
+          derived_from_charter_kit_id?: string | null
           direction_id?: string | null
           directions?: Json | null
           ethics_check?: Json | null
@@ -374,6 +377,13 @@ export type Database = {
           voice_guide?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "brand_kits_derived_from_charter_kit_id_fkey"
+            columns: ["derived_from_charter_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "brand_kits_direction_id_fkey"
             columns: ["direction_id"]
@@ -1451,24 +1461,35 @@ export type Database = {
       }
       organizations: {
         Row: {
+          brand_charter_kit_id: string | null
           created_at: string
           id: string
           name: string | null
           updated_at: string
         }
         Insert: {
+          brand_charter_kit_id?: string | null
           created_at?: string
           id?: string
           name?: string | null
           updated_at?: string
         }
         Update: {
+          brand_charter_kit_id?: string | null
           created_at?: string
           id?: string
           name?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_brand_charter_kit_id_fkey"
+            columns: ["brand_charter_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       palette_families: {
         Row: {

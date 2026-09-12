@@ -781,6 +781,122 @@ A fourth of the same shape, `grant_plan_allowance` ordering purchases by `create
 a double submit writes two rows in one transaction, is **named and not touched**: the
 post-purchase space is not this chantier's. `FINDINGS.md`.
 
+## 12. THE CHARTER, AND WHAT DERIVES FROM IT — COLUMNS SHIPPED, DECISIONS PROPOSED
+
+*Session 4, 2026-09-12. Migration `20260912144121_the_charter_and_what_derives_from_it`.*
+
+**Shipped: two columns, and deliberately nothing else.**
+
+| Object | What it is |
+|---|---|
+| `organizations.brand_charter_kit_id` | The practice's brand charter. NULL until a practice has one — and a solo account never has one, which is what keeps the whole B2B layer invisible to solo users. |
+| `brand_kits.derived_from_charter_kit_id` | The charter a clinician kit derives from. NULL on every kit that exists today. |
+| `brand_kits_charter_is_not_itself` | A charter cannot be its own parent. The one cycle a single row can make unaided. |
+| two partial indexes | "Which kits derive from this charter" is the question all three candidate rulings have to answer, so the index earns its place under every one of them. |
+
+⚠ **Nothing reads either column.** There is no `charter_revision`, no
+`charter_synced_at`, no `charter_drift` flag and no per-field override marker,
+because **each of those encodes one of the answers below**. Shipping one would
+settle by default a question that was asked as a question.
+
+### The principle the three answers share
+
+**Inherit what identifies the PRACTICE. Never inherit what attests to a PERSON.**
+
+That line does most of the work below, and it is not stylistic. A brand kit
+holds two different kinds of thing: marks of the practice's identity (colour,
+type, the chosen direction) and attestations about an individual clinician (her
+name, her licence, her ethics check). The first must be shared or the practice
+has no brand. The second must never be shared, because inheriting an
+attestation makes it false.
+
+### DECISION 1 — what a clinician inherits, and what stays hers
+
+Derived column by column from `brand_kits` rather than described in the
+abstract, because "the visual stuff" is exactly the kind of hand-wave this
+chantier keeps finding to be incomplete.
+
+| Column | Proposal | Why |
+|---|---|---|
+| `content` (tokens, palette, type) | **inherit** | This *is* the practice's recognisability. |
+| `directions`, `selected_direction_id` | **inherit** | The chosen direction is the practice's, decided once. |
+| `social_templates` | **inherit the layouts** | Templates are the practice's furniture; what she puts in them is hers. |
+| `voice_guide` | **inherit as bounds, hers within them** | A practice can say "never clinical jargon"; it cannot say how warm she is. |
+| `site_prompt`, `site_prompt_target`, `multi_builder_prompt` | **hers** | These carry her pages and her copy, not the practice's identity. |
+| `practitioner_line` | **hers, always** | Her name and her licence. |
+| `ethics_check` | **hers, always — and this one is not a preference** | It attests that *she* is compliant. An inherited ethics check is a false attestation about a named clinician, and these are licensed US therapists. |
+| `pdf_url`, `share_slug` | **hers** | Artefacts of her kit. |
+| `delivered_seen_at`, `home_content_seen_at`, `notifications_synced_at` | **hers** | Per-person UI state; sharing them would mark one clinician's kit read because another opened hers. |
+| `tier` | **neither** | Billing, not brand. Stays where it is. |
+
+### DECISION 2 — what happens to derived kits when the charter changes
+
+**Proposal: FLAG. Never rebuild automatically, and never nothing.**
+
+- **"Nothing" makes the charter decorative.** A charter that cannot reach the
+  kits derived from it is a label on a folder.
+- **"Rebuild" is worse than it looks here, for a reason specific to Eklio:
+  Eklio never hosts, publishes, deploys or shares.** A clinician's site and
+  assets live wherever she put them. Rebuilding her kit therefore cannot change
+  anything she has already shipped — it would only make the app *claim* the
+  practice is consistent while her live site still shows the old brand. That is
+  a number Eklio cannot measure, in the form of a state Eklio cannot enforce.
+- A rebuild would also silently overwrite work: her copy lives in the same kit.
+
+So: a charter change **marks each derived kit as "the charter moved — review"**,
+and applying it is an explicit act that shows her what changes. This matches the
+idiom already in the schema (`delivered_seen_at`, `home_content_seen_at`,
+`notifications_synced_at`): a column the UI reads to say "there is something new
+here", never an automatic mutation.
+
+⚠ The flag has to record **which charter state she last accepted**, or "review"
+cannot show a diff and degrades into a dot that people learn to dismiss. That is
+the column this decision buys, and the reason it was not shipped in advance.
+
+### DECISION 3 — may a clinician override an inherited value, and which
+
+**Proposal: NO on the identity set, YES on everything that is already hers.**
+
+- **No** on palette, typography and the selected direction. These are the
+  entire reason the charter exists. A practice whose clinicians may each re-pick
+  colours is N unrelated kits sharing a login, which is the thing this object was
+  added to prevent.
+- **Yes**, trivially, on everything in the "hers" column of Decision 1 — those
+  are not overrides at all, they are simply hers.
+- **The one hard case is accessibility**, and it should NOT be a per-clinician
+  override. If an inherited pairing fails contrast in her context, the answer is
+  to fix the charter, because a private exception hides a defect that affects
+  every clinician in the practice. This repository already validates contrast
+  (`site_spec_preview_and_contrast`, `cta_ink_and_size_floor`), so the charter
+  can be checked once rather than worked around N times.
+
+**How I would build it once ruled, so the ruling is not read as more than it
+is:** an override is best expressed as *the absence of inheritance*, not as a
+per-field override table. A clinician kit stores her own values; the inherited
+set is resolved from the charter at read time. That needs no override column per
+field, and it makes Decision 3 enforceable by which columns the write path is
+allowed to touch rather than by a flag someone has to remember to check.
+
+### Three things flagged alongside, not decided
+
+1. **`organizations.slug` and `organizations.owner_user_id` are still absent**,
+   though the brief named both. `owner_user_id` is **not recommended**: it would
+   duplicate `organization_members (role = 'owner', status = 'active')`, which
+   already carries a unique index, and two sources of truth for ownership can
+   disagree — the denormalised-`user_id` trap of §5, freshly dug. `slug` is
+   deferred rather than refused: it is needed when practices get URLs, and its
+   uniqueness and collision policy is itself a decision.
+2. ⚠ **Nothing yet stops a clinician pointing `derived_from_charter_kit_id` at
+   another practice's charter.** RLS is row-level; a client who may update her
+   own kit row may write any column of it. It is inert today because nothing
+   reads the column, but the guard — "you may only derive from your own
+   practice's charter" — belongs with the propagation, and is true under all
+   three rulings. Recorded in `FINDINGS.md`.
+3. **The charter kit is itself a kit**, and so can be soft-deleted. `ON DELETE
+   SET NULL` means a deleted charter leaves the practice and its members intact,
+   which is right; what a derived kit should show in that window is part of
+   Decision 2.
+
 ---
 
 *Session 1 complete and corrected. Session 2 complete, and corrected in turn. Session 3

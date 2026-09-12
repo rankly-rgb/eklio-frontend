@@ -849,3 +849,13 @@ replaced by what remains true. What follows is the residue, not the original lis
   organization. The dashboard path is a project transfer to a free organization, then a pause
   that starts a 90-day restore clock. Deletion is simpler and loses nothing now that the rows
   are in git. No `delete_project` tool exists here.
+
+- **2026-09-12 (OPEN — inert today, must not stay inert) — nothing stops a clinician pointing
+  `brand_kits.derived_from_charter_kit_id` at another practice's charter.** RLS is row-level: a
+  client permitted to update her own kit row may write any column of that row, and the new
+  column has no trigger behind it. Harmless right now because **nothing reads it** — the
+  propagation is waiting on a product ruling (`TENANCY.md` §12) — but the day something does,
+  this is a cross-tenant read of another practice's brand. The guard ("you may only derive from
+  your own practice's charter") is true under all three candidate rulings, so it is not blocked
+  on the decision; it is only blocked on there being a write path to attach it to. Ship it with
+  the propagation, not after.
