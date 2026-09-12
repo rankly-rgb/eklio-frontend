@@ -10,6 +10,18 @@ import { NextResponse } from "next/server";
  *
  * Sans `CRON_SECRET` en environnement, la route REFUSE tout : un secret
  * manquant est une porte ouverte, pas une commodité de développement.
+ *
+ * ⚠ CE 404-LÀ EST SILENCIEUX. Vu de Vercel, rien ne distingue une variable
+ * absente d'une route qui n'existe pas, et le corps de la réponse est
+ * identique dans les deux cas d'échec (absente, ou simplement fausse). C'est
+ * pourquoi `CRON_SECRET` est entrée dans `lib/env/required.ts` : EN
+ * PRODUCTION le serveur refuse désormais de démarrer sans elle, et la
+ * branche ci-dessous y est devenue inatteignable. Elle reste le comportement
+ * normal en développement et en test, où l'absence de la clé est le cas
+ * courant.
+ *
+ * Le 404 rendu à un appelant qui présente un mauvais secret, lui, ne change
+ * pas : il n'apprend rien de ce qui existe derrière.
  */
 export function authorizeCron(request: Request): NextResponse | null {
   const secret = process.env.CRON_SECRET;

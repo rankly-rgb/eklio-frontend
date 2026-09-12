@@ -146,6 +146,26 @@ describe("les variables dont l'absence est silencieuse", () => {
   });
 
   /*
+   * CRON_SECRET répond au même critère et pour la même raison : son absence
+   * ne casse rien de visible. `authorizeCron` rend 404, les cinq crons
+   * partent à l'heure et n'atteignent jamais la base, et le panneau de
+   * Vercel montre des invocations. Mesuré le 12 septembre 2026 : aucune
+   * trace PostgREST des passages de 04:00, 05:00 et 06:00.
+   */
+  it("CRON_SECRET aussi, et sa raison nomme le 404", () => {
+    expect(Object.keys(REQUIRED_IN_PRODUCTION)).toContain("CRON_SECRET");
+    expect(REQUIRED_IN_PRODUCTION.CRON_SECRET).toMatch(/404/);
+  });
+
+  it("et le démarrage refuse en nommant les deux", () => {
+    const message = missingRequiredMessage(
+      missingRequired({ NODE_ENV: "production" })
+    );
+    expect(message).toContain("RESEND_API_KEY");
+    expect(message).toContain("CRON_SECRET");
+  });
+
+  /*
    * Le critère d'entrée est étroit : « son absence ne casse rien de visible ».
    * Les clés Stripe lèvent une StripeConfigError au premier appel, donc elles
    * n'ont rien à faire ici — et si quelqu'un les ajoute, c'est le signe que le
@@ -175,8 +195,17 @@ describe("les variables dont l'absence est silencieuse", () => {
   });
 
   it("laisse démarrer quand tout est là", () => {
+    /*
+     * L'environnement complet est DÉRIVÉ du registre, jamais réécrit à la
+     * main. La version manuscrite ne fournissait que RESEND_API_KEY et devait
+     * tomber à la première variable ajoutée : c'est arrivé le 2026-09-12 avec
+     * CRON_SECRET. Le test n'était pas faux, il était écrit au singulier.
+     */
+    const toutesPresentes = Object.fromEntries(
+      Object.keys(REQUIRED_IN_PRODUCTION).map((name) => [name, "valeur"])
+    );
     expect(() =>
-      assertRequiredEnv({ NODE_ENV: "production", RESEND_API_KEY: "re_x" })
+      assertRequiredEnv({ NODE_ENV: "production", ...toutesPresentes })
     ).not.toThrow();
   });
 
@@ -194,10 +223,21 @@ describe("les variables dont l'absence est silencieuse", () => {
   });
 
   it("missingRequired énumère, et l'énumération n'est pas vide", () => {
-    expect(missingRequired({})).toEqual(["RESEND_API_KEY"]);
-    expect(missingRequired({ RESEND_API_KEY: "re_x" })).toEqual([]);
+    // Dérivé du registre : un environnement vide manque TOUT le registre.
+    expect(missingRequired({})).toEqual(Object.keys(REQUIRED_IN_PRODUCTION));
+
+    const toutesPresentes = Object.fromEntries(
+      Object.keys(REQUIRED_IN_PRODUCTION).map((name) => [name, "valeur"])
+    );
+    expect(missingRequired(toutesPresentes)).toEqual([]);
+
     // Garde anti-vacuité : la liste a de quoi mordre.
     expect(Object.keys(REQUIRED_IN_PRODUCTION).length).toBeGreaterThan(0);
+
+    // Canarie : le registre porte au moins les deux qu'on sait y être.
+    expect(Object.keys(REQUIRED_IN_PRODUCTION)).toEqual(
+      expect.arrayContaining(["RESEND_API_KEY", "CRON_SECRET"])
+    );
   });
 
   it("et instrumentation.ts l'appelle vraiment au démarrage", () => {

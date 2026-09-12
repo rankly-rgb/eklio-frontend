@@ -220,15 +220,33 @@ looking. Neither should change before launch.
 **Verify the second lock:** Vercel → Settings → Environment Variables → `CONTENT_GENERATION_ARMED`
 **is not listed at all**. Its absence is the correct state.
 
-**`CRON_SECRET` must be set** or every cron route refuses: without it `authorizeCron` logs
-`[cron] CRON_SECRET absente — appel refusé` and returns a denial. The purge in row one is
-housekeeping and is allowed to be late — an expired brief is already unreadable, because
-`projects_select_own` refuses it on the deadline regardless of whether the row is gone — so a
-missed run is not a data leak. It is still a table that grows.
+**`CRON_SECRET` must be set**, and since 2026-09-12 production **refuses to boot without it**
+(`lib/env/required.ts`) — a deployment missing it now fails loudly at start instead of quietly
+at 04:00. Before that lock, the absence was silent and this row could not detect it. The purge
+in row one is housekeeping and is allowed to be late — an expired brief is already unreadable,
+because `projects_select_own` refuses it on the deadline regardless of whether the row is gone
+— so a missed run is not a data leak. It is still a table that grows.
+
+⚠ **The observation that distinguishes present from absent.** Without `CRON_SECRET`,
+`authorizeCron` returns **404**, not 401 — and in Vercel's panel a 404 reads as *"that route
+does not exist"*, sending the operator after a deployment problem that is not there. The
+response body is `{"error":"Not found."}` in **both** failure modes — variable absent, and
+variable merely mismatched — so the body never discriminates. Two things do:
+
+- the Vercel function log carries `[cron] CRON_SECRET absente — appel refusé` **only** when the
+  variable is missing from the environment, never when it merely mismatches; and
+- **the database side, which is the reliable instrument.** Every cron route reaches PostgREST
+  on an authorised run — `purge-deleted-kits` does so even when it purges nothing, because its
+  candidate `select` precedes any mutation. Supabase → `fobgdsupyfslxbswfuay` → Logs → API
+  Gateway. An authorised run leaves a request there; a 404'd run leaves nothing at all.
+  Supabase's retention is independent of Vercel's, which is exactly why it is the instrument.
 
 **Verify it took.** Vercel → the project → Settings → Cron Jobs. **Five** entries, and
-`/api/cron/content-month` is not among them. After the first 05:00 UTC run, the anon-briefs
-job shows a 200 in its log.
+`/api/cron/content-month` is not among them. Then confirm a **scheduled** run — not a manual
+one — actually reaches the database: after the next 04:00 UTC `purge-events`, read the Supabase
+API Gateway log **the same day**. That window is a rolling ~24 hours and ignores a wider filter
+without saying so (`FINDINGS.md`), so a scheduled run not read the same day cannot be read at
+all.
 
 ---
 

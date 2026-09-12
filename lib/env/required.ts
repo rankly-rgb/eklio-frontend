@@ -30,6 +30,30 @@
  * § 17602) fait de ce préavis une obligation, pas une politesse. Une panne de
  * configuration qui la supprime en silence doit empêcher le démarrage, pas
  * attendre le premier débit pour se manifester.
+ *
+ * ── POURQUOI CRON_SECRET Y EST ───────────────────────────────────────────
+ *
+ * Même forme, autre chemin. `authorizeCron` rend **404** quand la variable
+ * manque : une porte fermée qui a l'air d'une mauvaise adresse. Les cinq
+ * crons de `vercel.json` partent alors à l'heure dite, reçoivent 404, et
+ * n'atteignent jamais la base — aucune exception, aucune alerte, et un
+ * panneau d'observabilité qui montre bien des invocations.
+ *
+ * Mesuré le 12 septembre 2026 : les journaux PostgREST de la production ne
+ * portaient aucune trace des passages de 04:00, 05:00 et 06:00, alors que la
+ * fenêtre de rétention les couvrait — vérifié par la présence d'événements
+ * `postgres_logs` aux mêmes heures. Le silence n'était donc pas un artefact
+ * de rétention.
+ *
+ * Ce dépôt avait déjà écrit la règle, dans `app/api/cron/content-month/
+ * route.ts` : « un 404 dirait que la route n'existe pas, et qui a réglé
+ * CRON_SECRET correctement irait chercher un problème de déploiement ». Elle
+ * y était appliquée à `CONTENT_GENERATION_ARMED` et pas à `CRON_SECRET`.
+ *
+ * Le 404 reste juste pour un appelant non authentifié — une porte fermée ne
+ * se présente pas. Mais l'absence de la variable n'est pas un problème
+ * d'appelant, c'est un problème de déploiement, et elle doit être bruyante
+ * là où l'exploitant regarde.
  */
 
 /**
@@ -42,6 +66,8 @@
 export const REQUIRED_IN_PRODUCTION: Record<string, string> = {
   RESEND_API_KEY:
     "sans elle, le préavis d'avant-prélèvement (obligation légale, Cal. Bus. & Prof. Code § 17602) n'est jamais envoyé",
+  CRON_SECRET:
+    "sans elle, `authorizeCron` rend 404 et les cinq crons — dont le préavis d'avant-prélèvement — s'exécutent à l'heure dite sans jamais atteindre la base",
 };
 
 /** Les variables manquantes, dans l'ordre de déclaration. */
