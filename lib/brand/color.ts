@@ -149,3 +149,66 @@ export function meetsAA(
 ): boolean {
   return contrastRatio(foreground, background) >= (size === "large" ? 3 : 4.5);
 }
+
+/* ── LE VOILE DE LA SURIMPRESSION ───────────────────────────────────────── */
+
+/** Au-delà, la photographie cesse d'être une photographie. */
+export const MAX_OVERLAY_SCRIM = 0.92;
+
+export type OverlayScrim = {
+  /** 0–1, l'opacité à laquelle poser le voile. */
+  alpha: number;
+  /** Le rapport de contraste GARANTI à cette opacité, quelle que soit la photo. */
+  ratio: number;
+  /** Faux quand même l'opacité maximale ne suffit pas. */
+  meetsTarget: boolean;
+};
+
+/**
+ * L'opacité du voile sous une surimpression posée sur une photographie
+ * INCONNUE.
+ *
+ * ⚠ CE N'EST PAS `solveScrimOpacity` DE `lib/kit/render/luminance.ts`, ET LA
+ * DIFFÉRENCE COMPTE. Celui-là résout le voile contre la luminance MESURÉE
+ * d'une région de l'image : il prend un `Buffer` décodé, appelle `sharp`, et
+ * appartient au pipeline de rendu des fichiers téléchargeables. Rien ne
+ * persiste sa valeur — `brand_images` n'a pas de colonne de luminance — donc
+ * s'en servir sur un chemin de LECTURE voudrait dire télécharger et décoder la
+ * photographie à chaque affichage de l'accueil.
+ *
+ * Celui-ci résout le même voile SANS mesurer, en prenant le pire cas : un
+ * pixel blanc dessous. Le contraste obtenu est alors un PLANCHER — n'importe
+ * quelle photographie réelle, plus sombre que du blanc, ne peut que faire
+ * mieux. Le nombre est garanti, pas mesuré, et le commentaire le dit plutôt
+ * que de laisser croire à une mesure.
+ */
+export function solveOverlayScrim(
+  scrimHex: string,
+  textHex: string,
+  target = 4.5
+): OverlayScrim {
+  const scrim = hexToRgb(scrimHex);
+  if (!scrim) return { alpha: MAX_OVERLAY_SCRIM, ratio: 1, meetsTarget: false };
+
+  // Le pire fond possible : blanc. Tout pixel réel est plus sombre, donc
+  // contraste MIEUX avec un texte clair une fois le voile posé.
+  const worstCase = 255;
+  const blend = (channel: number, alpha: number) =>
+    worstCase * (1 - alpha) + channel * alpha;
+
+  let best: OverlayScrim = { alpha: 0, ratio: 1, meetsTarget: false };
+
+  for (let step = 1; step <= Math.round(MAX_OVERLAY_SCRIM * 100); step += 1) {
+    const alpha = step / 100;
+    const blended = rgbToHex({
+      r: blend(scrim.r, alpha),
+      g: blend(scrim.g, alpha),
+      b: blend(scrim.b, alpha),
+    });
+    const ratio = contrastRatio(textHex, blended);
+    if (ratio > best.ratio) best = { alpha, ratio, meetsTarget: ratio >= target };
+    if (ratio >= target) return { alpha, ratio, meetsTarget: true };
+  }
+
+  return best;
+}

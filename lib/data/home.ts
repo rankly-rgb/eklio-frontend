@@ -32,6 +32,7 @@ import {
   notificationLine,
   type Notification,
 } from "@/lib/data/notifications";
+import { loadAssetStats } from "@/lib/data/asset-stats";
 
 /*
  * L'agrégat de l'accueil (Écran 7) : une seule lecture pour la salutation, le
@@ -348,6 +349,27 @@ export type SinceRow = {
   text: string;
 };
 
+/**
+ * The three tiles under the hero canvas.
+ *
+ * ⚠ THE THIRD TILE IS NOT A SCORE. The mockup fills it with a percentage of an
+ * invented quality metric — one of the five phrases
+ * `app/__tests__/forbidden-metrics.test.ts` exists to keep out, which is why
+ * this comment does not write its name either. Eklio computes no such number,
+ * and a percentage of something unmeasured is an invented figure presented as
+ * measured. The slot keeps its shape and carries the one fact left on this
+ * read that the rest of the screen does not already say: when her assets were
+ * last rebuilt.
+ */
+export type HomeStats = {
+  /** Rendered and current under the kit's fingerprint. */
+  assetCount: number;
+  /** Her enabled pages — the same list the canvas's nav line draws. */
+  pagesReady: number;
+  /** The most recent current asset's `created_at`, or null before any render. */
+  lastRebuiltAt: string | null;
+};
+
 export type HomeCanvas = {
   tokens: SitePreviewTokens;
   hero: SiteHero;
@@ -357,6 +379,7 @@ export type HomeCanvas = {
   next: NextAction;
   week: WeekDay[];
   since: SinceRow[];
+  stats: HomeStats;
 };
 
 /**
@@ -379,9 +402,13 @@ export async function loadHomeCanvas(
 
   const { spec, preview } = siteSpec.data;
 
-  const [photoUrls, notifications] = await Promise.all([
+  const [photoUrls, notifications, assetStats] = await Promise.all([
     currentBrandImageUrls(supabase, kit),
     syncNotifications(supabase, kit.row.id),
+    // The same reader the kit band's counts use, not a second count of the
+    // same rows: `summarizeManifest` is where "how many assets" is decided,
+    // and two places deciding it is how the two start to disagree.
+    loadAssetStats(supabase, kit),
   ]);
 
   const launchContext: LaunchStepContext = {
@@ -410,6 +437,11 @@ export async function loadHomeCanvas(
     }),
     week: buildWeekStrip(home.month, todayKey),
     since: buildSinceRows({ kit, month: home.month, notifications }),
+    stats: {
+      assetCount: assetStats?.currentCount ?? 0,
+      pagesReady: preview.pages.length,
+      lastRebuiltAt: assetStats?.lastUpdated ?? null,
+    },
   };
 }
 

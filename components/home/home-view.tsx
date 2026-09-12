@@ -12,7 +12,7 @@ import { RecentlyDeletedSection } from "@/components/home/recently-deleted-secti
 import { StartBriefButton } from "@/components/brief/start-brief-button";
 import { SAMPLE_PREVIEW } from "@/lib/brand/sample";
 import type { HomeCanvas, HomeModel } from "@/lib/data/home";
-import { greeting, homeAsOfDate, homeHeaderDate } from "@/lib/data/home";
+import { greeting, homeHeaderDate } from "@/lib/data/home";
 
 /*
  * ── THE HOME SHELL ───────────────────────────────────────────────────────
@@ -88,16 +88,18 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
         </div>
 
         <div className="order-2 col-start-1 col-end-2 row-start-2 min-w-0 pt-7 pl-[var(--gutter)] max-lg:pt-0 max-lg:pl-0">
+          {/* The `PRACTICE · DIRECTION · AS OF …` caption that used to sit
+              under this canvas is gone from here on purpose: the mockup moves
+              it to the rail's meta footer, and LOT 4 puts it there. */}
           <BrandCanvas
             practiceName={kit.practiceName}
             tokens={canvas.tokens}
             hero={canvas.hero}
             photoUrl={canvas.heroPhotoUrl}
             pages={canvas.pages}
+            toneKeywords={kit.selectedDirection?.tone_keywords ?? []}
+            stats={canvas.stats}
           />
-          <MonoLabel tracking="14" tone="ink-3" className="mt-2.5 block">
-            {`${practiceName} · ${kit.selectedDirection?.name ?? ""} · AS OF ${homeAsOfDate(now)}`}
-          </MonoLabel>
         </div>
 
         <div className="order-3 col-start-2 col-end-3 row-start-2 min-w-0 pt-7 max-lg:pt-0">
