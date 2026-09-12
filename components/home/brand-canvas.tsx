@@ -206,7 +206,7 @@ function ToneOverlay({ words, scrimHex }: { words: string[]; scrimHex: string })
         }}
       />
       <p
-        className="pointer-events-none absolute bottom-[11%] right-[9%] flex flex-col items-end gap-1 text-right font-mono uppercase"
+        className="pointer-events-none absolute bottom-[28%] right-[14%] flex flex-col items-end gap-1 text-right font-mono uppercase"
         style={{
           fontSize: 11,
           letterSpacing: "var(--tracking-mono-18)",

@@ -374,6 +374,12 @@ export type WeekDay = {
 export type SinceRow = {
   id: string;
   href: string;
+  /**
+   * Which mark the row carries, one per KIND. The mockup draws a different
+   * one on each row; the same mark three times says nothing about what
+   * changed. Reuses `SectionGlyph`'s vocabulary rather than new icon art.
+   */
+  icon: "colors" | "site";
   title: string;
   /** The grey line under the title, or null when the row is a single thought. */
   detail: string | null;
@@ -663,6 +669,7 @@ export function buildSinceRows(params: {
       href: `/app/brand-kits/${params.kit.row.id}/site-editor`,
       title: "Your site instructions are ready",
       detail: "Shape them before you paste",
+      icon: "site",
       // ⚠ NO TIMESTAMP, AND NONE INVENTED. This row is a CONDITION, not an
       // event: it is raised by the same test that used to raise the retired
       // top banner, and nothing recorded when that became true. The relative
@@ -680,6 +687,7 @@ export function buildSinceRows(params: {
       href: hrefForNotification(params.kit.row.id, notification),
       title: row.title,
       detail: row.detail,
+      icon: notification.kind === "asset_rendered" ? "colors" : "site",
       at: notification.created_at,
       unread: notification.read_at === null,
     });

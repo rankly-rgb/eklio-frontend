@@ -30,15 +30,15 @@ export function RecentUpdates({ rows, viewAllHref }: { rows: SinceRow[]; viewAll
         </Link>
       </div>
 
-      <ul className="flex flex-col rounded-card border border-line">
+      <ul className="flex flex-col gap-2.5">
         {rows.map((row) => (
-          <li key={row.id} className="border-t border-line first:border-t-0">
+          <li key={row.id} className="rounded-card border border-line">
             <Link href={row.href} className="flex items-center gap-3.5 p-[14px_16px] hover:bg-card">
               <span
                 aria-hidden="true"
                 className="flex size-9 flex-none items-center justify-center rounded-preview bg-card text-ink-2"
               >
-                <SectionGlyph section="identity" />
+                <SectionGlyph section={row.icon} />
               </span>
 
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">

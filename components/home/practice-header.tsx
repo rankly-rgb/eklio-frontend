@@ -28,7 +28,7 @@ export function PracticeHeader({
     <header className="grid grid-cols-[48fr_26fr] items-start gap-8 max-lg:grid-cols-1 max-lg:gap-5">
       <div className="flex min-w-0 flex-col gap-1.5">
         <MonoLabel tracking="16">{dateLabel}</MonoLabel>
-        <h1 className="truncate font-display text-h1 font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
+        <h1 className="truncate font-display text-question font-medium leading-tight tracking-h1 text-ink max-md:text-question-sm">
           {practiceName}
         </h1>
         <p className="text-body leading-body text-ink-2">Your practice this week.</p>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { MonoLabel } from "@/components/ui/mono-label";
+import { SectionGlyph } from "@/components/ui/glyphs";
 import { useBrandFont } from "@/components/preview/use-brand-font";
 import { TONE_KEYWORD_SEPARATOR } from "@/lib/brand/shapes";
 import type { Direction } from "@/lib/brand/shapes";
@@ -82,13 +83,9 @@ export function BrandGlance({
           label="Imagery"
           value={`${imageryCount} ${imageryCount === 1 ? "photograph" : "photographs"}`}
           mark={
-            <span
-              aria-hidden="true"
-              className="block size-6 rounded-preview"
-              style={{
-                background: `linear-gradient(135deg, ${direction.palette.primary}, ${direction.palette.secondary})`,
-              }}
-            />
+            <span aria-hidden="true" className="block text-ink">
+              <SectionGlyph section="assets" />
+            </span>
           }
         />
 

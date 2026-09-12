@@ -41,7 +41,7 @@ export function RailChecklist({ progress }: { progress: LaunchProgress }) {
             key={item.key}
             aria-current={isCurrent ? "step" : undefined}
             className={`flex items-start gap-3 border-t border-line py-2.5 first:border-t-0 ${
-              isCurrent ? "-mx-2 rounded-preview border-t-transparent bg-card px-2" : ""
+              isCurrent ? "-mx-2 rounded-preview border border-line bg-card px-2" : ""
             }`}
           >
             <span
@@ -56,9 +56,15 @@ export function RailChecklist({ progress }: { progress: LaunchProgress }) {
             >
               {item.status === "done" ? <CheckGlyph size="sm" /> : null}
             </span>
+            {/*
+              A DONE ROW STAYS IN INK. Greying it out is the usual convention
+              and the mockup declines it: the four finished steps read at the
+              same weight as the three ahead, because what she has done is
+              not less true than what she has not. Only a SKIPPED row recedes.
+            */}
             <span
               className={`min-w-0 text-ui leading-body ${
-                isCurrent ? "font-medium text-ink" : item.status === "todo" ? "text-ink" : "text-ink-3"
+                isCurrent ? "font-medium text-ink" : item.status === "skipped" ? "text-ink-3" : "text-ink"
               }`}
             >
               {item.label}

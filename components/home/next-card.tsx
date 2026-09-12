@@ -177,9 +177,9 @@ function CopyWell({ copy }: { copy: StepCopy }) {
 
   return (
     <div className="flex flex-col gap-2 rounded-preview border border-line p-[14px_16px]">
-      <MonoLabel tracking="12" tone="ink-3">
-        {copy.label}
-      </MonoLabel>
+      {/* No label above the text: the mockup's well holds the words and
+          COPY, and nothing else. `copy.label` still names the button for a
+          screen reader — the job it was doing that the eye did not need. */}
       <p className="text-helper leading-prose text-ink">{copy.text}</p>
       <button
         type="button"

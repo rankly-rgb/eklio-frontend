@@ -44,9 +44,9 @@ export function UpcomingContent({
         </Link>
       </div>
 
-      <ul className="flex flex-col rounded-card border border-line">
+      <ul className="flex flex-col gap-2.5">
         {items.map((item) => (
-          <li key={item.id} className="border-t border-line first:border-t-0">
+          <li key={item.id} className="rounded-card border border-line">
             {/*
               ⚠ THE WHOLE ROW IS THE LINK, NOT THE `Edit →`. That affordance is
               hidden under `md`, and when it was the only anchor an upcoming
@@ -58,7 +58,7 @@ export function UpcomingContent({
               <PhotoSlot
                 tokens={{ primary: primaryColor, dark_neutral: darkNeutral }}
                 src={item.photoUrl}
-                className="aspect-[4/3] w-[64px] flex-none rounded-preview"
+                className="aspect-[16/10] w-[68px] flex-none rounded-preview"
               />
 
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
