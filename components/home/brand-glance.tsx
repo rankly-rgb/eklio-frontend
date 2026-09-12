@@ -41,7 +41,7 @@ export function BrandGlance({
         </MonoLabel>
         <Link
           href={viewKitHref}
-          className="ml-auto text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+          className="-my-2 ml-auto inline-flex min-h-[44px] items-center text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
         >
           View brand kit &rarr;
         </Link>

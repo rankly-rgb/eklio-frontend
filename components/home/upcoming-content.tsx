@@ -38,7 +38,7 @@ export function UpcomingContent({
         </MonoLabel>
         <Link
           href={viewContentHref}
-          className="ml-auto text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+          className="-my-2 ml-auto inline-flex min-h-[44px] items-center text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
         >
           View content &rarr;
         </Link>
@@ -47,7 +47,14 @@ export function UpcomingContent({
       <ul className="flex flex-col rounded-card border border-line">
         {items.map((item) => (
           <li key={item.id} className="border-t border-line first:border-t-0">
-            <div className="flex items-center gap-3.5 p-[12px_16px]">
+            {/*
+              ⚠ THE WHOLE ROW IS THE LINK, NOT THE `Edit →`. That affordance is
+              hidden under `md`, and when it was the only anchor an upcoming
+              post could not be opened at all on a phone. It stays as a visual
+              cue at desktop — a span inside the row's anchor, never a second
+              anchor nested in the first.
+            */}
+            <Link href={item.href} className="flex items-center gap-3.5 p-[12px_16px] hover:bg-card">
               <PhotoSlot
                 tokens={{ primary: primaryColor, dark_neutral: darkNeutral }}
                 src={item.photoUrl}
@@ -55,11 +62,11 @@ export function UpcomingContent({
               />
 
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-ui font-medium leading-body text-ink">
+                <span className="line-clamp-2 text-ui font-medium leading-body text-ink">
                   {`Post ${item.position} — ${postDate(item.scheduledFor)}`}
                 </span>
                 {item.caption ? (
-                  <span className="truncate text-meta leading-body text-ink-2">
+                  <span className="line-clamp-1 text-meta leading-body text-ink-2">
                     &ldquo;{item.caption}&rdquo;
                   </span>
                 ) : null}
@@ -69,13 +76,13 @@ export function UpcomingContent({
                 <StatusChip status={item.status} />
               </span>
 
-              <Link
-                href={item.href}
-                className="flex-none whitespace-nowrap text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4 max-md:hidden"
+              <span
+                aria-hidden="true"
+                className="flex-none whitespace-nowrap text-meta text-ink-2 max-md:hidden"
               >
                 Edit &rarr;
-              </Link>
-            </div>
+              </span>
+            </Link>
           </li>
         ))}
       </ul>

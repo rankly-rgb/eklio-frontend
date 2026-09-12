@@ -185,7 +185,7 @@ function CopyWell({ copy }: { copy: StepCopy }) {
         type="button"
         onClick={() => void write(copy.text)}
         aria-label={`Copy ${copy.label.toLowerCase()}`}
-        className="-mb-1 -mr-1 self-end px-2 py-1 hover:opacity-70"
+        className="-mb-2 -mr-2 inline-flex min-h-[44px] items-center self-end px-3 hover:opacity-70"
       >
         <MonoLabel tracking="12" tone={copied ? "accent" : "ink-2"}>
           {copied ? "Copied" : "Copy"}

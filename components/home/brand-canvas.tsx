@@ -264,7 +264,7 @@ function StatsRow({ stats }: { stats: HomeStats }) {
               <StatGlyph stat={tile.icon} />
             </span>
           </div>
-          <span className="truncate text-meta leading-body text-ink-2">{tile.label}</span>
+          <span className="text-meta leading-body text-ink-2">{tile.label}</span>
         </div>
       ))}
     </div>

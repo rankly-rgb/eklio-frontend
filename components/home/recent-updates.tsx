@@ -24,7 +24,7 @@ export function RecentUpdates({ rows, viewAllHref }: { rows: SinceRow[]; viewAll
         </MonoLabel>
         <Link
           href={viewAllHref}
-          className="ml-auto text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
+          className="-my-2 ml-auto inline-flex min-h-[44px] items-center text-meta text-ink-2 hover:text-ink hover:underline hover:decoration-[var(--accent)] hover:underline-offset-4"
         >
           View all &rarr;
         </Link>
@@ -42,11 +42,11 @@ export function RecentUpdates({ rows, viewAllHref }: { rows: SinceRow[]; viewAll
               </span>
 
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-ui font-medium leading-body text-ink first-letter:uppercase">
+                <span className="line-clamp-2 text-ui font-medium leading-body text-ink first-letter:uppercase">
                   {row.title}
                 </span>
                 {row.detail ? (
-                  <span className="truncate text-meta leading-body text-ink-2">{row.detail}</span>
+                  <span className="line-clamp-1 text-meta leading-body text-ink-2">{row.detail}</span>
                 ) : null}
               </span>
 
