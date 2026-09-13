@@ -84,11 +84,41 @@ describe("⚠ un champ manquant devient un marqueur nommé, jamais un vide", () 
     }
   });
 
-  it("tout rempli : aucun marqueur, et pas de section d'inventaire", () => {
+  it("tout rempli : aucun marqueur, et aucune ligne d'inventaire", () => {
     const result = buildLovablePrompt(FULL);
     expect(result.placeholders).toEqual([]);
-    expect(result.text).not.toContain("Fill these in before you publish");
     expect(result.text).not.toMatch(/\[[A-Z_]{3,}\]/);
+    // L'inventaire lui-même disparaît ; la section demeure pour l'avertissement.
+    expect(result.text).not.toContain("so they appear in the prompt in brackets");
+  });
+
+  /*
+   * ⚠ LA SECTION RESTE MÊME QUAND IL N'Y A RIEN À REMPLIR.
+   *
+   * Le lien de prévisualisation est public — non listé, pas protégé — et
+   * l'admin du blog y est atteignable pendant qu'elle travaille. Ça ne dépend
+   * d'aucun champ manquant, donc ça ne peut pas dépendre de `emitted`.
+   */
+  it("l'avertissement sur le lien de prévisualisation est toujours là", () => {
+    for (const input of [FULL, { ...FULL, practiceDetails: null, bookingUrl: null }]) {
+      const { text } = buildLovablePrompt(input);
+      expect(text).toContain("## Fill these in before you publish");
+      expect(text).toContain("Your preview link is a public link.");
+      expect(text).toContain("It is unlisted, not private");
+    }
+  });
+
+  it("une page par approche apporte SON marqueur à l'inventaire", () => {
+    const result = buildLovablePrompt({ ...FULL, brief: HER_BRIEF });
+    expect(result.placeholders).toContain("YOUR DESCRIPTION OF THIS APPROACH");
+    // Listé en tête, pas seulement présent au milieu du prompt.
+    const inventory = result.text.slice(
+      result.text.indexOf("## Fill these in before you publish")
+    );
+    expect(inventory.indexOf("YOUR DESCRIPTION OF THIS APPROACH")).toBeGreaterThan(-1);
+    expect(result.text.indexOf("## Fill these in")).toBeLessThan(
+      result.text.indexOf("## A page for each approach")
+    );
   });
 
   it("un champ blanc compte comme manquant, pas comme rempli", () => {
@@ -126,13 +156,63 @@ describe("⚠ ce que le prompt refuse de demander", () => {
   });
 });
 
+/*
+ * ── LE BLOG ET SON ADMIN ─────────────────────────────────────────────────
+ *
+ * La première version demandait un index et un gabarit, puis lui disait
+ * d'ajouter un article « en le demandant à Lovable » : un blog qu'il faut
+ * commander à chaque fois, pas un blog qu'elle tient. Une surface d'écriture
+ * sur un site public est aussi la seule chose de ce prompt qui puisse être
+ * exploitée plutôt que simplement fausse — d'où trois verrous indépendants.
+ */
 describe("le blog est une structure, pas du contenu", () => {
-  it("un index, un gabarit d'article, et comment en ajouter un", () => {
+  it("un index, un gabarit, des catégories, un lien de navigation", () => {
     const { text } = buildLovablePrompt(FULL);
-    expect(text).toContain("/blog");
-    expect(text).toContain("/blog/[slug]");
-    expect(text).toContain("Do not write any posts");
-    expect(text).toContain("To add a post afterwards in Lovable");
+    expect(text).toContain("`/blog`");
+    expect(text).toContain("`/blog/[slug]`");
+    expect(text).toContain("`/blog/category/[slug]`");
+    expect(text).toContain("One `Writing` link in the site header");
+  });
+
+  it("⚠ aucun contenu : ni article, ni titre, ni catégorie inventée", () => {
+    const { text } = buildLovablePrompt(FULL);
+    expect(text).toContain("**Do not write any posts**");
+    expect(text).toContain("do not seed example content");
+    expect(text).toContain("**Only categories that**");
+  });
+
+  it("un brouillon n'existe nulle part — ni index, ni URL, ni sitemap", () => {
+    expect(buildLovablePrompt(FULL).text).toContain(
+      "A draft is not in the index, not at its URL, and"
+    );
+  });
+
+  it("⚠ verrou 1 : un drapeau AU BUILD, pas un test à l'exécution", () => {
+    const { text } = buildLovablePrompt(FULL);
+    expect(text).toContain("build-time flag, not a runtime check");
+    expect(text).toContain("the admin route returns 404");
+    expect(text).toContain("are not included in the build at all");
+    expect(text).toContain("Not disabled — absent.");
+  });
+
+  it("⚠ verrou 2 : aucun chemin d'écriture atteignable depuis le site publié", () => {
+    const { text } = buildLovablePrompt(FULL);
+    expect(text).toContain("No write path reachable from the published site, under any URL");
+    expect(text).toContain("no hidden route");
+    expect(text).toContain("accepts a post body from an unauthenticated request");
+  });
+
+  it("⚠ verrou 3 : refus par défaut au niveau des données", () => {
+    const { text } = buildLovablePrompt(FULL);
+    expect(text).toContain("Writes denied by default at the data layer");
+    expect(text).toContain("Deny by default");
+    expect(text).toContain("survives a");
+  });
+
+  it("⚠ les trois sont exigés ensemble, pas au choix", () => {
+    expect(buildLovablePrompt(FULL).text).toContain(
+      "These three are requirements, not suggestions. Implement all three."
+    );
   });
 });
 

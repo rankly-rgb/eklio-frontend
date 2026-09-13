@@ -37,6 +37,11 @@ const PLACEHOLDERS = {
   licenseLabel: { token: "LICENSE_TYPE", describes: "your license type, e.g. LMFT" },
   licenseNumber: { token: "LICENSE_NUMBER", describes: "your license number" },
   city: { token: "CITY", describes: "the city you practise in" },
+  approachCopy: {
+    token: "YOUR DESCRIPTION OF THIS APPROACH",
+    describes:
+      "a few sentences on each approach page, in your words — Eklio has not written these",
+  },
   state: { token: "STATE", describes: "the state you are licensed in" },
 } as const satisfies Record<string, Placeholder>;
 
@@ -137,6 +142,16 @@ export function buildLovablePrompt(input: {
   const city = fill(details?.city, PLACEHOLDERS.city);
   const state = fill(details?.state, PLACEHOLDERS.state);
 
+  /*
+   * Computed BEFORE the inventory below, because a page it asks for carries a
+   * placeholder of its own — and an inventory that misses one is worse than no
+   * inventory: she would trust it and publish the word.
+   */
+  const modalityPages = modalityPagesBlock(input.brief.modalities);
+  if (modalityPages && !emitted.includes(PLACEHOLDERS.approachCopy.token)) {
+    emitted.push(PLACEHOLDERS.approachCopy.token);
+  }
+
   const sections: string[] = [];
 
   sections.push(
@@ -151,22 +166,38 @@ export function buildLovablePrompt(input: {
     ].join("\n")
   );
 
-  if (emitted.length > 0) {
-    sections.push(
-      [
-        "## Fill these in before you publish",
-        "",
-        "Eklio does not have these yet, so they appear in the prompt in brackets.",
-        "Search for each one and replace it — the site will build either way, but",
-        "it will say the bracketed word until you do.",
-        "",
-        ...emitted.map((token) => {
-          const entry = Object.values(PLACEHOLDERS).find((p) => p.token === token);
-          return `- [${token}] — ${entry?.describes ?? ""}`;
-        }),
-      ].join("\n")
-    );
-  }
+  /*
+   * ⚠ THIS BLOCK IS ALWAYS PRESENT, EVEN WITH NOTHING TO FILL IN. The preview
+   * warning below belongs to every build: the admin the blog section asks for
+   * is reachable on a builder's preview URL while she is still working, and a
+   * preview URL is a public URL — it is unlisted, not protected. Someone handed
+   * that link before the flag goes off can write to her blog. There is no
+   * placeholder that makes that true or false, so it cannot hang off `emitted`.
+   */
+  sections.push(
+    [
+      "## Fill these in before you publish",
+      "",
+      ...(emitted.length > 0
+        ? [
+            "Eklio does not have these yet, so they appear in the prompt in brackets.",
+            "Search for each one and replace it — the site will build either way, but",
+            "it will say the bracketed word until you do.",
+            "",
+            ...emitted.map((token) => {
+              const entry = Object.values(PLACEHOLDERS).find((p) => p.token === token);
+              return `- [${token}] — ${entry?.describes ?? ""}`;
+            }),
+            "",
+          ]
+        : []),
+      "⚠ **Your preview link is a public link.** While you are building, your",
+      "builder gives the site a preview URL. It is unlisted, not private: anyone",
+      "who has it can open it, and a search engine can find it. So while the blog",
+      "admin flag is on, do not share that link with anyone — turn the flag off",
+      "and publish before you send the address to a colleague or a client.",
+    ].join("\n")
+  );
 
   // The database's prompt, whole and unaltered.
   sections.push(input.core);
@@ -198,7 +229,6 @@ export function buildLovablePrompt(input: {
 
   sections.push(COMPOSITION);
 
-  const modalityPages = modalityPagesBlock(input.brief.modalities);
   if (modalityPages) sections.push(modalityPages);
 
   const brand: string[] = ["## Brand marks and tone"];
@@ -220,24 +250,7 @@ export function buildLovablePrompt(input: {
 
   sections.push(imageryBlock(input.imageSlots));
 
-  sections.push(
-    [
-      "## Blog",
-      "",
-      "Structure only. Do not write any posts, and do not invent post titles or",
-      "excerpts — the index renders whatever exists and is empty until she adds one.",
-      "",
-      "- A `/blog` index route listing posts newest first: title, date, and a one-line",
-      "  excerpt. An empty state that simply says there are no posts yet.",
-      "- A `/blog/[slug]` post template: title, date, body, and a link back to the",
-      "  index. Same fonts, same colours, same header and footer as the rest of the site.",
-      "- No categories, no tags, no author box, no comments, no share buttons.",
-      "",
-      "To add a post afterwards in Lovable: open the project, ask it to add a new",
-      "post to the blog with your title and your text, and it will create the entry",
-      "and link it from the index.",
-    ].join("\n")
-  );
+  sections.push(BLOG);
 
   sections.push(
     seoBlock({
@@ -246,7 +259,6 @@ export function buildLovablePrompt(input: {
       licenseLabel,
       city,
       state,
-      bookingUrl,
       specialties: input.brief.specialties,
     })
   );
@@ -484,7 +496,6 @@ function seoBlock(input: {
   licenseLabel: string;
   city: string;
   state: string;
-  bookingUrl: string;
   specialties: readonly string[];
 }): string {
   const lines = [
@@ -645,3 +656,85 @@ function imageryBlock(available: readonly string[]): string {
 
   return lines.join("\n");
 }
+
+/*
+ * ── THE BLOG, AND THE ADMIN BEHIND IT ────────────────────────────────────
+ *
+ * The first version asked for an index and a post template and then told her
+ * to add posts "by asking Lovable" — which means opening the builder and
+ * re-prompting it every time she writes something. That is not a blog she can
+ * keep; it is a blog she has to commission.
+ *
+ * So this asks for the writing surface too. And a writing surface on a public
+ * site is the one thing in this prompt that can be exploited rather than
+ * merely wrong, so it carries three clauses that are not negotiable and are
+ * stated as such:
+ *
+ *   1. A BUILD-TIME FLAG, not a runtime check. With the flag off, the admin
+ *      route 404s AND its write endpoints are not in the build at all. A
+ *      runtime `if (isAdmin)` leaves the endpoint deployed and reachable;
+ *      anything built out does not exist to be found.
+ *   2. NO WRITE PATH REACHABLE FROM THE PUBLISHED SITE, under any URL — no
+ *      link, no hidden route, no query parameter that flips a mode.
+ *   3. WRITE POLICIES DENIED BY DEFAULT for anonymous visitors, at the data
+ *      layer, so the row-level rule holds even if clause 1 or 2 is ever undone
+ *      by a later edit. Three independent locks, not one in three wordings.
+ *
+ * ⚠ AND STILL NO CONTENT. Not a post, not a title, not an excerpt, not a
+ * category name. The structure is built empty and stays empty until she writes
+ * something.
+ */
+const BLOG = [
+  "## Blog",
+  "",
+  "Build the structure. **Do not write any posts**, do not invent post titles,",
+  "excerpts, categories or author bios, and do not seed example content — an",
+  "empty blog that says it is empty is correct.",
+  "",
+  "### Public pages",
+  "",
+  "- `/blog` — the index. Posts newest first: title, date, one-line excerpt, and",
+  "  the category if the post has one. When there are no posts, one plain line",
+  "  saying there is nothing here yet. No pagination until there are posts to",
+  "  paginate.",
+  "- `/blog/[slug]` — the post. Title, date, category, body, and a link back to",
+  "  the index. Same header, footer, fonts and colours as the rest of the site.",
+  "  The body renders headings, paragraphs, lists, links, blockquotes and images.",
+  "- `/blog/category/[slug]` — the same index, filtered. **Only categories that**",
+  "  **actually exist on a post.** Do not pre-create a category list, and do not",
+  "  show a category navigation while there are no posts.",
+  "- One `Writing` link in the site header, alongside the other page links.",
+  "",
+  "Each post has: title, slug, date, category (optional), excerpt (optional),",
+  "body, and published/draft. A draft is not in the index, not at its URL, and",
+  "not in the sitemap.",
+  "",
+  "### The admin, and the three locks on it",
+  "",
+  "`/admin/posts` — list, create, edit, delete, publish and unpublish. Plain",
+  "forms, no rich-text toolbar needed, and it uses the site's own styles.",
+  "",
+  "⚠ **These three are requirements, not suggestions. Implement all three.**",
+  "",
+  "**1. A build-time flag, not a runtime check.** Gate the admin on an",
+  "environment variable read AT BUILD TIME (for example `ENABLE_ADMIN`). When it",
+  "is not set: the admin route returns 404, and the create, edit, delete and",
+  "publish endpoints are not included in the build at all. Not disabled — absent.",
+  "A runtime `if (user.isAdmin)` leaves the endpoint deployed and reachable, and",
+  "that is exactly what this clause exists to prevent.",
+  "",
+  "**2. No write path reachable from the published site, under any URL.** No link",
+  "to the admin from any public page, no hidden route, no query parameter or",
+  "keyboard shortcut that flips the public site into an editing mode, and no API",
+  "route that accepts a post body from an unauthenticated request.",
+  "",
+  "**3. Writes denied by default at the data layer.** Whatever stores the posts,",
+  "an anonymous visitor can READ published posts and can write nothing — no",
+  "insert, no update, no delete, on posts or on anything else. Deny by default",
+  "and allow reads explicitly, never the other way round. This must hold on its",
+  "own, with the flag on and the admin reachable: it is the lock that survives a",
+  "later edit undoing the other two.",
+  "",
+  "When the flag is off — which is how the site is published — she writes posts",
+  "by turning the flag on in her own project, writing, and turning it off again.",
+].join("\n");
