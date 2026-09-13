@@ -814,6 +814,27 @@ replaced by what remains true. What follows is the residue, not the original lis
 
 ## Added during the tenancy chantier, Session 4 (the invitation, eu-west-1, the crons)
 
+- **2026-09-13 (the second day's reading — and the discriminator I expected does NOT exist).**
+  Read at 05:30 UTC: no `edge_logs` and no `postgrest_logs` at all today, while `postgres_logs`
+  carries events through 04:40 — so the window is live and the silence at 04:00 (`purge-events`)
+  and 05:00 (`anon-briefs`) is real, not retention. **No scheduled cron reached the database
+  today either.**
+
+  ⚠ **But Supabase cannot tell us WHY, and I was wrong to think it could.** `authorizeCron`
+  returns 503 *before touching Supabase*, so a cron that fires and is refused leaves exactly the
+  same trace as a cron that never fires: none. The database side can establish that a run did
+  not arrive; it can never separate "not scheduled" from "scheduled and refused". Only Vercel's
+  cron log separates those, and it is not readable from this session. Yesterday's note claiming
+  "site up but no PostgREST traffic means the variable is still missing" was therefore wrong —
+  it assumed the crons fire.
+
+  The same window does show that an Eklio server served real authenticated traffic on 12 Sept
+  from 14:43 to 20:51 UTC: 1371 `edge_logs`, 396 `auth_logs`, one signed-in user browsing a kit
+  (`site_spec_get`, `get_brand_asset_manifest`, `get_launch_progress`, signed storage URLs).
+  ⚠ The user agent is `node`, i.e. the server-side Supabase client, which does NOT say whether
+  that server was Vercel or a local one. It is evidence the application works — not proof the
+  deployment is up.
+
 - **2026-09-12 (OPEN — needs a deploy, then a same-day read) — no scheduled cron has been shown
   to reach the database.** The five `vercel.json` crons are registered and enabled on the
   declared schedules, and `/api/cron/monthly` is absent from the platform as well as the repo,
