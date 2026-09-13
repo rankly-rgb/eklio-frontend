@@ -729,8 +729,26 @@ describe("l'inventaire distingue deux manques", () => {
   it("ce qui la remplirait est listé, et dit ne pas être à chercher", () => {
     const { text } = buildLovablePrompt(NO_NUMBER);
     expect(text).toContain("- your degrees and completed training");
-    expect(text).toContain("- your licence number");
     expect(text).toContain("not in the prompt to search for");
+  });
+
+  /*
+   * ⚠ UN FAIT MANQUANT PEUT AUSSI ÊTRE UN MARQUEUR. Le numéro de licence est
+   * les deux : son absence retire la section, et il laisse un crochet dans la
+   * ligne de contact. Le lister deux fois, la seconde sous « pas à chercher
+   * dans le prompt », contredirait la première liste deux lignes plus haut.
+   */
+  it("⚠ le doublon disparaît : le numéro est un marqueur, pas un manque muet", () => {
+    const { text } = buildLovablePrompt(NO_NUMBER);
+    expect(text).toContain("- [LICENSE_NUMBER] — your license number");
+    const second = text.slice(text.indexOf("Eklio is also missing these"));
+    expect(second.slice(0, second.indexOf("⚠"))).not.toContain("license number");
+  });
+
+  it("les deux listes emploient la même orthographe du mot", () => {
+    const { text } = buildLovablePrompt(NO_NUMBER);
+    const inventory = text.slice(0, text.indexOf("Build a one-page"));
+    expect(inventory).not.toContain("licence");
   });
 
   it("⚠ ni formation ni numéro ne sont inventés dans le corps", () => {

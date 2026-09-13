@@ -160,6 +160,10 @@ export function buildLovablePrompt(input: {
     licenseNumber: details?.licenseNumber?.trim() || null,
   });
 
+  const missingFacts = plan.missing.filter(
+    (need) => !need.token || !emitted.includes(need.token)
+  );
+
   const sections: string[] = [];
 
   sections.push(
@@ -199,13 +203,20 @@ export function buildLovablePrompt(input: {
             "",
           ]
         : []),
-      ...(plan.missing.length > 0
+      /*
+       * ⚠ ONLY THE FACTS THAT ARE NOT ALREADY A BRACKET ABOVE. A missing fact
+       * can be both — the license number drops the credentials section AND
+       * leaves a bracket in the contact line — and listing it twice, the second
+       * time under "not in the prompt to search for", would contradict the
+       * first list two lines up.
+       */
+      ...(missingFacts.length > 0
         ? [
             "Eklio is also missing these, and a section is left out of the site",
             "because of it. They are not in the prompt to search for — add them in",
             "Eklio and copy the prompt again:",
             "",
-            ...plan.missing.map((need) => `- ${need}`),
+            ...missingFacts.map((need) => `- ${need.describes}`),
             "",
           ]
         : []),

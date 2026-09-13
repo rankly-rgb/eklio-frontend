@@ -116,8 +116,8 @@ describe("ce que le brief remplit", () => {
   it("ce qui manque est nommé — et rien n'est inventé à la place", () => {
     const result = planSections({ ...HER_BRIEF, pages: HER_PAGES, licenseNumber: null });
     expect(result.missing).toEqual([
-      "your degrees and completed training",
-      "your licence number",
+      { describes: "your degrees and completed training", token: null },
+      { describes: "your license number", token: "LICENSE_NUMBER" },
     ]);
   });
 

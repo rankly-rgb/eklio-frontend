@@ -27,6 +27,13 @@ import type { SpecPage, SectionFields } from "@/lib/site/types";
 
 export type SectionRef = { page: string; section: string };
 
+export type MissingFact = {
+  /** What she would add, in her words. */
+  describes: string;
+  /** The placeholder token for the same fact, when the prompt has one. */
+  token: string | null;
+};
+
 export type SectionSupplement = SectionRef & {
   heading: string;
   /** Catalogue labels, verbatim, one per line. Never a composed sentence. */
@@ -39,12 +46,16 @@ export type SectionPlan = {
   /** Sections with nothing approved to say. Omitted outright. */
   omit: SectionRef[];
   /**
-   * What Eklio would need in order to build an omitted section — in her words,
-   * not as a bracketed token: these appear NOWHERE in the prompt, because the
-   * section they belong to is not built. Listed apart from the search-and-
-   * replace placeholders for exactly that reason.
+   * What Eklio would need in order to build an omitted section.
+   *
+   * ⚠ `token` IS WHY THIS IS NOT A LIST OF STRINGS. A missing fact can ALSO be
+   * a bracketed placeholder somewhere else in the prompt — the license number
+   * is both: its absence drops the credentials section AND leaves a bracket in
+   * the contact line. Listing it in both inventories, under a caption saying
+   * these are not in the prompt to search for, would contradict itself. The
+   * token lets the assembly drop the duplicate and keep the one that is true.
    */
-  missing: string[];
+  missing: MissingFact[];
 };
 
 function hasBody(fields: SectionFields): boolean {
@@ -85,7 +96,7 @@ export function planSections(input: {
 }): SectionPlan {
   const supplements: SectionSupplement[] = [];
   const omit: SectionRef[] = [];
-  const missing: string[] = [];
+  const missing: MissingFact[] = [];
 
   for (const page of input.pages) {
     if (page.enabled === false) continue;
@@ -113,7 +124,7 @@ export function planSections(input: {
       } else {
         omit.push(ref);
         for (const need of MISSING_FOR[type] ?? []) {
-          if (!missing.includes(need)) missing.push(need);
+          if (!missing.some((entry) => entry.describes === need.describes)) missing.push(need);
         }
       }
     }
@@ -129,10 +140,10 @@ export function planSections(input: {
  * not waiting for a field, it is waiting for legal review, and inviting her to
  * type a fee into Eklio would be inviting her to draft the thing unaided.
  */
-const MISSING_FOR: Record<string, readonly string[]> = {
+const MISSING_FOR: Record<string, readonly MissingFact[]> = {
   credentials: [
-    "your degrees and completed training",
-    "your licence number",
+    { describes: "your degrees and completed training", token: null },
+    { describes: "your license number", token: "LICENSE_NUMBER" },
   ],
 };
 
