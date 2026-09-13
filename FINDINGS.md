@@ -1064,3 +1064,32 @@ rather than instructing a builder to write one.
 Ethics Guard chantier to fill with generated text: the wording has to be
 reviewed by someone qualified to approve it, and only then can it enter the
 repo as an approved source the prompt quotes verbatim.
+
+## `checkEthics` flags a prompt for quoting the phrases it forbids
+
+The database's builder prompt tells the builder what never to write, by quoting
+it: `Never write: "A proven method that resolves trauma for good."`,
+`Never write: "Clients often tell me they finally feel free."`, and
+`Do not invent testimonials, client quotes, statistics…`.
+
+`checkEthics` reads those quotations as violations. On a real kit
+(`45de0dac…`) it returns **four blocking hits** — `proven method`,
+`resolves trauma`, `testimonials`, `Clients often tell` — all from the
+prohibition block, all identical for every kit.
+
+`rules.ts` claims prohibitive mentions are excluded ("Les mentions prohibitives
+(« no testimonials ») ne sont pas des violations"), but `findViolation` only
+recognises a narrow `no X` form, not `Do not invent X` and not a counter-example
+quoted under `Never write:`.
+
+Gating the step on `scan.ok` would therefore have held the prompt back for
+EVERY practitioner, permanently — step 1 would have shipped dead. The step now
+treats the core's violations as a baseline and reports only what the assembly
+adds (`scanAssembled` in `lib/site/lovable.ts`).
+
+⚠ **The accepted cost, stated:** her approved copy lives inside the core, so
+this particular re-scan does not re-cover it. It is scanned upstream by the
+Guard when it is generated (`ethics_check` on the kit). Fixing
+`findViolation`'s prohibitive-context handling would let the re-scan cover the
+whole artefact again — it was left alone here because changing the scanner
+changes every generation path in the product.

@@ -37,7 +37,17 @@ export type StepPlace = {
 
 export const STEP_PLACES: Record<LaunchStepKey, StepPlace> = {
   // Her pages, her builder. The material is here; the paste is not.
-  site_setup: { label: "In Eklio", service: null, declared: false },
+  /*
+   * ⚠ NOT "IN EKLIO". The prompt is assembled here and the site is built
+   * somewhere else — she leaves with the words and comes back with a site.
+   * Labelling it as an Eklio errand was the thing that made the whole list
+   * read like seven product features.
+   */
+  site_setup: {
+    label: "Eklio → your builder",
+    service: { name: "Lovable", url: "https://lovable.dev/" },
+    declared: true,
+  },
 
   update_directory: {
     label: "Psychology Today",

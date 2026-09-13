@@ -11,6 +11,9 @@ import type { LaunchStepContext } from "@/components/checklist/launch-checklist"
 import type { LaunchStepKey } from "@/lib/data/checklist";
 import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
 import type { DirectoryField } from "@/lib/launch/directory";
+import { SiteSetupMaterial } from "@/components/launch/site-setup-material";
+import type { LovablePrompt } from "@/lib/site/lovable";
+import type { LaunchSlots } from "@/lib/launch/slots";
 
 /*
  * ── EVERYTHING ONE STEP HANDS OVER ───────────────────────────────────────
@@ -31,6 +34,7 @@ export function StepMaterial({
   context,
   manifest,
   directoryFields = [],
+  siteSetup = null,
 }: {
   brandKitId: string;
   stepKey: LaunchStepKey;
@@ -41,6 +45,8 @@ export function StepMaterial({
    * everywhere else, and empty here too when she picked nothing.
    */
   directoryFields?: DirectoryField[];
+  /** Step 1 only: the assembled builder prompt, and the two optional slots. */
+  siteSetup?: { prompt: LovablePrompt | null; slots: LaunchSlots } | null;
 }) {
   const place = STEP_PLACES[stepKey];
   const texts = stepTextBlocks(stepKey, context);
@@ -148,13 +154,20 @@ export function StepMaterial({
         </div>
       ) : null}
 
-      {stepKey === "site_setup" ? (
-        <ButtonLink href={context.siteHref} variant="secondary" className="self-start">
-          Open the site editor
-        </ButtonLink>
+      {/*
+        Step 1 carries its own block: the prompt first, the builder second, the
+        editor last and described as what it is. It also owns the link out, so
+        the generic service block below is skipped for it.
+      */}
+      {stepKey === "site_setup" && siteSetup ? (
+        <SiteSetupMaterial
+          prompt={siteSetup.prompt}
+          siteHref={context.siteHref}
+          slots={siteSetup.slots}
+        />
       ) : null}
 
-      {place.service ? (
+      {place.service && stepKey !== "site_setup" ? (
         <div className="flex flex-col gap-3 border-t border-line pt-6">
           <MonoLabel tracking="12" tone="ink-3">
             Then

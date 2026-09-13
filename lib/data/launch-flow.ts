@@ -41,6 +41,16 @@ export type LaunchFlow = {
    * its link, and no asset rows. Never a broken button.
    */
   manifest: AssetManifestEntry[];
+  /**
+   * The builder prompt the DATABASE produced for her spec, verbatim.
+   *
+   * It is already on the envelope `site_spec_get` returns, which this loader
+   * already fetches — so carrying it costs nothing, and re-deriving it in
+   * TypeScript would be the second generator this chantier refuses to write.
+   * Null when the spec could not be read, or when her target emits a setup
+   * sheet rather than a prompt (Squarespace, Wix, Webflow).
+   */
+  siteOutput: { kind: string; text: string } | null;
 };
 
 export async function loadLaunchFlow(
@@ -58,11 +68,19 @@ export async function loadLaunchFlow(
   ]);
 
   const spec = siteSpec && siteSpec.ok ? siteSpec.data.spec : null;
+  const output =
+    siteSpec && siteSpec.ok
+      ? (siteSpec.data as { output?: { kind?: string; text?: string } }).output
+      : null;
 
   return {
     kit,
     progress,
     manifest: assetStats?.manifest ?? [],
+    siteOutput:
+      output?.kind && typeof output.text === "string"
+        ? { kind: output.kind, text: output.text }
+        : null,
     context: {
       practiceName: kit.practiceName,
       practitionerLine: kit.row.practitioner_line,

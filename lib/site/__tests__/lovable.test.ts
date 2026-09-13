@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildLovablePrompt } from "@/lib/site/lovable";
+import { checkEthics } from "@/lib/ethics/rules";
 
 /*
  * Le prompt Lovable : un ASSEMBLAGE, jamais une rédaction.
@@ -164,13 +165,54 @@ describe("⚠ le scan déontologique tourne AVANT l'affichage", () => {
     expect(buildLovablePrompt(FULL).scan.ok).toBe(true);
   });
 
-  it("⚠ le canari : une promesse de résultat glissée dans le corps fait échouer le scan", () => {
-    // Si ça passait, le scan ne regarderait pas le corps.
+  it("⚠ le canari : ce que l'ASSEMBLAGE ajoute est bien scanné", () => {
+    /*
+     * C'est là que porte la garde. Le noyau est la référence ; tout ce que ce
+     * module compose par-dessus passe au scan pour la première fois. Si ceci
+     * passait, le scan ne regarderait rien du tout.
+     */
+    const result = buildLovablePrompt({
+      ...FULL,
+      wordmark: { label: "A proven method that resolves trauma", format: "svg" },
+    });
+    expect(result.scan.ok).toBe(false);
+    expect(result.scan.violations.length).toBeGreaterThan(0);
+  });
+
+  it("⚠ et une violation du NOYAU reste au noyau — elle ne bloque pas l'étape", () => {
+    /*
+     * Contrepartie assumée, et elle doit être dite : la copie approuvée vit
+     * DANS le noyau, et le noyau est la référence. Elle est scannée en amont
+     * par la garde au moment où elle est générée (`ethics_check` sur le kit) ;
+     * ce re-scan-ci couvre l'assemblage, pas elle. FINDINGS le note.
+     */
     const result = buildLovablePrompt({
       ...FULL,
       core: `${CORE}\nA proven method that cures anxiety for good.`,
     });
-    expect(result.scan.ok).toBe(false);
-    expect(result.scan.violations.length).toBeGreaterThan(0);
+    expect(result.scan.ok).toBe(true);
+  });
+
+  it("⚠ les interdictions CITÉES par le prompt ne comptent pas contre lui", () => {
+    /*
+     * Le prompt de la base cite les phrases qu'il interdit. `checkEthics` les
+     * lit comme des violations — quatre, bloquantes, identiques pour chaque
+     * kit. Bloquer là-dessus masquerait le prompt pour TOUT LE MONDE et
+     * livrerait l'étape morte. Le noyau est donc la référence, et seul ce que
+     * l'assemblage ajoute est retenu.
+     */
+    const quoting = [
+      CORE,
+      "## Voice",
+      'Never write:',
+      '- "A proven method that resolves trauma for good."',
+      '- "Clients often tell me they finally feel free."',
+      "- Do not invent testimonials, client quotes, statistics, credentials or awards.",
+    ].join("\n");
+
+    // Le noyau seul déclencherait la garde…
+    expect(checkEthics(quoting).ok).toBe(false);
+    // …et pourtant le prompt assemblé passe, parce que rien de neuf n'a été ajouté.
+    expect(buildLovablePrompt({ ...FULL, core: quoting }).scan.ok).toBe(true);
   });
 });

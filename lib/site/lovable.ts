@@ -59,9 +59,43 @@ export type LovablePrompt = {
   placeholders: string[];
   /** Sections deliberately left out, named so their absence is legible. */
   omitted: readonly string[];
-  /** The Ethics Guard's verdict on the assembled text, run before display. */
+  /**
+   * The Ethics Guard's verdict, run on the assembled text before display —
+   * and reduced to what the ASSEMBLY is responsible for. See `scanAssembled`.
+   */
   scan: EthicsCheckResult;
 };
+
+/*
+ * ⚠ THE SCAN RUNS ON THE WHOLE, AND IS MEASURED AGAINST THE CORE.
+ *
+ * Running `checkEthics` on the assembled prompt and gating on `ok` was the
+ * obvious reading, and it is wrong. The database's prompt QUOTES the phrases it
+ * forbids — `Never write: "A proven method that resolves trauma for good."`,
+ * `Never write: "Clients often tell me they finally feel free."`, and
+ * `Do not invent testimonials, client quotes, statistics…`. `checkEthics` reads
+ * those quotations as violations: four blocking hits on a real kit, identical
+ * for every kit, because they are product-authored boilerplate.
+ *
+ * Gating on that would hold the prompt back for EVERYONE, forever, and step 1
+ * would ship dead. So the core's own violations are the BASELINE, and this
+ * reports only what the assembly adds on top — her copy is inside the core and
+ * was already scanned by the Guard when it was generated, and every line this
+ * module contributes is scanned here for the first time.
+ *
+ * The false positives are a defect in `checkEthics`'s prohibitive-context
+ * handling, not in the prompt. FINDINGS.md records it; this module does not
+ * reach into the Guard to fix it.
+ */
+function scanAssembled(core: string, assembled: string): EthicsCheckResult {
+  const baseline = new Set(
+    checkEthics(core).violations.map((v) => `${v.ruleId}::${v.excerpt}`)
+  );
+  const violations = checkEthics(assembled).violations.filter(
+    (v) => !baseline.has(`${v.ruleId}::${v.excerpt}`)
+  );
+  return { ok: !violations.some((v) => v.severity === "block"), violations };
+}
 
 export function buildLovablePrompt(input: {
   /** `envelope.output.text` — the database's prompt, used verbatim. */
@@ -220,7 +254,8 @@ export function buildLovablePrompt(input: {
     text,
     placeholders: emitted,
     omitted: OMITTED,
-    // Run BEFORE display, every time — the assembled whole, not the parts.
-    scan: checkEthics(text),
+    // Run BEFORE display, every time, on the assembled whole — minus the
+    // core's own quoted prohibitions. See `scanAssembled`.
+    scan: scanAssembled(input.core, text),
   };
 }

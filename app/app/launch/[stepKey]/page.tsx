@@ -9,6 +9,9 @@ import { StepMaterial } from "@/components/launch/step-material";
 import { LaunchStepActions } from "@/components/launch/step-actions";
 import { STEP_PLACES } from "@/lib/launch/places";
 import { loadDirectoryFields } from "@/lib/launch/directory";
+import { loadSiteSetupMaterial } from "@/lib/launch/site-setup";
+import { buildLovablePrompt } from "@/lib/site/lovable";
+import { launchSlots } from "@/lib/launch/slots";
 import { Breadcrumb } from "@/components/app/breadcrumb";
 import { MonoLabel } from "@/components/ui/mono-label";
 
@@ -73,6 +76,33 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
       ? await loadDirectoryFields(supabase, kit.projectId, flow.context.practiceDetails)
       : [];
 
+  /*
+   * Step 1 only, same rule as the directory fields: the extra reads happen on
+   * the one screen that renders them.
+   *
+   * The prompt's BODY is the database's, carried on the envelope this flow
+   * already fetched. `buildLovablePrompt` adds what that generator does not
+   * carry and scans the whole thing before it is shown.
+   */
+  let siteSetup = null;
+  if (key === "site_setup") {
+    const material = await loadSiteSetupMaterial(supabase, kit, flow.manifest);
+    siteSetup = {
+      prompt:
+        flow.siteOutput && flow.siteOutput.kind === "prompt"
+          ? buildLovablePrompt({
+              core: flow.siteOutput.text,
+              practiceDetails: flow.context.practiceDetails,
+              bookingUrl: flow.context.bookingUrl,
+              toneWords: material.toneWords,
+              wordmark: material.wordmark,
+              imageSlots: material.imageSlots,
+            })
+          : null,
+      slots: launchSlots(),
+    };
+  }
+
   const previous = index > 0 ? flow.progress.items[index - 1] : null;
   const next = index < flow.progress.items.length - 1 ? flow.progress.items[index + 1] : null;
 
@@ -109,6 +139,7 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
             context={flow.context}
             manifest={flow.manifest}
             directoryFields={directoryFields}
+            siteSetup={siteSetup}
           />
         </div>
 

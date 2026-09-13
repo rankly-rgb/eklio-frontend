@@ -152,11 +152,15 @@ describe("⚠ aucun lien sortant ne vise un compte", () => {
     }
   });
 
-  it("les étapes qu'Eklio ne peut pas observer sont marquées `declared`", () => {
-    // Seule « mets ta marque sur ton site » se passe entièrement ici.
-    expect(STEP_PLACES.site_setup.declared).toBe(false);
+  it("⚠ LES SEPT sont `declared` — Eklio n'en observe aucune", () => {
+    /*
+     * `site_setup` était l'exception : on la croyait entièrement interne.
+     * Elle ne l'est pas. Le prompt est ASSEMBLÉ ici et le site est construit
+     * ailleurs, chez son constructeur — Eklio ne voit pas plus son site publié
+     * que sa fiche Psychology Today. L'exception était une erreur de lecture
+     * de l'étape, pas une propriété de l'étape.
+     */
     for (const key of LAUNCH_STEP_KEYS) {
-      if (key === "site_setup") continue;
       expect(STEP_PLACES[key].declared, key).toBe(true);
     }
   });
