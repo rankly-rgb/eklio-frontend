@@ -291,3 +291,84 @@ describe("les sections vides", () => {
     expect(buildLovablePrompt(WITH_SPEC).scan.ok).toBe(true);
   });
 });
+
+/*
+ * ── LA COMPOSITION ───────────────────────────────────────────────────────
+ *
+ * Le premier prompt disait QUOI mettre sur la page et rien sur la façon dont
+ * ça devait s'y poser : le constructeur a donc appliqué son style maison. Ces
+ * règles sont déterministes — mêmes entrées, même page — et aucune n'est du
+ * texte qui finit à l'écran.
+ */
+describe("les instructions de composition", () => {
+  it("elles sont là, et elles sont les mêmes pour tout le monde", () => {
+    const a = buildLovablePrompt(WITH_SPEC).text;
+    const b = buildLovablePrompt({ ...WITH_SPEC, toneWords: ["Other", "Words", "Here"] }).text;
+    const block = (text: string) => text.slice(text.indexOf("## Composition"));
+    expect(a).toContain("## Composition");
+    expect(block(a).split("---")[0]).toEqual(block(b).split("---")[0]);
+  });
+
+  it("une page d'accueil qui défile, un seul bandeau pleine largeur, un héros à 90vh", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("90vh");
+    expect(text).toContain("**One full-bleed band, and only one.**");
+    expect(text).toContain("no section is behind a tab");
+  });
+
+  it("la retenue est nommée, pas suggérée", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    for (const banned of ["No gradients", "glassmorphism", "animated counters"]) {
+      expect(text, banned).toContain(banned);
+    }
+    expect(text).toContain("prefers-reduced-motion");
+  });
+
+  it("⚠ aucune ligne de composition n'est une phrase à imprimer", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    const block = text.slice(text.indexOf("## Composition")).split("\n---\n")[0];
+    expect(block).toContain("These are layout rules, not content.");
+  });
+});
+
+/*
+ * ── UNE PAGE PAR APPROCHE ────────────────────────────────────────────────
+ *
+ * Structure seulement. Le texte de ces pages n'existe pas encore, et un
+ * constructeur qui décrirait l'EMDR lui-même écrirait une allégation clinique
+ * en son nom.
+ */
+describe("les pages d'approche", () => {
+  it("une page et une entrée de menu par approche, avec ses noms à elle", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("/approaches/cbt");
+    expect(text).toContain("/approaches/emdr");
+    expect(text).toContain("EMDR — Eye Movement Desensitization and Reprocessing");
+    expect(text).toContain("`Approaches` item to the header");
+  });
+
+  it("⚠ le corps de ces pages reste vide et marqué, jamais rédigé", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("[YOUR DESCRIPTION OF THIS APPROACH]");
+    expect(text).toContain("Do not describe the approach yourself");
+    expect(text).toContain("do not state what it treats");
+  });
+
+  it("une seule approche : ni pages ni menu déroulant", () => {
+    const one = { ...HER_BRIEF, modalities: [HER_BRIEF.modalities[0]] };
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, brief: one });
+    expect(text).not.toContain("## A page for each approach");
+    expect(text).not.toContain("/approaches/");
+  });
+
+  it("aucune approche : rien non plus", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, brief: { ...HER_BRIEF, modalities: [] } });
+    expect(text).not.toContain("## A page for each approach");
+  });
+
+  it("le menu déroulant est utilisable au clavier", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("closes on Escape");
+    expect(text).toContain("reachable with the Tab key");
+  });
+});

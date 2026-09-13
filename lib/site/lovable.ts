@@ -191,6 +191,11 @@ export function buildLovablePrompt(input: {
   const correction = sectionCorrection(plan);
   if (correction) sections.push(correction);
 
+  sections.push(COMPOSITION);
+
+  const modalityPages = modalityPagesBlock(input.brief.modalities);
+  if (modalityPages) sections.push(modalityPages);
+
   const brand: string[] = ["## Brand marks and tone"];
   if (input.wordmark) {
     brand.push(
@@ -351,4 +356,100 @@ function sectionCorrection(plan: SectionPlan): string | null {
   }
 
   return lines.join("\n");
+}
+
+/*
+ * ── COMPOSITION ──────────────────────────────────────────────────────────
+ *
+ * The first prompt said what to put on the page and nothing about how it should
+ * sit there, so the builder defaulted to its house style: stacked full-width
+ * bands, everything centred, every section the same. These are the decisions
+ * that make a page look composed rather than assembled, written as rules a
+ * builder can follow without judgement.
+ *
+ * ⚠ NOTHING HERE IS COPY. Not one sentence goes on the page.
+ */
+const COMPOSITION = [
+  "## Composition",
+  "",
+  "These are layout rules, not content. Follow them exactly.",
+  "",
+  "**The home page is one page, and it scrolls.** Every home section is on it, in",
+  "the order given, with in-page anchors from the header. No section opens a",
+  "modal, no section is behind a tab, and nothing is hidden behind a carousel.",
+  "",
+  "**Hero.** Roughly 90vh tall, never a full 100vh and never taller than the",
+  "viewport. The headline sits in the left third over the empty part of the",
+  "photograph, left-aligned, with the sub-head under it and one button under that.",
+  "One button — not two, and no secondary link styled as a button.",
+  "",
+  "**Rhythm.** Alternate the sections so two neighbours never share a shape: a",
+  "text-only band, then a band with the image on one side, then a text-only band",
+  "with a different background tint. Vertical padding is generous and equal for",
+  "every band — one spacing value used everywhere, not a different guess per",
+  "section.",
+  "",
+  "**One full-bleed band, and only one.** Exactly one section below the hero runs",
+  "edge to edge with a photograph or the brand's deeper colour behind it. Every",
+  "other section sits inside the page's content width. Two full-bleed bands make",
+  "the page read as a sequence of posters.",
+  "",
+  "**Measure.** Body text never runs wider than about 70 characters, even when its",
+  "band is wider. Centre a short lead paragraph if you like; never centre a",
+  "paragraph longer than three lines.",
+  "",
+  "**Restraint.**",
+  "- No gradients, no glassmorphism, no drop shadows on text, no animated counters.",
+  "- No icon next to every heading; no stock icon set at all.",
+  "- Motion is limited to a quiet fade-and-rise as a section enters, once, and it",
+  "  is disabled under `prefers-reduced-motion`.",
+  "- Buttons all look the same: one primary style, one quiet text-link style.",
+  "",
+  "**Header.** Sticky, thin, the wordmark on the left and the page links on the",
+  "right, with the call-to-action button as the last item. It does not change",
+  "height on scroll and it does not hide itself.",
+  "",
+  "**Footer.** Practice name, licence type and number, city and state, the contact",
+  "link, and the page links again. Nothing else — no newsletter box, no social",
+  "icons unless a URL is given above, no badges.",
+].join("\n");
+
+/*
+ * ── A PAGE PER APPROACH ──────────────────────────────────────────────────
+ *
+ * Only when she has at least two, and only ever as structure: the page's own
+ * words are hers to write, and this says so on the page itself rather than
+ * letting a builder fill the space.
+ */
+function modalityPagesBlock(modalities: readonly { label: string; fullName: string }[]): string | null {
+  if (modalities.length < 2) return null;
+
+  const slug = (label: string) =>
+    label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  return [
+    "## A page for each approach",
+    "",
+    "Build one page per approach below. These are the approaches she works in,",
+    "chosen in Eklio — the names are hers and are spelled exactly as written.",
+    "",
+    ...modalities.map((m) => `- \`/approaches/${slug(m.label)}\` — page title: ${m.fullName}`),
+    "",
+    "Each page uses the site's own header, footer, fonts and colours, and carries:",
+    "the approach's name as the `h1`, one section of body text, and the same",
+    "call-to-action button as the home page. Nothing else.",
+    "",
+    "**Do not write the body text.** Eklio has not generated it yet. Leave a clearly",
+    "marked empty block on each page reading `[YOUR DESCRIPTION OF THIS APPROACH]`",
+    "so she can see where it goes. Do not describe the approach yourself, do not",
+    "copy a description from anywhere, and do not state what it treats, how long it",
+    "takes or how well it works.",
+    "",
+    "**Navigation.** Add one `Approaches` item to the header. It opens a dropdown",
+    "listing the pages above, and the item itself also links to a `/approaches`",
+    "index page that lists the same names and nothing more. On a narrow screen the",
+    "dropdown becomes an indented group inside the mobile menu, not a second menu.",
+    "The dropdown opens on click and on keyboard focus, closes on Escape, and every",
+    "item is reachable with the Tab key.",
+  ].join("\n");
 }
