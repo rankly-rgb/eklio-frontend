@@ -11,6 +11,7 @@ import { STEP_PLACES } from "@/lib/launch/places";
 import { loadDirectoryFields } from "@/lib/launch/directory";
 import { loadSiteSetupMaterial } from "@/lib/launch/site-setup";
 import { buildLovablePrompt } from "@/lib/site/lovable";
+import { siteImages } from "@/lib/site/imagery";
 import { launchSlots } from "@/lib/launch/slots";
 import { Breadcrumb } from "@/components/app/breadcrumb";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -103,6 +104,8 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
             })
           : null,
       slots: launchSlots(),
+      wordmark: material.wordmark,
+      images: siteImages(material.imageSlots),
     };
   }
 

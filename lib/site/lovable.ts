@@ -3,6 +3,7 @@ import type { PracticeDetails } from "@/lib/kit/launch-copy";
 import type { SpecPage } from "@/lib/site/types";
 import type { BriefLabels } from "@/lib/launch/site-setup";
 import { planSections, type SectionPlan } from "@/lib/site/section-copy";
+import { siteImages } from "@/lib/site/imagery";
 
 /*
  * ── THE BUILDER PROMPT, ASSEMBLED ────────────────────────────────────────
@@ -217,20 +218,7 @@ export function buildLovablePrompt(input: {
   }
   sections.push(brand.join("\n\n"));
 
-  sections.push(
-    [
-      "## Imagery",
-      "",
-      input.imageSlots.length > 0
-        ? `Eklio has generated photographs for these slots, which you download from Eklio and upload to Lovable: ${input.imageSlots.join(", ")}. Use \`hero\` as the hero image; use \`ambient_*\` as section backgrounds or supporting images; use \`texture\` only as a subtle background, never as a subject.`
-        : "Eklio has not generated photographs for this kit yet. Leave labelled image placeholders at every image position rather than choosing stock.",
-      "",
-      "Wherever you source an image yourself, these hold without exception:",
-      "- No faces and no people.",
-      "- No text inside an image — all text is live text on the page.",
-      "- No stock photography of therapy sessions, couches or clipboards.",
-    ].join("\n")
-  );
+  sections.push(imageryBlock(input.imageSlots));
 
   sections.push(
     [
@@ -601,3 +589,59 @@ const TESTIMONIALS = [
   "without documented consent is a licensing problem, not a design choice. If she",
   "later has a quote she is allowed to publish, she adds it herself, deliberately.",
 ].join("\n");
+
+/*
+ * ── IMAGERY ──────────────────────────────────────────────────────────────
+ *
+ * ⚠ A SLOT KEY IS NOT AN INSTRUCTION. The first version listed whatever the
+ * image read returned — `ambient_a, ambient_b, hero, post_bg_1, post_bg_2,
+ * post_bg_3, texture` — and then gave usage notes for three of those names. So
+ * the prompt named three files (the social-post backgrounds) that nothing told
+ * the builder what to do with, and named all of them as bare keys.
+ *
+ * Each entry now arrives with the one place it goes and the size it was
+ * generated at, from `lib/site/imagery.ts` — the same list the step screen
+ * offers for download, so what she has in her downloads folder and what the
+ * prompt asks for cannot drift apart.
+ */
+function imageryBlock(available: readonly string[]): string {
+  const images = siteImages(available);
+
+  const lines = ["## Imagery", ""];
+
+  if (images.length > 0) {
+    lines.push(
+      "Eklio generated these photographs. Download them from the step you are",
+      "reading this on, upload them to Lovable, and use each one where it says:",
+      ""
+    );
+    for (const image of images) {
+      lines.push(`- **${image.title}** (\`${image.slot}\`, ${image.dimensions}) — ${image.role}`);
+    }
+    lines.push(
+      "",
+      "Use each photograph once. Do not crop them square, do not add a colour wash",
+      "over one, and do not place text over any of them except the hero."
+    );
+  } else {
+    lines.push(
+      "Eklio has not generated photographs for this kit yet. Leave a labelled,",
+      "empty image placeholder at every image position rather than choosing stock —",
+      "an empty frame is honest, and a wrong photograph is not."
+    );
+  }
+
+  lines.push(
+    "",
+    "Wherever you source an image yourself, these hold without exception:",
+    "- No faces and no people.",
+    "- No text inside an image — all text is live text on the page.",
+    "- No stock photography of therapy sessions, couches or clipboards.",
+    "- No illustration, no 3D render, no AI-looking abstract gradient art.",
+    "",
+    "Every image is `loading=\"lazy\"` except the hero, and every one has alt text",
+    "describing what is in the frame — never the practice, never a claim."
+  );
+
+  return lines.join("\n");
+}

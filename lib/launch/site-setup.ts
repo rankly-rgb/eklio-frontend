@@ -23,7 +23,12 @@ const WORDMARK_KEYS = ["wordmark_svg_dark", "wordmark_png_dark", "wordmark_svg_l
 
 export type SiteSetupMaterial = {
   toneWords: string[];
-  wordmark: { label: string; format: string } | null;
+  /**
+   * ⚠ CARRIES ITS CATALOGUE KEY. The prompt names this file and tells her to
+   * use it as the logo; without the key the step screen had no way to OFFER
+   * it, so the instruction pointed at a download that was not on the page.
+   */
+  wordmark: { key: string; label: string; format: string } | null;
   /**
    * Slot keys with a current, stored photograph, restricted to the four a
    * WEBSITE uses. The three `post_bg_*` slots are social-post backgrounds and
@@ -95,7 +100,9 @@ export async function loadSiteSetupMaterial(
 
   return {
     toneWords: kit.selectedDirection?.tone_keywords ?? [],
-    wordmark: wordmarkEntry ? { label: wordmarkEntry.label, format: wordmarkEntry.kind } : null,
+    wordmark: wordmarkEntry
+      ? { key: wordmarkEntry.key, label: wordmarkEntry.label, format: wordmarkEntry.kind }
+      : null,
     imageSlots,
     brief: await loadBriefLabels(supabase, kit.projectId),
   };

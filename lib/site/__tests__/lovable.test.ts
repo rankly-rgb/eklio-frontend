@@ -152,7 +152,7 @@ describe("la marque et les images", () => {
 
   it("sans photographies, on laisse des emplacements — jamais du stock", () => {
     const { text } = buildLovablePrompt({ ...FULL, imageSlots: [] });
-    expect(text).toContain("Leave labelled image placeholders");
+    expect(text).toContain("empty image placeholder at every image position");
     expect(text).toContain("rather than choosing stock");
   });
 });
@@ -468,5 +468,53 @@ describe("la règle des témoignages", () => {
   it("⚠ le prompt assemblé passe le garde déontologique", () => {
     expect(buildLovablePrompt(WITH_SPEC).scan.ok).toBe(true);
     expect(buildLovablePrompt(WITH_SPEC).scan.violations).toEqual([]);
+  });
+});
+
+/*
+ * ── LES PHOTOGRAPHIES ────────────────────────────────────────────────────
+ *
+ * Eklio en génère sept ; quatre seulement sont faites pour un site. Les trois
+ * `post_bg_*` sont des fonds de publication — carrés, moitié haute laissée
+ * vide pour une accroche — et le prompt les nommait sans jamais dire quoi en
+ * faire.
+ */
+describe("la liste d'images", () => {
+  const ALL_SEVEN = [
+    "ambient_a",
+    "ambient_b",
+    "hero",
+    "post_bg_1",
+    "post_bg_2",
+    "post_bg_3",
+    "texture",
+  ];
+
+  it("⚠ les fonds de publication ne sont pas des images de site", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, imageSlots: ALL_SEVEN });
+    for (const slot of ["post_bg_1", "post_bg_2", "post_bg_3"]) {
+      expect(text, slot).not.toContain(slot);
+    }
+  });
+
+  it("chaque image nommée porte son rôle et sa taille", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, imageSlots: ALL_SEVEN });
+    expect(text).toContain("**Hero photograph** (`hero`, 1536 × 1024)");
+    expect(text).toContain("**Texture** (`texture`, 1024 × 1024)");
+    expect(text).toContain("The hero band's background, full-bleed");
+  });
+
+  it("aucun nom de slot n'apparaît sans une instruction qui va avec", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, imageSlots: ALL_SEVEN });
+    const block = text.slice(text.indexOf("## Imagery")).split("\n---\n")[0];
+    for (const line of block.split("\n").filter((l) => l.startsWith("- **"))) {
+      expect(line, line).toContain(" — ");
+    }
+  });
+
+  it("une image non générée n'est pas promise", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, imageSlots: ["hero"] });
+    expect(text).toContain("`hero`");
+    expect(text).not.toContain("`ambient_a`");
   });
 });

@@ -12,8 +12,7 @@ import type { LaunchStepKey } from "@/lib/data/checklist";
 import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
 import type { DirectoryField } from "@/lib/launch/directory";
 import { SiteSetupMaterial } from "@/components/launch/site-setup-material";
-import type { LovablePrompt } from "@/lib/site/lovable";
-import type { LaunchSlots } from "@/lib/launch/slots";
+import type { SiteSetupBlock } from "@/components/launch/site-setup-material";
 
 /*
  * ── EVERYTHING ONE STEP HANDS OVER ───────────────────────────────────────
@@ -45,8 +44,8 @@ export function StepMaterial({
    * everywhere else, and empty here too when she picked nothing.
    */
   directoryFields?: DirectoryField[];
-  /** Step 1 only: the assembled builder prompt, and the two optional slots. */
-  siteSetup?: { prompt: LovablePrompt | null; slots: LaunchSlots } | null;
+  /** Step 1 only: the assembled builder prompt, the files it names, the slots. */
+  siteSetup?: SiteSetupBlock | null;
 }) {
   const place = STEP_PLACES[stepKey];
   const texts = stepTextBlocks(stepKey, context);
@@ -160,11 +159,7 @@ export function StepMaterial({
         the generic service block below is skipped for it.
       */}
       {stepKey === "site_setup" && siteSetup ? (
-        <SiteSetupMaterial
-          prompt={siteSetup.prompt}
-          siteHref={context.siteHref}
-          slots={siteSetup.slots}
-        />
+        <SiteSetupMaterial brandKitId={brandKitId} siteHref={context.siteHref} {...siteSetup} />
       ) : null}
 
       {place.service && stepKey !== "site_setup" ? (
