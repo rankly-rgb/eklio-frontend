@@ -598,3 +598,37 @@ describe("la liste d'images", () => {
     expect(text).not.toContain("`ambient_a`");
   });
 });
+
+/*
+ * ── UN MOT ENTRE CROCHETS N'EST PAS UNE VALEUR ───────────────────────────
+ *
+ * Relevé sur le premier assemblage réel : le bloc contact émettait
+ * « Call-to-action link: [BOOKING_URL] » alors que le corps, trois écrans plus
+ * haut, dit que le bouton n'a pas encore de lien et doit rester non lié. Un
+ * constructeur qui tranche dans un sens ignore une consigne ; dans l'autre, il
+ * publie `href="[BOOKING_URL]"` — un bouton mort sur un site en ligne.
+ */
+describe("les marqueurs ne deviennent jamais des valeurs publiées", () => {
+  it("le bouton reste visible et NON LIÉ tant que son lien est entre crochets", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, bookingUrl: null });
+    expect(text).toContain("Call-to-action link: [BOOKING_URL]");
+    expect(text).toContain("stays visible and UNLINKED while its link is bracketed");
+    expect(text).toContain("do not");
+    expect(text).toContain("set its `href` to the bracketed word");
+  });
+
+  it("un segment entre crochets sort de la ligne plutôt que d'être imprimé", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, practiceDetails: null });
+    expect(text).toContain("left out of that line rather than printed");
+  });
+
+  it("rien à remplir : la mise en garde ne s'affiche pas non plus", () => {
+    const { text } = buildLovablePrompt(FULL);
+    expect(text).not.toContain("A word in [BRACKETS] is missing");
+  });
+
+  it("⚠ la règle couvre aussi le lien, l'adresse et les données structurées", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, bookingUrl: null });
+    expect(text).toContain("a link, an address, a credential or structured data");
+  });
+});

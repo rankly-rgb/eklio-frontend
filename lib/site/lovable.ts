@@ -291,12 +291,36 @@ export function buildLovablePrompt(input: {
     ].join("\n")
   );
 
+  /*
+   * ⚠ A BRACKETED TOKEN IS A VISIBLE WORD, NEVER A LIVE VALUE.
+   *
+   * On the first real assembly this block emitted `Call-to-action link:
+   * [BOOKING_URL]` — while the core, three screens up, says the call to action
+   * has no link yet and the button must be left unlinked. A builder resolving
+   * that either way is wrong: one ignores an instruction, the other ships
+   * `href="[BOOKING_URL]"` on a live site, which is a dead button a visitor
+   * clicks.
+   *
+   * So the token stays (the inventory tells her to search for it, and it has to
+   * be findable) and the sentence next to it says what to do until she does.
+   * The same rule is stated once for every bracketed word in the prompt.
+   */
   sections.push(
     [
       "## Contact",
       "",
       `Practice contact block: ${practitioner}, ${licenseLabel} ${licenseNumber}, ${city}, ${state}.`,
       `Call-to-action link: ${bookingUrl}`,
+      ...(emitted.length > 0
+        ? [
+            "",
+            "⚠ **A word in [BRACKETS] is missing, not a value.** Never publish one as",
+            "a link, an address, a credential or structured data. The call-to-action",
+            "button stays visible and UNLINKED while its link is bracketed — do not",
+            "set its `href` to the bracketed word — and a bracketed segment in the",
+            "contact line or footer is left out of that line rather than printed.",
+          ]
+        : []),
       "",
       "No contact form that collects health information. A mailto link, a phone",
       "number or a booking link only.",

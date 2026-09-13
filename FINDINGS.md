@@ -1135,3 +1135,115 @@ approved copy lives in that core body** — so a green re-scan means *the
 assembly added nothing forbidden*, never *the assembled prompt was checked end
 to end*. Her copy is scanned upstream by the Guard when it is generated
 (`ethics_check` on the kit). Do not read `scan.ok` as whole-artefact clearance.
+
+---
+
+# Step 1, second pass — why the Lovable prompt built an empty site
+
+Kit `45de0dac-958f-4096-b83e-1559a89437e6`, read against production.
+
+## Finding A — four sections arrive with a heading and no body
+
+The envelope's outline lists every section in the spec. Four of them carry a
+heading and nothing under it, and the prompt's own constraint block says
+"Do not rewrite, expand or add copy". So the builder rendered four headings
+over white space, which is exactly what it was told to do.
+
+| Section | Cause | Where the answer is |
+| --- | --- | --- |
+| About → How I work | **brief has it, nothing maps it** | `project_briefs.session_style_ids` → `session_style_cards.label` |
+| About → Training and licensure | **brief has it, nothing maps it** | `project_briefs.license_type_id`, and `practice_details.license_label` on the spec |
+| Services → Services | **brief has it, nothing maps it** | `project_briefs.modality_ids` → `modality_cards.full_name` |
+| Services → Fees | **nothing exists, and nothing should** | fee, sliding-scale and insurance wording is unreviewed legal text |
+
+Three of the four are a **missing join**, not missing data. `site_specs` is
+seeded by SQL that never reads those brief columns, so the answers she gave in
+step 4 sit one table away from the headings that need them.
+
+A fifth section, Services → Common questions, is `enabled: false` on her spec.
+It is correctly absent from the outline and is neither filled nor named.
+
+**Not fixed with a migration.** Writing the join into `site_specs` means
+changing the seeding SQL, which this chantier forbids. It lives in
+`lib/site/section-copy.ts` and lands in the prompt as a correction block after
+the core, which states in its first line that it wins where the two disagree.
+The core still passes through verbatim. **The migration is still the right
+long-term home for this** — logged here, not done.
+
+## Finding B — the prompt named three files it never explained
+
+`loadSiteSetupMaterial` filtered her image rows on `current && storage_path`
+and nothing else, so all seven generated photographs were listed:
+`ambient_a, ambient_b, hero, post_bg_1, post_bg_2, post_bg_3, texture`. The
+instructions that followed covered `hero`, `ambient_*` and `texture` only.
+
+`post_bg_1..3` are **social post backgrounds**: square, subject cropped into
+the bottom quarter, upper half left plain so a caption can sit over it — see
+their briefs in `lib/images/config.ts`. They have no site role.
+
+Fixed: `lib/site/imagery.ts` is the fixed list of four, each with its role and
+the size it was generated at, read from the generation config. The loader
+filters to it, the prompt renders from it, and the step screen offers exactly
+those files.
+
+Two related defects found in the same place and fixed:
+
+- The prompt said "use the wordmark file downloaded from Eklio" and the step
+  screen offered no wordmark — `STEP_ASSET_KEYS.site_setup` carried only
+  `site_setup_md`. The loader now carries the chosen wordmark's catalogue key
+  so the screen can offer the same file the prompt names.
+- No photograph was downloadable from that screen at all. Photographs are not
+  catalogue assets, so they needed their own button against the existing GET
+  images route.
+
+## Finding C — the referral quote exists, and is not publishable copy
+
+`project_briefs.referral_quote` for this kit reads *"She's human, very
+professional and understanding"*.
+
+It is **a generation input, not approved copy**:
+
+- `lib/generation/rephrase.ts` lists it in `REPHRASABLE_FIELDS`;
+- `lib/generation/how-you-work-shapes.ts:83` labels it *"what a colleague would
+  say"*;
+- `how-you-work-context.ts:86` feeds it to the model as context;
+- it is third person, has **no attribution field and no consent flag**, and the
+  site spec has no field that could carry it.
+
+So under the standing rule, **no testimonials section is emitted** — and no
+placeholder inviting one either. `BriefLabels` carries a boolean, never the
+text, so there is nothing for the prompt to leak.
+
+**No approved copy exists for the modality or specialty labels** resolved in
+`lib/launch/directory.ts`. They are catalogue labels only — a name and a full
+name, with no description behind them. That is why the approach pages are
+structure with a marked empty block, and why Services → Services is a list of
+names rather than a paragraph.
+
+## Finding D — a bracketed token was emitted as a live link
+
+Found by assembling the prompt against her real kit rather than a fixture. The
+contact block emitted `Call-to-action link: [BOOKING_URL]` while the core,
+three screens above, says the call to action has no link yet and the button
+must be left unlinked. A builder resolving the conflict either way is wrong:
+one ignores an instruction, the other ships `href="[BOOKING_URL]"` — a dead
+button on a live site.
+
+Fixed in the prompt, not by dropping the token: the token must stay findable
+because the inventory tells her to search for it. One rule now covers every
+bracketed word — never a link, an address, a credential or structured data; the
+button stays visible and unlinked; a bracketed segment is left out of a contact
+line rather than printed.
+
+## Still open
+
+- **The join belongs in the database.** `site_specs` should be seeded from
+  `session_style_ids`, `modality_ids` and `license_type_id`. Until then the
+  correction block is doing a migration's job in TypeScript.
+- **The site-editor route still throws in production.** Unchanged from the
+  previous pass; the two remaining places to look are the Vercel function log
+  and the browser console.
+- **`isProhibitiveMention` is still narrow**, and the blocks written in this
+  pass had to be phrased around it — every forbidden noun sits directly behind
+  a `no`. Comments in `lib/site/lovable.ts` say so, because smoothing that
+  English would fail the scan and take step 1 down with it.
