@@ -1018,3 +1018,49 @@ ships without that block rather than with an invented one.
 - `loadLaunchFlow` now also reads the asset manifest (`loadAssetStats`) so a
   step screen can show a file's real label, format and pixels. One extra RPC on
   `/app/launch` and `/app/launch/[stepKey]` only.
+
+## Open defect — `/app/brand-kits/[id]/site-editor` throws
+
+Reported in production on kit `45de0dac-958f-4096-b83e-1559a89437e6`: the route
+renders `app/app/error.tsx` ("That didn't load."), which means the segment
+**threw**. Not reproduced, not fixed, and deliberately left.
+
+⚠ **DO NOT REPEAT THIS ELIMINATION PASS.** Every server-side dependency of that
+page was checked against the real row and is HEALTHY:
+
+| Checked | Result |
+| --- | --- |
+| `brand_kits` row | exists · tier `signature` · `warm-ground` selected · `deleted_at` null |
+| `site_specs` row | 1 |
+| `site_spec_envelope` on that row | **builds** — `contrast, diff, etag, output, preview, spec`, 4 pages |
+| `site_catalog()` | healthy — `builder_targets, direction_limits, section_types, site_spec_limits` |
+| The 15 tables `readCatalog` reads | all exist, RLS on, one SELECT policy each, `authenticated` may select |
+| `EXECUTE` on `site_catalog` / `site_spec_get` | granted to `authenticated` |
+| Tier gate | `SURFACE_MIN_TIER.site_editor` is `practice`(1); kit is `signature`(2) → passes, so no `TierGate` |
+| Production logs | `site_spec_get` → **200, 325 calls. Zero ERROR/FATAL/PANIC rows in the window.** |
+
+The three `throw` sites on that path (`site-editor/page.tsx`'s non-`not_found`/
+non-`payment_required` branch, `readSiteCatalog`, `readCatalog`) are therefore
+all excluded by the evidence above.
+
+**The two places left to look, neither reachable from a sandboxed session:**
+
+1. **The Vercel function log for that request** — a server render error after the
+   reads, or a platform failure (memory, timeout, a missing env var).
+2. **The browser console on that route** — `SiteEditor` is a client component,
+   and `app/app/error.tsx` catches a client render error just as it catches a
+   server one.
+
+## The legal sections a US therapist site needs, and Eklio ships neither
+
+A US therapist's website is normally expected to carry a **crisis-line footer**
+(988 and local emergency guidance) and a **fee and insurance disclosure**
+compatible with the No Surprises Act's good-faith-estimate requirement.
+
+Eklio ships **neither**, and the builder prompt now omits the Fees section
+rather than instructing a builder to write one.
+
+⚠ This is **legal-review work, not copy generation.** It is not a gap for the
+Ethics Guard chantier to fill with generated text: the wording has to be
+reviewed by someone qualified to approve it, and only then can it enter the
+repo as an approved source the prompt quotes verbatim.
