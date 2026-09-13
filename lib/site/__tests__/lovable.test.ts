@@ -87,7 +87,8 @@ describe("⚠ un champ manquant devient un marqueur nommé, jamais un vide", () 
   it("tout rempli : aucun marqueur, et aucune ligne d'inventaire", () => {
     const result = buildLovablePrompt(FULL);
     expect(result.placeholders).toEqual([]);
-    expect(result.text).not.toMatch(/\[[A-Z_]{3,}\]/);
+    // Le mot « [BRACKETS] » de la règle elle-même n'est pas un marqueur.
+    expect(result.text.replace(/\[BRACKETS\]/g, "")).not.toMatch(/\[[A-Z_]{3,}\]/);
     // L'inventaire lui-même disparaît ; la section demeure pour l'avertissement.
     expect(result.text).not.toContain("so they appear in the prompt in brackets");
   });
@@ -512,8 +513,42 @@ describe("le bloc SEO", () => {
 
   it("aucun script de mesure n'est demandé", () => {
     expect(buildLovablePrompt(WITH_SPEC).text).toContain(
-      "no analytics or tracking script of any kind"
+      "No analytics and no tracking script of any kind"
     );
+  });
+
+  /*
+   * ── L'INDEXATION SUIT LE DRAPEAU ─────────────────────────────────────
+   *
+   * Son lien de prévisualisation est public. Un site de recette indexé à côté
+   * du vrai domaine lui fait concurrence dans les résultats, et sur un domaine
+   * neuf ça coûte. Un seul interrupteur, deux conséquences.
+   */
+  it("drapeau allumé : noindex partout et robots.txt qui interdit tout", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("`ENABLE_ADMIN` — the blog admin's build-time flag — decides indexing");
+    expect(text).toContain('content="noindex, nofollow"');
+    expect(text).toContain("`robots.txt` disallows everything");
+  });
+
+  it("drapeau éteint : plus de noindex, robots.txt ouvert", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("**Flag OFF** (the published build): no `noindex` anywhere");
+  });
+
+  it("⚠ une page qui porte encore un marqueur n'est ni indexée ni au sitemap", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("still contains a word in [BRACKETS] emits `noindex`");
+    expect(text).toContain("left out of");
+    expect(text).toContain("`sitemap.xml`");
+  });
+
+  it("⚠ et la règle se lève seule : rien à désactiver à la main", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("lifts by itself once she replaces the word");
+    expect(text).toContain("Nothing to switch off by hand.");
+    // Énoncée pour TOUTE page, pas pour les trois pages d'approche seulement.
+    expect(text).toContain("Any page whose body");
   });
 });
 
@@ -612,14 +647,28 @@ describe("les marqueurs ne deviennent jamais des valeurs publiées", () => {
   it("le bouton reste visible et NON LIÉ tant que son lien est entre crochets", () => {
     const { text } = buildLovablePrompt({ ...WITH_SPEC, bookingUrl: null });
     expect(text).toContain("Call-to-action link: [BOOKING_URL]");
-    expect(text).toContain("stays visible and UNLINKED while its link is bracketed");
-    expect(text).toContain("do not");
-    expect(text).toContain("set its `href` to the bracketed word");
+    expect(text).toContain("button stays visible and");
+    expect(text).toContain("unlinked");
+    expect(text).toContain("**Never put one in an attribute.**");
+    expect(text).toContain("ships WITHOUT that attribute rather than");
   });
 
   it("un segment entre crochets sort de la ligne plutôt que d'être imprimé", () => {
     const { text } = buildLovablePrompt({ ...WITH_SPEC, practiceDetails: null });
-    expect(text).toContain("left out of that line rather than printed");
+    expect(text).toContain("left out of that line, not printed");
+  });
+
+  it("⚠ ni href, ni src, ni aucun autre attribut", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, bookingUrl: null });
+    expect(text).toContain("Not an `href`, not a `src`, not any");
+    expect(text).toContain("other attribute");
+    // Et la règle tranche explicitement contre le plan du corps.
+    expect(text).toContain("This overrides the outline's own wording");
+  });
+
+  it("le marqueur reste lisible à l'écran — c'est sa seule place", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, bookingUrl: null });
+    expect(text).toContain("may appear as VISIBLE TEXT on the page");
   });
 
   it("rien à remplir : la mise en garde ne s'affiche pas non plus", () => {
@@ -629,6 +678,94 @@ describe("les marqueurs ne deviennent jamais des valeurs publiées", () => {
 
   it("⚠ la règle couvre aussi le lien, l'adresse et les données structurées", () => {
     const { text } = buildLovablePrompt({ ...WITH_SPEC, bookingUrl: null });
-    expect(text).toContain("a link, an address, a credential or structured data");
+    expect(text).toContain("Never publish one as structured data");
+  });
+});
+
+/*
+ * ── LES IMAGES CONTRE LE PLAN DU CORPS ───────────────────────────────────
+ *
+ * Le corps dit « No stock photos of people; leave labeled image placeholders »
+ * — écrit pour une practice SANS photographies. Celle-ci en a quatre. Rien ne
+ * disait lequel des deux l'emporte, et c'est ce qui a produit une boîte
+ * placeholder moutarde à la place du héros.
+ */
+describe("la section Imagery tranche contre le plan", () => {
+  it("elle dit qu'elle prime, et sur quoi exactement", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("**This section overrides the outline above on images.**");
+    expect(text).toContain("to leave labelled image placeholders");
+  });
+
+  it("⚠ mais la règle « aucune personne » survit à l'exception", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("no-people rule still holds");
+    expect(text).toContain("- No faces and no people.");
+  });
+
+  it("sans photographies, aucune exception n'est déclarée", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, imageSlots: [] });
+    expect(text).not.toContain("overrides the outline above on images");
+  });
+});
+
+/*
+ * ── CE QUI MANQUE, ET QUI N'EST PAS UN MARQUEUR ──────────────────────────
+ *
+ * « Training and licensure » se réduisait à une puce, LMFT, déjà présente dans
+ * la surtitre et le pied de page. La section est omise, et ce qui la
+ * remplirait est nommé — sans être inventé, et sans être un mot à chercher
+ * dans un prompt où il n'apparaît pas.
+ */
+describe("l'inventaire distingue deux manques", () => {
+  const NO_NUMBER = { ...WITH_SPEC, practiceDetails: { ...FULL.practiceDetails, licenseNumber: "" } };
+
+  it("la section au seul libellé de licence est omise", () => {
+    const { text } = buildLovablePrompt(NO_NUMBER);
+    const omitted = text.slice(text.indexOf("### Sections to leave out"));
+    expect(omitted).toContain("About → Training and licensure");
+  });
+
+  it("ce qui la remplirait est listé, et dit ne pas être à chercher", () => {
+    const { text } = buildLovablePrompt(NO_NUMBER);
+    expect(text).toContain("- your degrees and completed training");
+    expect(text).toContain("- your licence number");
+    expect(text).toContain("not in the prompt to search for");
+  });
+
+  it("⚠ ni formation ni numéro ne sont inventés dans le corps", () => {
+    const { text } = buildLovablePrompt(NO_NUMBER);
+    const correction = text.slice(
+      text.indexOf("## Sections: corrections"),
+      text.indexOf("## Composition")
+    );
+    expect(correction).not.toContain("Training and licensure**");
+  });
+
+  it("avec un numéro, la section existe et porte le fait entier", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("**About → Training and licensure**");
+    expect(text).toContain("- LMFT 12345");
+  });
+});
+
+/*
+ * ── LE LIEN DE RÉSERVATION ───────────────────────────────────────────────
+ *
+ * Renseigné, il traverse jusqu'au bouton et le marqueur disparaît. C'est la
+ * seule chose qui fasse du site un moyen de la joindre.
+ */
+describe("le lien de réservation", () => {
+  it("renseigné : l'URL réelle, et plus aucun [BOOKING_URL]", () => {
+    const result = buildLovablePrompt({ ...WITH_SPEC, bookingUrl: "https://cal.com/ember" });
+    expect(result.placeholders).not.toContain("BOOKING_URL");
+    expect(result.text).toContain("Call-to-action link: https://cal.com/ember");
+    expect(result.text).not.toContain("[BOOKING_URL]");
+  });
+
+  it("absent : le marqueur, et la règle qui empêche le href cassé", () => {
+    const result = buildLovablePrompt({ ...WITH_SPEC, bookingUrl: null });
+    expect(result.placeholders).toContain("BOOKING_URL");
+    expect(result.text).toContain("**Never put one in an attribute.**");
   });
 });

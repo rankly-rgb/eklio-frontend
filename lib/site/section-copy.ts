@@ -38,6 +38,13 @@ export type SectionPlan = {
   supplements: SectionSupplement[];
   /** Sections with nothing approved to say. Omitted outright. */
   omit: SectionRef[];
+  /**
+   * What Eklio would need in order to build an omitted section — in her words,
+   * not as a bracketed token: these appear NOWHERE in the prompt, because the
+   * section they belong to is not built. Listed apart from the search-and-
+   * replace placeholders for exactly that reason.
+   */
+  missing: string[];
 };
 
 function hasBody(fields: SectionFields): boolean {
@@ -78,6 +85,7 @@ export function planSections(input: {
 }): SectionPlan {
   const supplements: SectionSupplement[] = [];
   const omit: SectionRef[] = [];
+  const missing: string[] = [];
 
   for (const page of input.pages) {
     if (page.enabled === false) continue;
@@ -100,13 +108,33 @@ export function planSections(input: {
 
       // Empty — can the brief's own answers fill it?
       const lines = fillFor(type, input);
-      if (lines.length > 0) supplements.push({ ...ref, heading, lines });
-      else omit.push(ref);
+      if (lines.length > 0) {
+        supplements.push({ ...ref, heading, lines });
+      } else {
+        omit.push(ref);
+        for (const need of MISSING_FOR[type] ?? []) {
+          if (!missing.includes(need)) missing.push(need);
+        }
+      }
     }
   }
 
-  return { supplements, omit };
+  return { supplements, omit, missing };
 }
+
+/**
+ * What an omitted section is waiting for, said plainly.
+ *
+ * ⚠ ONLY FOR SECTIONS ONE FIELD AWAY FROM EXISTING. Fees is not here: it is
+ * not waiting for a field, it is waiting for legal review, and inviting her to
+ * type a fee into Eklio would be inviting her to draft the thing unaided.
+ */
+const MISSING_FOR: Record<string, readonly string[]> = {
+  credentials: [
+    "your degrees and completed training",
+    "your licence number",
+  ],
+};
 
 /** The join itself: section type → the catalogue labels that belong in it. */
 function fillFor(
@@ -129,14 +157,22 @@ function fillFor(
     case "services":
       return [...input.modalities];
 
-    // "Training and licensure" — facts only, in the spec's own words.
+    /*
+     * "Training and licensure" — facts only, in the spec's own words.
+     *
+     * ⚠ THE LICENCE LABEL ALONE IS NOT A SECTION. "LMFT" is already in the
+     * hero overline ("LMFT · PORTLAND, OR") and in the footer, which the spec
+     * composes from the same field. A heading over one word shown twice
+     * elsewhere is thin content in the precise sense: it adds a page section
+     * and no information. It needs the licence NUMBER — a fact that appears
+     * nowhere else — before it earns its heading.
+     *
+     * Training is the other thing that would fill it, and Eklio holds no field
+     * for it at all. Neither is invented: both are named in `MISSING_FOR`.
+     */
     case "credentials": {
-      if (!input.licenseLabel) return [];
-      return [
-        input.licenseNumber
-          ? `${input.licenseLabel} ${input.licenseNumber}`
-          : input.licenseLabel,
-      ];
+      if (!input.licenseLabel || !input.licenseNumber) return [];
+      return [`${input.licenseLabel} ${input.licenseNumber}`];
     }
 
     default:

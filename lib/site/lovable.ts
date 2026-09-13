@@ -152,6 +152,14 @@ export function buildLovablePrompt(input: {
     emitted.push(PLACEHOLDERS.approachCopy.token);
   }
 
+  const plan = planSections({
+    pages: [...input.pages],
+    sessionStyles: input.brief.sessionStyles,
+    modalities: input.brief.modalities.map((m) => m.fullName),
+    licenseLabel: details?.licenseLabel?.trim() || null,
+    licenseNumber: details?.licenseNumber?.trim() || null,
+  });
+
   const sections: string[] = [];
 
   sections.push(
@@ -191,6 +199,16 @@ export function buildLovablePrompt(input: {
             "",
           ]
         : []),
+      ...(plan.missing.length > 0
+        ? [
+            "Eklio is also missing these, and a section is left out of the site",
+            "because of it. They are not in the prompt to search for — add them in",
+            "Eklio and copy the prompt again:",
+            "",
+            ...plan.missing.map((need) => `- ${need}`),
+            "",
+          ]
+        : []),
       "⚠ **Your preview link is a public link.** While you are building, your",
       "builder gives the site a preview URL. It is unlisted, not private: anyone",
       "who has it can open it, and a search engine can find it. So while the blog",
@@ -217,13 +235,6 @@ export function buildLovablePrompt(input: {
    * differ. That is the honest shape of a join that cannot live in the spec yet.
    * FINDINGS.md records the migration this replaces.
    */
-  const plan = planSections({
-    pages: [...input.pages],
-    sessionStyles: input.brief.sessionStyles,
-    modalities: input.brief.modalities.map((m) => m.fullName),
-    licenseLabel: details?.licenseLabel?.trim() || null,
-    licenseNumber: details?.licenseNumber?.trim() || null,
-  });
   const correction = sectionCorrection(plan);
   if (correction) sections.push(correction);
 
@@ -314,11 +325,19 @@ export function buildLovablePrompt(input: {
       ...(emitted.length > 0
         ? [
             "",
-            "⚠ **A word in [BRACKETS] is missing, not a value.** Never publish one as",
-            "a link, an address, a credential or structured data. The call-to-action",
-            "button stays visible and UNLINKED while its link is bracketed — do not",
-            "set its `href` to the bracketed word — and a bracketed segment in the",
-            "contact line or footer is left out of that line rather than printed.",
+            "⚠ **A word in [BRACKETS] is missing, not a value.**",
+            "",
+            "- **Never put one in an attribute.** Not an `href`, not a `src`, not any",
+            "  other attribute. The element ships WITHOUT that attribute rather than",
+            "  with a broken one: the call-to-action button stays visible and",
+            "  unlinked, an image without a source is left out, and nothing gets a",
+            "  bracketed word as a URL. This overrides the outline's own wording if",
+            "  the two disagree.",
+            "- **Never publish one as structured data**, an address or a credential.",
+            "  Delete the property or the segment instead — a bracketed segment in a",
+            "  contact line or a footer is left out of that line, not printed.",
+            "- A bracketed word may appear as VISIBLE TEXT on the page, so she can",
+            "  find it and replace it. That is the only place it belongs.",
           ]
         : []),
       "",
@@ -581,8 +600,28 @@ function seoBlock(input: {
     "- No `medicalSpecialty`, no `MedicalBusiness`, no `Physician` — these carry clinical",
     "  meaning this practice has not claimed. `ProfessionalService` is the type.",
     "",
-    "`robots.txt` allowing everything, and a `sitemap.xml` listing the pages you",
-    "actually build. No `noindex`, and no analytics or tracking script of any kind.",
+    "### Indexing, on one switch",
+    "",
+    "`ENABLE_ADMIN` — the blog admin's build-time flag — decides indexing too, so",
+    "there is nothing separate to remember:",
+    "",
+    "- **Flag ON** (while she is building, on the builder's preview URL): every",
+    "  page emits `<meta name=\"robots\" content=\"noindex, nofollow\">` and",
+    "  `robots.txt` disallows everything. A preview URL is public — unlisted is not",
+    "  private — and a staging copy indexed alongside the real domain competes with",
+    "  it in search.",
+    "- **Flag OFF** (the published build): no `noindex` anywhere, and `robots.txt`",
+    "  allows everything.",
+    "",
+    "⚠ **And one page-level rule on top, whatever the flag.** Any page whose body",
+    "still contains a word in [BRACKETS] emits `noindex` and is left out of",
+    "`sitemap.xml` — it is an unfinished page, and an unfinished page indexed on a",
+    "new domain costs more than it earns. Decide this from the page's own content",
+    "at build time, so the `noindex` lifts by itself once she replaces the word.",
+    "Nothing to switch off by hand.",
+    "",
+    "`sitemap.xml` lists the pages you actually build, minus the ones that rule",
+    "excludes. No analytics and no tracking script of any kind.",
   ];
   return lines.join("\n");
 }
@@ -646,6 +685,11 @@ function imageryBlock(available: readonly string[]): string {
 
   if (images.length > 0) {
     lines.push(
+      "⚠ **This section overrides the outline above on images.** The outline says",
+      "to leave labelled image placeholders, because it is written for a practice",
+      "with no photographs. This one has them, and they go in. The outline's",
+      "no-people rule still holds, and so does every rule below it.",
+      "",
       "Eklio generated these photographs. Download them from the step you are",
       "reading this on, upload them to Lovable, and use each one where it says:",
       ""

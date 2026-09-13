@@ -103,6 +103,7 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
               brief: material.brief,
             })
           : null,
+      bookingUrl: flow.context.bookingUrl,
       slots: launchSlots(),
       wordmark: material.wordmark,
       images: siteImages(material.imageSlots),

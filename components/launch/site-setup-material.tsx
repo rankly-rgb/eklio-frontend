@@ -24,6 +24,11 @@ const LOVABLE = { name: "Lovable", url: "https://lovable.dev/" };
  * comes first.
  */
 export type SiteSetupBlock = {
+  /**
+   * `spec.hero.cta_target_url` — the one thing that turns the site into a way
+   * to reach her. Null means the button ships unlinked.
+   */
+  bookingUrl: string | null;
   /** Null when her builder target emits a setup sheet rather than a prompt. */
   prompt: LovablePrompt | null;
   slots: LaunchSlots;
@@ -35,6 +40,7 @@ export type SiteSetupBlock = {
 
 export function SiteSetupMaterial({
   brandKitId,
+  bookingUrl,
   prompt,
   siteHref,
   slots,
@@ -43,6 +49,21 @@ export function SiteSetupMaterial({
 }: SiteSetupBlock & { brandKitId: string; siteHref: string }) {
   return (
     <div className="flex flex-col gap-7">
+      {/*
+        ⚠ FIRST ON THE SCREEN, ABOVE THE PROMPT. A site with no booking link,
+        no phone and no email is not a site — the button ships unlinked and the
+        Contact page is a heading over a dead button. She has to be told before
+        she copies, not after, so this sits above the well and not beside it.
+
+        ⚠ AND IT LINKS RATHER THAN ASKING AGAIN. `hero.cta_target_url` already
+        has two editors — the site editor's Details section and Settings —
+        both patching the same field through the same route. A third input here
+        would be a third surface writing one column. Settings is the one linked
+        because it works: the site-editor route still throws in production
+        (FINDINGS.md), and sending her there is the defect this step already
+        fixed once.
+      */}
+      <BookingLink bookingUrl={bookingUrl} />
       {/*
         ⚠ SCANNED BEFORE SHOWN. If the Ethics Guard flags the assembled prompt,
         the step says so and shows WHAT flagged — it does not display the text
@@ -194,6 +215,48 @@ export function SiteSetupMaterial({
           Open the site editor
         </ButtonLink>
       </div>
+    </div>
+  );
+}
+
+const SETTINGS_HREF = "/app/settings";
+
+function BookingLink({ bookingUrl }: { bookingUrl: string | null }) {
+  if (bookingUrl) {
+    return (
+      <div className="flex flex-col gap-2">
+        <MonoLabel tracking="12" tone="ink-3">
+          Your call-to-action link
+        </MonoLabel>
+        <p className="break-words text-helper leading-prose text-ink">{bookingUrl}</p>
+        <a
+          href={SETTINGS_HREF}
+          className="inline-flex min-h-[44px] items-center self-start text-ui text-ink-2 underline decoration-[var(--accent)] underline-offset-4 hover:opacity-80"
+        >
+          Change it in Settings
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-card border border-warning p-[18px_20px]">
+      <MonoLabel tracking="12" tone="warning">
+        Before you copy
+      </MonoLabel>
+      <p className="text-helper leading-prose text-ink">
+        You don&rsquo;t have a booking link yet, so your site will have{" "}
+        <strong className="font-medium">no working way to reach you</strong>: the button
+        will be there but won&rsquo;t go anywhere, and your Contact page will be a heading
+        with nothing under it.
+      </p>
+      <p className="text-helper leading-prose text-ink-2">
+        Add it here and it goes into the prompt below, into your email signature and
+        onto your site&rsquo;s button — one link, everywhere.
+      </p>
+      <ButtonLink href={SETTINGS_HREF} variant="primary" className="self-start">
+        Add your booking link
+      </ButtonLink>
     </div>
   );
 }

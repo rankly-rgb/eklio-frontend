@@ -101,10 +101,38 @@ describe("ce que le brief remplit", () => {
     expect(result.omit.map((o) => o.section)).toContain("Training and licensure");
   });
 
-  it("le numéro seul ne fabrique rien : le libellé suffit quand il manque", () => {
+  /*
+   * ⚠ « LMFT » SEUL N'EST PAS UNE SECTION. Il est déjà dans la surtitre du
+   * héros (« LMFT · PORTLAND, OR ») et dans le pied de page, que la spec
+   * compose depuis le même champ. Un titre au-dessus d'un mot affiché deux
+   * fois ailleurs ajoute une section et aucune information.
+   */
+  it("⚠ sans numéro de licence, la section n'a qu'un mot déjà affiché : omise", () => {
     const result = planSections({ ...HER_BRIEF, pages: HER_PAGES, licenseNumber: null });
-    const found = result.supplements.find((s) => s.heading === "Training and licensure");
-    expect(found?.lines).toEqual(["LMFT"]);
+    expect(result.supplements.map((s) => s.heading)).not.toContain("Training and licensure");
+    expect(result.omit.map((o) => o.section)).toContain("Training and licensure");
+  });
+
+  it("ce qui manque est nommé — et rien n'est inventé à la place", () => {
+    const result = planSections({ ...HER_BRIEF, pages: HER_PAGES, licenseNumber: null });
+    expect(result.missing).toEqual([
+      "your degrees and completed training",
+      "your licence number",
+    ]);
+  });
+
+  it("les honoraires ne demandent rien : ils attendent une relecture juridique", () => {
+    const pages: SpecPage[] = [
+      {
+        key: "services",
+        label: "Services",
+        enabled: true,
+        sections: [section("fees", { heading: "Fees", items: [] })],
+      },
+    ];
+    const result = planSections({ ...HER_BRIEF, pages });
+    expect(result.omit.map((o) => o.section)).toEqual(["Fees"]);
+    expect(result.missing).toEqual([]);
   });
 });
 
@@ -155,6 +183,7 @@ describe("ce qui n'est jamais touché", () => {
     const result = planSections({ ...HER_BRIEF, pages });
     expect(result.supplements).toEqual([]);
     expect(result.omit).toEqual([]);
+    expect(result.missing).toEqual([]);
   });
 
   it("une section qui a déjà du texte n'est pas écrasée", () => {
@@ -166,6 +195,10 @@ describe("ce qui n'est jamais touché", () => {
         sections: [section("approach", { heading: "How I work", body: "Her own paragraph." })],
       },
     ];
-    expect(planSections({ ...HER_BRIEF, pages })).toEqual({ supplements: [], omit: [] });
+    expect(planSections({ ...HER_BRIEF, pages })).toEqual({
+      supplements: [],
+      omit: [],
+      missing: [],
+    });
   });
 });

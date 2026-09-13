@@ -1247,3 +1247,70 @@ line rather than printed.
   pass had to be phrased around it — every forbidden noun sits directly behind
   a `no`. Comments in `lib/site/lovable.ts` say so, because smoothing that
   English would fail the scan and take step 1 down with it.
+
+---
+
+# The three copy holes are ONE chantier, not three
+
+Three places in step 1 and step 3 stop short of writing something, and it keeps
+reading as three unrelated omissions. It is one piece of work with one gate:
+**client-facing copy that goes out in her name, generated through the Ethics
+Guard pipeline.** Nothing below is blocked on data, a join, or a migration.
+
+1. **Approach page bodies.** `/approaches/cbt`, `/approaches/eft`,
+   `/approaches/emdr` each ship with `[YOUR DESCRIPTION OF THIS APPROACH]`. The
+   catalogue holds a name and a full name and no description, so there is
+   nothing to join — this has to be written. A builder describing EMDR itself
+   would be publishing a clinical claim in her name, which is why the prompt
+   forbids it outright and why those pages carry `noindex` until the bracket is
+   gone.
+2. **A Google Business Profile short description.** Unchanged from the launch
+   chantier: the step says so in one sentence and points at the board-safe
+   statement she can adapt today.
+3. **Fees, sliding scale and insurance.** The one item with a second gate on
+   top: it is legal text before it is marketing copy, so it needs review as
+   well as the Guard. `planSections` omits the section whatever it contains and
+   asks her for nothing, because inviting her to type a fee into Eklio is
+   inviting her to draft it unaided.
+
+**Doing any one of them means standing up the same thing**: a Guard-checked
+generation path for short, factual, client-facing copy with her voice guide as
+input. Done once, all three are one prompt and one review each. Done three
+times, it is three pipelines.
+
+Until then all three are ABSENT rather than invented, and each absence is named
+where she meets it.
+
+## Second pass, second round — five corrections
+
+- **The booking link is asked for in Eklio, not in the prompt.** `cta_target_url`
+  null means the button ships unlinked and Contact is a heading over a dead
+  button. Step 1 now leads with that, above the prompt well.
+  **No third input was built**: the field already has two editors — the site
+  editor's Details section and Settings — both patching the same column through
+  `/api/brand-kits/[id]/site-spec`. Settings is the one linked, because the
+  site-editor route still throws in production.
+- **Imagery now overrides the core's placeholder instruction**, in one line with
+  the same standing as the Sections correction block. The core's
+  "leave labeled image placeholders" is written for a practice with no
+  photographs; this one has four. The no-people rule is stated as surviving the
+  exception, because that is the part that must.
+- **The bracket rule now covers every attribute**, not just a link: never an
+  `href`, never a `src`, never any other attribute, and the element ships
+  WITHOUT the attribute rather than with a broken one. Same shape as the JSON-LD
+  property deletion, applied to markup. A bracketed word may appear as visible
+  text — that is the only place it belongs.
+- **Indexing rides `ENABLE_ADMIN`.** Flag on: `noindex, nofollow` on every page
+  and a `robots.txt` that disallows everything, because a preview URL is public
+  and a staging copy competes with the real domain. Flag off: neither. On top of
+  that, any page whose body still holds a bracketed word is `noindex` and out of
+  the sitemap, decided from the page's own content at build time so it lifts by
+  itself. Stated for any page, so it covers the approach pages without naming
+  them.
+- **About → Training and licensure is omitted when it resolves to the licence
+  label alone.** "LMFT" is already in the hero overline and the footer; a
+  heading over one word shown twice elsewhere adds a section and no
+  information. It needs the licence NUMBER to earn its heading. What would fill
+  it — her training, her licence number — is named in a second inventory list
+  marked as NOT in the prompt to search for, because the section it belongs to
+  was not built.
