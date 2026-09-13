@@ -29,6 +29,7 @@ const FULL = {
     city: "Portland",
     state: "OR",
   },
+  practiceName: "Whitfield Therapy",
   bookingUrl: "https://example.com/book",
   toneWords: ["Slower", "Braver", "You"],
   wordmark: { label: "Wordmark (dark)", format: "svg" },
@@ -370,5 +371,102 @@ describe("les pages d'approche", () => {
     const { text } = buildLovablePrompt(WITH_SPEC);
     expect(text).toContain("closes on Escape");
     expect(text).toContain("reachable with the Tab key");
+  });
+});
+
+/*
+ * ── SEO ET DONNÉES STRUCTURÉES ───────────────────────────────────────────
+ *
+ * Le danger d'un bloc JSON-LD, c'est que le schéma appelle des champs que
+ * personne ne détient : horaires, fourchette de prix, note moyenne. Publiés,
+ * ce sont des affirmations lisibles par machine sur une professionnelle
+ * agréée.
+ */
+describe("le bloc SEO", () => {
+  it("le titre et le JSON-LD ne portent que des valeurs stockées", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("Whitfield Therapy — LMFT in Portland, OR");
+    expect(text).toContain('"@type": "ProfessionalService"');
+    expect(text).toContain('"addressLocality": "Portland"');
+    expect(text).toContain('"honorificSuffix": "LMFT"');
+  });
+
+  it("⚠ aucun champ inventé n'est autorisé, chacun nommé par sa clé", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    for (const key of [
+      "openingHours",
+      "priceRange",
+      "aggregateRating",
+      "ratingValue",
+      "reviewCount",
+      "streetAddress",
+      "geo",
+      "MedicalBusiness",
+    ]) {
+      // Chaque clé doit être collée à une négation — c'est ce que le garde lit.
+      expect(text, key).toMatch(new RegExp(`\\bno \`${key}\``, "i"));
+    }
+  });
+
+  it("⚠ un marqueur non rempli fait SUPPRIMER la propriété, jamais deviner", () => {
+    const { text } = buildLovablePrompt({ ...WITH_SPEC, practiceDetails: null });
+    expect(text).toContain("delete that**");
+    expect(text).toContain("Never substitute a guess.");
+  });
+
+  it("les descriptions ne sont pas rédigées : elles sont prises sur la page", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("**Do not write meta descriptions.**");
+    expect(text).toContain("no meta description tag at all");
+  });
+
+  it("ses spécialités passent en knowsAbout, telles quelles", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain('"knowsAbout": ["Self-esteem"]');
+  });
+
+  it("sans spécialité, la propriété disparaît au lieu de valoir []", () => {
+    const brief = { ...HER_BRIEF, specialties: [] };
+    expect(buildLovablePrompt({ ...WITH_SPEC, brief }).text).not.toContain("knowsAbout");
+  });
+
+  it("aucun script de mesure n'est demandé", () => {
+    expect(buildLovablePrompt(WITH_SPEC).text).toContain(
+      "no analytics or tracking script of any kind"
+    );
+  });
+});
+
+/*
+ * ── LES TÉMOIGNAGES ──────────────────────────────────────────────────────
+ *
+ * La citation de renvoi existe dans son brief, mais c'est une ENTRÉE de
+ * génération : troisième personne, sans attribution et sans consentement. Ce
+ * module n'en reçoit jamais le texte — seulement un booléen.
+ */
+describe("la règle des témoignages", () => {
+  it("la section est interdite, y compris comme emplacement vide", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("## No testimonials");
+    expect(text).toContain("no empty placeholder inviting one to be pasted");
+  });
+
+  it("⚠ la règle ne change pas selon que la citation existe ou non", () => {
+    const without = { ...HER_BRIEF, referralQuotePresent: false };
+    const a = buildLovablePrompt(WITH_SPEC).text;
+    const b = buildLovablePrompt({ ...WITH_SPEC, brief: without }).text;
+    const block = (t: string) => t.slice(t.indexOf("## No testimonials")).split("\n---\n")[0];
+    expect(block(a)).toEqual(block(b));
+  });
+
+  it("⚠ le texte de la citation n'est pas dans l'entrée du module, donc jamais dans la sortie", () => {
+    // `BriefLabels` ne porte qu'un booléen : il n'y a rien à fuiter.
+    expect(Object.keys(HER_BRIEF)).not.toContain("referralQuote");
+    expect(buildLovablePrompt(WITH_SPEC).text).not.toContain("colleague would say");
+  });
+
+  it("⚠ le prompt assemblé passe le garde déontologique", () => {
+    expect(buildLovablePrompt(WITH_SPEC).scan.ok).toBe(true);
+    expect(buildLovablePrompt(WITH_SPEC).scan.violations).toEqual([]);
   });
 });

@@ -31,6 +31,7 @@ type Placeholder = { token: string; describes: string };
 
 const PLACEHOLDERS = {
   bookingUrl: { token: "BOOKING_URL", describes: "the link your call-to-action button opens" },
+  practiceName: { token: "PRACTICE_NAME", describes: "the name of your practice, as it should appear in search results" },
   practitionerName: { token: "PRACTITIONER_NAME", describes: "your name, as it appears on your license" },
   licenseLabel: { token: "LICENSE_TYPE", describes: "your license type, e.g. LMFT" },
   licenseNumber: { token: "LICENSE_NUMBER", describes: "your license number" },
@@ -104,6 +105,8 @@ export function buildLovablePrompt(input: {
   /** `envelope.output.text` — the database's prompt, used verbatim. */
   core: string;
   practiceDetails: PracticeDetails | null;
+  /** The kit's practice name — the site's own name in titles and JSON-LD. */
+  practiceName: string | null;
   bookingUrl: string | null;
   /** Her direction's three tone words. */
   toneWords: readonly string[];
@@ -126,6 +129,7 @@ export function buildLovablePrompt(input: {
 
   const details = input.practiceDetails;
   const bookingUrl = fill(input.bookingUrl, PLACEHOLDERS.bookingUrl);
+  const practiceName = fill(input.practiceName, PLACEHOLDERS.practiceName);
   const practitioner = fill(details?.practitionerName, PLACEHOLDERS.practitionerName);
   const licenseLabel = fill(details?.licenseLabel, PLACEHOLDERS.licenseLabel);
   const licenseNumber = fill(details?.licenseNumber, PLACEHOLDERS.licenseNumber);
@@ -246,6 +250,20 @@ export function buildLovablePrompt(input: {
       "and link it from the index.",
     ].join("\n")
   );
+
+  sections.push(
+    seoBlock({
+      practiceName,
+      practitioner,
+      licenseLabel,
+      city,
+      state,
+      bookingUrl,
+      specialties: input.brief.specialties,
+    })
+  );
+
+  sections.push(TESTIMONIALS);
 
   sections.push(
     [
@@ -453,3 +471,133 @@ function modalityPagesBlock(modalities: readonly { label: string; fullName: stri
     "item is reachable with the Tab key.",
   ].join("\n");
 }
+
+/*
+ * ── SEO AND STRUCTURED DATA ──────────────────────────────────────────────
+ *
+ * ⚠ THE WHOLE DANGER OF A STRUCTURED-DATA BLOCK IS THAT ITS SCHEMA INVITES
+ * FIELDS NOBODY HAS. `LocalBusiness` offers `openingHours`, `priceRange`,
+ * `telephone`, `aggregateRating` and `review`, and a builder handed the type
+ * name will fill them — inventing hours she does not keep, a price band she
+ * never set, and a star rating out of nothing. Published as JSON-LD, those are
+ * machine-readable claims about a licensed professional.
+ *
+ * So the block names every property to emit, and then names the ones to leave
+ * out by their exact schema.org key, so there is nothing to infer. A value
+ * Eklio does not hold arrives here as a `[PLACEHOLDER]` and the instruction is
+ * to DROP the property, never to guess it.
+ *
+ * Meta descriptions are not written either: they are taken from copy that is
+ * already on the page and already passed the Guard when it was generated.
+ */
+function seoBlock(input: {
+  practiceName: string;
+  practitioner: string;
+  licenseLabel: string;
+  city: string;
+  state: string;
+  bookingUrl: string;
+  specialties: readonly string[];
+}): string {
+  const lines = [
+    "## SEO and structured data",
+    "",
+    "### Titles and descriptions",
+    "",
+    `- Home page title: \`${input.practiceName} — ${input.licenseLabel} in ${input.city}, ${input.state}\``,
+    "- Every other page's title: the page's own `h1`, then an en dash, then the",
+    `  practice name — e.g. \`About — ${input.practiceName}\`.`,
+    "- **Do not write meta descriptions.** Take each one from text already on that",
+    "  page: its first sentence, cut at the last full word before 155 characters.",
+    "  A page with no body text gets no meta description tag at all.",
+    "- One `h1` per page, matching that page's heading in the structure above.",
+    "- Canonical link on every page. `lang=\"en\"` on `<html>`.",
+    "- An Open Graph title and description mirroring the two above, and the hero",
+    "  photograph as the OG image. No Twitter-specific card beyond the defaults.",
+    "",
+    "### JSON-LD",
+    "",
+    "One `<script type=\"application/ld+json\">` block in the home page's `<head>`,",
+    "and nowhere else. Emit EXACTLY these properties and no others:",
+    "",
+    "```json",
+    "{",
+    '  "@context": "https://schema.org",',
+    '  "@type": "ProfessionalService",',
+    `  "name": ${JSON.stringify(input.practiceName)},`,
+    '  "url": "THE SITE\'S OWN URL ONCE IT IS PUBLISHED",',
+    '  "address": {',
+    '    "@type": "PostalAddress",',
+    `    "addressLocality": ${JSON.stringify(input.city)},`,
+    `    "addressRegion": ${JSON.stringify(input.state)},`,
+    '    "addressCountry": "US"',
+    "  },",
+    ...(input.specialties.length > 0
+      ? [`  "knowsAbout": ${JSON.stringify([...input.specialties])},`]
+      : []),
+    '  "founder": {',
+    '    "@type": "Person",',
+    `    "name": ${JSON.stringify(input.practitioner)},`,
+    `    "honorificSuffix": ${JSON.stringify(input.licenseLabel)}`,
+    "  }",
+    "}",
+    "```",
+    "",
+    "⚠ **Any value above that still reads as a bracketed placeholder: delete that**",
+    "**property from the JSON entirely.** A bracketed word published as structured",
+    "data is a false claim in a machine-readable format. Never substitute a guess.",
+    "",
+    "⚠ **Do not add these, under any type name:**",
+    "",
+    "- No `openingHours`, no `openingHoursSpecification` — her hours are not in Eklio.",
+    "- No `priceRange` — no fee information exists here, not even a band.",
+    "- No `aggregateRating`, no `review`, no `ratingValue`, no `reviewCount` — none",
+    "  exist, and inventing one is the worst thing this site could publish.",
+    "- No `telephone`, no `email`, no `streetAddress`, no `geo`, no `latitude`, no",
+    "  `longitude` — not held, and not to be looked up from anywhere else.",
+    "- No `medicalSpecialty`, no `MedicalBusiness`, no `Physician` — these carry clinical",
+    "  meaning this practice has not claimed. `ProfessionalService` is the type.",
+    "",
+    "`robots.txt` allowing everything, and a `sitemap.xml` listing the pages you",
+    "actually build. No `noindex`, and no analytics or tracking script of any kind.",
+  ];
+  return lines.join("\n");
+}
+
+/*
+ * ── TESTIMONIALS ─────────────────────────────────────────────────────────
+ *
+ * ⚠ THIS BLOCK EXISTS TO PREVENT A SECTION, NOT TO PLACE ONE.
+ *
+ * Her brief carries a `referral_quote` — a line a colleague said about her,
+ * which the generator uses as tone material. It is third person, it has no
+ * attribution field and no consent flag, and the site spec has no place for
+ * it. It is an input, not publishable copy, and this module never receives its
+ * text (see `BriefLabels.referralQuotePresent`, and FINDINGS.md finding C).
+ *
+ * ⚠ AND NO PLACEHOLDER EITHER. "Paste a client testimonial here" is an
+ * invitation to publish something a client never approved, about care they
+ * received — which in most US states is a licensing-board matter before it is
+ * an ethics one. A section that cannot be filled honestly is not built.
+ *
+ * ⚠ THE WORDING IS LOAD-BEARING. `isProhibitiveMention` only recognises a
+ * prohibition when the negation is IMMEDIATELY in front of the word — "no
+ * testimonials" passes, "do not build a testimonials section" does not, and
+ * this block blocked its own prompt until each forbidden noun was put directly
+ * behind a `no`. Rephrasing it into smoother English will fail the scan and
+ * take step 1 down with it. The same applies to the schema.org keys in
+ * `seoBlock`. The narrowness is deliberate (see `PROHIBITIVE_LEAD`); the fix,
+ * if there is one, belongs in the Guard and is logged in FINDINGS.md.
+ */
+const TESTIMONIALS = [
+  "## No testimonials",
+  "",
+  "Do not build a section of client praise, under any heading. Specifically:",
+  "no testimonials, no reviews, no client quotes, no star ratings, no rating",
+  "widget, no quote carousel, and no empty placeholder inviting one to be pasted",
+  "in later. No quotation marks used as decoration anywhere on the page either.",
+  "",
+  "There is no approved client quote here, and a therapy practice publishing one",
+  "without documented consent is a licensing problem, not a design choice. If she",
+  "later has a quote she is allowed to publish, she adds it herself, deliberately.",
+].join("\n");

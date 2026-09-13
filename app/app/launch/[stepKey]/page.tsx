@@ -93,6 +93,7 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
           ? buildLovablePrompt({
               core: flow.siteOutput.text,
               practiceDetails: flow.context.practiceDetails,
+              practiceName: flow.context.practiceName,
               bookingUrl: flow.context.bookingUrl,
               toneWords: material.toneWords,
               wordmark: material.wordmark,
