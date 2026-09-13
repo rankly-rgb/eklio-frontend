@@ -1461,3 +1461,84 @@ approach, services, fees, faq, credentials, contact, footer.
   prompt asks her to fill in `[PRACTITIONER_NAME]`. One join fixes it.
 - `generateWithEthicsGuard` is dead code; `enforceEthics` is the live Guard.
 - Check has no view of stored site copy, only of text pasted into it.
+
+---
+
+# The replay failed. 800 is hardcoded in FOUR places, not two.
+
+*2026-09-13, chantier A, the verification that was owed from the previous session.*
+
+`begin → the four migrations → inspect → rollback`, run against production. It
+stopped on the third statement of the caps migration:
+
+```
+ERROR: 23514: new row for relation "section_types"
+violates check constraint "section_types_fields_check"
+DETAIL: Failing row contains (intro, 2, t, Introduction, …)
+```
+
+`section_types_fields_check` calls `section_type_fields_valid(fields)`, which
+ends with:
+
+```sql
+or (f.value->>'max_length')::numeric not between 1 and 800
+```
+
+**So `section_types.fields[].max_length` is not purely advisory after all** —
+the previous session reported it as "read by nothing in the database", and that
+was wrong. Nothing enforces it *against content*, but the database does bound
+what it may BE, and that bound is the same 800.
+
+A sweep for the literal found four sites, and the migration addresses two:
+
+| Where | What it does | In the migration? |
+| --- | --- | --- |
+| `site_spec_pages_lengths_valid` | the CHECK on stored pages | ✅ raised to 2000 |
+| `site_spec_first_overlong_field` | names the offending field | ✅ raised to 2000 |
+| `section_type_fields_valid` | caps what `max_length` may be | ❌ **replay died here** |
+| `site_spec_patch` | the message she reads: *"This is over 800 characters, which is the limit for a section field."* | ❌ would have lied |
+
+The fourth is the quieter one. Even with the first three raised, a practitioner
+writing 1 500 characters would have been told the limit is 800 — a refusal
+naming a number the database no longer enforced.
+
+**Nothing was applied and the migrations were not patched.** The instruction on
+a failed replay was to report and stop.
+
+Also observed, unproven because the statement never ran: `section_types` has a
+`source` column with `CHECK (source in ('fields','spec.hero','spec.about_excerpt'))`,
+and `intro.source = 'spec.about_excerpt'`. The three new types' INSERT omits
+`source` and relies on its default.
+
+## Where the per-type check belongs
+
+`site_specs.pages` has exactly two writers: `seed_site_spec` (insert) and
+`site_spec_patch` (update — the editor's only write path).
+`site_output_mark_copied` touches other columns.
+
+`site_spec_patch` **already reads `section_types`**, to check a section against
+its `allowed_pages`:
+
+```sql
+join public.section_types st on st.id = sc.value->>'type'
+ where not (pg.value->>'key' = any (st.allowed_pages))
+```
+
+So the per-type maximum is one more predicate beside a join that already
+happens, in the function that already returns `too_long`, with the field path
+`site_spec_first_overlong_field` already computes. That is the cheap half.
+
+- **A CHECK constraint cannot do it** — it must be IMMUTABLE and cannot read a
+  table. That is why the ceiling is global and always will be.
+- **A trigger can**, and is the only thing that also covers `seed_site_spec` and
+  any future writer, including a `service_role` path that skips the RPC.
+- **Cost**: in `site_spec_patch`, one extra lateral over fields already being
+  walked — no new read, no new round trip. As a trigger, the same work on every
+  spec write plus one `section_types` scan per statement. The real cost is
+  neither: it is that the error message, `site_spec_limits()` and the editor's
+  counters all currently speak in one number and would have to start speaking
+  per field.
+
+Recommendation, not built: **both** — the predicate in `site_spec_patch` so she
+gets a precise, per-field refusal, and a trigger as the backstop so the number
+cannot be bypassed by a writer that is not the editor.
