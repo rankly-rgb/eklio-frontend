@@ -1065,31 +1065,73 @@ Ethics Guard chantier to fill with generated text: the wording has to be
 reviewed by someone qualified to approve it, and only then can it enter the
 repo as an approved source the prompt quotes verbatim.
 
-## `checkEthics` flags a prompt for quoting the phrases it forbids
+## `checkEthics`'s prohibitive-context test is too narrow — actionable detail
 
-The database's builder prompt tells the builder what never to write, by quoting
-it: `Never write: "A proven method that resolves trauma for good."`,
-`Never write: "Clients often tell me they finally feel free."`, and
-`Do not invent testimonials, client quotes, statistics…`.
+### What it does
 
-`checkEthics` reads those quotations as violations. On a real kit
-(`45de0dac…`) it returns **four blocking hits** — `proven method`,
-`resolves trauma`, `testimonials`, `Clients often tell` — all from the
-prohibition block, all identical for every kit.
+`isProhibitiveMention` (`lib/ethics/rules.ts:359`) decides whether a matched
+forbidden phrase is being *forbidden* rather than *said*. It tests the **40
+characters immediately before** the match against:
 
-`rules.ts` claims prohibitive mentions are excluded ("Les mentions prohibitives
-(« no testimonials ») ne sont pas des violations"), but `findViolation` only
-recognises a narrow `no X` form, not `Do not invent X` and not a counter-example
-quoted under `Never write:`.
+```
+/\b(?:no|not|never|without|avoid|avoids|avoiding|exclude|excludes|
+     excluding|omit|omits|omitting)\b[\s"'\u201c\u201d\u2018\u2019(\[]*$/i
+```
 
-Gating the step on `scan.ok` would therefore have held the prompt back for
-EVERY practitioner, permanently — step 1 would have shipped dead. The step now
-treats the core's violations as a baseline and reports only what the assembly
-adds (`scanAssembled` in `lib/site/lovable.ts`).
+The trailing class is the whole problem: between the prohibitive word and the
+phrase there may be **only whitespace, quotes or brackets**. One ordinary word
+in between and the test fails.
 
-⚠ **The accepted cost, stated:** her approved copy lives inside the core, so
-this particular re-scan does not re-cover it. It is scanned upstream by the
-Guard when it is generated (`ethics_check` on the kit). Fixing
-`findViolation`'s prohibitive-context handling would let the re-scan cover the
-whole artefact again — it was left alone here because changing the scanner
-changes every generation path in the product.
+### The two forms it misses, both of which the product itself writes
+
+1. **`Do not invent testimonials`** — `invent` sits between `not` and
+   `testimonials`, so the mention is not recognised as prohibitive.
+2. **A quoted counter-example under a heading** —
+   `Never write:\n- "A proven method that resolves trauma for good."` — the
+   newline, the bullet and `A ` sit between `Never` and `proven`.
+
+### The consequence today — FALSE POSITIVES, and this is the direction
+
+⚠ **It flags legitimate prohibition text as a violation.** Measured, not
+theorised: the database's builder prompt returns **four blocking violations**
+on kit `45de0dac` — `proven method`, `resolves trauma`, `testimonials`,
+`Clients often tell` — every one of them from the prompt's own `Never write:`
+block and its `Do not invent…` constraint. Identical for every kit, because
+that text is product-authored boilerplate.
+
+So the risk is **not** that a forbidden phrase slips past. It is that any text
+which *names what it forbids* is refused. That is why gating step 1 on
+`scan.ok` would have held the prompt back for every practitioner, permanently,
+with the whole suite green.
+
+**The narrower false-negative edge does exist and is worth fixing in the same
+pass:** because the test only requires a prohibitive word directly before the
+phrase, a genuine claim written as `… never a proven method …` is skipped. It
+is hard to hit accidentally — one intervening word defeats it — but it is the
+same rule read the other way.
+
+### What a fix would touch
+
+Every path that scans. `isProhibitiveMention` is called by `findViolation`,
+which is called by `checkEthics`, which is called by:
+
+- `lib/ethics/guard.ts` — `enforceEthics`, brand generation
+- `lib/ethics/enforce.ts` — `generateWithEthicsGuard`
+- `lib/content/generate/pipeline.ts` — captions, both the scan and the re-scan
+  after a rewrite
+- `lib/content/generate/themes.ts` — month themes
+- `lib/check/review.ts` — the Check screen
+- `components/kit/check-your-words.tsx` — the live client-side check
+- `lib/site/lovable.ts` — this chantier's re-scan
+
+Loosening the test changes what every one of those accepts, which is why it was
+not touched here. It needs its own pass, with the existing
+`lib/ethics/__tests__` fixtures run before and after.
+
+## ⚠ The Lovable re-scan does NOT cover her copy
+
+`scanAssembled` baselines the violations already present in the core, and **her
+approved copy lives in that core body** — so a green re-scan means *the
+assembly added nothing forbidden*, never *the assembled prompt was checked end
+to end*. Her copy is scanned upstream by the Guard when it is generated
+(`ethics_check` on the kit). Do not read `scan.ok` as whole-artefact clearance.
