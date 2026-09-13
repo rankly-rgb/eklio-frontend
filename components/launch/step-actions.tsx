@@ -20,6 +20,7 @@ export function LaunchStepActions({
   stepKey,
   status,
   variant = "primary",
+  onSet,
 }: {
   brandKitId: string;
   stepKey: LaunchStepKey;
@@ -31,12 +32,24 @@ export function LaunchStepActions({
    * (`components/ui/button.tsx`: at most one primary or accent per screen).
    */
   variant?: ButtonVariant;
+  /**
+   * Where the write goes. Omitted — `/app/launch` and `/app/launch/[stepKey]` —
+   * it writes here and refreshes. The home screen passes its shared state's
+   * writer instead, because the rail and the ring beside this card describe the
+   * same seven rows and must move on the same update. Same route, same RPC;
+   * only the owner of the optimistic copy differs.
+   */
+  onSet?: (status: LaunchStepStatus) => void | Promise<void>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function set(next: LaunchStepStatus) {
+    if (onSet) {
+      await onSet(next);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
