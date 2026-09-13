@@ -8,6 +8,7 @@ import { LAUNCH_STEP_KEYS, type LaunchStepKey } from "@/lib/data/checklist";
 import { StepMaterial } from "@/components/launch/step-material";
 import { LaunchStepActions } from "@/components/launch/step-actions";
 import { STEP_PLACES } from "@/lib/launch/places";
+import { loadDirectoryFields } from "@/lib/launch/directory";
 import { Breadcrumb } from "@/components/app/breadcrumb";
 import { MonoLabel } from "@/components/ui/mono-label";
 
@@ -62,6 +63,16 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
    */
   if (!step) notFound();
 
+  /*
+   * Only the directory step pays for this. It is four small reads — the brief's
+   * three id arrays and the catalogue rows they name — and every other step
+   * screen would be paying for a join it never renders.
+   */
+  const directoryFields =
+    key === "update_directory"
+      ? await loadDirectoryFields(supabase, kit.projectId, flow.context.practiceDetails)
+      : [];
+
   const previous = index > 0 ? flow.progress.items[index - 1] : null;
   const next = index < flow.progress.items.length - 1 ? flow.progress.items[index + 1] : null;
 
@@ -97,6 +108,7 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
             stepKey={key}
             context={flow.context}
             manifest={flow.manifest}
+            directoryFields={directoryFields}
           />
         </div>
 

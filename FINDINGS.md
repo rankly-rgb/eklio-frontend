@@ -991,18 +991,30 @@ are divergences on purpose; a future session should not "fix" them back.
 No copy was generated in that chantier, so a step whose material does not exist
 ships without that block rather than with an invented one.
 
-- **Psychology Today's structured fields do not exist as text.** `modality_ids`,
-  `specialty_ids`, `client_persona_ids` and `state` live on `project_briefs` as
-  catalogue **ids**, and nothing on the launch path resolves them to labels.
-  Showing modalities, populations and licensed state needs a `modality_cards` /
-  `specialties` read; the step ships with the board-safe statement and the
-  avatar only.
-- **A Google Business Profile short description exists nowhere.** The step shows
-  the same board-safe statement as Psychology Today, plus the square logo and
-  the cover. A description written for Google is new client-facing copy, which
-  is the Ethics Guard's chantier.
-- `content_items.alt_text` is null on everything written before the generator
-  learned to produce one, so step 7's alt text is absent rather than empty.
+- **Psychology Today's structured fields: DONE.** They were never missing data —
+  `specialty_ids`, `modality_ids` and `client_persona_ids` were held on
+  `project_briefs` as catalogue **ids** with nothing joining them to their
+  labels. `lib/launch/directory.ts` is that join, and the step now shows
+  Licensed state / Issues / Types of therapy / Client focus as separate
+  copyable fields in the form's own order. Labels only — no sentence is built
+  around them. An id whose catalogue row is gone yields no field rather than a
+  raw id, and a blank label does not join as an empty segment.
+- **A Google Business Profile short description: STILL OPEN, and scoped.** It is
+  client-facing copy that goes out in her name, so it belongs to the Ethics
+  Guard pipeline and to that chantier, not this one. The step now says so in
+  one sentence and points at the board-safe statement sitting above it, which
+  she can adapt today. That is the whole remaining piece of work: generate a
+  Google-length description through the Guard, and drop it into the block the
+  step already has room for.
+- **`content_items.alt_text` cannot be blank on a `ready` item — the gap is
+  theoretical.** `update_content_item` refuses `alt_text_required` when a patch
+  would leave the row `ready` with blank alt text
+  (`20260910084320_content_system_rpcs.sql:90`), resolved against the state the
+  row will be IN, so a single patch can fill both together. A `draft` item can
+  still carry null. Step 7 hands over the `post_signature_1080` template rather
+  than a specific content item, so no alt text is read there at all today —
+  and if the step later shows her actual post, only a draft could reach it
+  without one. No alt-text editor was built here.
 - `loadLaunchFlow` now also reads the asset manifest (`loadAssetStats`) so a
   step screen can show a file's real label, format and pixels. One extra RPC on
   `/app/launch` and `/app/launch/[stepKey]` only.

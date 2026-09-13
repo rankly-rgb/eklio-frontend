@@ -10,6 +10,7 @@ import { STEP_ASSET_KEYS, assetFormatLine, stepTextBlocks, type TextBlock } from
 import type { LaunchStepContext } from "@/components/checklist/launch-checklist";
 import type { LaunchStepKey } from "@/lib/data/checklist";
 import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
+import type { DirectoryField } from "@/lib/launch/directory";
 
 /*
  * ── EVERYTHING ONE STEP HANDS OVER ───────────────────────────────────────
@@ -29,11 +30,17 @@ export function StepMaterial({
   stepKey,
   context,
   manifest,
+  directoryFields = [],
 }: {
   brandKitId: string;
   stepKey: LaunchStepKey;
   context: LaunchStepContext;
   manifest: AssetManifestEntry[];
+  /**
+   * Resolved directory fields, for the one step that fills in a form. Empty
+   * everywhere else, and empty here too when she picked nothing.
+   */
+  directoryFields?: DirectoryField[];
 }) {
   const place = STEP_PLACES[stepKey];
   const texts = stepTextBlocks(stepKey, context);
@@ -46,6 +53,42 @@ export function StepMaterial({
       {texts.map((block) => (
         <CopyWell key={block.label} block={block} />
       ))}
+
+      {/*
+        The form's own fields, each copied on its own. She is filling in boxes,
+        not writing a paragraph, so each one is its own line with its own
+        button — pasting four things means four copies, and a single blob would
+        make her cut it up by hand.
+      */}
+      {directoryFields.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <MonoLabel tracking="12" tone="ink-3">
+            Your profile fields
+          </MonoLabel>
+          <ul className="flex flex-col rounded-card border border-line">
+            {directoryFields.map((field) => (
+              <li key={field.label} className="border-t border-line first:border-t-0">
+                <FieldRow field={field} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {/*
+        ⚠ THE GOOGLE DESCRIPTION IS NOT WRITTEN, AND THIS SAYS SO. Google asks
+        for one; Eklio has not generated one, because copy that goes out in her
+        name goes through the Ethics Guard and that is its own piece of work.
+        Saying nothing would leave her staring at a required box with no idea
+        why the product skipped it — so the absence is named, and it points at
+        the statement sitting a few inches above, which she can adapt herself.
+      */}
+      {stepKey === "google_profile" ? (
+        <p className="text-helper leading-prose text-ink-2">
+          Google asks for a short description. Eklio hasn&rsquo;t written one yet — your
+          statement above is the closest thing you have, and it&rsquo;s yours to adapt.
+        </p>
+      ) : null}
 
       {assets.length > 0 ? (
         <div className="flex flex-col gap-2">
@@ -137,6 +180,32 @@ export function StepMaterial({
           </a>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** One form field: its name, her answer, and a copy of that answer alone. */
+function FieldRow({ field }: { field: DirectoryField }) {
+  const [copied, write] = useCopied();
+
+  return (
+    <div className="flex items-center gap-3 p-[12px_16px]">
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <MonoLabel tracking="12" tone="ink-3">
+          {field.label}
+        </MonoLabel>
+        <span className="text-ui leading-body text-ink">{field.value}</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => void write(field.value)}
+        aria-label={`Copy ${field.label.toLowerCase()}`}
+        className="-my-2 inline-flex min-h-[44px] flex-none items-center px-2 hover:opacity-70"
+      >
+        <MonoLabel tracking="12" tone={copied ? "accent" : "ink-2"}>
+          {copied ? "Copied" : "Copy"}
+        </MonoLabel>
+      </button>
     </div>
   );
 }

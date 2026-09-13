@@ -146,3 +146,59 @@ describe("aucun lien sortant ne laisse la main à la page ouverte", () => {
     expect(found[0]).not.toMatch(/rel="noopener noreferrer"/);
   });
 });
+
+/* ── LES CHAMPS DE L'ANNUAIRE ────────────────────────────────────────────
+ *
+ * Eklio détient ces réponses depuis le brief, en IDS de catalogue. Les rendre
+ * est une jointure, pas une rédaction : aucune phrase n'est construite autour,
+ * et un id dont la ligne de catalogue a disparu ne s'affiche pas.
+ */
+describe("les champs de l'annuaire", () => {
+  it("sortent dans l'ordre où le formulaire les demande", async () => {
+    const { buildDirectoryFields } = await import("@/lib/launch/directory");
+    const fields = buildDirectoryFields({
+      state: "OR",
+      specialties: ["Anxiety", "Self-esteem"],
+      modalities: ["Cognitive Behavioural Therapy"],
+      personas: ["Adults"],
+    });
+    expect(fields.map((field) => field.label)).toEqual([
+      "Licensed state",
+      "Issues",
+      "Types of therapy",
+      "Client focus",
+    ]);
+    expect(fields[1].value).toBe("Anxiety, Self-esteem");
+  });
+
+  it("⚠ un champ sans réponse est ABSENT, jamais un libellé suivi de rien", async () => {
+    const { buildDirectoryFields } = await import("@/lib/launch/directory");
+    const fields = buildDirectoryFields({
+      state: null,
+      specialties: [],
+      modalities: ["EMDR"],
+      personas: [],
+    });
+    expect(fields).toHaveLength(1);
+    expect(fields[0]).toEqual({ label: "Types of therapy", value: "EMDR" });
+  });
+
+  it("⚠ un libellé de catalogue vide ne joint pas un segment vide", async () => {
+    // « a, , c » dirait qu'Eklio a perdu quelque chose au milieu.
+    const { buildDirectoryFields } = await import("@/lib/launch/directory");
+    const fields = buildDirectoryFields({
+      state: null,
+      specialties: ["Anxiety", "  ", "Grief"],
+      modalities: [],
+      personas: [],
+    });
+    expect(fields[0].value).toBe("Anxiety, Grief");
+  });
+
+  it("rien du tout ne rend aucun champ", async () => {
+    const { buildDirectoryFields } = await import("@/lib/launch/directory");
+    expect(
+      buildDirectoryFields({ state: null, specialties: [], modalities: [], personas: [] })
+    ).toEqual([]);
+  });
+});
