@@ -4,6 +4,8 @@ import { loadBrandKit, type BrandKit } from "@/lib/data/brand-kit";
 import { loadLaunchProgress, type LaunchProgress } from "@/lib/data/checklist";
 import { siteSpecGet } from "@/lib/site/rpc";
 import { bookingUrlFrom, practiceDetailsFrom } from "@/lib/kit/launch-context";
+import { loadAssetStats } from "@/lib/data/asset-stats";
+import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
 import type { LaunchStepContext } from "@/components/checklist/launch-checklist";
 
 /*
@@ -26,6 +28,19 @@ export type LaunchFlow = {
   kit: BrandKit;
   progress: LaunchProgress;
   context: LaunchStepContext;
+  /**
+   * The asset catalogue as it stands for this kit — label, format, pixels and
+   * whether each entry is current.
+   *
+   * ⚠ THE CATALOGUE DECIDES WHAT EXISTS. A step names the keys it needs; only
+   * the ones actually in this manifest get a row. That is what keeps a step
+   * screen from offering a download that would 404, and it is why the list is
+   * read here rather than assumed from a constant.
+   *
+   * Empty when the manifest cannot be read — the step then shows its text and
+   * its link, and no asset rows. Never a broken button.
+   */
+  manifest: AssetManifestEntry[];
 };
 
 export async function loadLaunchFlow(
@@ -36,9 +51,10 @@ export async function loadLaunchFlow(
   const kit = await loadBrandKit(supabase, brandKitId, userId);
   if (!kit) return null;
 
-  const [progress, siteSpec] = await Promise.all([
+  const [progress, siteSpec, assetStats] = await Promise.all([
     loadLaunchProgress(supabase, brandKitId),
     siteSpecGet(supabase, brandKitId).catch(() => null),
+    loadAssetStats(supabase, kit).catch(() => null),
   ]);
 
   const spec = siteSpec && siteSpec.ok ? siteSpec.data.spec : null;
@@ -46,6 +62,7 @@ export async function loadLaunchFlow(
   return {
     kit,
     progress,
+    manifest: assetStats?.manifest ?? [],
     context: {
       practiceName: kit.practiceName,
       practitionerLine: kit.row.practitioner_line,

@@ -927,10 +927,11 @@ replaced by what remains true. What follows is the residue, not the original lis
   `lib/brand/sample.ts` — a seeded illustration on the `/app` route. The new
   fixture guard allows it as its single documented exception; whether a demo
   kit belongs on this screen at all is a product call, not a chantier one.
-- The step → copyable-text mapping now exists twice: `LaunchStepDetail`
-  (`components/checklist/launch-checklist.tsx`) renders it for `/app/launch`,
-  `launchStepCopy` (`lib/home/next-step.ts`) returns the string for the home
-  card. Both call the same four helpers; neither may change alone.
+- The step → copyable-text mapping was in two places; `lib/home/next-step.ts`
+  now delegates to `stepTextBlocks` (`lib/launch/material.ts`), so the card and
+  the step screen share one. `LaunchStepDetail`
+  (`components/checklist/launch-checklist.tsx`) still carries its own for the
+  accordion on the kit page — one copy left, not two. It should follow.
 - `buildWeekStrip` reads only the calendar month `todayKey` falls in, so a week
   spanning a month boundary under-counts the adjacent month's days. Pre-existing;
   a second `get_content_month` call would close it.
@@ -984,3 +985,24 @@ are divergences on purpose; a future session should not "fix" them back.
 - **The button reads `Mark done`, the mockup `Mark as done`.** It lives in
   `LaunchStepActions`, which `/app/launch` renders too. Two words are not worth
   a diff in a component outside this chantier's scope. Known divergence.
+
+## The launch checklist chantier — gaps left open on purpose
+
+No copy was generated in that chantier, so a step whose material does not exist
+ships without that block rather than with an invented one.
+
+- **Psychology Today's structured fields do not exist as text.** `modality_ids`,
+  `specialty_ids`, `client_persona_ids` and `state` live on `project_briefs` as
+  catalogue **ids**, and nothing on the launch path resolves them to labels.
+  Showing modalities, populations and licensed state needs a `modality_cards` /
+  `specialties` read; the step ships with the board-safe statement and the
+  avatar only.
+- **A Google Business Profile short description exists nowhere.** The step shows
+  the same board-safe statement as Psychology Today, plus the square logo and
+  the cover. A description written for Google is new client-facing copy, which
+  is the Ethics Guard's chantier.
+- `content_items.alt_text` is null on everything written before the generator
+  learned to produce one, so step 7's alt text is absent rather than empty.
+- `loadLaunchFlow` now also reads the asset manifest (`loadAssetStats`) so a
+  step screen can show a file's real label, format and pixels. One extra RPC on
+  `/app/launch` and `/app/launch/[stepKey]` only.

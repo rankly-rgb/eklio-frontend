@@ -21,6 +21,7 @@ export function LaunchStepActions({
   status,
   variant = "primary",
   onSet,
+  doneLabel = "Mark done",
 }: {
   brandKitId: string;
   stepKey: LaunchStepKey;
@@ -40,6 +41,15 @@ export function LaunchStepActions({
    * only the owner of the optimistic copy differs.
    */
   onSet?: (status: LaunchStepStatus) => void | Promise<void>;
+  /**
+   * What the affirmative button says. Defaults to `Mark done`.
+   *
+   * The five steps that finish on someone else's website pass `Mark as done`:
+   * Eklio cannot see her Psychology Today profile or her Google listing, so
+   * she is DECLARING that she did it, not confirming something the product
+   * observed. The wording is the only place that distinction can live.
+   */
+  doneLabel?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -79,7 +89,7 @@ export function LaunchStepActions({
           </Button>
         ) : (
           <Button variant={variant} disabled={busy} onClick={() => void set("done")}>
-            Mark done
+            {doneLabel}
           </Button>
         )}
 

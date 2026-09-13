@@ -5,19 +5,25 @@ import { loadHome } from "@/lib/data/home";
 import { isBrandKitEntitled, purchaseWasReversed } from "@/lib/billing/entitlements";
 import { loadLaunchFlow } from "@/lib/data/launch-flow";
 import { LAUNCH_STEP_KEYS, type LaunchStepKey } from "@/lib/data/checklist";
-import { LaunchStepDetail } from "@/components/checklist/launch-checklist";
+import { StepMaterial } from "@/components/launch/step-material";
 import { LaunchStepActions } from "@/components/launch/step-actions";
+import { STEP_PLACES } from "@/lib/launch/places";
 import { Breadcrumb } from "@/components/app/breadcrumb";
 import { MonoLabel } from "@/components/ui/mono-label";
 
 /*
  * /app/launch/[stepKey] — one step, with room.
  *
- * The detail is `LaunchStepDetail`, the SAME component the accordion renders
- * inside its expanded row. Writing a second version of the copy blocks for
- * this screen would have meant two places to keep the board-safe statement
- * correct, and only one of them would have been reviewed the next time the
- * ethics rules changed.
+ * The material is `StepMaterial`: every string this step hands over, every
+ * file it needs, and — for the five that finish on someone else's website —
+ * the door out, last. Its strings come from `stepTextBlocks`, the same four
+ * helpers the accordion's `LaunchStepDetail` calls, so the board-safe
+ * statement cannot say one thing here and another there.
+ *
+ * ⚠ THE PLACE IS NAMED AT THE TOP. "Update your Psychology Today profile"
+ * reads like an Eklio feature and is not one. Five of these seven are errands
+ * on someone else's site, and a screen that does not say so sends her looking
+ * for a button that was never going to exist.
  *
  * An unknown step key is a 404 rather than a redirect to the overview: the
  * address was wrong, and pretending it was right teaches the wrong thing.
@@ -66,9 +72,16 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
           items={[{ label: "Your first week", href: "/app/launch" }, { label: step.label }]}
         />
 
-        <MonoLabel tracking="16" className="mt-4 block">
-          {`Step ${index + 1} of ${flow.progress.items.length}`}
-        </MonoLabel>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <MonoLabel tracking="16">
+            {`Step ${index + 1} of ${flow.progress.items.length}`}
+          </MonoLabel>
+          <span className="rounded-pill bg-card px-2.5 py-1">
+            <MonoLabel tracking="10" tone="ink-2">
+              {STEP_PLACES[key].label}
+            </MonoLabel>
+          </span>
+        </div>
 
         <h1 className="mt-3 font-display text-h1 font-medium leading-tight tracking-h1 text-ink">
           {step.label}
@@ -78,12 +91,22 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
           <p className="mt-4 text-body leading-prose text-ink-2">{step.description}</p>
         ) : null}
 
-        <div className="mt-8 flex flex-col gap-4">
-          <LaunchStepDetail step={key} context={flow.context} />
+        <div className="mt-8">
+          <StepMaterial
+            brandKitId={brandKitId}
+            stepKey={key}
+            context={flow.context}
+            manifest={flow.manifest}
+          />
         </div>
 
         <div className="mt-10 border-t border-line pt-6">
-          <LaunchStepActions brandKitId={brandKitId} stepKey={key} status={step.status} />
+          <LaunchStepActions
+            brandKitId={brandKitId}
+            stepKey={key}
+            status={step.status}
+            doneLabel={STEP_PLACES[key].declared ? "Mark as done" : "Mark done"}
+          />
         </div>
 
         <nav className="mt-10 flex items-center justify-between gap-4 border-t border-line pt-6">
