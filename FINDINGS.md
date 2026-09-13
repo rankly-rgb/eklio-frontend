@@ -1314,3 +1314,150 @@ where she meets it.
   it — her training, her licence number — is named in a second inventory list
   marked as NOT in the prompt to search for, because the section it belongs to
   was not built.
+
+---
+
+# The copy-volume chantier — LOT 0, and why it stops there
+
+Measured on kit `45de0dac`. **LOT 0 finding A is the brief's own stop
+condition, so nothing below LOT 0 was built.**
+
+## A. The site editor is the ONLY edit surface for spec copy — STOP
+
+Two clients patch `/api/brand-kits/[id]/site-spec`, and only two:
+
+| Surface | What it can edit |
+| --- | --- |
+| `components/settings/settings-view.tsx` | `practice_details` (name, licence, city, state) and `hero.cta_target_url`. **No section copy.** |
+| `components/site/use-site-editor.ts` | everything — hero, `about_excerpt`, every page section's `heading`/`body`/`items`, page and section enablement |
+
+Section copy — the thing this chantier would generate — is editable in the
+site editor and nowhere else. It edits in place in the mockup, plus the long
+fields in `components/site/copy-section.tsx`. There is no second surface, no
+fallback form, and no route that writes a section body.
+
+So generated copy would land where she cannot read or change it. That is the
+condition the brief says to stop on, and this is the stop.
+
+### What narrows the throw, since it is now blocking a chantier
+
+`app/app/brand-kits/[id]/site-editor/page.tsx` has exactly one `throw`, and
+every other envelope error redirects before reaching it:
+
+```
+if (envelope.error.code === "payment_required") redirect(checkoutHref);
+if (envelope.error.code === "not_found")        redirect(.../reveal);
+throw new Error(`[site-editor] ${envelope.error.code}: …`);
+```
+
+`site_spec_entitlement_error` can only return three codes —
+`unauthenticated`, `not_found`, `payment_required` — and `site_spec_get` adds
+one more `not_found`. **Two of the four redirect. So the only code that can
+reach that `throw` is `unauthenticated`**, meaning `auth.uid()` is null inside
+the RPC.
+
+That also explains why the earlier elimination pass found nothing: it checked
+for HTTP errors and found `site_spec_get` returning **200 across 325 calls with
+zero ERROR rows**. These RPCs do not signal failure with a status — they return
+`{ error: { code, message } }` inside a 200 body. A clean HTTP log was never
+evidence the envelope was ok, and I read it as such at the time.
+
+The page has already called `supabase.auth.getUser()` successfully by that line,
+so the session exists at the page and not inside the RPC. Not fixed here — out
+of scope — but that is a much smaller search than "somewhere in the editor".
+
+## B. What the brief holds that the spec never surfaces
+
+`site_spec_seed_values` reads **six** brief fields and ignores the rest:
+
+| Brief field | Status |
+| --- | --- |
+| `specialty_ids` | joined → `site_spec_default_pages` |
+| `client_persona_ids` | joined → `site_spec_default_pages` |
+| `practice_name`, `license_type_id`, `city`, `state` | joined → `practice_details` |
+| `session_style_ids` | **unused** (joined only in this session's prompt block) |
+| `modality_ids`, `modality_prominence` | **unused** (ditto) |
+| `not_a_fit_ids`, `not_a_fit_text` | **unused** — nothing reads them for the site |
+| `problem_card_ids`, `gain_card_ids` | **unused** — her chosen problems and hoped-for gains |
+| `site_goal_ids` | **unused** — `attract_better_fit`, `explain_approach` on this kit |
+| `primary_action_id` | **unused** — `book_consult` |
+| `tone_card_id` | **unused** for site copy — `warm_practical` |
+| `prior_career` + `prior_career_public` | **unused**, and gated by her own consent flag |
+| `positioning`, `usp_statement`, `selected_usp_id` | **unused**, all null on this kit |
+| `referral_quote` | generation input only — see the earlier finding C |
+| `data.problem_text` | **unused, and it is her own writing** — 2 sentences, in her voice |
+| `data.practitioner_name` | **unused, and the spec hardcodes `practitioner_name: null`** |
+
+That last row is a live defect, not a gap: the brief holds **"Nora Whitfield"**,
+and the Lovable prompt emits `[PRACTITIONER_NAME]` for her to fill in a name
+Eklio already has. `site_spec_seed_values` writes a literal `null` there.
+
+So there is ample grounding material — problems, gains, goals, session styles,
+modalities, not-a-fit, her own free text. Nothing about this chantier is blocked
+on data.
+
+## C. The generation pipeline
+
+- **The Guard has two entry points and the documented one is dead.**
+  `generateWithEthicsGuard` (`lib/ethics/enforce.ts`) has **zero callers** in
+  the repo — one mention, in a comment. The live path is `enforceEthics`
+  (`lib/ethics/guard.ts`), called once, from `lib/generation/pipeline.ts:214`.
+  The brief's "through `generateWithEthicsGuard` only" would mean adopting the
+  unused one or the used one; they differ (full regeneration vs. per-field
+  rewrite, max 2 rewrites per field).
+- **Shape of a call**: `lib/generation/model.ts` → `GENERATION_MODEL`
+  (`claude-opus-5`), `GENERATION_MAX_TOKENS = 8000`, one rewrite helper capped
+  at 1000. A truncation throws `GenerationTruncatedError` rather than
+  persisting a cut draft.
+- **Where output lands**: `brand_kits.directions / social_templates /
+  voice_guide / ethics_check / practitioner_line`, one UPDATE. Nothing writes
+  site section copy today.
+- **Rewrite loop**: yes — `enforceEthics` rewrites only the offending field,
+  citing the excerpt and the rule, twice at most, then throws. Nothing blocking
+  is ever persisted.
+- **Check does NOT cover site copy.** `lib/check/review.ts` scans text she
+  PASTES; it reads nothing from the spec and stores nothing. Generated site
+  sections would not appear there. Logged, not built.
+- **Per-kit token cost is not reportable from LOT 0.** It depends on the LOT 2
+  prompt, which the stop prevents from existing. What is measurable now: the
+  ceiling is 8 000 output tokens per call on `claude-opus-5`, up to three
+  attempts under the Guard.
+
+## D. Section types, and the wall behind them
+
+`section_types` carries **eleven**: hero, intro, specialties, who_i_work_with,
+approach, services, fees, faq, credentials, contact, footer.
+
+- **Common questions is data, not code.** `faq` exists and is `allowed_pages:
+  [home, services, contact]`. On her kit it sits on Services with
+  `enabled: false` — turning it on and adding one to Home is a spec patch.
+- **"How a first session works" and a blog teaser do not exist as types.**
+  `approach` is allowed on Home and is the nearest fit for the first, but its
+  shape is one prose paragraph, not three steps. A blog teaser has no type at
+  all. The approaches teaser could ride `services` on Home without a new type.
+- **⚠ The length targets are blocked by hard CHECK constraints, and this needs
+  more than one migration.** `site_spec_limits()` caps `section_text` at **800
+  characters** and `about_excerpt` at **600**, enforced by
+  `site_specs_pages_lengths_check` and `site_specs_about_excerpt_check`, and
+  each `section_types.fields[].max_length` caps again per field.
+
+  | LOT 2 target | ≈ characters | Cap today |
+  | --- | --- | --- |
+  | home intro 120–180 w | 720–1 080 | `intro.body` 600 |
+  | home body 90–150 w | 540–900 | `section_text` 800 |
+  | About 300–450 w | 1 800–2 700 | `approach.body` 800 |
+  | each FAQ answer 60–120 w | 360–720 | `faq.items` 300 each |
+  | approach page 180–260 w | 1 080–1 560 | no field exists |
+
+  Delivering LOT 2's word bands means raising `site_spec_limits()` AND the
+  per-field `max_length` values AND adding section types AND a page kind for
+  the approach pages. That is several migrations, not the one the brief allows
+  — which is its own stop condition ("If it needs more than one, stop and
+  report").
+
+## Noted in passing, not acted on
+
+- `data.practitioner_name` holds her name while the spec seeds `null`; the
+  prompt asks her to fill in `[PRACTITIONER_NAME]`. One join fixes it.
+- `generateWithEthicsGuard` is dead code; `enforceEthics` is the live Guard.
+- Check has no view of stored site copy, only of text pasted into it.
