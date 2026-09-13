@@ -1,10 +1,8 @@
 import type { LaunchStepKey } from "@/lib/data/checklist";
 import type { LaunchStepContext } from "@/components/checklist/launch-checklist";
-import {
-  emailSignatureText,
-  personalStatement,
-  shortBio,
-} from "@/lib/kit/launch-copy";
+import { STEP_ASSET_KEYS, stepTextBlocks } from "@/lib/launch/material";
+
+export { assetFormatLine } from "@/lib/launch/material";
 
 /*
  * What the NEXT STEP card can show beside a step's title and body: the exact
@@ -26,71 +24,35 @@ import {
  * from the manifest yields no asset row rather than an empty one: the
  * catalogue is the authority on what exists.
  */
-export const STEP_ASSET_KEY: Partial<Record<LaunchStepKey, string>> = {
-  social_setup: "avatar_400",
-  email_signature: "email_signature_png",
-  first_post: "post_signature_1080",
-};
+/**
+ * The ONE catalogue key the NEXT STEP card shows — the first of whatever the
+ * step needs. The card has room for one file; the step screen shows them all.
+ * Both read `STEP_ASSET_KEYS`, so they cannot name different files.
+ */
+export const STEP_ASSET_KEY: Partial<Record<LaunchStepKey, string>> = Object.fromEntries(
+  Object.entries(STEP_ASSET_KEYS)
+    .map(([key, keys]) => [key, keys[0]])
+    .filter(([, first]) => Boolean(first))
+);
 
 export type StepCopy = {
-  /** The mono label above the well — what this text IS. */
+  /** The mono label — now only the copy button's accessible name. */
   label: string;
-  /** The exact text, as she will paste it. Never truncated, never an excerpt. */
+  /** The exact text, as she will paste it. */
   text: string;
 };
 
 /**
- * The copyable text a step carries, or `null`.
+ * The FIRST copyable string a step carries, for the card. The step screen uses
+ * `stepTextBlocks` directly and shows every one of them.
  *
- * ⚠ THE SAME FOUR HELPERS `LaunchStepDetail` USES, called the same way. This
- * exists because that component returns rendered blocks — buttons, hints, a
- * character counter — and this card needs the string itself to put in its own
- * well. The step→text mapping is therefore written twice in this repo; the
- * two are listed side by side in FINDINGS.md so the second one cannot be
- * changed without the first.
+ * ⚠ ONE MAPPING NOW, NOT TWO. This used to hold its own copy of the step→text
+ * switch beside `stepTextBlocks`; they are the same function now, and the card
+ * simply takes the head of the list.
  */
 export function launchStepCopy(
   step: LaunchStepKey,
   context: LaunchStepContext
 ): StepCopy | null {
-  switch (step) {
-    case "update_directory":
-    case "google_profile": {
-      const text = personalStatement(context.practitionerLine, context.practiceDetails);
-      return text ? { label: "Statement", text } : null;
-    }
-
-    case "social_setup": {
-      const text = shortBio(context.aboutExcerpt);
-      return text ? { label: "Bio", text } : null;
-    }
-
-    case "email_signature": {
-      const text = emailSignatureText(
-        context.practiceName,
-        context.practitionerLine,
-        context.practiceDetails,
-        context.bookingUrl
-      );
-      return text ? { label: "Signature", text } : null;
-    }
-
-    case "booking_link":
-      return context.bookingUrl ? { label: "Booking link", text: context.bookingUrl } : null;
-
-    // `site_setup` sends her to the site editor and `first_post` to her
-    // templates. Neither has a string she pastes from here.
-    default:
-      return null;
-  }
-}
-
-/** `png` + 1000 × 1000 → `PNG · 1000×1000`. The format alone when it has no pixels. */
-export function assetFormatLine(
-  kind: string,
-  width: number | null,
-  height: number | null
-): string {
-  const format = kind.toUpperCase();
-  return width && height ? `${format} · ${width}×${height}` : format;
+  return stepTextBlocks(step, context)[0] ?? null;
 }

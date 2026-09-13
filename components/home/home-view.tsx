@@ -5,8 +5,9 @@ import { PracticeHeader } from "@/components/home/practice-header";
 import { BrandCanvas } from "@/components/home/brand-canvas";
 import { NextCard } from "@/components/home/next-card";
 import { WeekStrip } from "@/components/home/week-strip";
-import { LaunchRing } from "@/components/home/launch-ring";
-import { QuickTools, RailChecklist, RailMeta, RailQuote } from "@/components/home/rail";
+import { LaunchRail } from "@/components/home/launch-rail";
+import { LaunchStateProvider } from "@/components/home/launch-state";
+import { QuickTools, RailMeta, RailQuote } from "@/components/home/rail";
 import { MonthlyPresenceCard } from "@/components/home/monthly-presence-card";
 import { RecentUpdates } from "@/components/home/recent-updates";
 import { BrandGlance } from "@/components/home/brand-glance";
@@ -65,11 +66,15 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
     );
   }
 
-  const everyStepDone =
-    home.checklist.total > 0 && home.checklist.resolvedCount === home.checklist.total;
-
   return (
     <main className="route-enter flex-1 pb-16 pt-8 max-lg:pt-10">
+      {/*
+       * ONE OWNER FOR THE SEVEN ROWS, WRAPPING BOTH COLUMNS. The rail's rows
+       * and ring sit in one grid item and the NEXT STEP card in another; they
+       * describe the same state and must never disagree about it, so the
+       * provider goes around the grid rather than around either one.
+       */}
+      <LaunchStateProvider brandKitId={kit.row.id} initial={home.checklist}>
       <div className="grid grid-cols-[48fr_26fr_22fr] items-start gap-x-8 max-lg:flex max-lg:flex-col max-lg:gap-8 max-lg:px-[var(--gutter-sm)]">
         {/*
          * The rule, and only the rule. It is its own grid item, stretched over
@@ -154,28 +159,30 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
           className="col-start-3 col-end-4 row-start-1 row-end-5 sticky top-0 flex flex-col gap-6 self-start pl-6 pr-[var(--gutter)] max-lg:contents"
         >
           {/*
-           * The ring and the seven rows. When every step is resolved the ring
-           * gives way to the completion line and the Monthly Presence card,
-           * exactly as it already did — the rail changed shape, not that rule.
+           * The ring and the seven rows — or, once every step is resolved, the
+           * completion line and the Monthly Presence card. `LaunchRail` decides
+           * which, on the CLIENT, so ticking the seventh box swaps them there
+           * and then instead of waiting for a full render.
+           *
+           * The completion side is passed as children because Monthly Presence
+           * is a server component with its own reads; handing it through keeps
+           * it server-rendered.
            */}
           <div className="order-5 flex flex-col gap-5">
-            {everyStepDone ? (
-              <>
-                <p className="text-ui leading-body text-ink">
-                  Your brand is live in seven places.
-                </p>
-                <MonthlyPresenceCard
-                  month={home.month}
-                  entitled={home.entitled}
-                  monthLabel={home.monthLabel}
-                />
-              </>
-            ) : home.checklist.total > 0 ? (
-              <>
-                <LaunchRing progress={home.checklist} />
-                <RailChecklist progress={home.checklist} />
-              </>
-            ) : null}
+            <LaunchRail
+              completion={
+                <>
+                  <p className="text-ui leading-body text-ink">
+                    Your brand is live in seven places.
+                  </p>
+                  <MonthlyPresenceCard
+                    month={home.month}
+                    entitled={home.entitled}
+                    monthLabel={home.monthLabel}
+                  />
+                </>
+              }
+            />
           </div>
 
           {/* Order 7 puts these AFTER the sub-grid at 375px, which is the
@@ -188,6 +195,7 @@ export function HomeView({ home, canvas }: { home: HomeModel; canvas: HomeCanvas
           </div>
         </aside>
       </div>
+      </LaunchStateProvider>
     </main>
   );
 }

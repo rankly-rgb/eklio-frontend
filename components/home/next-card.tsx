@@ -7,6 +7,9 @@ import { CheckGlyph } from "@/components/ui/glyphs";
 import { PhotoSlot } from "@/components/kit/photo-slot";
 import { useCopied } from "@/components/site/copy-chip";
 import { LaunchStepActions } from "@/components/launch/step-actions";
+import { useLaunchState } from "@/components/home/launch-state";
+import { statusOf } from "@/lib/launch/state";
+import { STEP_PLACES } from "@/lib/launch/places";
 import { assetFormatLine, launchStepCopy, type StepCopy } from "@/lib/home/next-step";
 import { ARCHETYPE_LABELS } from "@/lib/data/content";
 import { initialsFrom } from "@/lib/app/header-context";
@@ -91,10 +94,37 @@ function LaunchStepBody({
   asset: AssetManifestEntry | null;
 }) {
   const copy = launchStepCopy(next.step.key, next.context);
+  const { items, setStatus } = useLaunchState();
+  const live = statusOf(items, next.step.key, next.step.status);
+
+  /*
+   * ⚠ THE CARD NEVER OUTLIVES ITS OWN STEP. `next` is chosen on the server, so
+   * when the rail resolves this step the card still holds the old one until the
+   * refresh lands. Rendering it unchanged would put "this is your next step"
+   * beside a rail row that already says it is done — the two disagreeing about
+   * one fact, which is exactly what the shared state exists to prevent. So the
+   * card says what just happened and waits for the server to name the next one.
+   */
+  if (live !== "todo") {
+    return (
+      <div className="mt-3 flex flex-col gap-3">
+        <h3 className="text-pretty font-display text-tone font-medium leading-card tracking-card-title text-ink">
+          {next.step.label}
+        </h3>
+        <p className="text-helper leading-prose text-ink-2">
+          {live === "done" ? "Marked done." : "Skipped."} Finding your next step&hellip;
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-3 flex flex-col gap-4">
-      <h3 className="text-pretty font-display text-tone font-medium leading-card tracking-card-title text-ink">
+      <MonoLabel tracking="10" tone="ink-3">
+        {STEP_PLACES[next.step.key].label}
+      </MonoLabel>
+
+      <h3 className="-mt-2 text-pretty font-display text-tone font-medium leading-card tracking-card-title text-ink">
         {next.step.label}
       </h3>
 
@@ -110,8 +140,9 @@ function LaunchStepBody({
         <LaunchStepActions
           brandKitId={brandKitId}
           stepKey={next.step.key}
-          status={next.step.status}
+          status={live}
           variant="accent"
+          onSet={(status) => setStatus(next.step.key, status)}
         />
       </div>
     </div>

@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { MonoLabel } from "@/components/ui/mono-label";
 import {
@@ -6,7 +8,9 @@ import {
   DownloadGlyph,
   SectionGlyph,
 } from "@/components/ui/glyphs";
-import type { LaunchProgress } from "@/lib/data/checklist";
+import { useLaunchState } from "@/components/home/launch-state";
+import { STEP_PLACES, stepHref } from "@/lib/launch/places";
+import type { LaunchStep } from "@/lib/data/checklist";
 import type { HomeQuote } from "@/lib/data/home";
 
 /*
@@ -29,53 +33,118 @@ import type { HomeQuote } from "@/lib/data/home";
  * found the same way `pickNextAction` finds it rather than passed in, so the
  * emphasised row and the card can never point at different steps.
  */
-export function RailChecklist({ progress }: { progress: LaunchProgress }) {
-  const currentKey = progress.items.find((item) => item.status === "todo")?.key ?? null;
+export function RailChecklist() {
+  const { items, currentKey, pending, error, setStatus } = useLaunchState();
 
   return (
-    <ul className="flex flex-col">
-      {progress.items.map((item) => {
-        const isCurrent = item.key === currentKey;
-        return (
-          <li
-            key={item.key}
-            aria-current={isCurrent ? "step" : undefined}
-            className={`flex items-start gap-3 border-t border-line py-2.5 first:border-t-0 ${
-              isCurrent ? "-mx-2 rounded-preview bg-card px-2" : ""
-            }`}
-          >
-            <span
-              aria-hidden="true"
-              className={`mt-0.5 flex size-4 flex-none items-center justify-center rounded-check ${
-                item.status === "done"
-                  ? "bg-accent"
-                  : item.status === "skipped"
-                    ? "border border-line bg-line"
-                    : "border border-line"
+    <div className="flex flex-col gap-2">
+      <ul className="flex flex-col">
+        {items.map((item) => {
+          const isCurrent = item.key === currentKey;
+          const place = STEP_PLACES[item.key];
+          const isPending = pending === item.key;
+
+          return (
+            <li
+              key={item.key}
+              aria-current={isCurrent ? "step" : undefined}
+              className={`flex items-start gap-2.5 border-t border-line first:border-t-0 ${
+                isCurrent ? "-mx-2 rounded-preview bg-card px-2" : ""
               }`}
             >
-              {item.status === "done" ? <CheckGlyph size="sm" /> : null}
-            </span>
-            {/*
-              A DONE ROW STAYS IN INK. Greying it out is the usual convention
-              and the mockup declines it: the four finished steps read at the
-              same weight as the three ahead, because what she has done is
-              not less true than what she has not. Only a SKIPPED row recedes.
-            */}
-            <span
-              className={`min-w-0 text-ui leading-body ${
-                isCurrent ? "font-medium text-ink" : item.status === "skipped" ? "text-ink-3" : "text-ink"
-              }`}
-            >
-              {item.label}
-              {item.status === "skipped" ? (
-                <span className="sr-only"> (skipped)</span>
-              ) : null}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+              <StepCheckbox
+                item={item}
+                busy={isPending}
+                onSet={(status) => void setStatus(item.key, status)}
+              />
+
+              {/*
+                THE LABEL NAVIGATES, AND IT GOES INTO EKLIO. Never straight out
+                to Psychology Today or Google: the point of the step is that she
+                picks up the statement and the file FIRST, and those live on the
+                step screen. The link out is there, after the material.
+              */}
+              <Link
+                href={stepHref(item.key)}
+                className="-mx-2 flex min-h-[44px] min-w-0 flex-1 flex-col justify-center gap-0.5 rounded-preview px-2 py-1 hover:bg-card"
+              >
+                <MonoLabel tracking="10" tone="ink-3">
+                  {place.label}
+                </MonoLabel>
+                <span
+                  className={`text-ui leading-body ${
+                    isCurrent
+                      ? "font-medium text-ink"
+                      : item.status === "skipped"
+                        ? "text-ink-3"
+                        : "text-ink"
+                  }`}
+                >
+                  {item.label}
+                  {item.status === "skipped" ? <span className="sr-only"> (skipped)</span> : null}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
+      {error ? (
+        <p role="alert" className="border-l border-accent pl-3 text-helper leading-prose text-ink">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/*
+ * The checkbox, and it is a real one.
+ *
+ * `role="checkbox"` with `aria-checked` carries the state to a screen reader:
+ * `true` for done, `"mixed"` for skipped — which is what a third state is for —
+ * and `false` for todo. The accessible name says WHICH step, so a list of seven
+ * checkboxes is not seven identical announcements. The state is never carried
+ * by colour alone: the name says it, and the glyph differs by shape as well as
+ * fill.
+ *
+ * A click on a resolved row returns it to `todo`; a click on a todo row marks
+ * it done. Skipping is not on this control — it is a deliberate choice that
+ * belongs on the step screen with its own words, not a second meaning for the
+ * same tap.
+ */
+function StepCheckbox({
+  item,
+  busy,
+  onSet,
+}: {
+  item: LaunchStep;
+  busy: boolean;
+  onSet: (status: LaunchStep["status"]) => void;
+}) {
+  const done = item.status === "done";
+  const skipped = item.status === "skipped";
+  const stateWord = done ? "done" : skipped ? "skipped" : "not done";
+
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={done ? true : skipped ? "mixed" : false}
+      aria-label={`${item.label} — ${stateWord}`}
+      disabled={busy}
+      onClick={() => onSet(item.status === "todo" ? "done" : "todo")}
+      className="-ml-2 flex min-h-[44px] min-w-[44px] flex-none items-center justify-center rounded-preview hover:bg-card disabled:opacity-50"
+    >
+      <span
+        aria-hidden="true"
+        className={`flex size-4 items-center justify-center rounded-check ${
+          done ? "bg-accent" : skipped ? "border border-line bg-line" : "border border-line"
+        }`}
+      >
+        {done ? <CheckGlyph size="sm" /> : null}
+      </span>
+    </button>
   );
 }
 

@@ -927,10 +927,11 @@ replaced by what remains true. What follows is the residue, not the original lis
   `lib/brand/sample.ts` — a seeded illustration on the `/app` route. The new
   fixture guard allows it as its single documented exception; whether a demo
   kit belongs on this screen at all is a product call, not a chantier one.
-- The step → copyable-text mapping now exists twice: `LaunchStepDetail`
-  (`components/checklist/launch-checklist.tsx`) renders it for `/app/launch`,
-  `launchStepCopy` (`lib/home/next-step.ts`) returns the string for the home
-  card. Both call the same four helpers; neither may change alone.
+- The step → copyable-text mapping was in two places; `lib/home/next-step.ts`
+  now delegates to `stepTextBlocks` (`lib/launch/material.ts`), so the card and
+  the step screen share one. `LaunchStepDetail`
+  (`components/checklist/launch-checklist.tsx`) still carries its own for the
+  accordion on the kit page — one copy left, not two. It should follow.
 - `buildWeekStrip` reads only the calendar month `todayKey` falls in, so a week
   spanning a month boundary under-counts the adjacent month's days. Pre-existing;
   a second `get_content_month` call would close it.
@@ -984,3 +985,153 @@ are divergences on purpose; a future session should not "fix" them back.
 - **The button reads `Mark done`, the mockup `Mark as done`.** It lives in
   `LaunchStepActions`, which `/app/launch` renders too. Two words are not worth
   a diff in a component outside this chantier's scope. Known divergence.
+
+## The launch checklist chantier — gaps left open on purpose
+
+No copy was generated in that chantier, so a step whose material does not exist
+ships without that block rather than with an invented one.
+
+- **Psychology Today's structured fields: DONE.** They were never missing data —
+  `specialty_ids`, `modality_ids` and `client_persona_ids` were held on
+  `project_briefs` as catalogue **ids** with nothing joining them to their
+  labels. `lib/launch/directory.ts` is that join, and the step now shows
+  Licensed state / Issues / Types of therapy / Client focus as separate
+  copyable fields in the form's own order. Labels only — no sentence is built
+  around them. An id whose catalogue row is gone yields no field rather than a
+  raw id, and a blank label does not join as an empty segment.
+- **A Google Business Profile short description: STILL OPEN, and scoped.** It is
+  client-facing copy that goes out in her name, so it belongs to the Ethics
+  Guard pipeline and to that chantier, not this one. The step now says so in
+  one sentence and points at the board-safe statement sitting above it, which
+  she can adapt today. That is the whole remaining piece of work: generate a
+  Google-length description through the Guard, and drop it into the block the
+  step already has room for.
+- **`content_items.alt_text` cannot be blank on a `ready` item — the gap is
+  theoretical.** `update_content_item` refuses `alt_text_required` when a patch
+  would leave the row `ready` with blank alt text
+  (`20260910084320_content_system_rpcs.sql:90`), resolved against the state the
+  row will be IN, so a single patch can fill both together. A `draft` item can
+  still carry null. Step 7 hands over the `post_signature_1080` template rather
+  than a specific content item, so no alt text is read there at all today —
+  and if the step later shows her actual post, only a draft could reach it
+  without one. No alt-text editor was built here.
+- `loadLaunchFlow` now also reads the asset manifest (`loadAssetStats`) so a
+  step screen can show a file's real label, format and pixels. One extra RPC on
+  `/app/launch` and `/app/launch/[stepKey]` only.
+
+## Open defect — `/app/brand-kits/[id]/site-editor` throws
+
+Reported in production on kit `45de0dac-958f-4096-b83e-1559a89437e6`: the route
+renders `app/app/error.tsx` ("That didn't load."), which means the segment
+**threw**. Not reproduced, not fixed, and deliberately left.
+
+⚠ **DO NOT REPEAT THIS ELIMINATION PASS.** Every server-side dependency of that
+page was checked against the real row and is HEALTHY:
+
+| Checked | Result |
+| --- | --- |
+| `brand_kits` row | exists · tier `signature` · `warm-ground` selected · `deleted_at` null |
+| `site_specs` row | 1 |
+| `site_spec_envelope` on that row | **builds** — `contrast, diff, etag, output, preview, spec`, 4 pages |
+| `site_catalog()` | healthy — `builder_targets, direction_limits, section_types, site_spec_limits` |
+| The 15 tables `readCatalog` reads | all exist, RLS on, one SELECT policy each, `authenticated` may select |
+| `EXECUTE` on `site_catalog` / `site_spec_get` | granted to `authenticated` |
+| Tier gate | `SURFACE_MIN_TIER.site_editor` is `practice`(1); kit is `signature`(2) → passes, so no `TierGate` |
+| Production logs | `site_spec_get` → **200, 325 calls. Zero ERROR/FATAL/PANIC rows in the window.** |
+
+The three `throw` sites on that path (`site-editor/page.tsx`'s non-`not_found`/
+non-`payment_required` branch, `readSiteCatalog`, `readCatalog`) are therefore
+all excluded by the evidence above.
+
+**The two places left to look, neither reachable from a sandboxed session:**
+
+1. **The Vercel function log for that request** — a server render error after the
+   reads, or a platform failure (memory, timeout, a missing env var).
+2. **The browser console on that route** — `SiteEditor` is a client component,
+   and `app/app/error.tsx` catches a client render error just as it catches a
+   server one.
+
+## The legal sections a US therapist site needs, and Eklio ships neither
+
+A US therapist's website is normally expected to carry a **crisis-line footer**
+(988 and local emergency guidance) and a **fee and insurance disclosure**
+compatible with the No Surprises Act's good-faith-estimate requirement.
+
+Eklio ships **neither**, and the builder prompt now omits the Fees section
+rather than instructing a builder to write one.
+
+⚠ This is **legal-review work, not copy generation.** It is not a gap for the
+Ethics Guard chantier to fill with generated text: the wording has to be
+reviewed by someone qualified to approve it, and only then can it enter the
+repo as an approved source the prompt quotes verbatim.
+
+## `checkEthics`'s prohibitive-context test is too narrow — actionable detail
+
+### What it does
+
+`isProhibitiveMention` (`lib/ethics/rules.ts:359`) decides whether a matched
+forbidden phrase is being *forbidden* rather than *said*. It tests the **40
+characters immediately before** the match against:
+
+```
+/\b(?:no|not|never|without|avoid|avoids|avoiding|exclude|excludes|
+     excluding|omit|omits|omitting)\b[\s"'\u201c\u201d\u2018\u2019(\[]*$/i
+```
+
+The trailing class is the whole problem: between the prohibitive word and the
+phrase there may be **only whitespace, quotes or brackets**. One ordinary word
+in between and the test fails.
+
+### The two forms it misses, both of which the product itself writes
+
+1. **`Do not invent testimonials`** — `invent` sits between `not` and
+   `testimonials`, so the mention is not recognised as prohibitive.
+2. **A quoted counter-example under a heading** —
+   `Never write:\n- "A proven method that resolves trauma for good."` — the
+   newline, the bullet and `A ` sit between `Never` and `proven`.
+
+### The consequence today — FALSE POSITIVES, and this is the direction
+
+⚠ **It flags legitimate prohibition text as a violation.** Measured, not
+theorised: the database's builder prompt returns **four blocking violations**
+on kit `45de0dac` — `proven method`, `resolves trauma`, `testimonials`,
+`Clients often tell` — every one of them from the prompt's own `Never write:`
+block and its `Do not invent…` constraint. Identical for every kit, because
+that text is product-authored boilerplate.
+
+So the risk is **not** that a forbidden phrase slips past. It is that any text
+which *names what it forbids* is refused. That is why gating step 1 on
+`scan.ok` would have held the prompt back for every practitioner, permanently,
+with the whole suite green.
+
+**The narrower false-negative edge does exist and is worth fixing in the same
+pass:** because the test only requires a prohibitive word directly before the
+phrase, a genuine claim written as `… never a proven method …` is skipped. It
+is hard to hit accidentally — one intervening word defeats it — but it is the
+same rule read the other way.
+
+### What a fix would touch
+
+Every path that scans. `isProhibitiveMention` is called by `findViolation`,
+which is called by `checkEthics`, which is called by:
+
+- `lib/ethics/guard.ts` — `enforceEthics`, brand generation
+- `lib/ethics/enforce.ts` — `generateWithEthicsGuard`
+- `lib/content/generate/pipeline.ts` — captions, both the scan and the re-scan
+  after a rewrite
+- `lib/content/generate/themes.ts` — month themes
+- `lib/check/review.ts` — the Check screen
+- `components/kit/check-your-words.tsx` — the live client-side check
+- `lib/site/lovable.ts` — this chantier's re-scan
+
+Loosening the test changes what every one of those accepts, which is why it was
+not touched here. It needs its own pass, with the existing
+`lib/ethics/__tests__` fixtures run before and after.
+
+## ⚠ The Lovable re-scan does NOT cover her copy
+
+`scanAssembled` baselines the violations already present in the core, and **her
+approved copy lives in that core body** — so a green re-scan means *the
+assembly added nothing forbidden*, never *the assembled prompt was checked end
+to end*. Her copy is scanned upstream by the Guard when it is generated
+(`ethics_check` on the kit). Do not read `scan.ok` as whole-artefact clearance.
