@@ -97,6 +97,8 @@ export default async function LaunchStepPage({ params }: PageProps<"/app/launch/
               toneWords: material.toneWords,
               wordmark: material.wordmark,
               imageSlots: material.imageSlots,
+              pages: flow.sitePages,
+              brief: material.brief,
             })
           : null,
       slots: launchSlots(),

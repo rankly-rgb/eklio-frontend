@@ -1,5 +1,8 @@
 import { checkEthics, type EthicsCheckResult } from "@/lib/ethics/rules";
 import type { PracticeDetails } from "@/lib/kit/launch-copy";
+import type { SpecPage } from "@/lib/site/types";
+import type { BriefLabels } from "@/lib/launch/site-setup";
+import { planSections, type SectionPlan } from "@/lib/site/section-copy";
 
 /*
  * ── THE BUILDER PROMPT, ASSEMBLED ────────────────────────────────────────
@@ -108,6 +111,10 @@ export function buildLovablePrompt(input: {
   wordmark: { label: string; format: string } | null;
   /** Her generated image slots, by slot key — `hero`, `ambient_a`, … */
   imageSlots: readonly string[];
+  /** Her spec's pages, as data, so empty sections can be seen. */
+  pages: readonly SpecPage[];
+  /** Her brief's catalogue labels — see `loadBriefLabels`. */
+  brief: BriefLabels;
 }): LovablePrompt {
   const emitted: string[] = [];
   const fill = (value: string | null | undefined, placeholder: Placeholder): string => {
@@ -158,6 +165,31 @@ export function buildLovablePrompt(input: {
 
   // The database's prompt, whole and unaltered.
   sections.push(input.core);
+
+  /*
+   * ── THE CORRECTION BLOCK ─────────────────────────────────────────────
+   *
+   * ⚠ WHY THIS IS A BLOCK AFTER THE CORE AND NOT AN EDIT TO IT. The core is
+   * `envelope.output.text`, composed by `site_spec_envelope` in the database and
+   * passed through unparsed on purpose. Teaching it about `project_briefs`
+   * means changing the SQL that seeds `site_specs` — a backend migration, which
+   * this chantier forbids. Rewriting the core's prose here in TypeScript would
+   * be the second generator that was already refused once.
+   *
+   * So the core keeps its outline, and this block — which comes after it, and
+   * says so in its own first line — is what a builder follows where the two
+   * differ. That is the honest shape of a join that cannot live in the spec yet.
+   * FINDINGS.md records the migration this replaces.
+   */
+  const plan = planSections({
+    pages: [...input.pages],
+    sessionStyles: input.brief.sessionStyles,
+    modalities: input.brief.modalities.map((m) => m.fullName),
+    licenseLabel: details?.licenseLabel?.trim() || null,
+    licenseNumber: details?.licenseNumber?.trim() || null,
+  });
+  const correction = sectionCorrection(plan);
+  if (correction) sections.push(correction);
 
   const brand: string[] = ["## Brand marks and tone"];
   if (input.wordmark) {
@@ -258,4 +290,65 @@ export function buildLovablePrompt(input: {
     // core's own quoted prohibitions. See `scanAssembled`.
     scan: scanAssembled(input.core, text),
   };
+}
+
+
+/*
+ * ── EMPTY SECTIONS ───────────────────────────────────────────────────────
+ *
+ * Her spec's outline lists every section she kept, including four that carry a
+ * heading and no body. A builder given a heading and told to write nothing
+ * renders the heading over white space — which is what the first site did.
+ *
+ * Three of the four have an answer one table away (see `lib/site/section-copy.ts`).
+ * The fourth has none, and the answer for a section with nothing to say is to
+ * NOT BUILD IT — not a placeholder, not lorem, not a "coming soon". A missing
+ * section is invisible; an empty one is a defect a visitor can see.
+ */
+function sectionCorrection(plan: SectionPlan): string | null {
+  if (plan.supplements.length === 0 && plan.omit.length === 0) return null;
+
+  const lines = [
+    "## Sections: corrections to the outline above",
+    "",
+    "Where this block and the outline above disagree, THIS BLOCK WINS. The outline",
+    "lists every section in the spec; some of them have no text yet, and this says",
+    "what to do about each one.",
+  ];
+
+  if (plan.supplements.length > 0) {
+    lines.push(
+      "",
+      "### Sections whose content is below, not in the outline",
+      "",
+      "Each list is her own words, chosen in Eklio. Set them as the section's",
+      "content — as short cards or a plain list, one item each, in this order. Do",
+      "not rewrite them, do not expand them into paragraphs, and do not add items."
+    );
+    for (const supplement of plan.supplements) {
+      lines.push(
+        "",
+        `**${supplement.page} → ${supplement.heading}**`,
+        ...supplement.lines.map((line) => `- ${line}`)
+      );
+    }
+  }
+
+  if (plan.omit.length > 0) {
+    lines.push(
+      "",
+      "### Sections to leave out entirely",
+      "",
+      "There is no approved text for these. Do not build them: no heading, no",
+      "placeholder, no lorem, no invented copy. The page above them and the page",
+      "below them join up as if the section had never been listed.",
+      "",
+      ...plan.omit.map((ref) => `- ${ref.page} → ${ref.section}`),
+      "",
+      "If leaving one out empties a page of everything but its header and footer,",
+      "drop that page from the site and from the navigation too."
+    );
+  }
+
+  return lines.join("\n");
 }

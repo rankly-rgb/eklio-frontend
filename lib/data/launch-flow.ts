@@ -7,6 +7,7 @@ import { bookingUrlFrom, practiceDetailsFrom } from "@/lib/kit/launch-context";
 import { loadAssetStats } from "@/lib/data/asset-stats";
 import type { AssetManifestEntry } from "@/lib/kit/asset-rpc";
 import type { LaunchStepContext } from "@/components/checklist/launch-checklist";
+import type { SpecPage } from "@/lib/site/types";
 
 /*
  * Everything the guided launch flow needs, in one read.
@@ -51,6 +52,15 @@ export type LaunchFlow = {
    * sheet rather than a prompt (Squarespace, Wix, Webflow).
    */
   siteOutput: { kind: string; text: string } | null;
+  /**
+   * Her spec's own pages and sections, from the SAME envelope as `siteOutput`.
+   *
+   * The prompt's body already describes them in prose, but step 1 needs them as
+   * DATA to see which sections arrived empty — a heading with nothing under it
+   * is invisible in a paragraph and obvious in a field. Empty when the spec
+   * could not be read.
+   */
+  sitePages: SpecPage[];
 };
 
 export async function loadLaunchFlow(
@@ -81,6 +91,7 @@ export async function loadLaunchFlow(
       output?.kind && typeof output.text === "string"
         ? { kind: output.kind, text: output.text }
         : null,
+    sitePages: spec?.pages ?? [],
     context: {
       practiceName: kit.practiceName,
       practitionerLine: kit.row.practitioner_line,

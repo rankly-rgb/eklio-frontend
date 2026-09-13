@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildLovablePrompt } from "@/lib/site/lovable";
 import { checkEthics } from "@/lib/ethics/rules";
+import type { SpecPage } from "@/lib/site/types";
 
 /*
  * Le prompt Lovable : un ASSEMBLAGE, jamais une rédaction.
@@ -32,6 +33,8 @@ const FULL = {
   toneWords: ["Slower", "Braver", "You"],
   wordmark: { label: "Wordmark (dark)", format: "svg" },
   imageSlots: ["hero", "ambient_a"],
+  pages: [],
+  brief: { sessionStyles: [], modalities: [], specialties: [], referralQuotePresent: false },
 };
 
 describe("le corps du prompt traverse intact", () => {
@@ -214,5 +217,77 @@ describe("⚠ le scan déontologique tourne AVANT l'affichage", () => {
     expect(checkEthics(quoting).ok).toBe(false);
     // …et pourtant le prompt assemblé passe, parce que rien de neuf n'a été ajouté.
     expect(buildLovablePrompt({ ...FULL, core: quoting }).scan.ok).toBe(true);
+  });
+});
+
+/*
+ * ── LE BLOC DE CORRECTION ────────────────────────────────────────────────
+ *
+ * Le corps vient de la base et garde son plan, titres vides compris. Ce que le
+ * module ajoute après lui doit donc dire deux choses sans ambiguïté : lequel
+ * des deux fait foi, et ce qu'on fait de chaque section vide.
+ */
+const HER_PAGES: SpecPage[] = [
+  {
+    key: "about",
+    label: "About",
+    enabled: true,
+    sections: [
+      { key: "a1", type: "approach", order: 1, enabled: true, fields: { heading: "How I work", body: "" } },
+      { key: "a2", type: "credentials", order: 2, enabled: true, fields: { heading: "Training and licensure", items: [] } },
+    ],
+  },
+  {
+    key: "services",
+    label: "Services",
+    enabled: true,
+    sections: [
+      { key: "s1", type: "services", order: 1, enabled: true, fields: { heading: "Services", items: [] } },
+      { key: "s2", type: "fees", order: 2, enabled: true, fields: { heading: "Fees", items: [] } },
+      { key: "s3", type: "faq", order: 3, enabled: true, fields: { heading: "Common questions", items: [] } },
+    ],
+  },
+];
+
+const HER_BRIEF = {
+  sessionStyles: ["I ask a lot of questions"],
+  modalities: [
+    { label: "CBT", fullName: "CBT — Cognitive Behavioral Therapy" },
+    { label: "EMDR", fullName: "EMDR — Eye Movement Desensitization and Reprocessing" },
+  ],
+  specialties: ["Self-esteem"],
+  referralQuotePresent: true,
+};
+
+const WITH_SPEC = { ...FULL, pages: HER_PAGES, brief: HER_BRIEF };
+
+describe("les sections vides", () => {
+  it("le bloc arrive APRÈS le corps et dit qu'il fait foi", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text.indexOf("## Sections: corrections")).toBeGreaterThan(text.indexOf(CORE));
+    expect(text).toContain("THIS BLOCK WINS");
+  });
+
+  it("les réponses du brief arrivent sous leur section, mot pour mot", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    expect(text).toContain("**About → How I work**");
+    expect(text).toContain("- I ask a lot of questions");
+    expect(text).toContain("- CBT — Cognitive Behavioral Therapy");
+  });
+
+  it("⚠ ce qui n'a pas de texte approuvé est omis, pas laissé vide", () => {
+    const { text } = buildLovablePrompt(WITH_SPEC);
+    const omitted = text.slice(text.indexOf("### Sections to leave out"));
+    expect(omitted).toContain("Services → Common questions");
+    expect(omitted).toContain("Services → Fees");
+    expect(omitted).toContain("no lorem, no invented copy");
+  });
+
+  it("sans spec lisible, aucun bloc de correction n'est inventé", () => {
+    expect(buildLovablePrompt(FULL).text).not.toContain("## Sections: corrections");
+  });
+
+  it("⚠ le scan tourne sur le tout, y compris ce bloc", () => {
+    expect(buildLovablePrompt(WITH_SPEC).scan.ok).toBe(true);
   });
 });
