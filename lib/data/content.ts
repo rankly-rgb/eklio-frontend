@@ -30,14 +30,38 @@ import type { Database } from "@/types/supabase";
 
 type Client = SupabaseClient<Database>;
 
-export const CONTENT_ARCHETYPES = [
+/*
+ * ⚠ DEUX LISTES, PARCE QUE `google_post` NE PORTE PAS D'IMAGE.
+ *
+ * Les cinq premiers sont des posts Instagram : un fond, un texte posé DESSUS
+ * (`on_image_text`), une légende. Un post de fiche Google est du texte court et
+ * un bouton — et la base le refuse désormais s'il porte un `image_slot` ou un
+ * `on_image_text` (`content_items_google_post_has_no_image`).
+ *
+ * La distinction n'est pas cosmétique : `ARCHETYPE_FLOOR` est une mesure de
+ * capacité D'UNE IMAGE, en caractères, relevée par un script de rendu. Donner
+ * un plancher à `google_post` serait écrire un chiffre qui ne mesure rien.
+ */
+export const IMAGE_ARCHETYPES = [
   "statement",
   "question",
   "notes",
   "signature",
   "story",
 ] as const;
+export type ImageArchetype = (typeof IMAGE_ARCHETYPES)[number];
+
+export const CONTENT_ARCHETYPES = [
+  ...IMAGE_ARCHETYPES,
+  // L'offre du 13 septembre : un post de fiche Google.
+  "google_post",
+] as const;
 export type ContentArchetype = (typeof CONTENT_ARCHETYPES)[number];
+
+/** Ce qui se compose sur une image. Le complément exact de `google_post`. */
+export function carriesImage(archetype: ContentArchetype): archetype is ImageArchetype {
+  return (IMAGE_ARCHETYPES as readonly string[]).includes(archetype);
+}
 
 /*
  * ⚠ `proposed` GOES IN FRONT, AND IT CHANGES WHAT THE COUNTS MEAN.
@@ -499,6 +523,9 @@ export const ARCHETYPE_LABELS: Record<ContentArchetype, string> = {
   question: "Question",
   notes: "Notes",
   signature: "Signature",
+  // ⚠ « Google post », pas « Google ». Ce qu'elle lit doit dire ce que la
+  // chose EST : un post sur sa fiche, pas la fiche elle-même.
+  google_post: "Google post",
   story: "Story",
 };
 

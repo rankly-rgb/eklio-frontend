@@ -1,4 +1,4 @@
-import type { ContentArchetype } from "@/lib/data/content";
+import type { ImageArchetype } from "@/lib/data/content";
 
 /*
  * ── WHAT THE LAYOUT PHYSICALLY HOLDS ────────────────────────────────────
@@ -21,7 +21,15 @@ import type { ContentArchetype } from "@/lib/data/content";
  * Re-run the script when a layout or a pairing changes and paste the new
  * numbers here. They are facts about a rendering, not constants someone chose.
  */
-export const ARCHETYPE_FLOOR: Record<ContentArchetype, number> = {
+/*
+ * ⚠ `ImageArchetype`, PAS `ContentArchetype`. Ce plancher est une capacité
+ * D'IMAGE en caractères, relevée par un script de rendu sur six paires
+ * typographiques. `google_post` ne porte pas d'image — la base le refuse
+ * (`content_items_google_post_has_no_image`) — donc lui donner un plancher
+ * serait écrire un chiffre qui ne mesure rien, et un chiffre qui ne mesure
+ * rien finit par être comparé à quelque chose.
+ */
+export const ARCHETYPE_FLOOR: Record<ImageArchetype, number> = {
   statement: 144,
   question: 168,
   signature: 195,
@@ -66,7 +74,10 @@ export type FitFailure =
  */
 export function checkOnImageFit(
   text: string,
-  archetype: ContentArchetype
+  // ⚠ `ImageArchetype`. Demander « ce texte tient-il sur l'image » d'un post
+  // de fiche Google est une question sans objet : il n'y a pas d'image. Le
+  // type le dit, plutôt qu'un `if` planté au milieu de la mesure.
+  archetype: ImageArchetype
 ): FitFailure | null {
   const words = countWords(text);
   if (words < ON_IMAGE_MIN_WORDS) {
@@ -84,7 +95,7 @@ export function checkOnImageFit(
 }
 
 /** The failure, said to the model in the words it needs to act on. */
-export function describeFit(failure: FitFailure, archetype: ContentArchetype): string {
+export function describeFit(failure: FitFailure, archetype: ImageArchetype): string {
   switch (failure.reason) {
     case "too_few_words":
       return `That is ${failure.words} words. It needs at least ${failure.min}.`;

@@ -2,7 +2,7 @@ import { checkEthics, hasBlockingViolation } from "@/lib/ethics/rules";
 import type { EthicsRule } from "@/lib/catalog/types";
 import type { EthicsCheck } from "@/lib/brand/shapes";
 import type {
-  ContentArchetype,
+  ImageArchetype,
   ContentCadence,
   ContentRegister,
   TakingClients,
@@ -111,7 +111,7 @@ export type GeneratedPost = {
   index: number;
   theme: string;
   register: ContentRegister;
-  archetype: ContentArchetype;
+  archetype: ImageArchetype;
   scheduledFor: string;
   onImageText: string;
   caption: string;

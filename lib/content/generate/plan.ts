@@ -1,8 +1,8 @@
 import {
-  CONTENT_ARCHETYPES,
-  type ContentArchetype,
+  IMAGE_ARCHETYPES,
   type ContentCadence,
   type ContentRegister,
+  type ImageArchetype,
 } from "@/lib/data/content";
 
 /*
@@ -68,7 +68,7 @@ export const WEEKDAYS_BY_CADENCE: Record<ContentCadence, number[]> = {
  * make a grid look like a template, which is the single most visible way
  * generated content announces itself.
  */
-export const DEFAULT_ARCHETYPE: Record<ContentRegister, ContentArchetype> = {
+export const DEFAULT_ARCHETYPE: Record<ContentRegister, ImageArchetype> = {
   named_feeling: "statement",
   reflective_question: "question",
   how_the_work_works: "notes",
@@ -83,7 +83,7 @@ export const DEFAULT_ARCHETYPE: Record<ContentRegister, ContentArchetype> = {
  * has somewhere to go — though in the reversed order the layout is chosen
  * before a word exists, which is exactly why this list can stay this simple.
  */
-const FALLBACK_ORDER: ContentArchetype[] = [
+const FALLBACK_ORDER: ImageArchetype[] = [
   "notes",
   "story",
   "signature",
@@ -101,7 +101,7 @@ const FALLBACK_ORDER: ContentArchetype[] = [
  * This is what decides which themes get a ground: a theme whose posts are all
  * `notes` never has a photograph drawn for it.
  */
-export const PHOTOGRAPHIC_ARCHETYPES: ReadonlySet<ContentArchetype> = new Set<ContentArchetype>([
+export const PHOTOGRAPHIC_ARCHETYPES: ReadonlySet<ImageArchetype> = new Set<ImageArchetype>([
   "statement",
   "question",
   "signature",
@@ -113,7 +113,7 @@ export type PlannedPost = {
   index: number;
   theme: string;
   register: ContentRegister;
-  archetype: ContentArchetype;
+  archetype: ImageArchetype;
   /** YYYY-MM-DD. */
   scheduledFor: string;
   /** Whether this post needs its theme's ground composed under it. */
@@ -191,7 +191,7 @@ export function planMonth(input: MonthPlanInput): PlannedPost[] {
   const dates = scheduleDates(input.month, WEEKDAYS_BY_CADENCE[input.cadence], count);
 
   const posts: PlannedPost[] = [];
-  let previous: ContentArchetype | null = null;
+  let previous: ImageArchetype | null = null;
 
   for (let index = 0; index < Math.min(count, dates.length); index += 1) {
     const register = input.acceptedRegisters[index % input.acceptedRegisters.length];
@@ -216,8 +216,8 @@ export function planMonth(input: MonthPlanInput): PlannedPost[] {
 /** The default for this register, unless it would repeat the last layout. */
 export function chooseArchetype(
   register: ContentRegister,
-  previous: ContentArchetype | null
-): ContentArchetype {
+  previous: ImageArchetype | null
+): ImageArchetype {
   const preferred = DEFAULT_ARCHETYPE[register];
   if (preferred !== previous) return preferred;
 
@@ -240,5 +240,15 @@ export function themesNeedingGround(posts: PlannedPost[]): string[] {
   return themes;
 }
 
-/* Kept honest: every archetype the planner can emit is one the renderer has. */
-export const PLANNABLE_ARCHETYPES: readonly ContentArchetype[] = CONTENT_ARCHETYPES;
+/*
+ * Kept honest: every archetype the planner can emit is one the renderer has.
+ *
+ * ⚠ `IMAGE_ARCHETYPES`, PAS `CONTENT_ARCHETYPES`, depuis que `google_post`
+ * existe. Ce planificateur compose des images : il choisit une mise en page,
+ * écrit une ligne au plancher mesuré de cette mise en page, et tire un fond.
+ * Un post de fiche Google n'a rien de tout ça — la base refuse même qu'il
+ * porte un `image_slot`. Le laisser dans cette liste l'aurait fait planifier
+ * comme un post Instagram, et la ligne aurait été écrite au plancher d'une
+ * image qui n'existe pas.
+ */
+export const PLANNABLE_ARCHETYPES: readonly ImageArchetype[] = IMAGE_ARCHETYPES;
