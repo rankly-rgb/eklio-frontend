@@ -89,6 +89,14 @@ const EXPECTED_MIN_TIER: Record<Surface, KitTier> = {
   image_regeneration: "starter",
   own_uploads: "starter",
 
+  /*
+   * ⚠ LA PREMIÈRE LIGNE À NOMMER UN PALIER DE LA NOUVELLE OFFRE. Le profil
+   * d'annuaire intégral est un livrable de The Foundation ; il n'existe dans
+   * aucun des trois paliers précédents, donc l'ouvrir plus bas donnerait à une
+   * acheteuse de 79 $ une chose que personne ne lui a vendue.
+   */
+  kit_directory: "foundation",
+
   site_editor: "practice",
   assets_sizes_and_formats: "practice",
   assets_in_situ: "practice",
@@ -133,25 +141,30 @@ describe("⚠ la distribution est celle-ci, et rien d'autre", () => {
     expect(counts).toEqual([13, 4, 2]);
   });
 
-  it("⚠ The Foundation et The Roster ne gardent AUCUNE surface, et c'est su", () => {
+  it("⚠ UNE surface est réservée à The Foundation, et c'est la première", () => {
     /*
-     * Pas un oubli : une constatation, épinglée pour qu'elle cesse d'être
-     * vraie bruyamment.
+     * Ce test disait `[]` et rougissait au premier qui attribuerait une
+     * surface à l'un des deux paliers. C'est arrivé, et c'était le but.
      *
-     * Les deux paliers de l'offre du 13 septembre sont en fin de `KIT_TIERS`,
-     * donc au-dessus de `signature` sur l'échelle — une acheteuse Foundation
-     * voit TOUT ce que la distribution actuelle gate, et rien ne lui est
-     * réservé. C'est cohérent à 390 $, et c'est provisoire : distribuer les
-     * surfaces sur la nouvelle offre appartient au lot qui retire l'offre
-     * précédente de la vente.
+     * `kit_directory` — le profil Psychology Today intégral — est un livrable
+     * que The Foundation vend et qu'aucun des trois paliers précédents n'a
+     * jamais contenu. L'ouvrir à `starter` donnerait à une acheteuse de 79 $
+     * une chose que personne ne lui a vendue.
      *
-     * Le jour où quelqu'un attribue une surface à l'un des deux, ce test
-     * rougit et l'oblige à décider si la ligne du dessus doit bouger avec.
+     * `roster` n'en garde toujours aucune : un cabinet reçoit ce qu'une solo
+     * reçoit, plus des sièges — ce qui est une question de NOMBRE, pas de
+     * surface. Distribuer le reste des surfaces sur la nouvelle offre
+     * appartient toujours au lot qui retire l'offre précédente de la vente.
      */
-    const reserved = Object.values(SURFACE_MIN_TIER).filter(
-      (value) => value === "foundation" || value === "roster"
-    );
-    expect(reserved).toEqual([]);
+    const reserved = Object.entries(SURFACE_MIN_TIER)
+      .filter(([, value]) => value === "foundation" || value === "roster")
+      .map(([surface]) => surface);
+    expect(reserved).toEqual(["kit_directory"]);
+
+    // ⚠ Et rien n'est réservé à Roster : le jour où ça change, il faut le dire.
+    expect(
+      Object.values(SURFACE_MIN_TIER).filter((value) => value === "roster")
+    ).toEqual([]);
   });
 
   it("et le tier le plus bas est bien celui qui est vendu le moins cher", () => {

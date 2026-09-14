@@ -96,8 +96,8 @@ export function ChevronGlyph({ color = "var(--bg)" }: { color?: string }) {
  * forme dans une liste de six, pas une icône à déchiffrer.
  *
  * Dessinées en divs comme les trois autres. Pas de SVG, pas de dépendance :
- * six marques géométriques (un disque, trois pastilles, un T, une fenêtre,
- * trois lignes, un cadre) tiennent très bien en bordures.
+ * sept marques géométriques (un disque, trois pastilles, un T, une fenêtre,
+ * trois lignes, un cadre, une fiche) tiennent très bien en bordures.
  */
 export function SectionGlyph({ section }: { section: KitSectionId }) {
   const stroke = "1.25px solid currentColor";
@@ -160,6 +160,19 @@ export function SectionGlyph({ section }: { section: KitSectionId }) {
         className="flex items-end justify-end p-[2px]"
       >
         <span style={{ ...box, width: 4, height: 4, background: "currentColor", borderRadius: 999 }} />
+      </span>
+    ),
+    /*
+     * Une fiche : un cadre avec une barre pleine en tête. C'est un profil
+     * d'annuaire — un formulaire dont le premier bloc est ce qu'on lit en
+     * premier, ce que la section elle-même met en avant.
+     */
+    directory: (
+      <span
+        style={{ ...box, width: 12, height: 12, border: stroke }}
+        className="flex flex-col"
+      >
+        <span style={{ ...box, height: 3, background: "currentColor" }} />
       </span>
     ),
   };

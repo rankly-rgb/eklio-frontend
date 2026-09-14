@@ -25,7 +25,8 @@ export type KitSectionId =
   | "type"
   | "site"
   | "words"
-  | "assets";
+  | "assets"
+  | "directory";
 
 export type KitSection = {
   id: KitSectionId;
@@ -41,6 +42,18 @@ export const KIT_SECTIONS: readonly KitSection[] = [
   { id: "site", segment: "site", label: "Your site" },
   { id: "words", segment: "words", label: "Your words" },
   { id: "assets", segment: "assets", label: "Your assets" },
+  /*
+   * ⚠ LE LIVRABLE CENTRAL DE THE FOUNDATION, ABSENT DU PRODUIT JUSQU'ICI.
+   *
+   * `lib/directory/profile.ts` a été écrit au lot 1 et n'était importé que par
+   * son propre test : troisième occurrence du même défaut. L'offre promet
+   * « son profil Psychology Today intégral », et aucun écran ne le montrait.
+   *
+   * La section est en fin de liste, après les six de l'offre précédente,
+   * parce que c'est l'ordre dans lequel elles sont arrivées et qu'un rail
+   * réordonné déplace des choses que les acheteuses actuelles connaissent.
+   */
+  { id: "directory", segment: "directory", label: "Directory profile" },
 ] as const;
 
 /** Where a section lives, for a given kit. */

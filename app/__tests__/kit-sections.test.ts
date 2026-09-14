@@ -44,8 +44,14 @@ function pageFor(segment: string): string {
 
 describe("chaque section de la liste est une vraie route", () => {
   it("l'énumération trouve bien les sections", () => {
-    // Sans cette garde, une liste vidée rendrait tout le bloc vacuously true.
-    expect(KIT_SECTIONS.length).toBe(6);
+    /*
+     * Sans cette garde, une liste vidée rendrait tout le bloc vacuously true.
+     *
+     * Sept depuis le 14 septembre : les six de l'offre précédente, plus le
+     * profil d'annuaire — livrable de The Foundation dont le module existait
+     * depuis le lot 1 sans qu'aucun écran ne le montre.
+     */
+    expect(KIT_SECTIONS.length).toBe(7);
   });
 
   it("la route d'index existe, même si elle n'est pas dans la liste", () => {

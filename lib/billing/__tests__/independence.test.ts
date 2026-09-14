@@ -54,9 +54,33 @@ describe("résilier ne retire que le contenu mensuel", () => {
    * résilié pourrait l'atteindre.
    */
   it("mais toutes les surfaces du palier acheté restent ouvertes", () => {
-    for (const surface of SURFACES) {
+    /*
+     * ⚠ « DU PALIER ACHETÉ », ET C'EST LA PRÉCISION QUI COMPTE DEPUIS QU'IL Y
+     * A DES PALIERS AU-DESSUS. Cette boucle parcourait `SURFACES` en entier,
+     * ce qui était juste tant que `signature` était le sommet de l'échelle.
+     * `kit_directory` exige `foundation` : il n'est pas fermé par une
+     * résiliation — il n'a jamais été vendu à une acheteuse Practice Suite.
+     *
+     * Confondre les deux ferait dire à ce test qu'un abonnement résilié retire
+     * une surface, ce qui est exactement ce qu'il existe pour démentir.
+     */
+    const boughtWithSignature = SURFACES.filter(
+      (surface) => surfaceAccess(surface, "signature").ok
+    );
+    expect(boughtWithSignature.length).toBeGreaterThan(0);
+    for (const surface of boughtWithSignature) {
       expect(surfaceAccess(surface, "signature").ok, surface).toBe(true);
     }
+
+    /*
+     * Et la preuve que rien n'a été perdu en chemin : ce qui reste fermé à
+     * `signature` est fermé par le PALIER, jamais par l'abonnement. La liste
+     * est nommée, donc un ajout futur se voit.
+     */
+    const aboveSignature = SURFACES.filter(
+      (surface) => !surfaceAccess(surface, "signature").ok
+    );
+    expect(aboveSignature).toEqual(["kit_directory"]);
   });
 
   it("y compris les surfaces réservées à Practice Suite", () => {

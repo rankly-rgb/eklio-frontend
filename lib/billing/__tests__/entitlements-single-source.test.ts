@@ -94,6 +94,15 @@ function recordingClient(rows: {
       }
       return { select: () => purchasesQuery };
     },
+    /*
+     * ⚠ AJOUTÉ QUAND `resolveEntitledTier` A APPRIS À LIRE L'OCTROI COMP.
+     * Sans octroi actif (le cas de tous ces tests), la réponse est celle des
+     * achats seuls — donc ce faux ne change RIEN à ce que chaque test vérifie.
+     * Le rendre `false` plutôt que de l'omettre est délibéré : un client qui
+     * n'a pas `.rpc` lève, et un test qui lève sur un appel légitime ne dit
+     * plus rien de l'assertion qu'il porte.
+     */
+    rpc: async () => ({ data: false, error: null }),
   } as unknown as SupabaseClient<Database>;
 
   return { supabase, recorded };

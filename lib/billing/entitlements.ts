@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, PurchaseStatus, SubscriptionStatus } from "@/types/supabase";
 import { highestTier } from "@/lib/billing/plans";
-import { parseKitTier, type KitTier } from "@/lib/kit/tiers";
+import { KIT_TIERS, parseKitTier, type KitTier } from "@/lib/kit/tiers";
 
 /*
  * Ce à quoi un praticien a DROIT.
@@ -227,8 +227,56 @@ export async function resolveEntitledTier(
     .map((row) => parseKitTier(row.tier))
     .filter((tier): tier is KitTier => tier !== null);
 
-  return highestTier(tiers);
+  const purchased = highestTier(tiers);
+
+  /*
+   * ── ⚠ L'OCTROI COMP RÉPOND ICI, AU MÊME POINT D'ÉTRANGLEMENT ──────────
+   *
+   * `brand_kit_entitled`, en base, OU-e déjà `comp_access_active()` : un
+   * compte comp franchit le mur du paiement. Mais CETTE fonction-ci, qui
+   * répond « jusqu'où est-elle montée », ne lisait que `purchases` — donc un
+   * compte comp entrait dans l'atelier et trouvait chaque section fermée par
+   * `surfaceAccess(_, null)`. Droit ouvert, palier inconnu : la pire des deux
+   * moitiés.
+   *
+   * ⚠ ET SURTOUT PAS UNE LIGNE FABRIQUÉE DANS `purchases`. C'est la table de
+   * l'ARGENT — le chiffre d'affaires, les remboursements, `funnel/glance` la
+   * lisent — et `comp_grants` existe précisément pour qu'un accès interne n'y
+   * apparaisse jamais. Son commentaire de table le dit : « This is NEVER
+   * revenue — exclude comp_grants from every financial query ». Une fausse
+   * ligne d'achat rendrait ce commentaire faux.
+   *
+   * ⚠ LE PALIER EST DÉRIVÉ, PAS ÉCRIT. `comp_grants` ne porte aucun palier :
+   * ce qu'il promet est « le produit payant complet ». C'est donc le DERNIER
+   * de `KIT_TIERS`, dont l'ordre est déjà un contrat que `rank()` lit. Écrire
+   * « foundation » ici laisserait un compte comp derrière au premier palier
+   * ajouté au-dessus.
+   *
+   * ⚠ ET IL NE BAISSE JAMAIS CE QU'UN ACHAT A DONNÉ. `highestTier` tranche
+   * entre les deux, dans ce sens-là et dans l'autre.
+   */
+  if (purchased === COMP_TIER) return purchased;
+
+  /*
+   * Sur une lecture de `purchases` en ÉCHEC, on est déjà sorti plus haut avec
+   * `null`, et c'est voulu : le comp est un fait distinct, mais répondre
+   * « palier maximum » alors qu'on n'a pas pu lire ce qu'elle a acheté
+   * remplacerait une incertitude par une affirmation. Le repli fermé de cette
+   * fonction vaut pour tout le monde, comptes comp compris.
+   */
+  if (!(await isCompAccessActive(supabase))) return purchased;
+
+  return highestTier(purchased === null ? [COMP_TIER] : [purchased, COMP_TIER]);
 }
+
+/**
+ * Le palier qu'un octroi comp vaut : le plus haut de l'échelle.
+ *
+ * `comp_grants` ne porte pas de palier — il promet « le produit payant
+ * complet » (commentaire de la table). Dérivé de la fin de `KIT_TIERS` plutôt
+ * qu'écrit, pour qu'un palier ajouté au-dessus l'emporte avec lui.
+ */
+const COMP_TIER: KitTier = KIT_TIERS[KIT_TIERS.length - 1];
 
 /* ── Un achat qui ne monte aucun palier ──────────────────────────────────── */
 
