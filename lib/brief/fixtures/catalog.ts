@@ -211,6 +211,8 @@ export const FIXTURE_DRAFT: StepDraft = {
   specialty_ids: [],
   city: null,
   state: null,
+  site_platform_id: null,
+  site_url: null,
   positioning: null,
   problem_card_ids: [],
   gain_card_ids: [],

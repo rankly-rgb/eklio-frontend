@@ -135,7 +135,14 @@ export async function recordPlatformRefusal(
 ): Promise<void> {
   const { error } = await supabase.rpc("record_platform_refusal", {
     p_platform_id: platformId,
-    p_project_id: projectId,
+    /*
+     * ⚠ `?? undefined`, PAS `null`. L'argument a une valeur par défaut en base
+     * (`p_project_id uuid default null`), donc les types générés le rendent
+     * optionnel — `string | undefined`, jamais `null`. Envoyer `null` est un
+     * écart de type que `rpc-signatures.test.ts` attrape, et le sens est le
+     * même : ne pas nommer de projet.
+     */
+    p_project_id: projectId ?? undefined,
   });
 
   if (error) {
