@@ -43,9 +43,13 @@ type Recorded = { column: string; values: readonly string[] };
 /**
  * Un faux client qui ENREGISTRE le filtre de statut au lieu de l'ignorer.
  *
- * `.eq` est volontairement présent et volontairement fatal : si une lecture
- * revenait à `.eq("status", "paid")`, elle ne tomberait pas sur un `undefined
- * is not a function` obscur — elle dirait laquelle, et pourquoi.
+ * ⚠ `.eq("status", …)` EST FATAL, LES AUTRES `.eq` NE LE SONT PAS. La garde
+ * porte sur UNE colonne : si une lecture revenait à `.eq("status", "paid")`,
+ * elle ne tombe pas sur un `undefined is not a function` obscur — elle dit
+ * laquelle et pourquoi. Les autres colonnes s'enchaînent normalement, parce
+ * que `resolveEntitledTier` en filtre deux de plus (`kind`, `project_id`) et
+ * qu'interdire tout `.eq` ferait de ce faux client un obstacle plutôt qu'un
+ * témoin.
  */
 function recordingClient(rows: {
   purchases?: unknown[];
@@ -53,24 +57,31 @@ function recordingClient(rows: {
 }): { supabase: SupabaseClient<Database>; recorded: Recorded[] } {
   const recorded: Recorded[] = [];
 
-  const purchasesQuery = {
+  const result = () => ({ data: rows.purchases ?? [], error: null });
+
+  // Chaînable ET « thenable » : `countUnpaidProjects` s'arrête après `.in`,
+  // `resolveEntitledTier` enchaîne encore deux `.eq`, et `hasPurchasedAddon`
+  // finit par `.limit`.
+  const chain: Record<string, unknown> = {};
+  Object.assign(chain, {
     in(column: string, values: readonly string[]) {
       recorded.push({ column, values });
-      // `resolveEntitledTier` enchaîne `.eq("project_id", …)` après `.in` ;
-      // `countUnpaidProjects` s'arrête là. Le même objet sert les deux, donc
-      // il est à la fois « thenable » et enchaînable.
-      const result = { data: rows.purchases ?? [], error: null };
-      return Object.assign(Promise.resolve(result), {
-        eq: async () => result,
-      });
+      return Object.assign(Promise.resolve(result()), chain);
     },
     eq(column: string, value: string) {
-      throw new Error(
-        `une lecture de \`purchases\` filtre encore \`${column} = '${value}'\` en dur ` +
-          `au lieu de lire ENTITLING_STATUSES`
-      );
+      if (column === "status") {
+        throw new Error(
+          `une lecture de \`purchases\` filtre encore \`status = '${value}'\` en dur ` +
+            `au lieu de lire ENTITLING_STATUSES`
+        );
+      }
+      return Object.assign(Promise.resolve(result()), chain);
     },
-  };
+    limit() {
+      return Object.assign(Promise.resolve(result()), chain);
+    },
+  });
+  const purchasesQuery = chain;
 
   const supabase = {
     from(table: string) {

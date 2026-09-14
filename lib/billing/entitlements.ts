@@ -202,6 +202,20 @@ export async function resolveEntitledTier(
      * `true` : kit ouvert, surfaces payantes fermées.
      */
     .in("status", [...ENTITLING_STATUSES])
+    /*
+     * ⚠ ET SEULS LES ACHATS DE PALIER. Depuis l'offre du 13 septembre,
+     * `purchases` porte trois formes : `tier`, `addon` et `seat`. Seule la
+     * première monte l'échelle — celle que `highestTier` lit, et que
+     * `lib/billing/surface-access.ts` relit pour décider ce qui est ouvert.
+     *
+     * Sans ce filtre, un add-on à 89 $ entrerait dans le calcul du palier.
+     * `parseKitTier` l'écarterait AUJOURD'HUI, parce que `identity_addon`
+     * n'est pas un `KitTier` — mais c'est un accident heureux, pas une règle :
+     * la question posée ici est « quel PALIER a-t-elle payé », et elle doit
+     * être posée à ce qui est un palier. Une règle tenue par un accident est
+     * une règle qui tombe au premier SKU qu'on nomme comme un palier.
+     */
+    .eq("kind", "tier")
     .eq("project_id", projectId);
 
   if (error) {
@@ -214,6 +228,45 @@ export async function resolveEntitledTier(
     .filter((tier): tier is KitTier => tier !== null);
 
   return highestTier(tiers);
+}
+
+/* ── Un achat qui ne monte aucun palier ──────────────────────────────────── */
+
+/**
+ * A-t-elle acheté cet accessoire sur ce projet ?
+ *
+ * ⚠ CE N'EST PAS UNE QUESTION DE PALIER, et c'est tout l'intérêt d'avoir une
+ * fonction séparée. `resolveEntitledTier` répond « jusqu'où est-elle montée » ;
+ * celle-ci répond « a-t-elle pris cette chose-là », et les deux réponses ne se
+ * déduisent pas l'une de l'autre. L'identité visuelle à 89 $ s'achète par
+ * quelqu'un qui n'a que The Foundation, et ne monte personne d'un palier.
+ *
+ * ── ÉCHEC FERMÉ ─────────────────────────────────────────────────────────
+ * Une erreur de lecture rend `false`, pour la même raison que
+ * `isBrandKitEntitled` : le pire résultat d'un refus injustifié est un
+ * checkout montré à quelqu'un qui a payé — visible, réparable, et qui remonte
+ * en support. Le pire résultat de l'inverse ne remonte jamais.
+ */
+export async function hasPurchasedAddon(
+  supabase: Client,
+  projectId: string,
+  sku: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("id")
+    // La même liste de statuts que partout ailleurs, et pour la même raison.
+    .in("status", [...ENTITLING_STATUSES])
+    .eq("kind", "addon")
+    .eq("tier", sku)
+    .eq("project_id", projectId)
+    .limit(1);
+
+  if (error) {
+    console.error("[entitlements] lecture d'un achat accessoire", error);
+    return false;
+  }
+  return (data ?? []).length > 0;
 }
 
 /* ── Le droit sur UN kit — la base fait autorité ─────────────────────────── */
