@@ -77,6 +77,48 @@ export function isEntitledToMonthlyPresence(
   return periodEnd + GRACE_MS > now.getTime();
 }
 
+/* ── LES STATUTS, ET QUI EN DÉCIDE ──────────────────────────────────────── */
+
+/**
+ * Les statuts qui veulent dire « l'argent est reparti ».
+ *
+ * `partially_refunded` n'en est PAS : elle a acheté la chose et en a récupéré
+ * une part. Lui fermer le kit pour un geste commercial serait exactement le
+ * genre de mur qu'on a retiré du plafond de projets.
+ */
+export const REVERSED_STATUSES = ["refunded", "disputed"] as const;
+
+/**
+ * Les statuts qui laissent le kit ouvert. Le complément exact du précédent.
+ *
+ * ⚠ C'EST LA TRANSCRIPTION DE `brand_kit_entitling_statuses()`, EN BASE, et la
+ * base est la seule autorité. La fonction SQL rend `{paid,
+ * partially_refunded}` ; cette liste doit dire exactement cela.
+ *
+ * ── POURQUOI ELLE A REMONTÉ DANS LE FICHIER ─────────────────────────────
+ *
+ * Elle était déclarée tout en bas, sous les deux lectures qui auraient dû
+ * s'en servir — et ces deux lectures filtraient `status = 'paid'` en dur. La
+ * constante était juste et personne ne la lisait. Ce n'était pas une
+ * inélégance : une acheteuse partiellement remboursée avait son kit OUVERT
+ * (la base le disait) et se voyait refuser en 402 toutes les surfaces
+ * au-dessus de `starter`, avec un message lui proposant d'acheter ce qu'elle
+ * avait déjà.
+ *
+ * Une constante déclarée loin de ses lecteurs est une constante qu'on
+ * réécrira à la main. Elle est donc ici, au-dessus d'eux, et les deux
+ * lectures la lisent.
+ *
+ * ⚠ ET UNE LISTE VIDE N'EST PAS UN FILTRE. `.in("status", [])` ne rend aucune
+ * ligne : si quelqu'un vide cette liste, tout le monde perd son palier
+ * silencieusement. `entitlements-single-source.test.ts` refuse la liste vide
+ * pour cette raison précise.
+ */
+export const ENTITLING_STATUSES = [
+  "paid",
+  "partially_refunded",
+] as const satisfies readonly PurchaseStatus[];
+
 /* ── Lectures ───────────────────────────────────────────────────────────── */
 
 /**
@@ -152,7 +194,14 @@ export async function resolveEntitledTier(
   const { data, error } = await supabase
     .from("purchases")
     .select("tier, project_id")
-    .eq("status", "paid")
+    /*
+     * ⚠ `ENTITLING_STATUSES`, PAS `'paid'`. La base dit `{paid,
+     * partially_refunded}` (`brand_kit_entitling_statuses()`), et un
+     * remboursement partiel laisse le kit ouvert. Filtrer sur `paid` seul
+     * faisait rendre `null` ici pendant que `brand_kit_entitled` rendait
+     * `true` : kit ouvert, surfaces payantes fermées.
+     */
+    .in("status", [...ENTITLING_STATUSES])
     .eq("project_id", projectId);
 
   if (error) {
@@ -273,7 +322,16 @@ export async function countUnpaidProjects(
   const [{ data: projects, error: projectsError }, { data: purchases, error: purchasesError }] =
     await Promise.all([
       supabase.from("projects").select("id").eq("user_id", userId),
-      supabase.from("purchases").select("project_id").eq("status", "paid"),
+      /*
+       * ⚠ La MÊME liste que `resolveEntitledTier` et que la base. Un achat
+       * partiellement remboursé a bien payé ce projet : le compter comme non
+       * payé consommerait un des trois briefs gratuits de quelqu'un qui a
+       * réglé.
+       */
+      supabase
+        .from("purchases")
+        .select("project_id")
+        .in("status", [...ENTITLING_STATUSES]),
     ]);
 
   if (projectsError || purchasesError) {
@@ -301,28 +359,6 @@ export async function countUnpaidProjects(
 }
 
 /* ── Ce qu'on dit quand un achat a été annulé ────────────────────────────── */
-
-/**
- * Les statuts qui veulent dire « l'argent est reparti ».
- *
- * `partially_refunded` n'en est PAS : elle a acheté la chose et en a récupéré
- * une part. Lui fermer le kit pour un geste commercial serait exactement le
- * genre de mur qu'on vient de retirer du plafond de projets.
- *
- * ⚠ CETTE LISTE DOIT DIRE LA MÊME CHOSE QUE `brand_kit_entitled`, qui est la
- * seule autorité sur le droit. Elle ne décide rien — elle choisit un TEXTE —
- * mais si les deux divergent, la praticienne lit « votre achat a été annulé »
- * sur un kit qui s'ouvre, ou l'inverse. Exporté pour être épinglé par un test :
- * le jour où la base change d'avis, la divergence doit se voir ici et pas en
- * production.
- */
-export const REVERSED_STATUSES = ["refunded", "disputed"] as const;
-
-/** Les statuts qui laissent le kit ouvert. Le complément exact du précédent. */
-export const ENTITLING_STATUSES = [
-  "paid",
-  "partially_refunded",
-] as const satisfies readonly PurchaseStatus[];
 
 /**
  * L'achat de ce projet a-t-il été annulé ?
