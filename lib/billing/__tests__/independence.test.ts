@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { isEntitledToMonthlyPresence } from "@/lib/billing/entitlements";
 import { surfaceAccess } from "@/lib/billing/surface-access";
 import { SURFACES, SURFACE_MIN_TIER } from "@/lib/billing/surfaces";
-import { KIT_TIERS } from "@/lib/kit/tiers";
+import { KIT_TIERS, LEGACY_KIT_TIERS } from "@/lib/kit/tiers";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -172,7 +172,18 @@ describe("l'essai n'est pas une seconde façon d'avoir le droit", () => {
 
 describe("l'énumération", () => {
   it("les paliers et les surfaces existent", () => {
-    expect(KIT_TIERS.length).toBe(3);
+    /*
+     * ⚠ CINQ, ET LE CHIFFRE EST UN MIROIR. `KIT_TIERS` est `brand_kits.tier`
+     * — cinq valeurs depuis que l'offre du 13 septembre a ajouté The
+     * Foundation et The Roster (CHECK `brand_kits_tier_check`, épinglé côté
+     * base par `20260914100000_the_new_offer_skus.sql` et côté application
+     * par `offer-catalogue.test.ts`).
+     *
+     * La garde anti-vacuité reste : ce n'est pas `> 0`, c'est le nombre exact,
+     * donc un palier ajouté ou retiré sans décision fait rougir ceci.
+     */
+    expect(KIT_TIERS.length).toBe(5);
+    expect(LEGACY_KIT_TIERS.length).toBe(3);
     expect(SURFACES.length).toBeGreaterThan(10);
   });
 });

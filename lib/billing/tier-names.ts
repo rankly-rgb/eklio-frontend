@@ -31,6 +31,17 @@ export const SOLD_TIER_NAME: Record<KitTier, string> = {
   starter: "Brand Kit",
   practice: "Brand Kit Plus",
   signature: "Practice Suite",
+
+  /*
+   * ⚠ L'OFFRE DU 13 SEPTEMBRE NOMME SES PALIERS ELLE-MÊME, et c'est la seule
+   * fois où l'enum et le nom vendu se ressemblent. Ce n'est pas une raison
+   * pour les confondre : `foundation` reste ce qui est écrit dans
+   * `purchases.tier`, « The Foundation » reste ce qu'elle a lu sur une page.
+   * Le jour où l'offre se renomme, cette ligne bouge et la colonne ne bouge
+   * pas — réécrire `purchases.tier` falsifierait un registre d'argent.
+   */
+  foundation: "The Foundation",
+  roster: "The Roster",
 };
 
 /**

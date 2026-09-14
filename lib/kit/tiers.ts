@@ -36,7 +36,41 @@ export const PAGES_WANTED = [
  * Module pur : ni I/O, ni SDK, ni React. Testable seul.
  */
 
-export const KIT_TIERS = ["starter", "practice", "signature"] as const;
+/*
+ * ⚠ CETTE LISTE EST `brand_kits.tier`, EXACTEMENT. Cinq valeurs en base
+ * (CHECK `brand_kits_tier_check`), cinq ici, et dans le même ordre croissant.
+ * Ce qui s'achète mais ne produit PAS de kit — l'add-on identité, un siège de
+ * clinicienne, les deux abonnements The Fill — n'est pas un `KitTier` et n'a
+ * rien à faire ici : c'est `lib/billing/offer.ts`, qui est le miroir de
+ * `plans`.
+ *
+ * ⚠ L'ORDRE EST UN CONTRAT, ET DEUX LECTEURS EN DÉPENDENT : `tierRank`
+ * (`highestTier`, quel achat prime) et `rank` dans `lib/billing/surface-access.ts`
+ * (quelle surface est incluse). The Foundation et The Roster sont ajoutés À LA
+ * FIN parce qu'ils coûtent plus cher que Practice Suite — 390 $ et 690 $ contre
+ * 249 $ — donc les placer ailleurs dégraderait quelqu'un qui vient de payer
+ * davantage.
+ */
+export const KIT_TIERS = [
+  "starter",
+  "practice",
+  "signature",
+  "foundation",
+  "roster",
+] as const;
+
+/*
+ * Les trois paliers de l'offre PRÉCÉDENTE, nommés séparément.
+ *
+ * ⚠ ILS SONT ENCORE VENDUS et la page de tarifs les montre. Ce qui décide ce
+ * qui est EN VENTE n'est pas la même question que ce qui peut exister dans
+ * `brand_kits.tier` : des kits `starter` existent et doivent continuer de se
+ * relire longtemps après que le palier aura quitté la page de tarifs. Retirer
+ * l'offre précédente de la vente est un lot à part ; tant qu'il n'a pas eu
+ * lieu, la page de tarifs itère CETTE liste, pas `KIT_TIERS`, et elle ne
+ * gagne donc pas deux colonnes que personne n'a fini de concevoir.
+ */
+export const LEGACY_KIT_TIERS = ["starter", "practice", "signature"] as const;
 
 export const kitTierSchema = z.enum(KIT_TIERS);
 
@@ -112,6 +146,28 @@ export const KIT_TIER_RULES: Record<KitTier, TierRule> = {
   starter: { maxPages: 3, includeSocialTemplates: false },
   practice: { maxPages: 6, includeSocialTemplates: true },
   signature: { maxPages: null, includeSocialTemplates: true },
+
+  /*
+   * ── L'offre du 13 septembre ───────────────────────────────────────────
+   *
+   * The Foundation : « l'accroche de son site + 3 pages ». Quatre, donc, et
+   * le nombre est LU dans l'offre, pas choisi ici.
+   *
+   * ⚠ `includeSocialTemplates: false` POUR LES DEUX. Les gabarits sociaux
+   * sont un livrable de l'offre précédente ; ni The Foundation ni The Roster
+   * n'en promettent. Les mettre à `true` « au cas où » ferait produire un
+   * livrable que personne n'a vendu.
+   */
+  foundation: { maxPages: 4, includeSocialTemplates: false },
+
+  /*
+   * ⚠ THE ROSTER N'A PAS DE NOMBRE DE PAGES DANS L'OFFRE. Elle dit « site +
+   * fiche Google du cabinet », sans compte. Quatre est repris de The
+   * Foundation faute de décision, et l'écart est consigné dans
+   * DECISIONS_NEEDED.md plutôt que masqué par un `null` qui, lui, promettrait
+   * toutes les pages demandées au brief.
+   */
+  roster: { maxPages: 4, includeSocialTemplates: false },
 };
 
 export type KitScope = {

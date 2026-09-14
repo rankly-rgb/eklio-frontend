@@ -1,4 +1,4 @@
-import { KIT_TIERS, type KitTier } from "@/lib/kit/tiers";
+import { KIT_TIERS, LEGACY_KIT_TIERS, type KitTier } from "@/lib/kit/tiers";
 import { SOLD_TIER_NAME } from "@/lib/billing/tier-names";
 
 /*
@@ -74,6 +74,43 @@ export const KIT_PLANS: Record<KitTier, KitPlan> = {
       "Branded social template specs",
     ],
   },
+  /*
+   * ── L'offre du 13 septembre ─────────────────────────────────────────────
+   *
+   * ⚠ LES MONTANTS SONT ÉGALEMENT EN BASE, dans `plans.price_cents`, et
+   * `offer-catalogue.test.ts` épingle les deux listes l'une contre l'autre.
+   * La duplication est celle qui existait déjà entre `plans` et `KIT_PLANS` ;
+   * ce lot ne l'invente pas, il refuse seulement qu'elle dérive en silence.
+   */
+  foundation: {
+    tier: "foundation",
+    label: SOLD_TIER_NAME.foundation,
+    tagline:
+      "Her positioning, her Psychology Today profile, her site and her Google listing — written and put in place.",
+    amountCents: 39000,
+    priceEnvVar: "STRIPE_PRICE_FOUNDATION",
+    highlights: [
+      "A positioning line in her patients' own words",
+      "Her Psychology Today profile, written in full",
+      "Site headline and 3 pages",
+      "Google Business listing copy",
+    ],
+  },
+  roster: {
+    tier: "roster",
+    label: SOLD_TIER_NAME.roster,
+    tagline:
+      "For a practice. Up to five clinicians, each distinct, all recognisably the same practice.",
+    amountCents: 69000,
+    priceEnvVar: "STRIPE_PRICE_ROSTER",
+    highlights: [
+      "Practice positioning",
+      "A Psychology Today profile per clinician",
+      "Clinician bios on the practice site",
+      "Practice site and Google listing",
+      "Up to 5 clinicians included",
+    ],
+  },
   signature: {
     tier: "signature",
     label: SOLD_TIER_NAME.signature,
@@ -89,8 +126,18 @@ export const KIT_PLANS: Record<KitTier, KitPlan> = {
   },
 };
 
-/** Les plans dans l'ordre d'affichage, du plus petit au plus complet. */
-export const ORDERED_PLANS: KitPlan[] = KIT_TIERS.map(
+/*
+ * Les plans dans l'ordre d'affichage, du plus petit au plus complet.
+ *
+ * ⚠ `LEGACY_KIT_TIERS`, PAS `KIT_TIERS`, ET C'EST DÉLIBÉRÉ. `KIT_TIERS` porte
+ * désormais cinq valeurs — c'est le miroir de `brand_kits.tier`, qui doit
+ * pouvoir relire un kit livré sous n'importe quel palier. Ce qui est EN VENTE
+ * est une autre question, et itérer `KIT_TIERS` ici aurait ajouté deux
+ * colonnes à la page de tarifs et à l'écran de checkout — à mi-chantier, sans
+ * que personne ait fini de concevoir ce qu'elles disent. Retirer l'offre
+ * précédente de la vente et mettre la nouvelle à sa place est un lot à part.
+ */
+export const ORDERED_PLANS: KitPlan[] = LEGACY_KIT_TIERS.map(
   (tier) => KIT_PLANS[tier]
 );
 
