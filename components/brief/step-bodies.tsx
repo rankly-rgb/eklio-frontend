@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Catalog } from "@/lib/catalog/types";
 import type { PreviewModel } from "@/lib/brand/shapes";
 import type { StepDraft } from "@/lib/brief/flow";
+import { qualify } from "@/lib/brief/platform";
 import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
 
 /*
@@ -79,6 +80,69 @@ const PRACTICE_STAGES = [
 ];
 
 /* ── 1. Practice ────────────────────────────────────────────────────────── */
+
+/**
+ * Ce que sa réponse change, dit à l'endroit où elle répond.
+ *
+ * ⚠ CE COMPOSANT NE NOMME AUCUNE PLATEFORME ET AUCUN PALIER. La décision vient
+ * de `qualify()`, qui lit la ligne de `site_platforms` ; la phrase vient de la
+ * colonne `notice`. Écrire « sur Wix, pas de Foundation » ici recréerait, dans
+ * une vue, la liste que la base est seule à faire autorité sur — et c'est
+ * exactement le défaut que ce lot corrige, pas un qu'il doit reproduire.
+ *
+ * Les quatre issues de `qualify()` sont toutes rendues. `unknown_platform`
+ * n'arrive que si une ligne a été retirée du catalogue après qu'elle a
+ * répondu : le silence y serait pire qu'ailleurs, puisqu'une puce sélectionnée
+ * resterait à l'écran sans rien signifier.
+ */
+function PlatformConsequence({
+  draft,
+  catalog,
+}: Pick<StepBodyProps, "draft" | "catalog">) {
+  const verdict = qualify(draft.site_platform_id, catalog.sitePlatforms);
+
+  if (verdict.ok && verdict.status === "accepted") {
+    return (
+      <p className="text-helper leading-prose text-ink-2">
+        Good — we can publish your pages there ourselves. Everything we offer is
+        open to you.
+      </p>
+    );
+  }
+
+  if (verdict.ok) {
+    /* `conditional` : l'inscription est prise, et ce qui n'est pas garanti est
+       dit avant le paiement plutôt qu'après. */
+    return <p className="text-helper leading-prose text-ink-2">{verdict.notice}</p>;
+  }
+
+  if (verdict.reason === "not_answered") return null;
+
+  if (verdict.reason === "unknown_platform") {
+    return (
+      <p className="text-helper leading-prose text-ink-2">
+        That platform is no longer on our list. Pick another one so we know what
+        we can do for you.
+      </p>
+    );
+  }
+
+  /*
+   * `refused` — et c'est LA correction du lot. Ce n'était pas un écran
+   * d'information : c'était une porte. On dit ce qu'on ne pourra pas faire,
+   * puis ce qu'on peut encore, parce que c'est vrai : les paliers qui
+   * n'engagent aucune publication restent ouverts.
+   */
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-helper leading-prose text-ink-2">{verdict.notice}</p>
+      <p className="text-helper leading-prose text-ink-2">
+        You can still go through the whole brief, and everything that does not
+        involve us publishing for you is still yours to buy.
+      </p>
+    </div>
+  );
+}
 
 export function PracticeStep({ draft, catalog, update }: StepBodyProps) {
   const stage = draft.data.stage ?? null;
@@ -174,6 +238,47 @@ export function PracticeStep({ draft, catalog, update }: StepBodyProps) {
           placeholder="OR"
           maxLength={2}
         />
+      </div>
+
+      {/*
+        ── LA QUALIFICATION DE PLATEFORME, À L'ÉTAPE 1 ───────────────────────
+
+        ⚠ ELLE EXISTAIT ET N'ÉTAIT NULLE PART. `stepIssue("practice")` EXIGE
+        `site_platform_id` depuis le lot 1 — « Tell us where your website lives »
+        — et aucun écran n'offrait le champ pour répondre. Un brief neuf se
+        bloquait donc à l'écran 1, sur une question invisible.
+
+        Elle est ici, et pas à l'étape 7, pour la raison écrite dans `flow.ts` :
+        ce qu'on pourra faire de son site change ce qu'elle peut acheter, et
+        l'apprendre après cinq écrans de travail est une insulte au temps
+        qu'elle vient d'y passer. L'étape 7 est en plus FACULTATIVE — la
+        question s'y serait sautée.
+
+        ⚠ ET ELLE NE REFUSE PERSONNE. La liste vient de `site_platforms`, dont
+        les phrases disent ce qu'on pourra publier et ce qu'on ne pourra pas.
+        Une plateforme qu'on n'atteint pas ferme la nouvelle offre, jamais la
+        porte : l'ancienne offre ne promet aucune publication et reste vendue.
+      */}
+      <div className="flex flex-col gap-3">
+        <span className="text-ui font-medium text-ink">
+          Where your website lives
+        </span>
+        <p className="text-helper leading-prose text-ink-2">
+          We put your pages on your site ourselves. Where it runs decides how
+          much of that we can do for you.
+        </p>
+        <ChipGroup
+          legend="Website platform"
+          mode="single"
+          columns={2}
+          options={catalog.sitePlatforms.map((entry) => ({
+            id: entry.id,
+            label: entry.label,
+          }))}
+          selected={draft.site_platform_id ? [draft.site_platform_id] : []}
+          onChange={(next) => update({ site_platform_id: next[0] ?? null })}
+        />
+        <PlatformConsequence draft={draft} catalog={catalog} />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -768,13 +873,6 @@ export function LookStep({ draft, catalog, preview, update }: StepBodyProps) {
 
 /* ── 7. Website ─────────────────────────────────────────────────────────── */
 
-const BUILDER_TARGETS = [
-  { id: "squarespace", label: "Squarespace" },
-  { id: "lovable", label: "Lovable" },
-  { id: "framer", label: "Framer" },
-  { id: "webflow", label: "Webflow" },
-] as const;
-
 export function WebsiteStep({ draft, catalog, update }: StepBodyProps) {
   return (
     <div className="flex flex-col gap-8">
@@ -813,26 +911,27 @@ export function WebsiteStep({ draft, catalog, update }: StepBodyProps) {
         />
       </div>
 
-      <div className="flex flex-col gap-3">
-        <span className="text-ui font-medium text-ink">
-          Where you&rsquo;ll build it
-        </span>
-        <ChipGroup
-          legend="Website builder"
-          mode="single"
-          options={BUILDER_TARGETS.map((entry) => ({ ...entry }))}
-          selected={draft.data.builder_target ? [draft.data.builder_target] : []}
-          onChange={(next) =>
-            update({
-              data: {
-                ...draft.data,
-                builder_target:
-                  (next[0] as (typeof BUILDER_TARGETS)[number]["id"]) ?? undefined,
-              },
-            })
-          }
-        />
-      </div>
+      {/*
+        ── « WHERE YOU'LL BUILD IT » A QUITTÉ L'ÉCRAN ────────────────────────
+
+        Squarespace, Lovable, Framer, Webflow — et pas WordPress. Ce champ
+        choisissait pour quel constructeur écrire un PROMPT À COLLER, livrable
+        de l'offre précédente. Depuis que l'étape 1 demande où le site vit, il
+        posait la même question une seconde fois, plus bas, avec une autre
+        liste et une autre réponse.
+
+        ⚠ RIEN N'EST SUPPRIMÉ. `data.builder_target` reste dans le jsonb des
+        briefs qui le portent, `builder_target_id` reste une colonne de
+        `project_briefs`, et `lib/kit/site-prompt.ts` continue de les lire pour
+        rendre le prompt des kits déjà vendus. Ce qui disparaît est la QUESTION,
+        pas la donnée : un brief ancien se relit à l'identique.
+
+        La constante `BUILDER_TARGETS` qui alimentait ce contrôle part avec lui :
+        elle n'était lue que d'ici, et la laisser serait du code mort créé par
+        ce lot. La LISTE des constructeurs, elle, vit toujours dans
+        `lib/kit/site-prompt.ts`, qui rend les prompts — le retrait de l'offre
+        précédente est L23, et ce lot n'est pas L23.
+      */}
 
       <TextField
         id="existing-url"

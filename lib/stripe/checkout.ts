@@ -10,6 +10,7 @@ import { includesMonthlyPresence, tierRank } from "@/lib/billing/plans";
 import { siteUrl } from "@/lib/site-url";
 import { buildCheckoutMetadata } from "@/lib/stripe/metadata";
 import type { KitTier } from "@/lib/kit/tiers";
+import { loadSitePlatforms, qualify } from "@/lib/brief/platform";
 
 /*
  * Création de la session Stripe Checkout (hébergée) — serveur uniquement.
@@ -203,11 +204,12 @@ export class UnsellableSkuError extends Error {
  */
 async function refuseIfUnsellable(
   supabase: Client,
-  sku: string
+  sku: string,
+  projectId: string | null
 ): Promise<void> {
   const { data, error } = await supabase
     .from("plans")
-    .select("sellable")
+    .select("sellable, requires_publishable_platform")
     .eq("tier", sku)
     .maybeSingle();
 
@@ -218,6 +220,61 @@ async function refuseIfUnsellable(
   if (!data || !data.sellable) {
     throw new UnsellableSkuError(sku);
   }
+
+  /*
+   * ── LA SECONDE RAISON, À LA MÊME PORTE ────────────────────────────────
+   *
+   * `sellable` répond « à personne ». Celle-ci répond « pas à elle ». Elles
+   * vivent dans la même fonction parce qu'un second point de passage serait un
+   * second endroit où l'on peut oublier de brancher une règle — et c'est
+   * précisément le défaut que ce lot corrige.
+   *
+   * ⚠ CE N'EST PAS UN REFUS. Ce qui est fermé ici, ce sont les SKU qui
+   * PROMETTENT qu'Eklio publie. L'offre précédente ne le promet pas, porte
+   * `requires_publishable_platform = false`, et ne passe donc jamais par ce
+   * bloc : quelqu'un sur Wix continue d'acheter tout ce qu'on sait lui livrer.
+   */
+  if (!data.requires_publishable_platform) return;
+
+  /*
+   * ⚠ SANS PROJET, PAS DE RÉPONSE — ET PAS DE VENTE DE CE SKU-LÀ. La
+   * plateforme est une réponse du brief ; un checkout parti de `/pricing` n'en
+   * a pas. On ne DEVINE pas : encaisser 390 $ en promettant de publier sur une
+   * plateforme dont on ne sait rien est exactement ce que cette colonne existe
+   * pour empêcher. Le `notice` est nul, et l'écran dit alors de commencer un
+   * brief — ce qui est la vraie prochaine étape, pas une porte fermée.
+   *
+   * C'est le même sens de repli que `loadSitePlatforms`, qui rend une liste
+   * VIDE sur une lecture ratée, et pour la même raison écrite là-bas.
+   */
+  if (!projectId) throw new PlatformNotEligibleError(sku, null);
+
+  const { data: brief, error: briefError } = await supabase
+    .from("project_briefs")
+    .select("site_platform_id")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (briefError) {
+    console.error(`[checkout] platform read: ${briefError.message}`);
+    throw new PlatformNotEligibleError(sku, null);
+  }
+
+  const platforms = await loadSitePlatforms(supabase);
+  const verdict = qualify(brief?.site_platform_id, platforms);
+
+  /*
+   * ⚠ `conditional` PASSE. C'est la raison d'être du troisième état : on prend
+   * l'inscription, et ce qui n'est pas garanti a déjà été dit à l'étape 1,
+   * avant qu'elle arrive ici. Le transformer en refus au paiement rendrait
+   * `conditional` identique à `refused`, et la colonne ne dirait plus rien.
+   */
+  if (verdict.ok) return;
+
+  throw new PlatformNotEligibleError(
+    sku,
+    "notice" in verdict ? verdict.notice : null
+  );
 }
 
 /**
@@ -237,6 +294,32 @@ async function refuseIfUnsellable(
  * because there is no refund primitive anywhere in this product. A guard in
  * front of the payment can only ever fail towards not charging.
  */
+/**
+ * Ce SKU promet une publication, et on ne publiera pas sur SA plateforme.
+ *
+ * ⚠ CE N'EST PAS UN REFUS DE VENTE, ET LA DISTINCTION EST TOUT LE SUJET.
+ * `UnsellableSkuError` dit « on ne sait livrer ça à personne ».
+ * Celle-ci dit « on ne sait pas livrer CE SKU-LÀ à ELLE » — et tout ce qui ne
+ * promet pas de publication lui reste ouvert. L'offre précédente n'est pas
+ * retirée de la vente et n'a jamais promis qu'Eklio publierait : elle livre des
+ * fichiers et un texte à coller.
+ *
+ * Elle porte le `notice` de `site_platforms`, donc la phrase que la cliente lit
+ * vient de la base et pas d'ici. Un écran qui refuse sans expliquer est un
+ * ticket de support ; un écran qui explique avec une phrase écrite en dur
+ * cesse d'être vrai au premier changement d'avis.
+ */
+export class PlatformNotEligibleError extends Error {
+  constructor(
+    public readonly sku: string,
+    /** La phrase de `site_platforms.notice`, ou `null` si on n'a pas de réponse. */
+    public readonly notice: string | null
+  ) {
+    super(`${sku} needs a platform we can publish to.`);
+    this.name = "PlatformNotEligibleError";
+  }
+}
+
 export class AlreadyPurchasedError extends Error {
   constructor(public readonly tier: KitTier) {
     super(`This project already has a paid ${tier} kit.`);
@@ -301,7 +384,7 @@ export async function createCheckoutSession(
    * accepter un SKU plutôt qu'un palier, le refus est DÉJÀ sur le chemin de
    * l'argent, et il se lève par un UPDATE au lieu d'être réinventé.
    */
-  await refuseIfUnsellable(supabase, tier);
+  await refuseIfUnsellable(supabase, tier, projectId);
 
   /*
    * Before Stripe, before the customer: a second charge for a kit she already

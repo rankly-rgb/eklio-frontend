@@ -95,6 +95,48 @@ export const FIXTURE_CATALOG: Catalog = {
     active: true,
   })) as Catalog["personaCards"],
 
+  /*
+   * ⚠ RECOPIÉ DE `site_platforms`, LE 14 SEPTEMBRE 2026, avec les VRAIES
+   * phrases — pas des libellés inventés. Cette fixture sert aux écrans de
+   * démonstration et aux tests de rendu : une phrase de refus trop courte y
+   * passerait alors qu'elle déborde en production. Celle de `wix` fait
+   * 158 caractères, la plus longue du catalogue.
+   *
+   * Les trois statuts sont représentés, y compris `conditional` — aucune ligne
+   * ne le porte en base depuis le verdict Squarespace, et une fixture qui ne
+   * l'exerce plus laisserait la branche sans rendu connu.
+   */
+  sitePlatforms: [
+    { id: "wordpress", label: "WordPress", status: "accepted", notice: null },
+    {
+      id: "squarespace",
+      label: "Squarespace",
+      status: "refused",
+      notice:
+        "We do not publish to Squarespace. Its API covers store orders and forms, not website pages, so there is no way for us to put anything on your site for you. Everything we write for you would still be yours to paste, but putting it in place is the part we could not do.",
+    },
+    {
+      id: "wix",
+      label: "Wix",
+      status: "refused",
+      notice:
+        "We do not publish to Wix yet. Everything we write for you would still be yours to paste, but putting it in place is the part we could not do.",
+    },
+    {
+      id: "a_conditional_one",
+      label: "Something we are checking",
+      status: "conditional",
+      notice: "We are still confirming what we can publish there on your behalf.",
+    },
+    {
+      id: "none",
+      label: "I do not have a website yet",
+      status: "refused",
+      notice:
+        "You will need a site before we can put anything on it. WordPress is the one we publish to today.",
+    },
+  ],
+
   toneCards: rows(6, (i) => ({
     id: `tone_${i}`,
     sample_hero: "You are allowed to find this harder than it looks", // 48

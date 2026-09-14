@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import type { SitePlatform } from "@/lib/brief/platform";
 import type { Catalog, PaletteFamily } from "@/lib/catalog/types";
 
 /*
@@ -80,6 +81,7 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     notAFitCards,
     modalityCards,
     modalityProminenceOptions,
+    sitePlatforms,
   ] = await Promise.all([
     all(supabase.from("license_types").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("specialties").select("*").eq("active", true).order("sort_order")),
@@ -98,6 +100,14 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     all(
       supabase.from("modality_prominence_options").select("*").eq("active", true).order("sort_order")
     ),
+    /*
+     * ⚠ PAS DE `.eq("active", true)` ICI, et ce n'est pas un oubli.
+     * `site_platforms` n'a pas de colonne `active` : elle porte `status`, et
+     * les trois valeurs doivent atteindre l'écran. Une plateforme `refused`
+     * reste proposée — c'est elle qui porte la phrase qui explique ce qu'on
+     * pourra faire et ce qu'on ne pourra pas.
+     */
+    all(supabase.from("site_platforms").select("*").order("sort_order")),
   ]);
 
   const responses = {
@@ -116,6 +126,7 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     notAFitCards,
     modalityCards,
     modalityProminenceOptions,
+    sitePlatforms,
   };
 
   for (const [name, response] of Object.entries(responses)) {
@@ -150,5 +161,16 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     notAFitCards: notAFitCards.data ?? [],
     modalityCards: modalityCards.data ?? [],
     modalityProminenceOptions: modalityProminenceOptions.data ?? [],
+    /*
+     * Le `status` est un `text` côté types générés ; la base le borne par
+     * CHECK aux trois valeurs de `PlatformStatus`. Même conversion que
+     * `paletteFamilies` au-dessus, et pour la même raison.
+     */
+    sitePlatforms: (sitePlatforms.data ?? []).map((row) => ({
+      id: row.id,
+      label: row.label,
+      status: row.status as SitePlatform["status"],
+      notice: row.notice,
+    })),
   };
 }

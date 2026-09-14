@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   AlreadyPurchasedError,
   UnsellableSkuError,
+  PlatformNotEligibleError,
   createCheckoutSession,
 } from "@/lib/stripe/checkout";
 import { StripeConfigError } from "@/lib/stripe/client";
@@ -89,6 +90,27 @@ export async function startCheckout(input: {
      * rien — elle n'a pas choisi un identifiant, elle a cliqué sur un prix —
      * et il nomme la structure interne du catalogue.
      */
+    /*
+     * ⚠ SA PLATEFORME NE PORTE PAS CE SKU-LÀ — ET CE N'EST PAS UN REFUS. Ce
+     * palier promet qu'Eklio PUBLIE sur son site ; on ne publie pas là où elle
+     * est. Tout ce qui ne promet pas de publication lui reste ouvert, et la
+     * phrase le dit, parce qu'un écran qui ferme sans dire ce qui reste ouvert
+     * se lit comme une porte.
+     *
+     * La raison vient de `site_platforms.notice`, en base. Elle est reprise
+     * telle quelle : c'est la même phrase qu'à l'étape 1 du brief, et deux
+     * formulations pour un même fait donnent l'impression de deux règles.
+     */
+    if (error instanceof PlatformNotEligibleError) {
+      console.error(`[startCheckout] plateforme non éligible : ${error.sku}`);
+      return {
+        ok: false,
+        error: error.notice
+          ? `${error.notice} You haven't been charged, and everything that doesn't involve us publishing for you is still available.`
+          : "Tell us where your website lives first — we need to know before selling you anything we publish for you. You haven't been charged.",
+      };
+    }
+
     if (error instanceof UnsellableSkuError) {
       console.error(`[startCheckout] SKU non vendable : ${error.sku}`);
       return {

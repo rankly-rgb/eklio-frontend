@@ -1700,6 +1700,7 @@ export type Database = {
           per_seat: boolean
           price_cents: number
           regenerations_limit: number | null
+          requires_publishable_platform: boolean
           sellable: boolean
           sort_order: number
           tier: string
@@ -1716,6 +1717,7 @@ export type Database = {
           per_seat?: boolean
           price_cents: number
           regenerations_limit?: number | null
+          requires_publishable_platform?: boolean
           sellable?: boolean
           sort_order: number
           tier: string
@@ -1732,6 +1734,7 @@ export type Database = {
           per_seat?: boolean
           price_cents?: number
           regenerations_limit?: number | null
+          requires_publishable_platform?: boolean
           sellable?: boolean
           sort_order?: number
           tier?: string

@@ -1,4 +1,5 @@
 import type { Tables } from "@/types/supabase";
+import type { SitePlatform } from "@/lib/brief/platform";
 
 /*
  * Le catalogue — ton, palettes, paires typographiques, cartes de persona, de
@@ -66,4 +67,20 @@ export type Catalog = {
   notAFitCards: NotAFitCard[];
   modalityCards: ModalityCard[];
   modalityProminenceOptions: ModalityProminenceOption[];
+  /*
+   * ⚠ LES PLATEFORMES, ET POURQUOI ELLES ARRIVENT PAR LE CATALOGUE.
+   *
+   * `site_platforms` a été construite au lot 1 et n'a jamais atteint un écran :
+   * `lib/brief/platform.ts` n'était importé par aucun fichier de `app/` ni de
+   * `components/`. L'étape 1 EXIGEAIT pourtant une réponse (`stepIssue`), sans
+   * offrir le champ pour la donner — un brief neuf se bloquait à l'écran 1.
+   *
+   * Elle passe par le catalogue plutôt que par une lecture à part parce que
+   * c'est une liste de référence lue en base, ordonnée par `sort_order`, comme
+   * les quinze autres. Une seule différence : pas de filtre `active` — cette
+   * table n'a pas cette colonne, elle porte `status`, et une plateforme
+   * REFUSÉE doit rester à l'écran. Une praticienne dont la plateforme est
+   * nommée comprend qu'on l'a envisagée ; une absente croit s'être trompée.
+   */
+  sitePlatforms: SitePlatform[];
 };
