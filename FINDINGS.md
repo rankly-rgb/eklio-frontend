@@ -814,11 +814,12 @@ replaced by what remains true. What follows is the residue, not the original lis
 
 ## Added during the tenancy chantier, Session 4 (the invitation, eu-west-1, the crons)
 
-- **2026-09-13 (the second day's reading — and the discriminator I expected does NOT exist).**
-  Read at 05:30 UTC: no `edge_logs` and no `postgrest_logs` at all today, while `postgres_logs`
-  carries events through 04:40 — so the window is live and the silence at 04:00 (`purge-events`)
-  and 05:00 (`anon-briefs`) is real, not retention. **No scheduled cron reached the database
-  today either.**
+- **2026-09-13 and 2026-09-14 (second and third readings — and the discriminator I expected
+  does NOT exist).** Read at 05:30 UTC on both days, identical both times: no `edge_logs` and no
+  `postgrest_logs` at the cron hours, while `postgres_logs` carries events through 04:40 and
+  04:32 respectively — so the window is live and the silence at 04:00 (`purge-events`) and 05:00
+  (`anon-briefs`) is real, not retention. **Three consecutive days, no scheduled cron has reached
+  the database.**
 
   ⚠ **But Supabase cannot tell us WHY, and I was wrong to think it could.** `authorizeCron`
   returns 503 *before touching Supabase*, so a cron that fires and is refused leaves exactly the
@@ -834,6 +835,19 @@ replaced by what remains true. What follows is the residue, not the original lis
   ⚠ The user agent is `node`, i.e. the server-side Supabase client, which does NOT say whether
   that server was Vercel or a local one. It is evidence the application works — not proof the
   deployment is up.
+
+  The same shape repeated on 13 Sept: 1285 `edge_logs` and 383 `auth_logs` between 13:27 and
+  19:17, then nothing overnight. An afternoon of one person working, and no cron.
+
+  ⚠ **THE DAILY DATABASE READING IS STOPPED, and stopping it is the finding.** Three readings
+  produced the same answer and the third could not have produced a different one: since a 503
+  never touches Supabase, this source can only ever say "it did not arrive". Continuing to poll
+  it daily would look like diligence and establish nothing — the same mistake as a checklist row
+  pointed at the wrong instrument. What remains is one question for a human, and it is not a
+  database question: **Vercel → Settings → Cron Jobs → the execution history of
+  `/api/cron/purge-events`**, which is the only surface that separates "not scheduled" from
+  "scheduled and refused". Reopen this by reading the logs the same day someone confirms the
+  deploy and `CRON_SECRET`, not before.
 
 - **2026-09-12 (OPEN — needs a deploy, then a same-day read) — no scheduled cron has been shown
   to reach the database.** The five `vercel.json` crons are registered and enabled on the
