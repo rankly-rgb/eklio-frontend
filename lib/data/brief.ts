@@ -141,6 +141,19 @@ export const briefPatchSchema = z
     specialty_ids: z.array(z.string()),
     city: z.string().max(80).nullable(),
     state: stateCode.nullable(),
+    /*
+     * ⚠ AJOUTÉES APRÈS AVOIR DISPARU SANS ERREUR. L'étape 1 pose la question
+     * de plateforme depuis le correctif du lot 2 et `stepIssue` EXIGE la
+     * réponse — mais ces deux clés n'étaient déclarées nulle part ici. Zod
+     * retirait `site_platform_id` du corps, `parse` rendait `true`, la colonne
+     * restait NULL, et l'étape 1 redemandait indéfiniment. Aucune erreur, à
+     * aucun moment : le défaut de la maison dans sa forme la plus pure.
+     *
+     * `site_url` est borné comme la base le borne
+     * (`project_briefs_site_url_check` : schéma http(s), pas d'espace, ≤ 500).
+     */
+    site_platform_id: z.string().nullable(),
+    site_url: z.string().max(500).nullable(),
     positioning: z.string().max(600).nullable(),
     problem_card_ids: z.array(z.string()),
     gain_card_ids: z.array(z.string()),
@@ -173,6 +186,28 @@ export const briefPatchSchema = z
     completed_steps: z.array(z.number().int().min(1).max(7)),
     data: briefDataSchema,
   })
+  /*
+   * ⚠ `.strict()` — UNE CLÉ NON DÉCLARÉE EST UNE ERREUR, PLUS UNE DISPARITION.
+   *
+   * La cause racine du défaut `site_platform_id` n'était pas la clé manquante :
+   * c'était que zod, par défaut, RETIRE en silence ce qu'il ne connaît pas.
+   * `safeParse` rendait `success: true`, la valeur ne partait jamais en base,
+   * et l'écran redemandait la même réponse indéfiniment.
+   *
+   * Ce que ça coûte, mesuré avant de le poser : UN SEUL appelant patche la
+   * racine du brief — `components/brief/use-brief-autosave.ts`. Ce qu'il peut
+   * envoyer est exactement `Partial<StepDraft>` (l'objet que les étapes
+   * modifient) plus `progress_step` et `completed_steps`, que `BriefFlow`
+   * envoie seuls. L'union des deux est, à la clé près, ce que ce schéma
+   * déclare — vérifié par `no-field-vanishes.test.ts`, qui compare les deux
+   * ensembles au lieu de me croire.
+   *
+   * ⚠ ET C'EST `Partial<StepDraft>` QUI PASSE, PAS `BriefPatch` : le spread
+   * `{ ...patch, progress_step }` échappe au contrôle d'excédent de
+   * TypeScript, donc le typage NE PROTÉGEAIT PAS. C'est précisément pour ça
+   * que la garde doit être à l'exécution.
+   */
+  .strict()
   .partial();
 
 export type BriefPatch = z.infer<typeof briefPatchSchema>;
@@ -193,6 +228,13 @@ const ID_SOURCES = {
   not_a_fit_ids: (c: Catalog) => c.notAFitCards,
   modality_ids: (c: Catalog) => c.modalityCards,
   modality_prominence: (c: Catalog) => c.modalityProminenceOptions,
+  /*
+   * La plateforme est un id de catalogue comme les autres — `site_platforms`
+   * arrive par le catalogue depuis le correctif du lot 2. L'inscrire ici la
+   * fait vérifier contre la base plutôt que crue sur parole : un id inventé
+   * est du code qui a construit une valeur au lieu de la choisir.
+   */
+  site_platform_id: (c: Catalog) => c.sitePlatforms,
 } as const;
 
 /**
