@@ -6,7 +6,12 @@ import { readCatalog } from "@/lib/catalog/read";
 import { isBrandKitEntitled } from "@/lib/billing/entitlements";
 import { surfaceAccess } from "@/lib/billing/surface-access";
 import { resolveEntitledTier } from "@/lib/billing/entitlements";
-import { generateDirectoryProfile } from "@/lib/directory/generate";
+import {
+  DirectoryCeilingError,
+  DirectoryProseInvalidError,
+  DirectoryProseRefusedError,
+  generateDirectoryProfile,
+} from "@/lib/directory/generate";
 import { structuredInputFor } from "@/lib/data/directory";
 
 /*
@@ -103,11 +108,53 @@ export async function POST(
     return json({ ok: true, modelCalls: result.modelCalls });
   } catch (error) {
     /*
-     * `generationErrorResponse` distingue déjà « non configuré », « refus du
-     * modèle » et « panne » en trois phrases différentes. Les erreurs propres
-     * à ce module (plafond, gabarit, déontologie) y tombent dans la branche
-     * générique, ce qui est juste : de son côté à elle, ce sont trois façons
-     * pour la même chose de ne pas avoir marché.
+     * ⚠ UN REFUS N'EST PAS UNE PANNE, et le premier jet de ce fichier les
+     * confondait. Il disait « c'est juste : de son côté, ce sont trois façons
+     * pour la même chose de ne pas avoir marché ». C'était faux : « nous
+     * n'avons pas réussi à l'écrire sans enfreindre une règle » et « notre
+     * serveur est tombé » n'appellent pas la même action de sa part, et le
+     * second fait ouvrir un ticket pour un produit qui fonctionne.
+     */
+    if (error instanceof DirectoryProseRefusedError) {
+      console.error("[api] directory: refus déontologique", error.violations);
+      return json(
+        {
+          error:
+            "We wrote it twice and both drafts made claims we will not publish under your licence. Nothing was saved. Adding a line to \"How you work\" usually gives us something more specific to write from.",
+          code: "ethics_refused",
+        },
+        { status: 422 }
+      );
+    }
+
+    if (error instanceof DirectoryProseInvalidError) {
+      console.error("[api] directory: gabarit non respecté", error.problems);
+      return json(
+        {
+          error:
+            "The draft came back the wrong length twice, so we did not save it rather than cut a sentence in half on a public profile. Try again.",
+          code: "prose_invalid",
+        },
+        { status: 422 }
+      );
+    }
+
+    if (error instanceof DirectoryCeilingError) {
+      console.error("[api] directory: plafond atteint", error.limit);
+      return json(
+        {
+          error: "We stopped after two attempts. Nothing further was spent. Try again.",
+          code: "ceiling_reached",
+        },
+        { status: 429 }
+      );
+    }
+
+    /*
+     * `generationErrorResponse` distingue « non configuré », « refus du
+     * modèle » et « panne » en trois phrases. Ce qui tombe ici est une vraie
+     * panne — et doit le rester, sinon le message générique cesse de vouloir
+     * dire quelque chose.
      */
     return generationErrorResponse("POST /api/brand-kits/[id]/directory", error);
   }

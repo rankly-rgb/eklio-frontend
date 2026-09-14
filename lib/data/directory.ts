@@ -49,11 +49,30 @@ export type DirectoryProfileView = {
   proseIssue: "not_produced" | "stored_prose_rejected" | null;
 };
 
-/** La forme que `get_directory_profile` rend. */
-type StoredProfile = {
-  first_paragraph?: unknown;
-  body?: unknown;
-  structured?: unknown;
+/**
+ * ⚠ LA FORME QUE `get_directory_profile` REND — LUE DANS SA DÉFINITION, pas
+ * supposée.
+ *
+ * Elle rend une ENVELOPPE, jamais la ligne à nu, et elle a trois issues :
+ *
+ *   { error: "…" }            `kit_paid_access` refuse
+ *   { profile: null }         aucune ligne
+ *   { profile: { … } }        la ligne, champ par champ
+ *
+ * Le premier jet de ce fichier lisait `first_paragraph` À LA RACINE. Résultat :
+ * `{ profile: null }` est un objet TRUTHY, donc « aucune ligne » passait pour
+ * « une ligne existe », `checkProse` la déclarait vide, et l'écran affichait
+ * « rangée mais refusée » — précisément la confusion entre les deux absences
+ * que cet écran a été écrit pour empêcher. Et un refus de droit se lisait
+ * pareil.
+ */
+type StoredEnvelope = {
+  error?: unknown;
+  profile?: {
+    first_paragraph?: unknown;
+    body?: unknown;
+    structured?: unknown;
+  } | null;
 };
 
 function asString(value: unknown): string | null {
@@ -137,7 +156,20 @@ export async function loadDirectoryProfile(
   const { structured: input } = await structuredInputFor(supabase, projectId, catalog);
   const structured = buildStructuredFields(input);
 
-  const row = (stored.data ?? null) as StoredProfile | null;
+  const envelope = (stored.data ?? null) as StoredEnvelope | null;
+
+  /*
+   * Un refus de droit n'est pas une prose absente. Il ne devrait pas arriver —
+   * la page a déjà passé `requireKitPage` et la garde de palier — mais s'il
+   * arrive, le dire « pas encore écrit » enverrait chercher du côté de la
+   * génération pour un problème de droit.
+   */
+  if (envelope?.error != null) {
+    console.error("[directory] get_directory_profile refuse", envelope.error);
+    return { structured, prose: null, proseIssue: "not_produced" };
+  }
+
+  const row = envelope?.profile ?? null;
   if (!row) return { structured, prose: null, proseIssue: "not_produced" };
 
   /*

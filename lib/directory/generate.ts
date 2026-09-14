@@ -6,7 +6,7 @@ import { rulesBlock } from "@/lib/ethics/guard";
 import { buildHowYouWorkContext } from "@/lib/generation/how-you-work-context";
 import { track } from "@/lib/analytics";
 import type { Catalog } from "@/lib/catalog/types";
-import type { Json } from "@/types/supabase";
+import { ethicsCheckSchema, type EthicsCheck } from "@/lib/brand/shapes";
 import type { BriefBundle } from "@/lib/data/brief";
 import {
   BODY_MAX,
@@ -151,14 +151,16 @@ Write in plain American English, in the first person, short sentences, no exclam
 export type DirectoryGeneration = {
   draft: DirectoryProfileDraft;
   /**
-   * Ce que le scan a trouvé, rangé tel quel dans
-   * `directory_profiles.ethics_check`.
+   * Ce que le scan a trouvé, dans la forme que la base EXIGE.
    *
-   * ⚠ Typé `Json` et pas une forme à nous : c'est une colonne `jsonb`, et lui
-   * donner un type applicatif ferait croire que la base en garantit la forme.
-   * Elle n'en garantit aucune — c'est un journal, pas une décision.
+   * ⚠ `ethicsCheckSchema`, PAS UNE FORME ÉCRITE ICI. Le premier jet de ce
+   * module envoyait `{ violations, scanned_at }` — inventé, jamais lu — et le
+   * CHECK `brand_kit_ethics_check_valid` refusait l'insertion APRÈS l'appel
+   * modèle : la génération était payée et rien n'était rangé. Le gabarit
+   * existait déjà (`lib/brand/shapes.ts`), miroir de ce que la base valide.
+   * C'est la règle « pas de quatrième liste », enfreinte puis rétablie.
    */
-  ethicsCheck: Json;
+  ethicsCheck: EthicsCheck;
   modelCalls: number;
 };
 
@@ -260,21 +262,42 @@ export async function generateDirectoryProfile(
      * séparément : le trigger en base fait exactement cela, et scanner une
      * concaténation laisserait passer une violation à cheval sur la jointure.
      */
-    const scans = [built.draft.prose.firstParagraph, built.draft.prose.body].map(
-      (text) => checkEthics(text)
+    /*
+     * ⚠ CHAQUE CHAMP EST SCANNÉ SÉPARÉMENT ET SON NOM EST GARDÉ. Le trigger en
+     * base fait exactement cela ; et `flagged[].field` doit dire LEQUEL des
+     * deux, sans quoi le journal ne sert à rien le jour où on le relit.
+     */
+    const scanned = [
+      { field: "first_paragraph", text: built.draft.prose.firstParagraph },
+      { field: "body", text: built.draft.prose.body },
+    ].map((entry) => ({ ...entry, scan: checkEthics(entry.text) }));
+
+    const violations = scanned.flatMap((entry) => entry.scan.violations);
+    const flagged = scanned.flatMap((entry) =>
+      entry.scan.violations.map((violation) => ({
+        field: entry.field,
+        excerpt: violation.excerpt,
+        rule_id: violation.ruleId,
+      }))
     );
-    const violations = scans.flatMap((scan) => scan.violations);
 
     if (!hasBlockingViolation(violations)) {
       track("directory_profile_generated", {
         model_calls: modelCalls,
         warnings: violations.length,
       });
-      return {
-        draft: built.draft,
-        ethicsCheck: { violations, scanned_at: new Date().toISOString() } as unknown as Json,
-        modelCalls,
-      };
+      /*
+       * ⚠ VALIDÉ ICI, contre le même schéma que la base applique. Une forme
+       * fausse doit lever AVANT l'appel réseau, pas revenir comme une
+       * violation de contrainte dont le message ne nomme pas la clé fautive.
+       */
+      const ethicsCheck = ethicsCheckSchema.parse({
+        passed: true,
+        flagged,
+        checked_at: new Date().toISOString(),
+      });
+
+      return { draft: built.draft, ethicsCheck, modelCalls };
     }
 
     lastViolations = violations
