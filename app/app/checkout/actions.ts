@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   AlreadyPurchasedError,
+  UnsellableSkuError,
   createCheckoutSession,
 } from "@/lib/stripe/checkout";
 import { StripeConfigError } from "@/lib/stripe/client";
@@ -75,6 +76,25 @@ export async function startCheckout(input: {
         ok: false,
         error:
           "You've already paid for this project's kit — it's unlocked. Open it from your projects; nothing new was charged.",
+      };
+    }
+
+    /*
+     * ⚠ CE SKU N'EST PAS EN VENTE. Ni une panne ni un refus de sa part : le
+     * produit ne sait pas encore livrer cette ligne-là, et la phrase le dit
+     * sans promettre de date. « Bientôt » serait un engagement qu'aucun lot
+     * n'a pris.
+     *
+     * Le nom du SKU n'est PAS renvoyé au navigateur. Il ne lui apprendrait
+     * rien — elle n'a pas choisi un identifiant, elle a cliqué sur un prix —
+     * et il nomme la structure interne du catalogue.
+     */
+    if (error instanceof UnsellableSkuError) {
+      console.error(`[startCheckout] SKU non vendable : ${error.sku}`);
+      return {
+        ok: false,
+        error:
+          "That option isn't available to buy yet, and you haven't been charged. Everything else on the page is.",
       };
     }
 

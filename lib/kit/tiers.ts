@@ -161,13 +161,26 @@ export const KIT_TIER_RULES: Record<KitTier, TierRule> = {
   foundation: { maxPages: 4, includeSocialTemplates: false },
 
   /*
-   * ⚠ THE ROSTER N'A PAS DE NOMBRE DE PAGES DANS L'OFFRE. Elle dit « site +
-   * fiche Google du cabinet », sans compte. Quatre est repris de The
-   * Foundation faute de décision, et l'écart est consigné dans
-   * DECISIONS_NEEDED.md plutôt que masqué par un `null` qui, lui, promettrait
-   * toutes les pages demandées au brief.
+   * ── THE ROSTER : SIX ──────────────────────────────────────────────────
+   *
+   * `DECISIONS_NEEDED.md` §2 posait la question — l'offre dit « site + fiche
+   * Google du cabinet », sans compte, et quatre était un repli repris de The
+   * Foundation. La réponse est SIX, tranchée le 14 septembre : un cabinet a
+   * plus à dire qu'une praticienne seule, et le prix (690 $ contre 390 $) le
+   * disait déjà.
+   *
+   * ⚠ LA RAISON DONNÉE ÉTAIT « un site de cabinet porte une page équipe », ET
+   * CETTE PAGE N'EXISTE PAS DANS LE VOCABULAIRE. `PAGES_WANTED` porte huit
+   * clés et aucune ne s'appelle `team`. Six pages sont donc bien livrées, mais
+   * ce sont les six premières de `PAGE_PRIORITY` — pas cinq plus une page
+   * équipe. L'écart est signalé dans OUT_OF_SCOPE.md : ajouter une clé de page
+   * touche `PAGES_WANTED`, le brief, le plafonnement et le rendu, et aucun lot
+   * de cette session ne le porte.
+   *
+   * Pas `null` : une promesse non bornée à 690 $ resterait une promesse non
+   * bornée.
    */
-  roster: { maxPages: 4, includeSocialTemplates: false },
+  roster: { maxPages: 6, includeSocialTemplates: false },
 };
 
 export type KitScope = {

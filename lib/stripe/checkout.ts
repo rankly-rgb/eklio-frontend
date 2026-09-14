@@ -150,6 +150,77 @@ function lineItems(
  * correspondance customer → user n'a pas pu être écrite au moment du checkout.
  */
 /**
+ * Ce SKU n'est pas en vente.
+ *
+ * ⚠ PAS « pas encore disponible ». Trois lignes du catalogue portent un prix
+ * et ne livrent rien : `roster_seat` (un siège acheté ne produit aucun kit
+ * tant que L21 n'a pas écrit ce que l'arrivée d'une clinicienne déclenche),
+ * `fill_solo` et `fill_practice` (le cycle mensuel qu'elles vendent n'existe
+ * pas). `DECISIONS_NEEDED.md` §4 et §7 l'ont écrit au lot 1, et se terminaient
+ * tous les deux par « il ne faut pas les mettre en vente » — une consigne, qui
+ * survit tant que quelqu'un est là pour la rappeler.
+ *
+ * `plans.sellable` est cette consigne devenue une donnée, et cette classe est
+ * ce qui la lit à l'endroit où l'argent bouge.
+ */
+export class UnsellableSkuError extends Error {
+  constructor(public readonly sku: string) {
+    super(`${sku} is not on sale.`);
+    this.name = "UnsellableSkuError";
+  }
+}
+
+/**
+ * Refuse le checkout d'un SKU que le produit ne sait pas livrer.
+ *
+ * ⚠ CETTE GARDE-CI ÉCHOUE FERMÉ, ET C'EST L'INVERSE DE SA VOISINE. Dix lignes
+ * plus bas, `alreadyPaidFor` rend `null` quand la lecture échoue, avec une
+ * raison écrite : un hoquet de base ne doit pas coûter une cliente. Les deux
+ * règles coexistent parce qu'elles ne répondent pas à la même sorte de
+ * question.
+ *
+ *   `alreadyPaidFor`  « CETTE cliente-ci a-t-elle déjà payé CE projet-là ? »
+ *                     La réponse change d'une cliente à l'autre et d'une
+ *                     minute à l'autre. Il FAUT une lecture vivante pour avoir
+ *                     raison, et quand elle manque, on ne sait pas.
+ *
+ *   ici               « cette ligne de catalogue est-elle en vente ? »
+ *                     La réponse est la même pour tout le monde et ne bouge
+ *                     qu'au rythme des lots. Une lecture manquante sur un fait
+ *                     quasi statique n'est pas une incertitude : c'est une
+ *                     absence de réponse, et une absence de réponse n'ouvre
+ *                     pas une caisse.
+ *
+ * Et le coût réel de ce choix est petit : `ensureStripeCustomer`, juste après,
+ * lit `profiles` avec le MÊME client. Une base qui ne rend pas `plans` ne
+ * rendra pas `profiles` non plus, et ce checkout allait échouer de toute façon.
+ * Échouer fermé ici ne perd donc presque aucune vente réelle — il ferme le cas
+ * où la lecture échoue précisément sur la ligne qui disait non.
+ *
+ * ⚠ UNE LIGNE ABSENTE EST UN REFUS AUSSI. Un `tier` qui n'est pas dans `plans`
+ * est un SKU que le catalogue ne connaît pas. Le laisser passer ferait de la
+ * garde une garde sur les noms qu'on a pensé à écrire.
+ */
+async function refuseIfUnsellable(
+  supabase: Client,
+  sku: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("plans")
+    .select("sellable")
+    .eq("tier", sku)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[checkout] sellability read: ${error.message}`);
+    throw new UnsellableSkuError(sku);
+  }
+  if (!data || !data.sellable) {
+    throw new UnsellableSkuError(sku);
+  }
+}
+
+/**
  * A kit this project has already been paid for.
  *
  * ⚠ MEASURED, NOT SUPPOSED. Two Checkout sessions for the same project and
@@ -215,6 +286,22 @@ export async function createCheckoutSession(
   input: CheckoutInput
 ): Promise<string> {
   const { userId, email, tier, projectId, withMonthlyPresence } = input;
+
+  /*
+   * ⚠ PREMIÈRE QUESTION, AVANT TOUTE AUTRE : est-ce seulement en vente ?
+   *
+   * Avant la cliente, avant le projet, avant Stripe. Les autres gardes de
+   * cette fonction demandent si CETTE vente-ci est légitime ; celle-ci demande
+   * si la chose vendue existe. Une réponse « non » ici rend les suivantes sans
+   * objet.
+   *
+   * `kitTierSchema`, dans l'action serveur, refuse déjà les trois SKU
+   * invendables — ils ne sont pas des `KitTier`. Cette garde n'est donc pas la
+   * seule, et c'est voulu : le jour où L20 ou L21 élargit `startCheckout` pour
+   * accepter un SKU plutôt qu'un palier, le refus est DÉJÀ sur le chemin de
+   * l'argent, et il se lève par un UPDATE au lieu d'être réinventé.
+   */
+  await refuseIfUnsellable(supabase, tier);
 
   /*
    * Before Stripe, before the customer: a second charge for a kit she already
