@@ -93,6 +93,14 @@ export type AnalyticsEvent =
    */
   | "usp_options_generated"
   | "usp_gate_rejected"
+  /*
+   * Le profil d'annuaire. `model_calls` y est porté pour la même raison que
+   * sur `usp_options_generated` : c'est la seule journalisation de dépense du
+   * chemin texte, et un profil qui coûte deux appels au lieu d'un est un
+   * profil dont la garde déontologique a refusé le premier jet.
+   */
+  | "directory_profile_generated"
+  | "directory_profile_refused"
   | "usp_selected"
   | "usp_edited"
   | "usp_collision_warned"

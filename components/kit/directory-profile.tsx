@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/site/copy-chip";
 import { MonoLabel } from "@/components/ui/mono-label";
 import type { DirectoryProfileView } from "@/lib/data/directory";
@@ -92,6 +95,78 @@ function StructuredBlock({ fields }: { fields: StructuredFields }) {
   );
 }
 
+/**
+ * ⚠ LE DÉCLENCHEUR, ICI ET PAS AILLEURS.
+ *
+ * La génération s'appelle depuis l'écran du profil : c'est l'endroit où son
+ * absence est VISIBLE, où la cliente est déjà venue pour ce livrable, et le
+ * seul où « écrivez-le » répond à une question qu'elle vient de se poser.
+ *
+ * Les trois autres places envisagées et écartées, pour que le choix se relise :
+ * la révélation (elle n'a pas encore choisi de direction, donc pas de kit à
+ * quoi rattacher un profil) ; le pipeline de génération du kit (il coûterait
+ * un appel modèle de plus à CHAQUE kit, y compris aux paliers qui ne vendent
+ * pas ce livrable) ; la checklist de lancement (l'étape « update_directory »
+ * est une course sur le site d'un tiers, pas un endroit où l'on attend
+ * soixante secondes).
+ *
+ * Une seconde génération réécrit : `save_directory_profile` fait un
+ * `on conflict (brand_kit_id, platform) do update`, donc il n'y a jamais deux
+ * profils pour une même praticienne.
+ */
+function WriteItButton({
+  brandKitId,
+  hasProse,
+}: {
+  brandKitId: string;
+  hasProse: boolean;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+
+  const run = async () => {
+    setError(null);
+    setRunning(true);
+    try {
+      /* L'identifiant est passé en prop, pas dérivé de l'URL courante : une
+         route déplacée casserait un `replace` sans que rien ne le dise. */
+      const response = await fetch(`/api/brand-kits/${brandKitId}/directory`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        setError(body?.error ?? "We could not write it just now. Try again in a moment.");
+        return;
+      }
+      /* La page est un composant serveur : c'est elle qui relit la base. */
+      startTransition(() => router.refresh());
+    } catch {
+      setError("We could not reach the server. Try again in a moment.");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div>
+        <Button onClick={run} disabled={running || pending}>
+          {running || pending
+            ? "Writing…"
+            : hasProse
+              ? "Write it again"
+              : "Write my statement"}
+        </Button>
+      </div>
+      {error === null ? null : (
+        <p className="text-helper leading-prose text-ink-2">{error}</p>
+      )}
+    </div>
+  );
+}
+
 function ProseAbsent({ issue }: { issue: DirectoryProfileView["proseIssue"] }) {
   /*
    * ⚠ DEUX ABSENCES, DEUX PHRASES. « Rien n'a été produit » et « ce qui est
@@ -119,7 +194,13 @@ function ProseAbsent({ issue }: { issue: DirectoryProfileView["proseIssue"] }) {
   );
 }
 
-export function DirectoryProfile({ view }: { view: DirectoryProfileView }) {
+export function DirectoryProfile({
+  brandKitId,
+  view,
+}: {
+  brandKitId: string;
+  view: DirectoryProfileView;
+}) {
   const { structured, prose, proseIssue } = view;
 
   return (
@@ -150,7 +231,10 @@ export function DirectoryProfile({ view }: { view: DirectoryProfileView }) {
         </div>
 
         {prose === null ? (
-          <ProseAbsent issue={proseIssue} />
+          <div className="flex flex-col gap-4">
+            <ProseAbsent issue={proseIssue} />
+            <WriteItButton brandKitId={brandKitId} hasProse={false} />
+          </div>
         ) : (
           <div className="flex flex-col gap-6">
             {/*
@@ -192,7 +276,8 @@ export function DirectoryProfile({ view }: { view: DirectoryProfileView }) {
               chaîne, pour qu'une relecture ultérieure n'ait pas à la
               redécouper.
             */}
-            <div className="flex justify-end border-t border-line pt-4">
+            <div className="flex items-center justify-between gap-4 border-t border-line pt-4">
+              <WriteItButton brandKitId={brandKitId} hasProse />
               <CopyButton text={`${prose.firstParagraph}\n\n${prose.body}`}>
                 Copy the whole statement
               </CopyButton>

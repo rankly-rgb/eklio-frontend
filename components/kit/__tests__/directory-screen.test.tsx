@@ -1,5 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+/*
+ * ⚠ `useRouter` EXIGE UN CONTEXTE DE ROUTEUR, que `renderToStaticMarkup` n'a
+ * pas. On le remplace par le strict minimum : ce fichier vérifie CE QUI EST
+ * RENDU, pas ce que fait un clic. Un faux plus riche laisserait croire qu'il
+ * teste la navigation.
+ */
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => {} }),
+}));
 import { DirectoryProfile } from "@/components/kit/directory-profile";
 import type { DirectoryProfileView } from "@/lib/data/directory";
 
@@ -15,7 +25,12 @@ import type { DirectoryProfileView } from "@/lib/data/directory";
  */
 
 const render = (view: DirectoryProfileView) =>
-  renderToStaticMarkup(<DirectoryProfile view={view} />);
+  renderToStaticMarkup(
+    <DirectoryProfile
+      brandKitId="33333333-3333-3333-3333-333333333333"
+      view={view}
+    />
+  );
 
 const FULL: DirectoryProfileView = {
   structured: {
@@ -114,5 +129,22 @@ describe("les absences se disent, et ne se confondent pas", () => {
     for (const label of ["Licensed in", "Types of therapy", "Client focus", "Insurance"]) {
       expect(html, `« ${label} » est rendu sans valeur`).not.toContain(label);
     }
+  });
+});
+
+describe("⚠ l'écran offre de la faire écrire", () => {
+  it("quand elle n'existe pas, le bouton le propose", () => {
+    const html = render({ ...FULL, prose: null, proseIssue: "not_produced" });
+    expect(html).toMatch(/Write my statement/i);
+  });
+
+  it("quand elle existe, il propose de la réécrire", () => {
+    /*
+     * `save_directory_profile` fait un `on conflict … do update` : une seconde
+     * génération REMPLACE, elle n'empile pas un second profil.
+     */
+    const html = render(FULL);
+    expect(html).toMatch(/Write it again/i);
+    expect(html).not.toMatch(/Write my statement/i);
   });
 });

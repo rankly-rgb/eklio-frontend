@@ -5,8 +5,11 @@ import {
   checkProse,
   type DirectoryProse,
   type StructuredFields,
+  type StructuredInput,
 } from "@/lib/directory/profile";
 import { readCatalog } from "@/lib/catalog/read";
+import { loadBrief, type BriefBundle } from "@/lib/data/brief";
+import type { Catalog } from "@/lib/catalog/types";
 
 /*
  * ── CE QUI ALIMENTE L'ÉCRAN DU PROFIL D'ANNUAIRE ────────────────────────
@@ -57,22 +60,70 @@ function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+/**
+ * Les réponses du brief, résolues en libellés — l'entrée des champs
+ * structurés.
+ *
+ * ⚠ UNE SEULE PLACE, LUE PAR L'ÉCRAN ET PAR LA GÉNÉRATION. L'écran les affiche,
+ * la génération les range dans `directory_profiles.structured` : deux
+ * résolutions d'identifiants produiraient deux profils différents selon le
+ * chemin emprunté, et c'est exactement la divergence que ce dépôt paie déjà
+ * ailleurs.
+ *
+ * ⚠ RÉSOLUTION PAR LIBELLÉ, ET UN IDENTIFIANT INCONNU NE PRODUIT RIEN.
+ * `labelList`, dans `lib/directory/profile.ts`, purge les trous : une
+ * spécialité retirée du catalogue raccourcit la liste au lieu d'y laisser une
+ * chaîne vide — le troisième des quatre défauts permissifs du dépôt, pris à
+ * l'endroit où il se produirait.
+ */
+export async function structuredInputFor(
+  supabase: Client,
+  projectId: string,
+  catalog: Catalog | null,
+  /*
+   * `null` pour une lectrice dont la propriété a DÉJÀ été vérifiée en amont —
+   * l'écran du kit et la route de génération passent tous deux par
+   * `requireKitPage` / `loadBrandKit` avant d'arriver ici. La RLS reste
+   * l'autorité dans les deux cas ; ce paramètre n'est que la bretelle.
+   */
+  userId: string | null = null
+): Promise<{ bundle: BriefBundle | null; structured: StructuredInput }> {
+  const bundle = await loadBrief(supabase, projectId, userId);
+  const brief = bundle?.brief ?? null;
+
+  const labelsOf = (
+    rows: readonly { id: string; label: string }[] | undefined,
+    ids: readonly string[] | null | undefined
+  ) => (ids ?? []).map((id) => rows?.find((row) => row.id === id)?.label);
+
+  return {
+    bundle,
+    structured: {
+      state: brief?.state ?? null,
+      specialties: labelsOf(catalog?.specialties, brief?.specialty_ids),
+      modalities: labelsOf(catalog?.modalityCards, brief?.modality_ids),
+      personas: labelsOf(catalog?.personaCards, brief?.client_persona_ids),
+      /*
+       * Le brief ne demande PAS les assurances acceptées — il n'y a pas de
+       * colonne. Une liste vide fait disparaître la clé plutôt que d'écrire
+       * « Insurance: » suivi de rien, ce que `buildStructuredFields` garantit.
+       */
+      insurances: [],
+    },
+  };
+}
+
 export async function loadDirectoryProfile(
   supabase: Client,
   brandKitId: string,
   projectId: string,
   platform: "psychology_today" | "google_business" = "psychology_today"
 ): Promise<DirectoryProfileView> {
-  const [stored, brief, catalog] = await Promise.all([
+  const [stored, catalog] = await Promise.all([
     supabase.rpc("get_directory_profile", {
       p_brand_kit_id: brandKitId,
       p_platform: platform,
     }),
-    supabase
-      .from("project_briefs")
-      .select("state, specialty_ids, modality_ids, client_persona_ids")
-      .eq("project_id", projectId)
-      .maybeSingle(),
     /*
      * Tolérant, comme partout ailleurs sur cette page : un catalogue illisible
      * rend des champs structurés vides, pas un écran en erreur. Les libellés
@@ -82,33 +133,9 @@ export async function loadDirectoryProfile(
   ]);
 
   if (stored.error) console.error("[directory] get_directory_profile", stored.error.message);
-  if (brief.error) console.error("[directory] project_briefs", brief.error.message);
 
-  /*
-   * ⚠ RÉSOLUTION PAR LIBELLÉ, ET UN IDENTIFIANT INCONNU NE PRODUIT RIEN.
-   * `labelList`, dans `lib/directory/profile.ts`, purge les trous : une
-   * spécialité retirée du catalogue raccourcit la liste au lieu d'y laisser
-   * une chaîne vide. C'est le troisième des quatre défauts permissifs du
-   * dépôt — `array_to_string` écarte les NULL en silence — pris à l'endroit
-   * où il se produirait.
-   */
-  const labelsOf = (
-    rows: readonly { id: string; label: string }[] | undefined,
-    ids: readonly string[] | null | undefined
-  ) => (ids ?? []).map((id) => rows?.find((row) => row.id === id)?.label);
-
-  const structured = buildStructuredFields({
-    state: brief.data?.state ?? null,
-    specialties: labelsOf(catalog?.specialties, brief.data?.specialty_ids),
-    modalities: labelsOf(catalog?.modalityCards, brief.data?.modality_ids),
-    personas: labelsOf(catalog?.personaCards, brief.data?.client_persona_ids),
-    /*
-     * Le brief ne demande PAS les assurances acceptées — il n'y a pas de
-     * colonne. Une liste vide fait disparaître la clé plutôt que d'écrire
-     * « Insurance: » suivi de rien, ce que `buildStructuredFields` garantit.
-     */
-    insurances: [],
-  });
+  const { structured: input } = await structuredInputFor(supabase, projectId, catalog);
+  const structured = buildStructuredFields(input);
 
   const row = (stored.data ?? null) as StoredProfile | null;
   if (!row) return { structured, prose: null, proseIssue: "not_produced" };

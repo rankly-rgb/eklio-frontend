@@ -36,7 +36,7 @@ export default async function KitDirectoryPage({
   return (
     <section className="flex flex-col gap-5">
       <SectionHeader title="Your directory profile" id="kit-directory-heading" />
-      <DirectoryProfile view={view} />
+      <DirectoryProfile brandKitId={model.brandKitId} view={view} />
     </section>
   );
 }
