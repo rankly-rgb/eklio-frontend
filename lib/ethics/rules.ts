@@ -326,8 +326,21 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
   // ── Urgence et rareté ────────────────────────────────────────────────────
   {
     // ACA C.3.a — la pression commerciale est inappropriée pour un soin clinique.
+    /*
+     * ⚠ `limited spots` A ÉTÉ AJOUTÉ LE 14 SEPTEMBRE, ET IL MANQUAIT.
+     *
+     * `ethics_rules.scarcity.example_forbidden` vaut, en base, « Limited
+     * spots available. » — c'est l'exemple que le produit MONTRE à la
+     * praticienne pour lui dire ce qui est interdit. Ce motif ne l'attrapait
+     * pas : il exigeait « only N spots left » ou « limited-TIME offer ».
+     *
+     * Trouvé en portant ces motifs en SQL et en exigeant du scanner qu'il
+     * bloque les six exemples de `ethics_rules`. Aucun test ne posait cette
+     * question, des deux côtés, et le produit affichait donc une règle qu'il
+     * ne faisait pas respecter.
+     */
     pattern:
-      /\bonly\s+\d+\s+(?:spots?|slots?|places?|openings?)\s+(?:left|remaining|available)\b|\blimited[-\s]time\s+offer\b|\bact\s+now\b|\bdon'?t\s+wait\b|\blast\s+chance\b|\bbook\s+(?:now\s+)?before\s+(?:prices|rates|spots)\b/i,
+      /\bonly\s+\d+\s+(?:spots?|slots?|places?|openings?)\s+(?:left|remaining|available)\b|\blimited\s+(?:spots?|slots?|places?|openings?|availability|space)\b|\b(?:spots?|slots?|places?|openings?)\s+(?:are\s+)?(?:limited|filling\s+up)\b|\blimited[-\s]time\s+offer\b|\bact\s+now\b|\bdon'?t\s+wait\b|\blast\s+chance\b|\bbook\s+(?:now\s+)?before\s+(?:prices|rates|spots)\b/i,
     ruleId: "scarcity",
     reason:
       "Emploie une tactique d'urgence ou de rareté, inappropriée pour un service clinique.",
