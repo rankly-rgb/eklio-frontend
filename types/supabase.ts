@@ -1608,39 +1608,87 @@ export type Database = {
       }
       plans: {
         Row: {
+          billing_period: string
           created_at: string
-          directions_limit: number
+          directions_limit: number | null
           image_budget_cents: number
+          included_seats: number | null
+          kind: string
           label: string
+          per_seat: boolean
           price_cents: number
-          regenerations_limit: number
+          regenerations_limit: number | null
           sort_order: number
           tier: string
           updated_at: string
         }
         Insert: {
+          billing_period?: string
           created_at?: string
-          directions_limit: number
+          directions_limit?: number | null
           image_budget_cents?: number
+          included_seats?: number | null
+          kind?: string
           label: string
+          per_seat?: boolean
           price_cents: number
-          regenerations_limit: number
+          regenerations_limit?: number | null
           sort_order: number
           tier: string
           updated_at?: string
         }
         Update: {
+          billing_period?: string
           created_at?: string
-          directions_limit?: number
+          directions_limit?: number | null
           image_budget_cents?: number
+          included_seats?: number | null
+          kind?: string
           label?: string
+          per_seat?: boolean
           price_cents?: number
-          regenerations_limit?: number
+          regenerations_limit?: number | null
           sort_order?: number
           tier?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      platform_refusals: {
+        Row: {
+          id: number
+          occurred_at: string
+          platform_id: string
+          project_id: string | null
+        }
+        Insert: {
+          id?: never
+          occurred_at?: string
+          platform_id: string
+          project_id?: string | null
+        }
+        Update: {
+          id?: never
+          occurred_at?: string
+          platform_id?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_refusals_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "site_platforms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_refusals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       primary_actions: {
         Row: {
@@ -1740,6 +1788,8 @@ export type Database = {
           selected_usp_id: string | null
           session_style_ids: string[] | null
           site_goal_ids: string[]
+          site_platform_id: string | null
+          site_url: string | null
           specialty_ids: string[]
           state: string | null
           tone_card_id: string | null
@@ -1775,6 +1825,8 @@ export type Database = {
           selected_usp_id?: string | null
           session_style_ids?: string[] | null
           site_goal_ids?: string[]
+          site_platform_id?: string | null
+          site_url?: string | null
           specialty_ids?: string[]
           state?: string | null
           tone_card_id?: string | null
@@ -1810,6 +1862,8 @@ export type Database = {
           selected_usp_id?: string | null
           session_style_ids?: string[] | null
           site_goal_ids?: string[]
+          site_platform_id?: string | null
+          site_url?: string | null
           specialty_ids?: string[]
           state?: string | null
           tone_card_id?: string | null
@@ -1854,6 +1908,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: true
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_briefs_site_platform_id_fkey"
+            columns: ["site_platform_id"]
+            isOneToOne: false
+            referencedRelation: "site_platforms"
             referencedColumns: ["id"]
           },
           {
@@ -1986,6 +2047,7 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          kind: string
           paid_at: string | null
           project_id: string | null
           status: string
@@ -2000,6 +2062,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          kind?: string
           paid_at?: string | null
           project_id?: string | null
           status?: string
@@ -2014,6 +2077,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          kind?: string
           paid_at?: string | null
           project_id?: string | null
           status?: string
@@ -2168,6 +2232,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      site_platforms: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          notice: string | null
+          sort_order: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          label: string
+          notice?: string | null
+          sort_order: number
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          notice?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       site_specs: {
         Row: {
@@ -2846,6 +2940,7 @@ export type Database = {
       }
       orphaned_purchases: { Args: never; Returns: Json }
       owns_project: { Args: { p_project_id: string }; Returns: boolean }
+      platform_refusal_counts: { Args: { p_since?: string }; Returns: Json }
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_usp_options_valid: { Args: { p: Json }; Returns: boolean }
@@ -2881,6 +2976,10 @@ export type Database = {
         Returns: Json
       }
       record_funnel_events: { Args: { p_events: Json }; Returns: number }
+      record_platform_refusal: {
+        Args: { p_platform_id: string; p_project_id?: string }
+        Returns: boolean
+      }
       record_purchase_status_event: {
         Args: {
           p_amount_cents?: number
