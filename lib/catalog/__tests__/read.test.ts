@@ -37,6 +37,7 @@ const TABLES = [
   ["modality_cards", "modalityCards"],
   ["modality_prominence_options", "modalityProminenceOptions"],
   ["license_type_states", "licenseTypeStates"],
+  ["degrees", "degrees"],
 ] as const;
 
 /*

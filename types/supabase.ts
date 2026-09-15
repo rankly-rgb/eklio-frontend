@@ -903,6 +903,30 @@ export type Database = {
         }
         Relationships: []
       }
+      degrees: {
+        Row: {
+          active: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          full_name?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       direction_asset_daily_spend: {
         Row: {
           actual_cents: number
@@ -1886,6 +1910,7 @@ export type Database = {
           client_persona_ids: string[]
           completed_steps: number[]
           data: Json
+          degree_id: string | null
           gain_card_ids: string[]
           license_type_id: string | null
           modality_ids: string[] | null
@@ -1923,6 +1948,7 @@ export type Database = {
           client_persona_ids?: string[]
           completed_steps?: number[]
           data?: Json
+          degree_id?: string | null
           gain_card_ids?: string[]
           license_type_id?: string | null
           modality_ids?: string[] | null
@@ -1960,6 +1986,7 @@ export type Database = {
           client_persona_ids?: string[]
           completed_steps?: number[]
           data?: Json
+          degree_id?: string | null
           gain_card_ids?: string[]
           license_type_id?: string | null
           modality_ids?: string[] | null
@@ -1997,6 +2024,13 @@ export type Database = {
             columns: ["builder_target_id"]
             isOneToOne: false
             referencedRelation: "builder_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_briefs_degree_id_fkey"
+            columns: ["degree_id"]
+            isOneToOne: false
+            referencedRelation: "degrees"
             referencedColumns: ["id"]
           },
           {

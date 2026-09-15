@@ -88,6 +88,14 @@ export const FIXTURE_CATALOG: Catalog = {
     },
   ] as Catalog["licenseTypeStates"],
 
+  degrees: rows(7, (i) => ({
+    id: `degree_${i}`,
+    label: ["MA", "MS", "MSW", "PsyD", "PhD", "EdD", "MD"][i],
+    full_name: "Doctor of Philosophy",
+    sort_order: i + 1,
+    active: true,
+  })) as Catalog["degrees"],
+
   specialties: rows(12, (i) => ({
     id: `specialty_${i}`,
     label: i === 0 ? "Life transitions" : `Specialty ${i + 1}`,
@@ -232,6 +240,7 @@ export const FIXTURE_CATALOG: Catalog = {
 export const FIXTURE_DRAFT: StepDraft = {
   practice_name: null,
   license_type_id: null,
+  degree_id: null,
   specialty_ids: [],
   city: null,
   state: null,

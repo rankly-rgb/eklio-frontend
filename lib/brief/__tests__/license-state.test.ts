@@ -163,6 +163,16 @@ describe("stepIssue — l'étape 1 refuse le couple impossible", () => {
 const LICENSES = [
   { id: "lpc", label: "LPC", description: "Licensed Professional Counselor" },
   { id: "lmhc", label: "LMHC", description: "Licensed Mental Health Counselor" },
+  {
+    id: "licensed_psychologist",
+    label: "LP",
+    description: "Licensed Psychologist",
+  },
+];
+
+const DEGREES = [
+  { id: "psyd", label: "PsyD", full_name: "Doctor of Psychology" },
+  { id: "msw", label: "MSW", full_name: "Master of Social Work" },
 ];
 
 describe("checkUnbackedClaims — le modèle ne peut rien ajouter", () => {
@@ -244,5 +254,89 @@ describe("checkUnbackedClaims — le modèle ne peut rien ajouter", () => {
 
   it("un texte vide ne trouve rien", () => {
     expect(checkUnbackedClaims("", asLpc)).toEqual([]);
+  });
+});
+
+/* ── COUCHE 4 : un diplôme n'est pas un titre d'exercice ─────────────────── */
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * LA SONDE DEMANDÉE : UN BRIEF QUI PORTE PsyD NE PERMET PAS DE DIRE
+ * « PSYCHOLOGIST »
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * `license_types` portait `psyd` et `phd` À CÔTÉ des licences, et
+ * `FULL_NAMES` appariait « Doctor of Psychology » ET « Licensed Psychologist »
+ * au même sigle « PsyD ». Un brief qui disait PsyD autorisait donc le texte à
+ * se déclarer psychologue — sur la foi d'un DIPLÔME, que n'importe quelle
+ * université délivre et qu'aucun board n'accorde.
+ *
+ * « Psychologist » est un titre protégé dans les cinquante États. Il ne
+ * s'obtient que par la licence `licensed_psychologist`.
+ */
+describe("un diplôme n'autorise pas le titre d'exercice qui lui ressemble", () => {
+  /* Une LPC qui a un doctorat en psychologie : le cas exact du rapport. */
+  const lpcWithPsyD = allowedClaimsFrom("lpc", LICENSES, "psyd", DEGREES);
+
+  it("⚠ PsyD au brief ne laisse PAS le texte dire « psychologist »", () => {
+    const found = checkUnbackedClaims(
+      "I'm a psychologist in Portland, and I work with adults in transition.",
+      lpcWithPsyD
+    );
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.every((v) => v.severity === "block")).toBe(true);
+    expect(found.map((v) => v.reason).join(" ")).toMatch(/titre d'exercice protégé/);
+  });
+
+  it("ni « Licensed Psychologist », ni « clinical psychologist »", () => {
+    for (const claim of [
+      "I am a Licensed Psychologist.",
+      "As a clinical psychologist, I see adults.",
+      "Our psychologists work with couples.",
+    ]) {
+      expect(checkUnbackedClaims(claim, lpcWithPsyD).length, claim).toBeGreaterThan(0);
+    }
+  });
+
+  /*
+   * ⚠ ET LE DIPLÔME, LUI, PASSE. Sans cette moitié, on aurait pu tout refuser
+   * et appeler ça une garde : la sonde doit prouver que le PsyD saisi est
+   * écrivable, sigle ET intitulé.
+   */
+  it("mais PsyD et « Doctor of Psychology » sont écrivables", () => {
+    for (const ok of [
+      "I'm an LPC with a PsyD.",
+      "I hold a Doctor of Psychology.",
+      "Nora Whitfield, PsyD, LPC.",
+    ]) {
+      expect(checkUnbackedClaims(ok, lpcWithPsyD), ok).toEqual([]);
+    }
+  });
+
+  /*
+   * ⚠ ET LA LICENCE, QUAND C'EST ELLE, OUVRE LE TITRE. Une praticienne qui a
+   * choisi `licensed_psychologist` a le droit de se dire psychologue : une
+   * garde qui le refuserait encore serait un mur, pas une règle.
+   */
+  it("la LICENCE de psychologue, elle, autorise le mot", () => {
+    const psychologist = allowedClaimsFrom(
+      "licensed_psychologist",
+      LICENSES,
+      "psyd",
+      DEGREES
+    );
+    expect(
+      checkUnbackedClaims("I'm a Licensed Psychologist in Portland.", psychologist)
+    ).toEqual([]);
+    expect(
+      checkUnbackedClaims("I'm a psychologist, and I see adults.", psychologist)
+    ).toEqual([]);
+  });
+
+  /* Un diplôme que le brief ne porte pas reste refusé, comme avant. */
+  it("un diplôme NON saisi reste refusé", () => {
+    const lpcOnly = allowedClaimsFrom("lpc", LICENSES);
+    expect(checkUnbackedClaims("I hold a PsyD.", lpcOnly).length).toBeGreaterThan(0);
+    expect(checkUnbackedClaims("I have an MSW.", lpcWithPsyD).length).toBeGreaterThan(0);
   });
 });

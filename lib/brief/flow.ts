@@ -135,6 +135,14 @@ export const POSITIONING_MIN_CHARS = 40;
 export type StepDraft = {
   practice_name: string | null;
   license_type_id: string | null;
+  /*
+   * Le DIPLÔME, facultatif, et distinct de la licence. Il ne conditionne
+   * aucune étape : `stepIssue` ne le regarde jamais. Il existe pour que la
+   * prose puisse l'écrire — et pour que la garde déontologique puisse
+   * l'autoriser COMME DIPLÔME sans autoriser le titre d'exercice qui lui
+   * ressemble.
+   */
+  degree_id: string | null;
   specialty_ids: string[];
   city: string | null;
   state: string | null;

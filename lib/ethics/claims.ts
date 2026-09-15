@@ -38,10 +38,23 @@ import type { EthicsViolation } from "@/lib/ethics/rules";
 
 /** Ce que le brief autorise à écrire. Tout le reste est inventé. */
 export type AllowedClaims = {
-  /** Sigles tels qu'ils figurent au catalogue : « LPC », « PsyD »… */
+  /** Sigles de LICENCE tels qu'au catalogue : « LPC », « LP »… */
   licenseLabels: string[];
-  /** Intitulés complets : « Licensed Professional Counselor »… */
+  /** Intitulés complets de LICENCE : « Licensed Professional Counselor »… */
   licenseNames: string[];
+  /**
+   * Sigles de DIPLÔME : « PsyD », « MSW »…
+   *
+   * ⚠ SÉPARÉS DES LICENCES, ET C'EST TOUT LE SUJET. Un diplôme autorise à
+   * ÉCRIRE le diplôme, jamais le titre d'exercice qui lui ressemble. Un brief
+   * qui porte PsyD laisse passer « PsyD » et « Doctor of Psychology » ; il ne
+   * laisse PAS passer « psychologist », qui demande la licence
+   * `licensed_psychologist`. Tant que les deux vivaient dans la même colonne
+   * du catalogue, cette distinction ne pouvait même pas s'exprimer.
+   */
+  degreeLabels: string[];
+  /** Intitulés complets de diplôme : « Doctor of Psychology »… */
+  degreeNames: string[];
 };
 
 /**
@@ -87,9 +100,23 @@ const FULL_NAMES: readonly { name: RegExp; label: string }[] = [
   { name: /\bLicensed\s+Clinical\s+Social\s+Workers?\b/i, label: "LCSW" },
   { name: /\bLicensed\s+Master\s+Social\s+Workers?\b/i, label: "LMSW" },
   { name: /\bLicensed\s+Marriage\s+and\s+Family\s+Therapists?\b/i, label: "LMFT" },
-  { name: /\bDoctor\s+of\s+Psychology\b/i, label: "PsyD" },
-  { name: /\bLicensed\s+Psychologists?\b/i, label: "PsyD" },
 ];
+
+/*
+ * ⚠ « PSYCHOLOGIST » EST UN TITRE PROTÉGÉ DANS LES CINQUANTE ÉTATS, et il ne
+ * s'obtient PAS avec un doctorat. C'est la licence `licensed_psychologist` qui
+ * l'accorde, et elle seule.
+ *
+ * Ces deux lignes vivaient dans `FULL_NAMES`, toutes les deux appariées au
+ * sigle « PsyD » : « Doctor of Psychology » ET « Licensed Psychologist »
+ * étaient donc autorisés par le même choix de catalogue. Un brief qui disait
+ * PsyD laissait le texte se déclarer psychologue — exactement ce qu'un board
+ * poursuit, et exactement la confusion que ce lot défait.
+ *
+ * `psychologist` au singulier comme au pluriel, seul ou précédé de
+ * « licensed » / « clinical » : c'est le MOT qui revendique, pas la formule.
+ */
+const PSYCHOLOGIST = /\b(?:licensed\s+|clinical\s+)?psychologists?\b/i;
 
 /* « certified in X », « board certified », « certification in X ». */
 const CERTIFICATION =
@@ -137,14 +164,23 @@ export function checkUnbackedClaims(
   const found: EthicsViolation[] = [];
   if (!text) return found;
 
-  const okLabels = new Set(allowed.licenseLabels.map((l) => l.toUpperCase()));
+  /*
+   * ⚠ POUR UN SIGLE, LICENCE ET DIPLÔME SE VALENT — « PsyD » écrit par une
+   * praticienne qui a saisi PsyD est exact, quelle que soit sa licence. C'est
+   * l'INTITULÉ et le MOT « psychologist » qui distinguent, plus bas.
+   */
+  const okLabels = new Set(
+    [...allowed.licenseLabels, ...allowed.degreeLabels].map((l) => l.toUpperCase())
+  );
   /*
    * Les intitulés complets autorisés, comparés en minuscules. Le passage 2 s'en
    * sert pour laisser passer l'intitulé du brief même quand `FULL_NAMES`
    * l'apparie à un sigle voisin — « Licensed Professional Counselor » pour une
    * LPC est le titre saisi, pas une invention.
    */
-  const okNames = allowed.licenseNames.map((n) => n.toLowerCase());
+  const okNames = [...allowed.licenseNames, ...allowed.degreeNames].map((n) =>
+    n.toLowerCase()
+  );
 
   /* 1. Les sigles. */
   for (const acronym of KNOWN_CREDENTIALS) {
@@ -183,7 +219,29 @@ export function checkUnbackedClaims(
     }
   }
 
-  /* 3. Les certifications — le brief n'en porte aucune, donc aucune n'est due. */
+  /*
+   * 3. ⚠ LE TITRE « PSYCHOLOGIST », QUI NE S'OBTIENT QUE PAR LA LICENCE.
+   *
+   * `licenseNames` est la seule liste consultée ici — PAS `degreeNames`. Un
+   * brief qui porte PsyD a le droit d'écrire « PsyD » et « Doctor of
+   * Psychology » (passages 1 et 2 ci-dessus) et n'a PAS le droit de se dire
+   * psychologue. C'est le cas précis que ce lot existe pour refuser.
+   */
+  const psychologist = PSYCHOLOGIST.exec(text);
+  if (
+    psychologist &&
+    !allowed.licenseNames.some((n) => /psychologist/i.test(n))
+  ) {
+    found.push(
+      violation(
+        "« psychologist » est un titre d'exercice protégé dans les cinquante États. " +
+          "Un doctorat ne l'accorde pas : il faut la licence « Licensed Psychologist ».",
+        psychologist[0]
+      )
+    );
+  }
+
+  /* 4. Les certifications — le brief n'en porte aucune, donc aucune n'est due. */
   const cert = CERTIFICATION.exec(text);
   if (cert) {
     found.push(
@@ -219,12 +277,19 @@ export function checkUnbackedClaims(
  */
 export function allowedClaimsFrom(
   licenseTypeId: string | null | undefined,
-  licenseTypes: readonly { id: string; label: string; description: string }[]
+  licenseTypes: readonly { id: string; label: string; description: string }[],
+  degreeId: string | null | undefined = null,
+  degrees: readonly { id: string; label: string; full_name: string }[] = []
 ): AllowedClaims {
-  const entry = licenseTypeId
+  const license = licenseTypeId
     ? licenseTypes.find((row) => row.id === licenseTypeId)
     : undefined;
+  const degree = degreeId ? degrees.find((row) => row.id === degreeId) : undefined;
 
-  if (!entry) return { licenseLabels: [], licenseNames: [] };
-  return { licenseLabels: [entry.label], licenseNames: [entry.description] };
+  return {
+    licenseLabels: license ? [license.label] : [],
+    licenseNames: license ? [license.description] : [],
+    degreeLabels: degree ? [degree.label] : [],
+    degreeNames: degree ? [degree.full_name] : [],
+  };
 }

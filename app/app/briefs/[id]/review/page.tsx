@@ -41,6 +41,7 @@ export default async function ReviewPage({
   const draft: StepDraft = {
     practice_name: bundle.brief.practice_name,
     license_type_id: bundle.brief.license_type_id,
+    degree_id: bundle.brief.degree_id,
     specialty_ids: bundle.brief.specialty_ids,
     city: bundle.brief.city,
     state: bundle.brief.state,

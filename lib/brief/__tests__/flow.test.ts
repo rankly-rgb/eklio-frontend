@@ -18,6 +18,7 @@ function draft(overrides: Partial<StepDraft> = {}): StepDraft {
   return {
     practice_name: null,
     license_type_id: null,
+    degree_id: null,
     specialty_ids: [],
     city: null,
     state: null,

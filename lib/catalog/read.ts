@@ -76,6 +76,7 @@ const REQUIRED: readonly (keyof Catalog)[] = [
    * exactement le défaut qu'elle répare, donc elle est REQUISE.
    */
   "licenseTypeStates",
+  "degrees",
 ];
 
 /** Les tables vides, s'il y en a. Un catalogue sain rend une liste vide. */
@@ -150,6 +151,7 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     modalityCards,
     modalityProminenceOptions,
     licenseTypeStates,
+    degrees,
   ] = await Promise.all([
     all(supabase.from("license_types").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("specialties").select("*").eq("active", true).order("sort_order")),
@@ -175,6 +177,7 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
      * ligne est présente ou absente.
      */
     all(supabase.from("license_type_states").select("*").order("state_code")),
+    all(supabase.from("degrees").select("*").eq("active", true).order("sort_order")),
   ]);
 
   const responses = {
@@ -194,6 +197,7 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     modalityCards,
     modalityProminenceOptions,
     licenseTypeStates,
+    degrees,
   };
 
   for (const [name, response] of Object.entries(responses)) {
@@ -229,5 +233,6 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     modalityCards: modalityCards.data ?? [],
     modalityProminenceOptions: modalityProminenceOptions.data ?? [],
     licenseTypeStates: licenseTypeStates.data ?? [],
+    degrees: degrees.data ?? [],
   };
 }

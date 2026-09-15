@@ -139,6 +139,7 @@ export const briefPatchSchema = z
   .object({
     practice_name: z.string().max(120).nullable(),
     license_type_id: z.string().nullable(),
+    degree_id: z.string().nullable(),
     specialty_ids: z.array(z.string()),
     city: z.string().max(80).nullable(),
     state: stateCode.nullable(),
@@ -181,6 +182,7 @@ export type BriefPatch = z.infer<typeof briefPatchSchema>;
 /** Les ids que chaque champ doit référencer, et où les trouver dans le catalogue. */
 const ID_SOURCES = {
   license_type_id: (c: Catalog) => c.licenseTypes,
+  degree_id: (c: Catalog) => c.degrees,
   specialty_ids: (c: Catalog) => c.specialties,
   problem_card_ids: (c: Catalog) => c.problemCards,
   gain_card_ids: (c: Catalog) => c.gainCards,
