@@ -7,6 +7,7 @@ import {
 import { stepIssue, type StepDraft } from "@/lib/brief/flow";
 import { checkUnbackedClaims, allowedClaimsFrom } from "@/lib/ethics/claims";
 import type { LicenseTypeState } from "@/lib/catalog/types";
+import { FIXTURE_DRAFT } from "@/lib/brief/fixtures/catalog";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -38,35 +39,30 @@ const MATRIX: LicenseTypeState[] = [
   { license_type_id: "lcsw", state_code: "NY", verified_at: null, verified_by: null },
 ];
 
+/*
+ * ⚠ BÂTI SUR `FIXTURE_DRAFT`, PAS RECOPIÉ. Un brouillon réécrit ici fige la
+ * forme du jour — et la forme bouge : la branche voisine ajoute
+ * `site_platform_id` et `site_url` à l'étape 1. Une copie les ignorerait, et
+ * ce serait « une copie à côté de la source », dans mon propre test, la
+ * semaine où on répare trois défauts de cette famille.
+ *
+ * `FORWARD` porte les champs que CETTE branche n'a pas encore et que l'étape 1
+ * exigera après fusion. Sans eux, ces tests passeraient ici et échoueraient
+ * là-bas : la garde plateforme répondrait AVANT la garde titre/État, et on
+ * mesurerait la mauvaise. Le `as` est ce qui les laisse passer tant que
+ * `StepDraft` ne les déclare pas — il disparaît à la fusion.
+ */
+const FORWARD = { site_platform_id: "squarespace", site_url: null };
+
 function draft(overrides: Partial<StepDraft> = {}): StepDraft {
   return {
+    ...FIXTURE_DRAFT,
+    ...FORWARD,
     practice_name: "Mike Consulting",
-    license_type_id: null,
     specialty_ids: ["burnout"],
     city: "Portland",
-    state: null,
-    positioning: null,
-    problem_card_ids: [],
-    gain_card_ids: [],
-    client_persona_ids: [],
-    session_style_ids: [],
-    not_a_fit_ids: [],
-    not_a_fit_text: null,
-    modality_ids: [],
-    modality_prominence: null,
-    referral_quote: null,
-    prior_career: null,
-    prior_career_public: false,
-    tone_card_id: null,
-    palette_family_ids: [],
-    type_pairing_id: null,
-    primary_action_id: null,
-    site_goal_ids: [],
-    usp_statement: null,
-    selected_usp_id: null,
-    data: {},
     ...overrides,
-  };
+  } as StepDraft;
 }
 
 /* ── COUCHE 1 : la règle ─────────────────────────────────────────────────── */
