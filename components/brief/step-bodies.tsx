@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Catalog } from "@/lib/catalog/types";
+import { normalizeState, titlesIssuedIn } from "@/lib/brief/license-state";
 import type { PreviewModel } from "@/lib/brand/shapes";
 import type { StepDraft } from "@/lib/brief/flow";
 import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
@@ -83,6 +84,42 @@ const PRACTICE_STAGES = [
 export function PracticeStep({ draft, catalog, update }: StepBodyProps) {
   const stage = draft.data.stage ?? null;
 
+  const stateCode = normalizeState(draft.state);
+  const issuedHere = titlesIssuedIn(draft.state, catalog.licenseTypeStates);
+  const licenseOptions = issuedHere
+    ? catalog.licenseTypes.filter((entry) => issuedHere.has(entry.id))
+    : catalog.licenseTypes;
+
+  /*
+   * ⚠ CHANGER D'ÉTAT PEUT INVALIDER UN TITRE DÉJÀ CHOISI, et le laisser en
+   * place serait pire que de ne jamais l'avoir proposé : la puce disparaîtrait
+   * de l'écran sans que le brief cesse de la porter, et c'est l'état que
+   * `ChipGroup` refuse déjà par ailleurs (« une option cochée reste toujours
+   * visible »). On le retire, à l'écrit comme à l'écran.
+   *
+   * L'écriture passe par `update`, donc par l'autosave : la base voit partir
+   * `license_type_id: null` AVANT le nouvel État. C'est l'ordre qui permet à
+   * `project_briefs_license_state_gate` de laisser passer les deux — un brief
+   * incomplet n'est pas un brief faux.
+   */
+  const invalidated =
+    draft.license_type_id !== null &&
+    issuedHere !== null &&
+    !issuedHere.has(draft.license_type_id);
+
+  function onStateChange(raw: string) {
+    const next = raw.toUpperCase().slice(0, 2);
+    const stillIssued = titlesIssuedIn(next, catalog.licenseTypeStates);
+    const keeps =
+      draft.license_type_id === null ||
+      stillIssued === null ||
+      stillIssued.has(draft.license_type_id);
+
+    update(
+      keeps ? { state: next } : { state: next, license_type_id: null }
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <TextField
@@ -125,12 +162,46 @@ export function PracticeStep({ draft, catalog, update }: StepBodyProps) {
         maxLength={80}
       />
 
+      {/*
+        ⚠ LES PUCES SONT FILTRÉES PAR L'ÉTAT, et c'est la réparation du défaut
+        du 15 septembre : un profil parti en production annonçait « Licensed
+        Mental Health Counselor (LMHC) in Portland, Oregon ». L'Oregon ne
+        délivre pas de LMHC. Le modèle n'avait rien inventé — le brief portait
+        le couple, parce que ce groupe proposait les dix titres quel que soit
+        l'État tapé deux champs plus bas.
+
+        On RETIRE le titre impossible plutôt que de le barrer après coup : un
+        choix qu'on ne peut pas faire ne se propose pas. Et tant qu'aucun État
+        n'est renseigné, `titlesIssuedIn` rend `null` et on montre tout — la
+        question n'est pas encore posée.
+      */}
       <div className="flex flex-col gap-3">
         <span className="text-ui font-medium text-ink">License type</span>
+        {issuedHere ? (
+          <p className="text-helper leading-prose text-ink-2">
+            {`The titles ${stateCode} issues. Change your state and this list changes with it.`}
+          </p>
+        ) : null}
+        {/*
+          ⚠ LE BRIEF DÉJÀ ÉCRIT AVEC UN COUPLE IMPOSSIBLE. `onStateChange`
+          rattrape la frappe, pas l'historique : un brief enregistré avant
+          cette réparation — celui du rapport en porte un — rouvre avec un
+          titre que sa juridiction ne délivre pas et que la liste filtrée ne
+          montre plus. Sans cette phrase, sa puce aurait simplement disparu et
+          « Continue » aurait refusé sans dire pourquoi.
+        */}
+        {invalidated ? (
+          <p className="text-helper leading-prose text-ink">
+            {`Your brief says ${
+              catalog.licenseTypes.find((e) => e.id === draft.license_type_id)?.label ??
+              draft.license_type_id
+            }, which ${stateCode} does not issue. Pick the title you hold there.`}
+          </p>
+        ) : null}
         <ChipGroup
           legend="License type"
           mode="single"
-          options={catalog.licenseTypes.map((entry) => ({
+          options={licenseOptions.map((entry) => ({
             id: entry.id,
             label: entry.label,
           }))}
@@ -168,9 +239,7 @@ export function PracticeStep({ draft, catalog, update }: StepBodyProps) {
           id="practice-state"
           label="State"
           value={draft.state ?? ""}
-          onChange={(event) =>
-            update({ state: event.target.value.toUpperCase().slice(0, 2) })
-          }
+          onChange={(event) => onStateChange(event.target.value)}
           placeholder="OR"
           maxLength={2}
         />

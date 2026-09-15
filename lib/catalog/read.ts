@@ -70,6 +70,12 @@ const REQUIRED: readonly (keyof Catalog)[] = [
   "notAFitCards",
   "modalityCards",
   "modalityProminenceOptions",
+  /*
+   * La matrice titre/État. Vide = l'écran 1 ne peut plus filtrer ses puces, et
+   * proposerait de nouveau les dix titres dans les cinquante États — c'est
+   * exactement le défaut qu'elle répare, donc elle est REQUISE.
+   */
+  "licenseTypeStates",
 ];
 
 /** Les tables vides, s'il y en a. Un catalogue sain rend une liste vide. */
@@ -143,6 +149,7 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     notAFitCards,
     modalityCards,
     modalityProminenceOptions,
+    licenseTypeStates,
   ] = await Promise.all([
     all(supabase.from("license_types").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("specialties").select("*").eq("active", true).order("sort_order")),
@@ -161,6 +168,13 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     all(
       supabase.from("modality_prominence_options").select("*").eq("active", true).order("sort_order")
     ),
+    /*
+     * ⚠ PAS DE `.eq("active", true)` ICI, et ce n'est pas un oubli :
+     * `license_type_states` ne porte pas de colonne `active`. Une juridiction
+     * ne « retire » pas un titre en douceur — elle le délivre ou non, et la
+     * ligne est présente ou absente.
+     */
+    all(supabase.from("license_type_states").select("*").order("state_code")),
   ]);
 
   const responses = {
@@ -179,6 +193,7 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     notAFitCards,
     modalityCards,
     modalityProminenceOptions,
+    licenseTypeStates,
   };
 
   for (const [name, response] of Object.entries(responses)) {
@@ -213,5 +228,6 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     notAFitCards: notAFitCards.data ?? [],
     modalityCards: modalityCards.data ?? [],
     modalityProminenceOptions: modalityProminenceOptions.data ?? [],
+    licenseTypeStates: licenseTypeStates.data ?? [],
   };
 }

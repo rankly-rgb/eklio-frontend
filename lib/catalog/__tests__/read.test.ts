@@ -36,6 +36,7 @@ const TABLES = [
   ["not_a_fit_cards", "notAFitCards"],
   ["modality_cards", "modalityCards"],
   ["modality_prominence_options", "modalityProminenceOptions"],
+  ["license_type_states", "licenseTypeStates"],
 ] as const;
 
 /*

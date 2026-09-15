@@ -2,6 +2,8 @@ import type { BriefData } from "@/lib/data/brief";
 import type { BriefRow } from "@/lib/data/brief";
 /* Un type, pas du contenu : la règle « aucun catalogue ici » tient. */
 import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
+import type { LicenseTypeState } from "@/lib/catalog/types";
+import { licenseAllowedInState } from "@/lib/brief/license-state";
 
 /*
  * Les sept étapes du brief — cadrage, validation, avancement.
@@ -175,7 +177,14 @@ export type StepDraft = {
 export function stepIssue(
   step: StepId,
   draft: StepDraft,
-  generatedToneCards: ToneCards | null = null
+  generatedToneCards: ToneCards | null = null,
+  /*
+   * La matrice titre/État, pour l'étape 1. Vide par défaut : un appelant qui
+   * ne la passe pas ne fait alors AUCUNE vérification de couple, plutôt que de
+   * tous les refuser — ce module n'est pas l'autorité, et un refus qu'il
+   * inventerait serait un mur sans explication.
+   */
+  licenseTypeStates: LicenseTypeState[] = []
 ): string | null {
   switch (step) {
     case "practice":
@@ -187,6 +196,28 @@ export function stepIssue(
       }
       if (draft.specialty_ids.length === 0) {
         return "Choose at least one specialty.";
+      }
+      /*
+       * ⚠ LE COUPLE TITRE/ÉTAT, ET IL VIENT EN DERNIER À DESSEIN. Les trois
+       * conditions au-dessus disent « il manque quelque chose » ; celle-ci dit
+       * « ce que tu as répondu ne peut pas être vrai », ce qui est une autre
+       * phrase et un autre moment.
+       *
+       * `catalog` n'entre PAS dans ce module : il ne porte aucun contenu (§6).
+       * La matrice arrive donc par `licenseTypeStates`, comme les cartes
+       * générées arrivent à l'étape 5 — même forme, même raison.
+       *
+       * Et ce n'est pas l'autorité : `project_briefs_license_state_gate`
+       * refuse en base. Ceci est ce qui l'explique avant qu'elle ne s'y cogne.
+       */
+      if (
+        !licenseAllowedInState(
+          draft.license_type_id,
+          draft.state,
+          licenseTypeStates
+        )
+      ) {
+        return "That title isn't issued in the state you gave. Pick the one you hold there.";
       }
       return null;
 

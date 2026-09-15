@@ -137,7 +137,7 @@ export function BriefFlow({
      * `toneCards` est passé parce que l'étape 5 range son choix ailleurs
      * selon ce qu'elle MONTRE — voir `stepIssue`, `case "voice"`.
      */
-    const problem = stepIssue(step.id, draft, toneCards);
+    const problem = stepIssue(step.id, draft, toneCards, catalog.licenseTypeStates);
     if (problem) {
       setIssue(problem);
       return;

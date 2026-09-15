@@ -12,6 +12,13 @@ import type { Tables } from "@/types/supabase";
  */
 
 export type LicenseType = Tables<"license_types">;
+/*
+ * Quelle juridiction délivre quel titre. L'annexe de `license_types`, et la
+ * réponse au défaut du 15 septembre : un LMHC annoncé en Oregon, où le titre
+ * est LPC. La règle qui la lit est `lib/brief/license-state.ts` ; l'autorité
+ * qui REFUSE est `project_briefs_license_state_gate`, en base.
+ */
+export type LicenseTypeState = Tables<"license_type_states">;
 export type Specialty = Tables<"specialties">;
 export type PrimaryAction = Tables<"primary_actions">;
 export type SiteGoal = Tables<"site_goals">;
@@ -46,6 +53,7 @@ export type TonePreset = Tables<"tone_cards">;
 
 export type Catalog = {
   licenseTypes: LicenseType[];
+  licenseTypeStates: LicenseTypeState[];
   specialties: Specialty[];
   problemCards: ProblemCard[];
   gainCards: GainCard[];

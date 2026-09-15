@@ -1286,6 +1286,47 @@ export type Database = {
         }
         Relationships: []
       }
+      /*
+       * ⚠ ÉCRIT À LA MAIN, PAS GÉNÉRÉ — et c'est la seule table de ce fichier
+       * dans ce cas. `20260915114500_a_title_a_state_does_not_issue.sql`
+       * n'est pas encore appliquée au projet live, donc le générateur (qui lit
+       * le projet live, cf. l'en-tête) ne peut pas la produire. `supabase gen
+       * types --db-url` contre le replay local a été tenté : il exige Docker,
+       * indisponible ici.
+       *
+       * REMPLACER PAR UNE VRAIE GÉNÉRATION dès la migration appliquée, et
+       * traiter tout écart comme une dérive à expliquer. La forme ci-dessous
+       * est transcrite du `create table` de la migration, colonne par colonne.
+       */
+      license_type_states: {
+        Row: {
+          license_type_id: string
+          state_code: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          license_type_id: string
+          state_code: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          license_type_id?: string
+          state_code?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_type_states_license_type_id_fkey"
+            columns: ["license_type_id"]
+            isOneToOne: false
+            referencedRelation: "license_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modality_cards: {
         Row: {
           active: boolean
