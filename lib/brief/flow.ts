@@ -1,5 +1,7 @@
 import type { BriefData } from "@/lib/data/brief";
 import type { BriefRow } from "@/lib/data/brief";
+/* Un type, pas du contenu : la règle « aucun catalogue ici » tient. */
+import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
 
 /*
  * Les sept étapes du brief — cadrage, validation, avancement.
@@ -163,8 +165,18 @@ export type StepDraft = {
 /**
  * Ce qui manque à une étape pour être validée, en une phrase qui dit quoi
  * faire. `null` quand l'étape est bonne.
+ *
+ * `generatedToneCards` est ce que l'étape 5 MONTRE quand la génération a
+ * abouti (§2.2) — voir le commentaire du `case "voice"`, qui est la seule
+ * raison pour laquelle ce paramètre existe. `null` = l'étape montre le
+ * catalogue statique, ce qui est aussi l'état par défaut d'un appelant qui ne
+ * valide pas l'étape 5.
  */
-export function stepIssue(step: StepId, draft: StepDraft): string | null {
+export function stepIssue(
+  step: StepId,
+  draft: StepDraft,
+  generatedToneCards: ToneCards | null = null
+): string | null {
   switch (step) {
     case "practice":
       if (!draft.practice_name?.trim()) {
@@ -222,8 +234,42 @@ export function stepIssue(step: StepId, draft: StepDraft): string | null {
       return null;
     }
 
-    case "voice":
-      return draft.tone_card_id ? null : "Pick the one that sounds most like you.";
+    /*
+     * ⚠ DEUX ENDROITS OÙ LE CHOIX PEUT VIVRE, ET UN SEUL ÉTAIT LU.
+     *
+     * L'étape 5 a deux modes. Quand la génération aboutit — le cas NORMAL —
+     * elle montre six cartes écrites dans sa voix, dont les `id` sont des
+     * slugs inventés par le modèle (« grounded-direct »). Ceux-là ne peuvent
+     * PAS aller dans `tone_card_id` : la colonne porte
+     * `project_briefs_tone_card_id_fkey` vers `tone_cards(id)`, et
+     * `findUnknownCatalogId` les refuserait avant même la base. Ils vivent
+     * donc dans `data.selected_tone_card_id`, et `selectGenerated()` met
+     * `tone_card_id` à null exprès.
+     *
+     * Cette validation ne lisait que `tone_card_id`. Résultat : elle cochait
+     * la carte, le rail reprenait son titre (`applyOptimistic` lit BIEN la
+     * carte générée), et « Continue » répondait quand même « Pick the one
+     * that sounds most like you ». Le seul chemin qui marchait était le repli
+     * statique — celui qu'on ne voit que quand la génération échoue.
+     *
+     * ⚠ ET LA QUESTION EST « CE QUI EST À L'ÉCRAN », PAS « UNE DES DEUX ».
+     * Un `tone_card_id || selected_tone_card_id` permissif validerait une
+     * sélection PÉRIMÉE : rééditer l'étape 4 change
+     * `tone_cards_inputs_hash`, six cartes neuves arrivent avec des id neufs,
+     * et l'ancien `selected_tone_card_id` ne correspond plus à rien
+     * d'affiché. L'étape passerait avec zéro carte cochée — un état que rien
+     * à l'écran n'expliquerait.
+     */
+    case "voice": {
+      const pick = "Pick the one that sounds most like you.";
+      if (generatedToneCards) {
+        const chosen = draft.data.selected_tone_card_id;
+        return chosen && generatedToneCards.some((card) => card.id === chosen)
+          ? null
+          : pick;
+      }
+      return draft.tone_card_id ? null : pick;
+    }
 
     /* Fusion de l'ancien « palette » et de l'ancien « typography » (§9.7). */
     case "look":
