@@ -98,6 +98,57 @@ export async function POST(
   if (!bundle) return notFound();
 
   /*
+   * ── L'ÉTAT N'EST PAS ENCORE OUVERT ──────────────────────────────────────
+   *
+   * ⚠ AVANT LA LIGNE DE KIT ET AVANT LE CRÉDIT, donc avant toute dépense. La
+   * matrice `license_type_states` est le SEUL objet dont dépend la légalité du
+   * titre qu'on va imprimer, et aucune de ses lignes n'est vérifiée contre un
+   * board. Produire depuis une juridiction non relue, ce serait refaire le
+   * défaut du 15 septembre en connaissance de cause.
+   *
+   * ⚠ CE N'EST PAS UN 402. Payer ne rendrait pas la matrice vérifiée : la
+   * porte ne s'ouvre pas avec de l'argent, elle s'ouvre quand quelqu'un a lu
+   * le site du board. Un écran de paiement ici serait un mensonge poli.
+   *
+   * Et ce n'est pas une panne : le brief s'est rempli, il est cohérent, il
+   * reste écrit. C'est une phrase qui dit ce qui manque et à quoi s'attendre.
+   *
+   * ⚠ LA LECTURE EST L'AUTORITÉ, PAS UNE COPIE. `project_state_is_sellable`
+   * vit en base, à côté des lignes qu'elle compte. Recopier ici le « toutes
+   * les lignes portent verified_at » serait une seconde définition de
+   * « ouvert », et la plus permissive gagnerait le jour où elles divergent.
+   *
+   * ⚠ UNE ERREUR DE LECTURE REFUSE. Un droit de produire qu'on n'a pas pu
+   * vérifier n'est pas un droit accordé : le pire d'un refus injustifié est
+   * un message de trop, le pire de l'inverse est un titre d'exercice faux sur
+   * une page publique.
+   */
+  const { data: sellable, error: sellableError } = await supabase.rpc(
+    "project_state_is_sellable",
+    { p_project_id: projectId }
+  );
+
+  if (sellableError || sellable !== true) {
+    if (sellableError) {
+      console.error("[api] project_state_is_sellable", sellableError);
+    }
+    const state = (bundle.brief.state ?? "").trim().toUpperCase();
+    return NextResponse.json(
+      {
+        error: state
+          ? `We're not open in ${state} yet. Your brief is saved — we check each ` +
+            "state's licensing board before we print a practice title there, and " +
+            "yours isn't done."
+          : "We check each state's licensing board before we print a practice " +
+            "title. Add your state to your brief and we'll tell you where we are " +
+            "with it.",
+        state: state || null,
+      },
+      { status: 409 }
+    );
+  }
+
+  /*
    * Un kit par projet (`brand_kits.project_id` est unique). On réutilise donc
    * la ligne existante — une régénération n'en crée pas une seconde — et on y
    * pose un nouveau job.

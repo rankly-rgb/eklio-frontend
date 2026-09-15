@@ -1027,6 +1027,88 @@ export type Database = {
           },
         ]
       }
+      directory_profiles: {
+        Row: {
+          body: string
+          brand_kit_id: string
+          created_at: string
+          ethics_check: Json | null
+          first_paragraph: string
+          id: string
+          platform: string
+          structured: Json
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          brand_kit_id: string
+          created_at?: string
+          ethics_check?: Json | null
+          first_paragraph: string
+          id?: string
+          platform: string
+          structured?: Json
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          brand_kit_id?: string
+          created_at?: string
+          ethics_check?: Json | null
+          first_paragraph?: string
+          id?: string
+          platform?: string
+          structured?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "directory_profiles_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ethics_patterns: {
+        Row: {
+          active: boolean
+          exception_pattern: string | null
+          id: string
+          pattern: string
+          rule_id: string
+          severity: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          exception_pattern?: string | null
+          id: string
+          pattern: string
+          rule_id: string
+          severity: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          exception_pattern?: string | null
+          id?: string
+          pattern?: string
+          rule_id?: string
+          severity?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ethics_patterns_rule_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "ethics_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ethics_rules: {
         Row: {
           active: boolean
@@ -1262,42 +1344,6 @@ export type Database = {
           },
         ]
       }
-      license_types: {
-        Row: {
-          active: boolean
-          description: string
-          id: string
-          label: string
-          sort_order: number
-        }
-        Insert: {
-          active?: boolean
-          description: string
-          id: string
-          label: string
-          sort_order: number
-        }
-        Update: {
-          active?: boolean
-          description?: string
-          id?: string
-          label?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
-      /*
-       * ⚠ ÉCRIT À LA MAIN, PAS GÉNÉRÉ — et c'est la seule table de ce fichier
-       * dans ce cas. `20260915114500_a_title_a_state_does_not_issue.sql`
-       * n'est pas encore appliquée au projet live, donc le générateur (qui lit
-       * le projet live, cf. l'en-tête) ne peut pas la produire. `supabase gen
-       * types --db-url` contre le replay local a été tenté : il exige Docker,
-       * indisponible ici.
-       *
-       * REMPLACER PAR UNE VRAIE GÉNÉRATION dès la migration appliquée, et
-       * traiter tout écart comme une dérive à expliquer. La forme ci-dessous
-       * est transcrite du `create table` de la migration, colonne par colonne.
-       */
       license_type_states: {
         Row: {
           license_type_id: string
@@ -1326,6 +1372,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      license_types: {
+        Row: {
+          active: boolean
+          description: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          description: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          description?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       modality_cards: {
         Row: {
@@ -1649,39 +1719,93 @@ export type Database = {
       }
       plans: {
         Row: {
+          billing_period: string
           created_at: string
-          directions_limit: number
+          directions_limit: number | null
           image_budget_cents: number
+          included_seats: number | null
+          kind: string
           label: string
+          per_seat: boolean
           price_cents: number
-          regenerations_limit: number
+          regenerations_limit: number | null
+          requires_publishable_platform: boolean
+          sellable: boolean
           sort_order: number
           tier: string
           updated_at: string
         }
         Insert: {
+          billing_period?: string
           created_at?: string
-          directions_limit: number
+          directions_limit?: number | null
           image_budget_cents?: number
+          included_seats?: number | null
+          kind?: string
           label: string
+          per_seat?: boolean
           price_cents: number
-          regenerations_limit: number
+          regenerations_limit?: number | null
+          requires_publishable_platform?: boolean
+          sellable?: boolean
           sort_order: number
           tier: string
           updated_at?: string
         }
         Update: {
+          billing_period?: string
           created_at?: string
-          directions_limit?: number
+          directions_limit?: number | null
           image_budget_cents?: number
+          included_seats?: number | null
+          kind?: string
           label?: string
+          per_seat?: boolean
           price_cents?: number
-          regenerations_limit?: number
+          regenerations_limit?: number | null
+          requires_publishable_platform?: boolean
+          sellable?: boolean
           sort_order?: number
           tier?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      platform_refusals: {
+        Row: {
+          id: number
+          occurred_at: string
+          platform_id: string
+          project_id: string | null
+        }
+        Insert: {
+          id?: never
+          occurred_at?: string
+          platform_id: string
+          project_id?: string | null
+        }
+        Update: {
+          id?: never
+          occurred_at?: string
+          platform_id?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_refusals_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "site_platforms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_refusals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       primary_actions: {
         Row: {
@@ -1781,6 +1905,8 @@ export type Database = {
           selected_usp_id: string | null
           session_style_ids: string[] | null
           site_goal_ids: string[]
+          site_platform_id: string | null
+          site_url: string | null
           specialty_ids: string[]
           state: string | null
           tone_card_id: string | null
@@ -1816,6 +1942,8 @@ export type Database = {
           selected_usp_id?: string | null
           session_style_ids?: string[] | null
           site_goal_ids?: string[]
+          site_platform_id?: string | null
+          site_url?: string | null
           specialty_ids?: string[]
           state?: string | null
           tone_card_id?: string | null
@@ -1851,6 +1979,8 @@ export type Database = {
           selected_usp_id?: string | null
           session_style_ids?: string[] | null
           site_goal_ids?: string[]
+          site_platform_id?: string | null
+          site_url?: string | null
           specialty_ids?: string[]
           state?: string | null
           tone_card_id?: string | null
@@ -1895,6 +2025,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: true
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_briefs_site_platform_id_fkey"
+            columns: ["site_platform_id"]
+            isOneToOne: false
+            referencedRelation: "site_platforms"
             referencedColumns: ["id"]
           },
           {
@@ -2027,6 +2164,7 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          kind: string
           paid_at: string | null
           project_id: string | null
           status: string
@@ -2041,6 +2179,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          kind?: string
           paid_at?: string | null
           project_id?: string | null
           status?: string
@@ -2055,6 +2194,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          kind?: string
           paid_at?: string | null
           project_id?: string | null
           status?: string
@@ -2209,6 +2349,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      site_pages: {
+        Row: {
+          created_at: string
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      site_platforms: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          notice: string | null
+          sort_order: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          label: string
+          notice?: string | null
+          sort_order: number
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          notice?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       site_specs: {
         Row: {
@@ -2599,6 +2790,15 @@ export type Database = {
       }
     }
     Views: {
+      sellable_states: {
+        Row: {
+          pairs: number | null
+          sellable: boolean | null
+          state_code: string | null
+          verified_pairs: number | null
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           id: string | null
@@ -2801,6 +3001,9 @@ export type Database = {
         Returns: Json
       }
       direction_limits: { Args: never; Returns: Json }
+      directory_structured_valid: { Args: { p: Json }; Returns: boolean }
+      ethics_blocks: { Args: { p_text: string }; Returns: string }
+      ethics_scan: { Args: { p_text: string }; Returns: Json }
       funnel_props_are_safe: { Args: { p_props: Json }; Returns: boolean }
       funnel_report: {
         Args: { p_from: string; p_to?: string }
@@ -2845,6 +3048,10 @@ export type Database = {
         Args: { p_brand_kit_id: string; p_month: string }
         Returns: Json
       }
+      get_directory_profile: {
+        Args: { p_brand_kit_id: string; p_platform: string }
+        Returns: Json
+      }
       get_image_regeneration_budget: {
         Args: { p_brand_kit_id: string }
         Returns: Json
@@ -2859,6 +3066,7 @@ export type Database = {
         Returns: boolean
       }
       hex_rgb: { Args: { p_hex: string }; Returns: number[] }
+      holds_anon_brief: { Args: never; Returns: boolean }
       home_recent_activity: { Args: { p_brand_kit_id: string }; Returns: Json }
       invite_clinician: {
         Args: { p_email: string; p_organization_id: string }
@@ -2866,6 +3074,10 @@ export type Database = {
       }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       kit_paid_access: { Args: { p_brand_kit_id: string }; Returns: string }
+      license_state_allowed: {
+        Args: { p_license_type_id: string; p_state: string }
+        Returns: boolean
+      }
       list_deleted_brand_kits: { Args: never; Returns: Json }
       list_user_uploads: { Args: { p_brand_kit_id: string }; Returns: Json }
       mark_brand_kit_delivered: {
@@ -2887,9 +3099,14 @@ export type Database = {
       }
       orphaned_purchases: { Args: never; Returns: Json }
       owns_project: { Args: { p_project_id: string }; Returns: boolean }
+      platform_refusal_counts: { Args: { p_since?: string }; Returns: Json }
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_usp_options_valid: { Args: { p: Json }; Returns: boolean }
+      project_state_is_sellable: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
       purchase_status_before: {
         Args: { p_purchase_id: string; p_status: string }
         Returns: string
@@ -2922,6 +3139,10 @@ export type Database = {
         Returns: Json
       }
       record_funnel_events: { Args: { p_events: Json }; Returns: number }
+      record_platform_refusal: {
+        Args: { p_platform_id: string; p_project_id?: string }
+        Returns: boolean
+      }
       record_purchase_status_event: {
         Args: {
           p_amount_cents?: number
@@ -2977,6 +3198,17 @@ export type Database = {
         Returns: Json
       }
       restore_brand_kit: { Args: { p_brand_kit_id: string }; Returns: Json }
+      save_directory_profile: {
+        Args: {
+          p_body: string
+          p_brand_kit_id: string
+          p_ethics_check: Json
+          p_first_paragraph: string
+          p_platform: string
+          p_structured: Json
+        }
+        Returns: Json
+      }
       section_type_fields_valid: { Args: { p: Json }; Returns: boolean }
       seed_launch_checklist: {
         Args: { p_brand_kit_id: string }
@@ -3218,6 +3450,7 @@ export type Database = {
         Args: { p_frag: Json; p_spec: Json }
         Returns: string
       }
+      state_is_sellable: { Args: { p_state: string }; Returns: boolean }
       sync_notifications: { Args: { p_brand_kit_id: string }; Returns: Json }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }
