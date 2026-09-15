@@ -13,7 +13,7 @@ import type { Catalog, PaletteFamily } from "@/lib/catalog/types";
  * passer par `unstable_cache` / `use cache` :
  *   - les policies `*_select_all` ne s'ouvrent pas à n'importe qui : soit la
  *     lecture porte une session, soit elle porte le jeton d'un brief anonyme
- *     vivant (§ `20260915103412` côté eklio-backend) — dans les deux cas un
+ *     vivant (§ `20260915053102` côté eklio-backend) — dans les deux cas un
  *     cache de données Next indexerait l'appelant ;
  *   - le contenu est IDENTIQUE pour tout le monde — les deux policies rendent
  *     les mêmes lignes, pas un sous-ensemble par appelant — donc un cache par
@@ -51,7 +51,7 @@ export function invalidateCatalog(): void {
  * ⚠ C'EST EXACTEMENT COMME ÇA QUE « License type » EST RESTÉ VIDE. Les quinze
  * policies du catalogue portaient `to authenticated` ; le brief anonyme, lui,
  * appelle en `anon`. Zéro ligne, zéro erreur, un intitulé sans rien dessous.
- * La base est réparée (`20260915103412` côté eklio-backend) ; ce garde-fou-ci
+ * La base est réparée (`20260915053102` côté eklio-backend) ; ce garde-fou-ci
  * est ce qui fait qu'une prochaine régression du même genre se VOIT.
  */
 const REQUIRED: readonly (keyof Catalog)[] = [

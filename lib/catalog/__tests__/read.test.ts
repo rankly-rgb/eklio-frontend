@@ -12,7 +12,7 @@ import type { Database } from "@/types/supabase";
  * en `anon`. PostgREST ne refuse pas un SELECT que RLS écarte : il répond 200
  * avec `[]`. Zéro ligne, zéro erreur, un intitulé sans rien dessous.
  *
- * La base est réparée (`20260915103412` côté eklio-backend). Ce fichier teste
+ * La base est réparée (`20260915053102` côté eklio-backend). Ce fichier teste
  * l'AUTRE moitié : que le front ne rende plus jamais ça en silence, et surtout
  * qu'il ne le METTE PAS EN CACHE — le cache est un cache de module, partagé par
  * tous les appelants de l'instance, et une seule lecture creuse servirait des
