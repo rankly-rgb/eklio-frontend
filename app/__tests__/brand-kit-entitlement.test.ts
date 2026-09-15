@@ -528,8 +528,20 @@ describe("la ligne de kit précède le crédit", () => {
  * rather than folding it into machinery built for a different guard.
  */
 describe("le paywall de Monthly Presence est gardé séparément", () => {
-  it("app/api/monthly-presence/checkout/route.ts appelle isEntitledToMonthlyPresence", () => {
+  /*
+   * ⚠ LE NOM A CHANGÉ, PAS LA QUESTION. La route passait par
+   * `isEntitledToMonthlyPresence` — la règle d'ABONNEMENT seule — et envoyait
+   * donc un compte comp payer une chose à laquelle il a déjà droit. Elle passe
+   * maintenant par `canUseMonthlyPresence`, le point d'étranglement qui OU-e
+   * l'abonnement et l'octroi comp.
+   *
+   * Ce qui est gardé ici reste le même : que cette route se garde avec LA
+   * règle mensuelle, et jamais avec celle du kit, qui répond à une autre
+   * question.
+   */
+  it("app/api/monthly-presence/checkout/route.ts passe par le point d'étranglement mensuel", () => {
     const source = code(join(ROOT, "app/api/monthly-presence/checkout/route.ts"));
-    expect(source).toMatch(/\bisEntitledToMonthlyPresence\s*\(/);
+    expect(source).toMatch(/\bcanUseMonthlyPresence\s*\(/);
+    expect(source).not.toMatch(/\bisBrandKitEntitled\s*\(/);
   });
 });

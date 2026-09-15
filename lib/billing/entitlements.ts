@@ -41,9 +41,17 @@ export type Subscription = {
 };
 
 /**
- * LA fonction d'accès à Monthly Presence. Tout passe par elle : les tuiles
- * verrouillées du calendrier, la carte Monthly Presence du kit, la route
- * `unlock`, et le choix du cron mensuel entre un post prêt et seize.
+ * LA RÈGLE D'ABONNEMENT de Monthly Presence — pure, et volontairement aveugle
+ * à tout le reste.
+ *
+ * ⚠ CE N'EST PLUS LE SEUL CHEMIN VERS LA SURFACE, et c'est écrit ici pour
+ * qu'on ne le découvre pas ailleurs : un octroi comp ouvre Monthly Presence
+ * aussi, et il le fait dans `canUseMonthlyPresence` ci-dessous, pas ici.
+ * Cette fonction-ci reste « qu'est-ce que son ABONNEMENT dit », un fait, une
+ * seule réponse — la règle que `independence.test.ts` garde en inspectant ce
+ * corps ligne à ligne. Y faire entrer le comp mettrait deux faits distincts
+ * dans une fonction qui n'en porte qu'un, et c'est exactement la forme que ce
+ * fichier refuse depuis le lot des essais.
  *
  * `subscriptions.active` est une colonne GÉNÉRÉE, miroir du statut Stripe.
  * Ce n'est PAS la règle d'accès : la base ne tient délibérément aucune
@@ -202,16 +210,25 @@ export async function isBrandKitEntitled(
   return data === true;
 }
 
-/* ── Comp access — un signal d'AFFICHAGE, jamais un droit ────────────────── */
+/* ── Comp access ─────────────────────────────────────────────────────────── */
 
 /**
  * L'utilisatrice courante a-t-elle un accès comp actif ?
  *
- * ⚠ CECI N'ACCORDE RIEN. C'est un signal d'affichage — pour distinguer une
- * session comp d'une session payante en QA ou sur une capture d'écran — pas
- * une seconde façon de décider un droit. Le droit reste entièrement dans
- * `brand_kit_entitled` (en base) : `comp_access_active()` y est déjà lu en
- * interne, elle n'est pas redécidée ici.
+ * ⚠ POUR LE KIT, CECI N'ACCORDE RIEN, et c'est la moitié de la phrase qu'il
+ * faut lire en entier. Le droit sur un kit reste entièrement dans
+ * `brand_kit_entitled` (en base), qui lit `comp_access_active()` elle-même :
+ * l'appeler ici ne redéciderait rien, ça ne sert qu'à distinguer une session
+ * comp d'une session payante en QA ou sur une capture.
+ *
+ * ⚠ POUR MONTHLY PRESENCE, CECI ACCORDE — parce qu'il n'y a nulle part
+ * ailleurs où le faire. `20260901182419_comp_grant_entitlement.sql` l'a écrit
+ * noir sur blanc en s'arrêtant : l'accès mensuel n'a AUCUN point
+ * d'étranglement en base (la base ne tient pas d'horloge, et
+ * `subscriptions.stripe_subscription_id` est `not null unique`, donc une
+ * ligne fabriquée demanderait d'inventer un identifiant Stripe). Le seul
+ * endroit honnête est le code applicatif, et c'est `canUseMonthlyPresence`
+ * ci-dessous — un point unique, pas un cas particulier semé dans les appelants.
  *
  * ── ÉCHEC FERMÉ ─────────────────────────────────────────────────────────
  * Une erreur de lecture rend `false` : au pire l'indicateur manque, jamais
@@ -225,6 +242,40 @@ export async function isCompAccessActive(supabase: Client): Promise<boolean> {
     return false;
   }
   return data === true;
+}
+
+/**
+ * Peut-elle se servir de Monthly Presence, là, maintenant ?
+ *
+ * LE point d'étranglement de la surface mensuelle. Deux faits distincts,
+ * OU-és une seule fois, ici :
+ *
+ *   son ABONNEMENT le dit  (`isEntitledToMonthlyPresence`, pure, testable)
+ *   OU son compte est COMP (`comp_access_active()`, en base)
+ *
+ * ⚠ L'ORDRE N'EST PAS COSMÉTIQUE. La règle pure d'abord, le comp ensuite :
+ * l'abonnement est déjà en mémoire, le comp est un aller-retour réseau. Une
+ * abonnée payante — c'est-à-dire presque tout le monde — ne paie donc jamais
+ * cette requête. C'est aussi la lecture qu'on veut pour un défaut : si la
+ * lecture comp échoue, `isCompAccessActive` rend `false` et il ne reste que
+ * l'abonnement, jamais l'inverse.
+ *
+ * ⚠ CE N'EST PAS LA PORTE DU CALENDRIER. `/app/content` est gardé par
+ * `isBrandKitEntitled` — planifier ses propres posts fait partie de la marque
+ * qu'elle a achetée. Monthly Presence est le contenu généré POUR elle, et
+ * c'est cette carte-là, et la route qui l'ouvre, que cette fonction décide.
+ *
+ * ⚠ LE PORTAIL STRIPE N'EN EST PAS UN APPELANT, et ne doit pas le devenir :
+ * un compte comp n'a aucun client Stripe, donc rien à ouvrir. Il lit
+ * l'abonnement brut, ce qui est la bonne question pour lui.
+ */
+export async function canUseMonthlyPresence(
+  supabase: Client,
+  subscription: Subscription | null,
+  now: Date = new Date()
+): Promise<boolean> {
+  if (isEntitledToMonthlyPresence(subscription, now)) return true;
+  return isCompAccessActive(supabase);
 }
 
 /* ── Les projets qu'on n'a pas payés ─────────────────────────────────────── */

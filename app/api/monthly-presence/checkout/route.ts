@@ -1,7 +1,7 @@
 import { authenticate, json, serverError } from "@/lib/api/handler";
 import {
+  canUseMonthlyPresence,
   getSubscription,
-  isEntitledToMonthlyPresence,
 } from "@/lib/billing/entitlements";
 import { createMonthlyPresenceCheckout } from "@/lib/stripe/checkout";
 import { track } from "@/lib/analytics";
@@ -23,8 +23,14 @@ export async function POST() {
 
   const { supabase, userId, email } = auth.session;
 
+  /*
+   * `canUseMonthlyPresence` plutôt que la règle d'abonnement nue : sans ça, un
+   * compte comp — qui n'a AUCUNE ligne `subscriptions` — serait envoyé payer
+   * une chose à laquelle il a déjà droit, et se heurterait au checkout Stripe
+   * pour un client qui n'existe pas.
+   */
   const subscription = await getSubscription(supabase, userId);
-  if (isEntitledToMonthlyPresence(subscription)) {
+  if (await canUseMonthlyPresence(supabase, subscription)) {
     return json({ entitled: true, checkoutUrl: null });
   }
 

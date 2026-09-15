@@ -16,8 +16,8 @@ import {
   type ContentMonth,
 } from "@/lib/data/content";
 import {
+  canUseMonthlyPresence,
   getSubscription,
-  isEntitledToMonthlyPresence,
   type Subscription,
 } from "@/lib/billing/entitlements";
 import { siteSpecGet } from "@/lib/site/rpc";
@@ -150,7 +150,13 @@ export async function loadHome(
     listDeletedBrandKits(supabase),
   ]);
 
-  const entitled = isEntitledToMonthlyPresence(subscription, now);
+  /*
+   * `canUseMonthlyPresence`, pas la règle d'abonnement nue : un compte comp
+   * n'a pas de ligne `subscriptions` et doit néanmoins voir la carte comme
+   * ouverte. Le point d'étranglement est dans `entitlements.ts` ; ici on
+   * l'appelle, on ne le redécide pas.
+   */
+  const entitled = await canUseMonthlyPresence(supabase, subscription, now);
   const firstName = firstNameFrom(profile?.full_name);
 
   if (!project) {
