@@ -1413,6 +1413,7 @@ export type Database = {
           id: string
           label: string
           sort_order: number
+          supervised_track_of: string | null
         }
         Insert: {
           active?: boolean
@@ -1420,6 +1421,7 @@ export type Database = {
           id: string
           label: string
           sort_order: number
+          supervised_track_of?: string | null
         }
         Update: {
           active?: boolean
@@ -1427,8 +1429,17 @@ export type Database = {
           id?: string
           label?: string
           sort_order?: number
+          supervised_track_of?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "license_types_supervised_track_fkey"
+            columns: ["supervised_track_of"]
+            isOneToOne: false
+            referencedRelation: "license_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       modality_cards: {
         Row: {
