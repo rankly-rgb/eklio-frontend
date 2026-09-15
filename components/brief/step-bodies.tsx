@@ -210,6 +210,35 @@ export function PracticeStep({ draft, catalog, update }: StepBodyProps) {
         />
       </div>
 
+      {/*
+        ⚠ LE DIPLÔME EST À PART DE LA LICENCE, ET FACULTATIF. Ils vivaient dans
+        la même liste — `psyd` et `phd` étaient proposés comme titres
+        d'exercice — et c'est une erreur de catégorie : une université délivre
+        un diplôme, aucun board ne l'accorde, il n'autorise à exercer nulle
+        part. Le titre d'exercice des psychologues, lui, s'appelle « Licensed
+        Psychologist » et ne figurait nulle part.
+
+        « Optional » est dit à l'écran parce que c'est vrai : `stepIssue` ne
+        regarde jamais ce champ.
+      */}
+      <div className="flex flex-col gap-3">
+        <span className="text-ui font-medium text-ink">Degree</span>
+        <p className="text-helper leading-prose text-ink-2">
+          Optional, and separate from your license. It says where you studied,
+          not what you&rsquo;re licensed to do.
+        </p>
+        <ChipGroup
+          legend="Degree"
+          mode="single"
+          options={catalog.degrees.map((entry) => ({
+            id: entry.id,
+            label: entry.label,
+          }))}
+          selected={draft.degree_id ? [draft.degree_id] : []}
+          onChange={(next) => update({ degree_id: next[0] ?? null })}
+        />
+      </div>
+
       <div className="flex flex-col gap-3">
         <span className="text-ui font-medium text-ink">Specialties</span>
         <p className="text-helper leading-prose text-ink-2">
