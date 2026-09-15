@@ -94,12 +94,25 @@ describe("readCatalog", () => {
     expect(catalog.specialties).toHaveLength(FIXTURE_CATALOG.specialties.length);
   });
 
-  it("met en cache une lecture saine plutôt que de relire quinze tables", async () => {
+  /*
+   * ⚠ LE NOMBRE DE TABLES N'EST PAS FIGÉ ICI, et ça n'est pas de la mollesse.
+   *
+   * `fetchCatalog` en lit quinze aujourd'hui et une branche voisine en ajoute
+   * une seizième (`site_platforms`). Ce qui est testé n'est pas « combien »
+   * mais « la seconde lecture n'en déclenche AUCUNE » — la propriété du cache.
+   * Un compte écrit en dur ferait échouer ce fichier à chaque table ajoutée,
+   * sur un défaut qui n'existe pas.
+   */
+  it("met en cache une lecture saine plutôt que de tout relire", async () => {
     const { supabase, reads } = clientReturning((table) => ROWS[table] ?? []);
     await readCatalog(supabase);
+    const afterFirst = reads();
     await readCatalog(supabase);
 
-    expect(reads()).toBe(TABLES.length);
+    // Anti-vacuité : une première lecture qui n'a rien lu rendrait la suite
+    // vraie sans rien prouver.
+    expect(afterFirst).toBeGreaterThanOrEqual(TABLES.length);
+    expect(reads()).toBe(afterFirst);
   });
 
   /*
@@ -143,6 +156,7 @@ describe("readCatalog", () => {
     const catalog = await readCatalog(healthy.supabase);
 
     expect(catalog.licenseTypes.length).toBeGreaterThan(0);
-    expect(healthy.reads()).toBe(TABLES.length);
+    // Elle a bien RELU : rien de creux n'était resté en cache.
+    expect(healthy.reads()).toBeGreaterThanOrEqual(TABLES.length);
   });
 });
