@@ -1370,19 +1370,28 @@ export type Database = {
       }
       license_type_states: {
         Row: {
+          abbreviation: string | null
           license_type_id: string
+          note: string | null
+          source_url: string | null
           state_code: string
           verified_at: string | null
           verified_by: string | null
         }
         Insert: {
+          abbreviation?: string | null
           license_type_id: string
+          note?: string | null
+          source_url?: string | null
           state_code: string
           verified_at?: string | null
           verified_by?: string | null
         }
         Update: {
+          abbreviation?: string | null
           license_type_id?: string
+          note?: string | null
+          source_url?: string | null
           state_code?: string
           verified_at?: string | null
           verified_by?: string | null
@@ -3486,6 +3495,10 @@ export type Database = {
       }
       state_is_sellable: { Args: { p_state: string }; Returns: boolean }
       sync_notifications: { Args: { p_brand_kit_id: string }; Returns: Json }
+      title_abbreviation: {
+        Args: { p_license_type_id: string; p_state: string }
+        Returns: string
+      }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }
         Returns: string

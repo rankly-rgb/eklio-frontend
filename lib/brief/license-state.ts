@@ -96,3 +96,52 @@ export function licenseAllowedInState(
 
   return issued.has(licenseTypeId);
 }
+
+/**
+ * Comment ce titre s'écrit DANS CET ÉTAT.
+ *
+ * ⚠ « LP » A ÉTÉ LA LEÇON. Le catalogue portait un sigle national par titre,
+ * et la première vérification l'a démenti dans quatre États sur cinq : le
+ * Texas écrit « Licensed Psychologist (LP) », la Californie n'a AUCUN sigle
+ * (« PSY » est un préfixe de NUMÉRO, pas une abréviation), New York et la
+ * Pennsylvanie non plus, et la Floride exige les mots en toutes lettres sur
+ * toute publicité.
+ *
+ * Donc le sigle appartient au couple, et il peut être ABSENT. Ce qu'on rend
+ * n'est jamais vide :
+ *
+ *   `full`      — l'intitulé complet. Vrai partout, toujours imprimable.
+ *   `abbreviation` — le sigle de son État, ou `null` quand il n'y en a pas
+ *                    à imprimer.
+ *
+ * ⚠ UN SIGLE NE SORT QUE D'UNE LIGNE VÉRIFIÉE, comme `title_abbreviation()`
+ * en base. La table arrive d'un tableur : une ligne non relue peut très bien
+ * porter un sigle pré-rempli, et ce sigle n'est pas une réponse. Tant que
+ * personne n'a lu le board, on écrit les mots.
+ */
+export function titleAsWrittenIn(
+  licenseTypeId: string | null | undefined,
+  state: string | null | undefined,
+  matrix: LicenseTypeState[],
+  licenseTypes: readonly { id: string; description: string }[]
+): { full: string; abbreviation: string | null } | null {
+  if (!licenseTypeId) return null;
+
+  const entry = licenseTypes.find((row) => row.id === licenseTypeId);
+  if (!entry) return null;
+
+  const code = normalizeState(state);
+  const pair = code
+    ? matrix.find(
+        (row) =>
+          row.license_type_id === licenseTypeId &&
+          row.state_code.toUpperCase() === code
+      )
+    : undefined;
+
+  return {
+    full: entry.description,
+    abbreviation:
+      pair && pair.verified_at !== null ? (pair.abbreviation ?? null) : null,
+  };
+}

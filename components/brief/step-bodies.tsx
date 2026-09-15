@@ -16,7 +16,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Catalog } from "@/lib/catalog/types";
-import { normalizeState, titlesIssuedIn } from "@/lib/brief/license-state";
+import {
+  normalizeState,
+  titleAsWrittenIn,
+  titlesIssuedIn,
+} from "@/lib/brief/license-state";
 import type { PreviewModel } from "@/lib/brand/shapes";
 import type { StepDraft } from "@/lib/brief/flow";
 import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
@@ -193,18 +197,33 @@ export function PracticeStep({ draft, catalog, update }: StepBodyProps) {
         {invalidated ? (
           <p className="text-helper leading-prose text-ink">
             {`Your brief says ${
-              catalog.licenseTypes.find((e) => e.id === draft.license_type_id)?.label ??
-              draft.license_type_id
+              catalog.licenseTypes.find((e) => e.id === draft.license_type_id)
+                ?.description ?? draft.license_type_id
             }, which ${stateCode} does not issue. Pick the title you hold there.`}
           </p>
         ) : null}
         <ChipGroup
           legend="License type"
           mode="single"
-          options={licenseOptions.map((entry) => ({
-            id: entry.id,
-            label: entry.label,
-          }))}
+          /*
+            ⚠ PAS `entry.label`. Cette colonne a cessé d'être un credential le
+            jour où la vérification a démenti « LP » dans quatre États sur
+            cinq — c'est une poignée interne, jamais ce qu'une cliente lit. On
+            montre le sigle de SON État quand il y en a un de vérifié, et
+            sinon les mots en toutes lettres, qui sont vrais partout.
+          */
+          options={licenseOptions.map((entry) => {
+            const written = titleAsWrittenIn(
+              entry.id,
+              draft.state,
+              catalog.licenseTypeStates,
+              catalog.licenseTypes
+            );
+            return {
+              id: entry.id,
+              label: written?.abbreviation ?? written?.full ?? entry.description,
+            };
+          })}
           selected={draft.license_type_id ? [draft.license_type_id] : []}
           onChange={(next) => update({ license_type_id: next[0] ?? null })}
         />

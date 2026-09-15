@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   licenseAllowedInState,
   normalizeState,
+  titleAsWrittenIn,
   titlesIssuedIn,
 } from "@/lib/brief/license-state";
 import { stepIssue, type StepDraft } from "@/lib/brief/flow";
@@ -30,15 +31,38 @@ import { FIXTURE_DRAFT } from "@/lib/brief/fixtures/catalog";
  * TOUT passerait toute la moitié rouge de ce fichier sans en rater une ligne.
  */
 
-/** Un extrait de la matrice réelle, suffisant et vérifiable à l'œil. */
-const MATRIX: LicenseTypeState[] = [
-  { license_type_id: "lpc", state_code: "OR", verified_at: null, verified_by: null },
-  { license_type_id: "lcsw", state_code: "OR", verified_at: null, verified_by: null },
-  { license_type_id: "lmft", state_code: "OR", verified_at: null, verified_by: null },
-  { license_type_id: "lmhc", state_code: "NY", verified_at: null, verified_by: null },
-  { license_type_id: "lcsw", state_code: "NY", verified_at: null, verified_by: null },
-];
+/*
+ * Un extrait de la matrice réelle.
+ *
+ * ⚠ CONSTRUIT PAR UN HELPER, PAS RECOPIÉ LIGNE À LIGNE. La table a gagné
+ * `abbreviation`, `source_url` et `note` le jour où « LP » s'est révélé faux
+ * dans quatre États sur cinq, et cinq littéraux écrits à la main ont cessé de
+ * compiler d'un coup. Le helper absorbe la prochaine colonne.
+ */
+function pair(
+  license_type_id: string,
+  state_code: string,
+  extra: Partial<LicenseTypeState> = {}
+): LicenseTypeState {
+  return {
+    license_type_id,
+    state_code,
+    abbreviation: null,
+    source_url: null,
+    note: null,
+    verified_at: null,
+    verified_by: null,
+    ...extra,
+  };
+}
 
+const MATRIX: LicenseTypeState[] = [
+  pair("lpc", "OR"),
+  pair("lcsw", "OR"),
+  pair("lmft", "OR"),
+  pair("lmhc", "NY"),
+  pair("lcsw", "NY"),
+];
 /*
  * ⚠ BÂTI SUR `FIXTURE_DRAFT`, PAS RECOPIÉ. Un brouillon réécrit ici fige la
  * forme du jour — et la forme bouge : la branche voisine ajoute
@@ -338,5 +362,81 @@ describe("un diplôme n'autorise pas le titre d'exercice qui lui ressemble", () 
     const lpcOnly = allowedClaimsFrom("lpc", LICENSES);
     expect(checkUnbackedClaims("I hold a PsyD.", lpcOnly).length).toBeGreaterThan(0);
     expect(checkUnbackedClaims("I have an MSW.", lpcWithPsyD).length).toBeGreaterThan(0);
+  });
+});
+
+/* ── COUCHE 5 : comment le titre s'écrit DANS SON ÉTAT ───────────────────── */
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * « LP » ÉTAIT FAUX DANS QUATRE ÉTATS SUR CINQ
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Le catalogue portait un sigle NATIONAL par titre. La vérification l'a
+ * démenti : TX écrit « Licensed Psychologist (LP) », CA n'a AUCUN sigle
+ * (« PSY » est un préfixe de numéro), NY et PA non plus, FL exige les mots en
+ * toutes lettres sur toute publicité.
+ *
+ * Donc le sigle appartient au COUPLE, et « pas de sigle » est une réponse —
+ * pas une chaîne vide, pas une donnée manquante.
+ */
+const TITLES = [
+  { id: "licensed_psychologist", description: "Licensed Psychologist" },
+  { id: "lcsw", description: "Licensed Clinical Social Worker" },
+];
+
+const WRITTEN = [
+  /* Texas : le sigle existe, et il est vérifié. */
+  pair("licensed_psychologist", "TX", {
+    abbreviation: "LP",
+    verified_at: "2026-09-15T00:00:00Z",
+    verified_by: "nainarahal@gmail.com",
+  }),
+  /* Californie : vérifié, et AUCUN sigle. Un fait, pas un trou. */
+  pair("licensed_psychologist", "CA", {
+    abbreviation: null,
+    verified_at: "2026-09-15T00:00:00Z",
+    verified_by: "nainarahal@gmail.com",
+    note: "PSY is a licence-number prefix, not an abbreviation of the title.",
+  }),
+  /* New York : personne n'a encore lu le board, mais le tableur a pré-rempli. */
+  pair("licensed_psychologist", "NY", { abbreviation: "LP" }),
+];
+
+describe("titleAsWrittenIn — le sigle appartient au couple", () => {
+  it("le Texas imprime « LP »", () => {
+    expect(titleAsWrittenIn("licensed_psychologist", "TX", WRITTEN, TITLES))
+      .toEqual({ full: "Licensed Psychologist", abbreviation: "LP" });
+  });
+
+  /* ⚠ LE CAS QUI A FAIT BOUGER LA STRUCTURE. */
+  it("la Californie n'imprime aucun sigle, et ce n'est pas une chaîne vide", () => {
+    const written = titleAsWrittenIn("licensed_psychologist", "CA", WRITTEN, TITLES);
+    expect(written?.abbreviation).toBeNull();
+    expect(written?.abbreviation).not.toBe("");
+    // Et il reste toujours quelque chose à imprimer : les mots.
+    expect(written?.full).toBe("Licensed Psychologist");
+  });
+
+  /*
+   * ⚠ UN SIGLE PRÉ-REMPLI N'EST PAS UN SIGLE VÉRIFIÉ. La table vient d'un
+   * tableur : tant que personne n'a lu le board, « LP » à New York est une
+   * supposition, et on écrit les mots.
+   */
+  it("un sigle non vérifié n'est pas imprimé", () => {
+    expect(
+      titleAsWrittenIn("licensed_psychologist", "NY", WRITTEN, TITLES)?.abbreviation
+    ).toBeNull();
+  });
+
+  it("sans État, il n'y a pas de sigle — seulement les mots", () => {
+    const written = titleAsWrittenIn("licensed_psychologist", null, WRITTEN, TITLES);
+    expect(written?.abbreviation).toBeNull();
+    expect(written?.full).toBe("Licensed Psychologist");
+  });
+
+  it("un titre hors catalogue ne rend rien plutôt qu'une moitié", () => {
+    expect(titleAsWrittenIn("inconnu", "TX", WRITTEN, TITLES)).toBeNull();
+    expect(titleAsWrittenIn(null, "TX", WRITTEN, TITLES)).toBeNull();
   });
 });
