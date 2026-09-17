@@ -129,6 +129,46 @@ export function generationErrorResponse(context: string, error: unknown): NextRe
   return serverError(context, error);
 }
 
+/**
+ * L'État de cette praticienne n'est pas encore relevé. 409, et la phrase dit
+ * laquelle des deux choses manque.
+ *
+ * ⚠ POURQUOI CETTE FONCTION EXISTE PLUTÔT QU'UN SECOND BLOC. Ce refus était
+ * écrit en toutes lettres dans `POST /api/briefs/[id]/generate`, et nulle part
+ * ailleurs — si bien que `POST /api/brand-kits/[id]/directory`, qui écrit le
+ * profil Psychology Today, ne le posait pas du tout. Le recopier aurait donné
+ * DEUX définitions du refus, et la plus permissive aurait gagné le jour où
+ * elles divergent : c'est la famille de défauts que ce dépôt révoque à la main.
+ * Une seule phrase, un seul code, deux appelants.
+ *
+ * ⚠ CE N'EST PAS UN 402. Payer ne rendrait pas la matrice vérifiée : la porte
+ * ne s'ouvre pas avec de l'argent, elle s'ouvre quand quelqu'un a lu le site du
+ * board.
+ *
+ * ⚠ ET CE N'EST PAS UNE PANNE. Le brief s'est rempli, il est cohérent, il reste
+ * écrit. Rien ici ne doit se lire « c'est de notre faute » : ce n'est la faute
+ * de personne, c'est un travail que nous n'avons pas encore fait, et la phrase
+ * le dit. Le message générique de `generationErrorResponse` reste réservé aux
+ * vraies pannes — sinon il cesse de vouloir dire quelque chose.
+ */
+export function stateNotOpenResponse(state: string | null | undefined): NextResponse {
+  const code = (state ?? "").trim().toUpperCase();
+  return NextResponse.json(
+    {
+      error: code
+        ? `We're not open in ${code} yet. Your brief is saved — we check each ` +
+          "state's licensing board before we print a practice title there, and " +
+          "yours isn't done."
+        : "We check each state's licensing board before we print a practice " +
+          "title. Add your state to your brief and we'll tell you where we are " +
+          "with it.",
+      state: code || null,
+      code: "state_not_open",
+    },
+    { status: 409 }
+  );
+}
+
 /** Corps JSON, ou `null` si le corps est absent ou malformé. */
 export async function readJson(request: Request): Promise<unknown | null> {
   try {

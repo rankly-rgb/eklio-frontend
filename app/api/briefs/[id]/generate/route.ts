@@ -1,6 +1,6 @@
 import { after, NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { json, notFound, serverError } from "@/lib/api/handler";
+import { json, notFound, serverError, stateNotOpenResponse } from "@/lib/api/handler";
 import { createAdminClient } from "@/lib/supabase/server";
 import { loadBrief } from "@/lib/data/brief";
 import {
@@ -132,20 +132,7 @@ export async function POST(
     if (sellableError) {
       console.error("[api] project_state_is_sellable", sellableError);
     }
-    const state = (bundle.brief.state ?? "").trim().toUpperCase();
-    return NextResponse.json(
-      {
-        error: state
-          ? `We're not open in ${state} yet. Your brief is saved — we check each ` +
-            "state's licensing board before we print a practice title there, and " +
-            "yours isn't done."
-          : "We check each state's licensing board before we print a practice " +
-            "title. Add your state to your brief and we'll tell you where we are " +
-            "with it.",
-        state: state || null,
-      },
-      { status: 409 }
-    );
+    return stateNotOpenResponse(bundle.brief.state);
   }
 
   /*

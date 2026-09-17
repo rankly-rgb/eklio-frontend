@@ -1,4 +1,11 @@
-import { authenticate, generationErrorResponse, json, notFound, serverError } from "@/lib/api/handler";
+import {
+  authenticate,
+  generationErrorResponse,
+  json,
+  notFound,
+  serverError,
+  stateNotOpenResponse,
+} from "@/lib/api/handler";
 import { rateLimit } from "@/lib/api/rate-limit";
 import { createAdminClient } from "@/lib/supabase/server";
 import { loadBrandKit } from "@/lib/data/brand-kit";
@@ -84,6 +91,40 @@ export async function POST(
       catalog
     );
     if (!bundle) return notFound();
+
+    /*
+     * ⚠ LA GARDE D'ÉTAT, QUI MANQUAIT ICI — ET C'EST LA ROUTE OÙ ELLE MANQUAIT
+     * LE PLUS. `20260915101137` a posé « un État dont les couples ne sont pas
+     * vérifiés n'est pas vendable », et `POST /api/briefs/[id]/generate` la
+     * posait. Celle-ci, non : zéro appel à `project_state_is_sellable` dans
+     * tout `app/api` hors de l'autre route. Or c'est ELLE qui écrit le profil
+     * Psychology Today — l'artefact le plus public du produit, celui qui porte
+     * le titre d'exercice devant des gens qui cherchent une thérapeute.
+     *
+     * Le trou ne s'est pas vu parce que rien ne testait cette route. Pendant
+     * qu'aucun État n'était relevé, une panne le masquait ; le jour où la
+     * Californie s'est ouverte, il serait devenu un titre imprimé pour une
+     * juridiction non vérifiée.
+     *
+     * ⚠ LA BASE EST L'AUTORITÉ. `project_state_is_sellable` vit à côté des
+     * lignes qu'elle compte ; recopier ici son « toutes portent verified_at »
+     * serait une seconde définition de « ouvert ».
+     *
+     * ⚠ ET UNE ERREUR DE LECTURE REFUSE. Un droit qu'on n'a pas pu vérifier
+     * n'est pas un droit accordé : le pire d'un refus injustifié est un message
+     * de trop, le pire de l'inverse est un credential faux sur une page
+     * publique. C'est la règle de `20260915101137`, appliquée au bon endroit.
+     */
+    const { data: sellable, error: sellableError } = await supabase.rpc(
+      "project_state_is_sellable",
+      { p_project_id: kit.projectId }
+    );
+    if (sellableError) {
+      console.error("[api] directory: project_state_is_sellable", sellableError);
+    }
+    if (sellableError || sellable !== true) {
+      return stateNotOpenResponse(bundle.brief.state);
+    }
 
     const result = await generateDirectoryProfile(bundle, catalog, structured);
 

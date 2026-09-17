@@ -567,9 +567,28 @@ describe("la production payante refuse un État non ouvert", () => {
     const source = code(join(ROOT, ROUTE));
     const guard = source.indexOf("project_state_is_sellable");
     const block = source.slice(guard, guard + 1600);
-    expect(block).toMatch(/status: 409/);
+
+    /*
+     * ⚠ LE REFUS A DÉMÉNAGÉ, ET C'EST UN PROGRÈS, PAS UNE RÉGRESSION. Il était
+     * écrit en toutes lettres ICI et nulle part ailleurs — si bien que
+     * `POST /api/brand-kits/[id]/directory`, qui écrit le profil Psychology
+     * Today, ne le posait pas du tout. Il vit désormais dans
+     * `stateNotOpenResponse`, une seule fois, pour ses deux appelants.
+     *
+     * Ce test suit donc le refus jusqu'à SA DÉFINITION au lieu de le chercher
+     * dans cette route, et il en garde davantage qu'avant : que la route
+     * délègue, et que la définition soit bien un 409 qui ne vend rien.
+     */
+    expect(block).toMatch(/stateNotOpenResponse/);
     expect(block).not.toMatch(/checkoutUrl/);
-    expect(block).toMatch(/not open in/);
+
+    const definition = code(join(ROOT, "lib/api/handler.ts"));
+    const helper = definition.slice(
+      definition.indexOf("export function stateNotOpenResponse")
+    );
+    expect(helper).toMatch(/status: 409/);
+    expect(helper).toMatch(/not open in/);
+    expect(helper).not.toMatch(/checkoutUrl/);
   });
 });
 
