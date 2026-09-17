@@ -73,6 +73,17 @@ export type AnalyticsEvent =
    */
   | "check_scanned"
   | "check_rewritten"
+  /*
+   * ⚠ `first_line_used` EST LE SEUL DE CETTE FAMILLE QUI VIENNE D'UNE
+   * INCONNUE. Le palier gratuit n'a ni compte ni kit, donc cet événement ne
+   * peut porter AUCUN identifiant — ni projet, ni kit, ni utilisateur, parce
+   * qu'aucun n'existe. Ce qu'il porte : le nombre de constats, les identifiants
+   * de règles, le nombre d'essais, et la raison d'un refus. La règle « jamais
+   * son texte, jamais un extrait » est la même que pour ses deux frères, et
+   * elle est ici la contrepartie de la décision de confidentialité du
+   * 17 septembre (DECISIONS.md) : on lit son profil public, on ne le garde pas.
+   */
+  | "first_line_used"
   | "unlock_opened"
   | "email_sent"
   | "billing_portal_opened"

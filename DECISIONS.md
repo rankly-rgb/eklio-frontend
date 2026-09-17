@@ -800,3 +800,48 @@ untouched and logged it in FINDINGS.md instead: it's dead code, not a live bug (
 code nothing calls), and deciding whether to delete unused server actions outright is a separate judgment
 call from "sold honestly" — not this lot's scope, and not free to bundle in without a closer look at
 whether it's truly safe to remove.
+
+---
+
+### 2026-09-17 — L6 : un profil d'annuaire collé n'est pas une donnée sensible, et le palier gratuit ne demande pas de compte
+
+**Question.** The First Line attendait une décision de confidentialité depuis L6, et elle bloquait tout
+le palier gratuit : pour dire à une thérapeute ce qui ne va pas dans son profil Psychology Today, il faut
+qu'elle nous donne ce profil. Fallait-il un compte, un consentement, une durée de conservation ?
+
+**Décision : non. Un texte que la thérapeute a elle-même publié sur un annuaire public n'est pas une
+donnée sensible.** Le palier gratuit s'ouvre sans compte, sans kit, sans achat.
+
+**Pourquoi.** Les trois raisons, dans l'ordre où elles comptent :
+
+1. **Ce texte est déjà public, et publié par elle.** Un profil Psychology Today est une page que
+   n'importe qui peut lire sans se connecter. Nous demander de le traiter comme un secret serait lui
+   appliquer une protection que sa source n'a pas. Ce n'est pas une donnée de patient, ce n'est pas un
+   dossier clinique, ce n'est pas même une donnée privée : c'est sa vitrine.
+
+2. **Exiger un compte pour le lire n'aurait protégé personne.** Un compte protège un ACCÈS — il empêche
+   quelqu'un d'atteindre la donnée d'un autre. Ici il n'y a pas d'autre : elle colle son propre texte,
+   nous le lisons une fois, nous répondons. Le compte n'aurait rien gardé ; il aurait seulement fait
+   partir celles qui ne veulent pas en créer un pour voir si le produit sert à quelque chose.
+
+3. **Et le vrai risque est ailleurs, donc c'est ailleurs qu'on l'a traité.** Ce qui serait dangereux
+   n'est pas de LIRE son texte, c'est de le GARDER. Alors on ne le garde pas : ni le texte collé, ni la
+   réécriture, ni un extrait. Pas de table, pas de ligne de journal, pas de propriété d'analytics. Ce
+   qui est compté est le nombre de constats et les identifiants de règles — six chaînes fixes. La règle
+   existait déjà pour `/api/check` (`lib/check/review.ts`, en tête) ; elle est reprise ici mot pour mot
+   parce qu'elle est la contrepartie de cette décision, pas une politique séparée.
+
+**Ce que la décision NE dit pas.** Elle ne dit rien d'un texte qui n'est pas déjà publié — un brouillon,
+des notes, un courriel à une patiente. Rien dans ce chemin ne les demande, et le jour où un écran
+proposera de coller autre chose qu'un profil d'annuaire, cette décision ne le couvre pas et il en faut
+une autre.
+
+**Ce qui la renverserait.** Qu'un annuaire cesse d'être public, ou qu'on se mette à conserver le texte
+pour quelque raison que ce soit — la deuxième moitié de la décision est ce qui rend la première
+acceptable, et elles ne se séparent pas.
+
+**Ce qui remplace le mur.** Les cinq portes retirées (`authenticate`, `brandKitId`, `loadBrandKit`,
+`isBrandKitEntitled`, `surfaceRefusal`) répondaient toutes à « qui es-tu ». Sans compte, cette question
+n'a pas de réponse et la seule qui reste est « combien » : `consume_anon_generation`, par bucket d'IP
+hachée, 45/IP/jour et 750/jour au total, remise à zéro à minuit UTC. `consume_check_rewrite` ne pouvait
+pas servir — elle ne prend aucun argument et lit `auth.uid()`.

@@ -396,6 +396,15 @@ const OTHER_GATE: Record<string, string> = {
   "app/api/stripe": "Stripe signature verification; the caller is Stripe, not a practitioner.",
   "app/api/unsubscribe": "A signed one-click link from an email, by design reachable without a session.",
   "app/api/briefs": "The pre-purchase funnel: the brief is free and is what gets bought.",
+  "app/api/first-line":
+    "The free tier. Deliberately reachable with no session, no brand kit and " +
+    "no purchase -- that IS the product here: she pastes the directory profile " +
+    "she already published, we say what is wrong with it and rewrite her " +
+    "opening paragraph. Entitlement cannot gate it without emptying it. What " +
+    "bounds it instead is consume_anon_generation (hashed IP bucket, 45/day " +
+    "per IP and 750/day overall, UTC reset), because the question a caller " +
+    "with no account can be asked is not WHO but HOW MANY. Her text is never " +
+    "stored -- see DECISIONS.md, 2026-09-17.",
   "app/api/jobs": "Generation job status for the pre-purchase funnel, user-scoped by loadBrief.",
   "app/api/catalog": "Public reference data -- palettes, fonts, specialties. Nothing kit-specific.",
   "app/api/home": "The home aggregate, user-scoped; it shows a kit's existence, never its deliverables.",
