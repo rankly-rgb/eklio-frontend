@@ -274,6 +274,44 @@ static and must stay that way. That is the whole exception; anything wider needs
 design and a fresh decision.
 
 
+## AN RPC REPORTS ITS REFUSALS INSIDE A 200. READ THE ENVELOPE, NOT THE STATUS.
+
+*2026-09-13, chantier « the copy volume », LOT 0 — and a second time, one lot later.*
+
+Every function behind `lib/site/rpc.ts` — and `get_launch_progress`, `site_catalog`,
+`site_output_get`, the content RPCs — answers a refusal with a **200 carrying
+`{"error":{"code","message"}}` in the body**. `site_spec_entitlement_error` returns
+`unauthenticated`, `not_found` or `payment_required` that way. PostgREST is perfectly happy:
+the function returned a jsonb, so the call succeeded.
+
+So **an HTTP status and an empty error log are not evidence that a call succeeded.** I
+eliminated the site-editor throw against `site_spec_get` returning "200 across 325 calls,
+zero ERROR rows" and concluded the read was healthy. Every one of those 200s could have
+carried a refusal. The status told me the transport worked, which was never the question.
+
+Verification of an RPC path **reads the envelope**. In SQL that is
+`(rpc(...))->'error'->>'code'`; in the logs it is the response body, not the status column;
+in code it is `result.ok`, which is exactly what `call()` already computes and what the
+status throws away.
+
+Two more things this pass established, both worth keeping:
+
+- **`call()` maps a transport failure to `code: "not_found"`.** A real outage and an absent
+  row arrive at the caller wearing the same code. `siteSpecGet`'s caller redirects on
+  `not_found`; `readSiteCatalog` throws on it. One mapping, two very different screens.
+- **Do not infer a cause from which error codes can reach a `throw`.** I read the
+  site-editor page, saw that `payment_required` and `not_found` both redirect, and reported
+  that the only code reaching the `throw` was `unauthenticated`. The reasoning about that
+  statement was sound and the conclusion was still wrong, because I never established that
+  that statement was the one firing — the same page also throws from `readSiteCatalog`, and
+  anything else on the path can throw too. Executing the real call as the real role
+  (`set local role authenticated` + `request.jwt.claims`) took one query and returned `OK`
+  for both RPCs, which is what should have come first.
+
+**Reproduce, then narrow.** A path you cannot make fail is a path you have not diagnosed,
+however well you have read it.
+
+
 ## 2026-09-05 — Session 1: the facts
 
 **Session number was not stated by the user.** Checked for evidence before proceeding: no

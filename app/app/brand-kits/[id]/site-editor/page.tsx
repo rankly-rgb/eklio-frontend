@@ -81,9 +81,22 @@ export default async function SiteEditorPage({
      * une coquille vide se lit comme une panne, pas comme une offre. La
      * révélation, elle, reste gratuite et entière : c'est là qu'on vend.
      */
-    if (envelope.error.code === "payment_required") redirect(checkoutHref);
-    if (envelope.error.code === "not_found") redirect(`/app/brand-kits/${id}/reveal`);
-    throw new Error(`[site-editor] ${envelope.error.code}: ${envelope.error.message}`);
+    /*
+     * ⚠ UN 500 N'EST PAS UN « PAS DE SPEC ». `call()` traduit une panne de
+     * transport en `code: "not_found"` avec `status: 500` — une panne et une
+     * ligne absente arrivent donc ici sous le MÊME code. Sans ce test, une
+     * coupure renvoyait silencieusement à la révélation : aucune erreur, aucun
+     * journal côté produit, et une praticienne qui croit avoir perdu son site.
+     * Le statut est la seule chose qui les distingue, et il faut le lire AVANT
+     * le code.
+     */
+    if (envelope.status !== 500) {
+      if (envelope.error.code === "payment_required") redirect(checkoutHref);
+      if (envelope.error.code === "not_found") redirect(`/app/brand-kits/${id}/reveal`);
+    }
+    throw new Error(
+      `[site-editor] ${envelope.error.code} (status ${envelope.status}): ${envelope.error.message}`
+    );
   }
 
   track("site_editor_opened", { brandKitId: id, target: envelope.data.spec.target });

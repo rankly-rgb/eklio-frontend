@@ -1149,3 +1149,410 @@ approved copy lives in that core body** — so a green re-scan means *the
 assembly added nothing forbidden*, never *the assembled prompt was checked end
 to end*. Her copy is scanned upstream by the Guard when it is generated
 (`ethics_check` on the kit). Do not read `scan.ok` as whole-artefact clearance.
+
+---
+
+# Step 1, second pass — why the Lovable prompt built an empty site
+
+Kit `45de0dac-958f-4096-b83e-1559a89437e6`, read against production.
+
+## Finding A — four sections arrive with a heading and no body
+
+The envelope's outline lists every section in the spec. Four of them carry a
+heading and nothing under it, and the prompt's own constraint block says
+"Do not rewrite, expand or add copy". So the builder rendered four headings
+over white space, which is exactly what it was told to do.
+
+| Section | Cause | Where the answer is |
+| --- | --- | --- |
+| About → How I work | **brief has it, nothing maps it** | `project_briefs.session_style_ids` → `session_style_cards.label` |
+| About → Training and licensure | **brief has it, nothing maps it** | `project_briefs.license_type_id`, and `practice_details.license_label` on the spec |
+| Services → Services | **brief has it, nothing maps it** | `project_briefs.modality_ids` → `modality_cards.full_name` |
+| Services → Fees | **nothing exists, and nothing should** | fee, sliding-scale and insurance wording is unreviewed legal text |
+
+Three of the four are a **missing join**, not missing data. `site_specs` is
+seeded by SQL that never reads those brief columns, so the answers she gave in
+step 4 sit one table away from the headings that need them.
+
+A fifth section, Services → Common questions, is `enabled: false` on her spec.
+It is correctly absent from the outline and is neither filled nor named.
+
+**Not fixed with a migration.** Writing the join into `site_specs` means
+changing the seeding SQL, which this chantier forbids. It lives in
+`lib/site/section-copy.ts` and lands in the prompt as a correction block after
+the core, which states in its first line that it wins where the two disagree.
+The core still passes through verbatim. **The migration is still the right
+long-term home for this** — logged here, not done.
+
+## Finding B — the prompt named three files it never explained
+
+`loadSiteSetupMaterial` filtered her image rows on `current && storage_path`
+and nothing else, so all seven generated photographs were listed:
+`ambient_a, ambient_b, hero, post_bg_1, post_bg_2, post_bg_3, texture`. The
+instructions that followed covered `hero`, `ambient_*` and `texture` only.
+
+`post_bg_1..3` are **social post backgrounds**: square, subject cropped into
+the bottom quarter, upper half left plain so a caption can sit over it — see
+their briefs in `lib/images/config.ts`. They have no site role.
+
+Fixed: `lib/site/imagery.ts` is the fixed list of four, each with its role and
+the size it was generated at, read from the generation config. The loader
+filters to it, the prompt renders from it, and the step screen offers exactly
+those files.
+
+Two related defects found in the same place and fixed:
+
+- The prompt said "use the wordmark file downloaded from Eklio" and the step
+  screen offered no wordmark — `STEP_ASSET_KEYS.site_setup` carried only
+  `site_setup_md`. The loader now carries the chosen wordmark's catalogue key
+  so the screen can offer the same file the prompt names.
+- No photograph was downloadable from that screen at all. Photographs are not
+  catalogue assets, so they needed their own button against the existing GET
+  images route.
+
+## Finding C — the referral quote exists, and is not publishable copy
+
+`project_briefs.referral_quote` for this kit reads *"She's human, very
+professional and understanding"*.
+
+It is **a generation input, not approved copy**:
+
+- `lib/generation/rephrase.ts` lists it in `REPHRASABLE_FIELDS`;
+- `lib/generation/how-you-work-shapes.ts:83` labels it *"what a colleague would
+  say"*;
+- `how-you-work-context.ts:86` feeds it to the model as context;
+- it is third person, has **no attribution field and no consent flag**, and the
+  site spec has no field that could carry it.
+
+So under the standing rule, **no testimonials section is emitted** — and no
+placeholder inviting one either. `BriefLabels` carries a boolean, never the
+text, so there is nothing for the prompt to leak.
+
+**No approved copy exists for the modality or specialty labels** resolved in
+`lib/launch/directory.ts`. They are catalogue labels only — a name and a full
+name, with no description behind them. That is why the approach pages are
+structure with a marked empty block, and why Services → Services is a list of
+names rather than a paragraph.
+
+## Finding D — a bracketed token was emitted as a live link
+
+Found by assembling the prompt against her real kit rather than a fixture. The
+contact block emitted `Call-to-action link: [BOOKING_URL]` while the core,
+three screens above, says the call to action has no link yet and the button
+must be left unlinked. A builder resolving the conflict either way is wrong:
+one ignores an instruction, the other ships `href="[BOOKING_URL]"` — a dead
+button on a live site.
+
+Fixed in the prompt, not by dropping the token: the token must stay findable
+because the inventory tells her to search for it. One rule now covers every
+bracketed word — never a link, an address, a credential or structured data; the
+button stays visible and unlinked; a bracketed segment is left out of a contact
+line rather than printed.
+
+## Still open
+
+- **The join belongs in the database.** `site_specs` should be seeded from
+  `session_style_ids`, `modality_ids` and `license_type_id`. Until then the
+  correction block is doing a migration's job in TypeScript.
+- **The site-editor route still throws in production.** Unchanged from the
+  previous pass; the two remaining places to look are the Vercel function log
+  and the browser console.
+- **`isProhibitiveMention` is still narrow**, and the blocks written in this
+  pass had to be phrased around it — every forbidden noun sits directly behind
+  a `no`. Comments in `lib/site/lovable.ts` say so, because smoothing that
+  English would fail the scan and take step 1 down with it.
+
+---
+
+# The three copy holes are ONE chantier, not three
+
+Three places in step 1 and step 3 stop short of writing something, and it keeps
+reading as three unrelated omissions. It is one piece of work with one gate:
+**client-facing copy that goes out in her name, generated through the Ethics
+Guard pipeline.** Nothing below is blocked on data, a join, or a migration.
+
+1. **Approach page bodies.** `/approaches/cbt`, `/approaches/eft`,
+   `/approaches/emdr` each ship with `[YOUR DESCRIPTION OF THIS APPROACH]`. The
+   catalogue holds a name and a full name and no description, so there is
+   nothing to join — this has to be written. A builder describing EMDR itself
+   would be publishing a clinical claim in her name, which is why the prompt
+   forbids it outright and why those pages carry `noindex` until the bracket is
+   gone.
+2. **A Google Business Profile short description.** Unchanged from the launch
+   chantier: the step says so in one sentence and points at the board-safe
+   statement she can adapt today.
+3. **Fees, sliding scale and insurance.** The one item with a second gate on
+   top: it is legal text before it is marketing copy, so it needs review as
+   well as the Guard. `planSections` omits the section whatever it contains and
+   asks her for nothing, because inviting her to type a fee into Eklio is
+   inviting her to draft it unaided.
+
+**Doing any one of them means standing up the same thing**: a Guard-checked
+generation path for short, factual, client-facing copy with her voice guide as
+input. Done once, all three are one prompt and one review each. Done three
+times, it is three pipelines.
+
+Until then all three are ABSENT rather than invented, and each absence is named
+where she meets it.
+
+## Second pass, second round — five corrections
+
+- **The booking link is asked for in Eklio, not in the prompt.** `cta_target_url`
+  null means the button ships unlinked and Contact is a heading over a dead
+  button. Step 1 now leads with that, above the prompt well.
+  **No third input was built**: the field already has two editors — the site
+  editor's Details section and Settings — both patching the same column through
+  `/api/brand-kits/[id]/site-spec`. Settings is the one linked, because the
+  site-editor route still throws in production.
+- **Imagery now overrides the core's placeholder instruction**, in one line with
+  the same standing as the Sections correction block. The core's
+  "leave labeled image placeholders" is written for a practice with no
+  photographs; this one has four. The no-people rule is stated as surviving the
+  exception, because that is the part that must.
+- **The bracket rule now covers every attribute**, not just a link: never an
+  `href`, never a `src`, never any other attribute, and the element ships
+  WITHOUT the attribute rather than with a broken one. Same shape as the JSON-LD
+  property deletion, applied to markup. A bracketed word may appear as visible
+  text — that is the only place it belongs.
+- **Indexing rides `ENABLE_ADMIN`.** Flag on: `noindex, nofollow` on every page
+  and a `robots.txt` that disallows everything, because a preview URL is public
+  and a staging copy competes with the real domain. Flag off: neither. On top of
+  that, any page whose body still holds a bracketed word is `noindex` and out of
+  the sitemap, decided from the page's own content at build time so it lifts by
+  itself. Stated for any page, so it covers the approach pages without naming
+  them.
+- **About → Training and licensure is omitted when it resolves to the licence
+  label alone.** "LMFT" is already in the hero overline and the footer; a
+  heading over one word shown twice elsewhere adds a section and no
+  information. It needs the licence NUMBER to earn its heading. What would fill
+  it — her training, her licence number — is named in a second inventory list
+  marked as NOT in the prompt to search for, because the section it belongs to
+  was not built.
+
+---
+
+# The copy-volume chantier — LOT 0, and why it stops there
+
+Measured on kit `45de0dac`. **LOT 0 finding A is the brief's own stop
+condition, so nothing below LOT 0 was built.**
+
+## A. The site editor is the ONLY edit surface for spec copy — STOP
+
+Two clients patch `/api/brand-kits/[id]/site-spec`, and only two:
+
+| Surface | What it can edit |
+| --- | --- |
+| `components/settings/settings-view.tsx` | `practice_details` (name, licence, city, state) and `hero.cta_target_url`. **No section copy.** |
+| `components/site/use-site-editor.ts` | everything — hero, `about_excerpt`, every page section's `heading`/`body`/`items`, page and section enablement |
+
+Section copy — the thing this chantier would generate — is editable in the
+site editor and nowhere else. It edits in place in the mockup, plus the long
+fields in `components/site/copy-section.tsx`. There is no second surface, no
+fallback form, and no route that writes a section body.
+
+So generated copy would land where she cannot read or change it. That is the
+condition the brief says to stop on, and this is the stop.
+
+### What narrows the throw, since it is now blocking a chantier
+
+`app/app/brand-kits/[id]/site-editor/page.tsx` has exactly one `throw`, and
+every other envelope error redirects before reaching it:
+
+```
+if (envelope.error.code === "payment_required") redirect(checkoutHref);
+if (envelope.error.code === "not_found")        redirect(.../reveal);
+throw new Error(`[site-editor] ${envelope.error.code}: …`);
+```
+
+`site_spec_entitlement_error` can only return three codes —
+`unauthenticated`, `not_found`, `payment_required` — and `site_spec_get` adds
+one more `not_found`. **Two of the four redirect. So the only code that can
+reach that `throw` is `unauthenticated`**, meaning `auth.uid()` is null inside
+the RPC.
+
+That also explains why the earlier elimination pass found nothing: it checked
+for HTTP errors and found `site_spec_get` returning **200 across 325 calls with
+zero ERROR rows**. These RPCs do not signal failure with a status — they return
+`{ error: { code, message } }` inside a 200 body. A clean HTTP log was never
+evidence the envelope was ok, and I read it as such at the time.
+
+The page has already called `supabase.auth.getUser()` successfully by that line,
+so the session exists at the page and not inside the RPC. Not fixed here — out
+of scope — but that is a much smaller search than "somewhere in the editor".
+
+## B. What the brief holds that the spec never surfaces
+
+`site_spec_seed_values` reads **six** brief fields and ignores the rest:
+
+| Brief field | Status |
+| --- | --- |
+| `specialty_ids` | joined → `site_spec_default_pages` |
+| `client_persona_ids` | joined → `site_spec_default_pages` |
+| `practice_name`, `license_type_id`, `city`, `state` | joined → `practice_details` |
+| `session_style_ids` | **unused** (joined only in this session's prompt block) |
+| `modality_ids`, `modality_prominence` | **unused** (ditto) |
+| `not_a_fit_ids`, `not_a_fit_text` | **unused** — nothing reads them for the site |
+| `problem_card_ids`, `gain_card_ids` | **unused** — her chosen problems and hoped-for gains |
+| `site_goal_ids` | **unused** — `attract_better_fit`, `explain_approach` on this kit |
+| `primary_action_id` | **unused** — `book_consult` |
+| `tone_card_id` | **unused** for site copy — `warm_practical` |
+| `prior_career` + `prior_career_public` | **unused**, and gated by her own consent flag |
+| `positioning`, `usp_statement`, `selected_usp_id` | **unused**, all null on this kit |
+| `referral_quote` | generation input only — see the earlier finding C |
+| `data.problem_text` | **unused, and it is her own writing** — 2 sentences, in her voice |
+| `data.practitioner_name` | **unused, and the spec hardcodes `practitioner_name: null`** |
+
+That last row is a live defect, not a gap: the brief holds **"Nora Whitfield"**,
+and the Lovable prompt emits `[PRACTITIONER_NAME]` for her to fill in a name
+Eklio already has. `site_spec_seed_values` writes a literal `null` there.
+
+So there is ample grounding material — problems, gains, goals, session styles,
+modalities, not-a-fit, her own free text. Nothing about this chantier is blocked
+on data.
+
+## C. The generation pipeline
+
+- **The Guard has two entry points and the documented one is dead.**
+  `generateWithEthicsGuard` (`lib/ethics/enforce.ts`) has **zero callers** in
+  the repo — one mention, in a comment. The live path is `enforceEthics`
+  (`lib/ethics/guard.ts`), called once, from `lib/generation/pipeline.ts:214`.
+  The brief's "through `generateWithEthicsGuard` only" would mean adopting the
+  unused one or the used one; they differ (full regeneration vs. per-field
+  rewrite, max 2 rewrites per field).
+- **Shape of a call**: `lib/generation/model.ts` → `GENERATION_MODEL`
+  (`claude-opus-5`), `GENERATION_MAX_TOKENS = 8000`, one rewrite helper capped
+  at 1000. A truncation throws `GenerationTruncatedError` rather than
+  persisting a cut draft.
+- **Where output lands**: `brand_kits.directions / social_templates /
+  voice_guide / ethics_check / practitioner_line`, one UPDATE. Nothing writes
+  site section copy today.
+- **Rewrite loop**: yes — `enforceEthics` rewrites only the offending field,
+  citing the excerpt and the rule, twice at most, then throws. Nothing blocking
+  is ever persisted.
+- **Check does NOT cover site copy.** `lib/check/review.ts` scans text she
+  PASTES; it reads nothing from the spec and stores nothing. Generated site
+  sections would not appear there. Logged, not built.
+- **Per-kit token cost is not reportable from LOT 0.** It depends on the LOT 2
+  prompt, which the stop prevents from existing. What is measurable now: the
+  ceiling is 8 000 output tokens per call on `claude-opus-5`, up to three
+  attempts under the Guard.
+
+## D. Section types, and the wall behind them
+
+`section_types` carries **eleven**: hero, intro, specialties, who_i_work_with,
+approach, services, fees, faq, credentials, contact, footer.
+
+- **Common questions is data, not code.** `faq` exists and is `allowed_pages:
+  [home, services, contact]`. On her kit it sits on Services with
+  `enabled: false` — turning it on and adding one to Home is a spec patch.
+- **"How a first session works" and a blog teaser do not exist as types.**
+  `approach` is allowed on Home and is the nearest fit for the first, but its
+  shape is one prose paragraph, not three steps. A blog teaser has no type at
+  all. The approaches teaser could ride `services` on Home without a new type.
+- **⚠ The length targets are blocked by hard CHECK constraints, and this needs
+  more than one migration.** `site_spec_limits()` caps `section_text` at **800
+  characters** and `about_excerpt` at **600**, enforced by
+  `site_specs_pages_lengths_check` and `site_specs_about_excerpt_check`, and
+  each `section_types.fields[].max_length` caps again per field.
+
+  | LOT 2 target | ≈ characters | Cap today |
+  | --- | --- | --- |
+  | home intro 120–180 w | 720–1 080 | `intro.body` 600 |
+  | home body 90–150 w | 540–900 | `section_text` 800 |
+  | About 300–450 w | 1 800–2 700 | `approach.body` 800 |
+  | each FAQ answer 60–120 w | 360–720 | `faq.items` 300 each |
+  | approach page 180–260 w | 1 080–1 560 | no field exists |
+
+  Delivering LOT 2's word bands means raising `site_spec_limits()` AND the
+  per-field `max_length` values AND adding section types AND a page kind for
+  the approach pages. That is several migrations, not the one the brief allows
+  — which is its own stop condition ("If it needs more than one, stop and
+  report").
+
+## Noted in passing, not acted on
+
+- `data.practitioner_name` holds her name while the spec seeds `null`; the
+  prompt asks her to fill in `[PRACTITIONER_NAME]`. One join fixes it.
+- `generateWithEthicsGuard` is dead code; `enforceEthics` is the live Guard.
+- Check has no view of stored site copy, only of text pasted into it.
+
+---
+
+# The replay failed. 800 is hardcoded in FOUR places, not two.
+
+*2026-09-13, chantier A, the verification that was owed from the previous session.*
+
+`begin → the four migrations → inspect → rollback`, run against production. It
+stopped on the third statement of the caps migration:
+
+```
+ERROR: 23514: new row for relation "section_types"
+violates check constraint "section_types_fields_check"
+DETAIL: Failing row contains (intro, 2, t, Introduction, …)
+```
+
+`section_types_fields_check` calls `section_type_fields_valid(fields)`, which
+ends with:
+
+```sql
+or (f.value->>'max_length')::numeric not between 1 and 800
+```
+
+**So `section_types.fields[].max_length` is not purely advisory after all** —
+the previous session reported it as "read by nothing in the database", and that
+was wrong. Nothing enforces it *against content*, but the database does bound
+what it may BE, and that bound is the same 800.
+
+A sweep for the literal found four sites, and the migration addresses two:
+
+| Where | What it does | In the migration? |
+| --- | --- | --- |
+| `site_spec_pages_lengths_valid` | the CHECK on stored pages | ✅ raised to 2000 |
+| `site_spec_first_overlong_field` | names the offending field | ✅ raised to 2000 |
+| `section_type_fields_valid` | caps what `max_length` may be | ❌ **replay died here** |
+| `site_spec_patch` | the message she reads: *"This is over 800 characters, which is the limit for a section field."* | ❌ would have lied |
+
+The fourth is the quieter one. Even with the first three raised, a practitioner
+writing 1 500 characters would have been told the limit is 800 — a refusal
+naming a number the database no longer enforced.
+
+**Nothing was applied and the migrations were not patched.** The instruction on
+a failed replay was to report and stop.
+
+Also observed, unproven because the statement never ran: `section_types` has a
+`source` column with `CHECK (source in ('fields','spec.hero','spec.about_excerpt'))`,
+and `intro.source = 'spec.about_excerpt'`. The three new types' INSERT omits
+`source` and relies on its default.
+
+## Where the per-type check belongs
+
+`site_specs.pages` has exactly two writers: `seed_site_spec` (insert) and
+`site_spec_patch` (update — the editor's only write path).
+`site_output_mark_copied` touches other columns.
+
+`site_spec_patch` **already reads `section_types`**, to check a section against
+its `allowed_pages`:
+
+```sql
+join public.section_types st on st.id = sc.value->>'type'
+ where not (pg.value->>'key' = any (st.allowed_pages))
+```
+
+So the per-type maximum is one more predicate beside a join that already
+happens, in the function that already returns `too_long`, with the field path
+`site_spec_first_overlong_field` already computes. That is the cheap half.
+
+- **A CHECK constraint cannot do it** — it must be IMMUTABLE and cannot read a
+  table. That is why the ceiling is global and always will be.
+- **A trigger can**, and is the only thing that also covers `seed_site_spec` and
+  any future writer, including a `service_role` path that skips the RPC.
+- **Cost**: in `site_spec_patch`, one extra lateral over fields already being
+  walked — no new read, no new round trip. As a trigger, the same work on every
+  spec write plus one `section_types` scan per statement. The real cost is
+  neither: it is that the error message, `site_spec_limits()` and the editor's
+  counters all currently speak in one number and would have to start speaking
+  per field.
+
+Recommendation, not built: **both** — the predicate in `site_spec_patch` so she
+gets a precise, per-field refusal, and a trigger as the backstop so the number
+cannot be bypassed by a writer that is not the editor.
