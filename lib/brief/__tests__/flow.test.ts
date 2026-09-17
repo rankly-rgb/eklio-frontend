@@ -6,6 +6,7 @@ import {
   withCompletedStep,
   type StepDraft,
 } from "@/lib/brief/flow";
+import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
 
 /*
  * Les règles de validation du brief. Elles décident de ce qui bloque un
@@ -17,6 +18,7 @@ function draft(overrides: Partial<StepDraft> = {}): StepDraft {
   return {
     practice_name: null,
     license_type_id: null,
+    degree_id: null,
     specialty_ids: [],
     city: null,
     state: null,
@@ -175,6 +177,78 @@ describe("stepIssue — les autres étapes", () => {
         })
       )
     ).toBeNull();
+  });
+
+  /*
+   * ⚠ L'ÉTAPE QUI N'AVAIT AUCUN TEST EST CELLE QUI A CASSÉ.
+   *
+   * Sur le chemin NORMAL — la génération aboutit — l'étape 5 montre six cartes
+   * dont les `id` sont des slugs du modèle, rangés dans
+   * `data.selected_tone_card_id` parce que `tone_card_id` porte une clé
+   * étrangère vers `tone_cards(id)`. La validation ne lisait que la colonne :
+   * la carte se cochait et « Continue » refusait quand même.
+   */
+  const GENERATED: ToneCards = [
+    "grounded-direct",
+    "warm-plain",
+    "patient-spacious",
+    "clear-clinical",
+    "quiet-steady",
+    "open-curious",
+  ].map((id, index) => ({
+    id,
+    label: `Voice ${index + 1}`,
+    keywords: ["one", "two", "three"],
+    sample_hero: `A headline in voice ${index + 1}.`,
+    generated: true as const,
+  }));
+
+  it("l'étape 5 accepte une carte GÉNÉRÉE, qui ne vit pas dans `tone_card_id`", () => {
+    const chosen = draft({ data: { selected_tone_card_id: "grounded-direct" } });
+
+    expect(stepIssue("voice", chosen, GENERATED)).toBeNull();
+    // `tone_card_id` reste null, et c'est voulu : la FK refuserait le slug.
+    expect(chosen.tone_card_id).toBeNull();
+  });
+
+  it("l'étape 5 bloque tant que rien n'est choisi, dans les deux modes", () => {
+    expect(stepIssue("voice", draft(), GENERATED)).toMatch(/sounds most like you/);
+    expect(stepIssue("voice", draft(), null)).toMatch(/sounds most like you/);
+  });
+
+  /*
+   * Le repli statique — la génération a échoué, l'étape montre le catalogue.
+   * Là, et seulement là, `tone_card_id` est le bon endroit.
+   */
+  it("l'étape 5 accepte une carte du catalogue quand c'est elle qui est montrée", () => {
+    expect(stepIssue("voice", draft({ tone_card_id: "grounded" }), null)).toBeNull();
+  });
+
+  /*
+   * ⚠ LA SÉLECTION PÉRIMÉE, que le correctif permissif aurait laissée passer.
+   *
+   * Rééditer l'étape 4 change `tone_cards_inputs_hash` : six cartes neuves
+   * arrivent avec des id neufs, et l'ancien choix ne correspond plus à rien
+   * d'affiché. L'étape doit redemander, pas valider un écran vide.
+   */
+  it("l'étape 5 refuse un choix qui ne figure plus parmi les cartes affichées", () => {
+    expect(
+      stepIssue(
+        "voice",
+        draft({ data: { selected_tone_card_id: "a-voice-from-the-run-before" } }),
+        GENERATED
+      )
+    ).toMatch(/sounds most like you/);
+  });
+
+  /*
+   * Et le symétrique : un `tone_card_id` du catalogue ne valide PAS un écran
+   * qui montre les six cartes générées — cette carte-là n'y est pas.
+   */
+  it("l'étape 5 ne valide pas une carte de catalogue contre l'écran généré", () => {
+    expect(
+      stepIssue("voice", draft({ tone_card_id: "grounded" }), GENERATED)
+    ).toMatch(/sounds most like you/);
   });
 
   it("l'étape 6 (look, fusion palette + typography) exige les deux", () => {

@@ -64,6 +64,38 @@ export const FIXTURE_CATALOG: Catalog = {
     active: true,
   })) as Catalog["licenseTypes"],
 
+  /*
+   * ⚠ LA MATRICE TITRE/ÉTAT, DANS LE PIRE CAS DE MISE EN PAGE : un État qui
+   * délivre TOUS les titres du fixture. L'écran 1 filtre ses puces avec, donc
+   * une matrice étroite ici rendrait deux puces et mesurerait un écran que
+   * personne ne verra. `OR` est repris du défaut du 15 septembre.
+   *
+   * ⚠ ET UN SECOND ÉTAT QUI N'EN DÉLIVRE QU'UN, sinon le filtre serait
+   * inobservable : c'est lui qui prouve que l'écran rétrécit vraiment.
+   */
+  licenseTypeStates: [
+    ...rows(10, (i) => ({
+      license_type_id: `license_${i}`,
+      state_code: "OR",
+      verified_at: null,
+      verified_by: null,
+    })),
+    {
+      license_type_id: "license_0",
+      state_code: "NY",
+      verified_at: null,
+      verified_by: null,
+    },
+  ] as Catalog["licenseTypeStates"],
+
+  degrees: rows(7, (i) => ({
+    id: `degree_${i}`,
+    label: ["MA", "MS", "MSW", "PsyD", "PhD", "EdD", "MD"][i],
+    full_name: "Doctor of Philosophy",
+    sort_order: i + 1,
+    active: true,
+  })) as Catalog["degrees"],
+
   specialties: rows(12, (i) => ({
     id: `specialty_${i}`,
     label: i === 0 ? "Life transitions" : `Specialty ${i + 1}`,
@@ -250,6 +282,7 @@ export const FIXTURE_CATALOG: Catalog = {
 export const FIXTURE_DRAFT: StepDraft = {
   practice_name: null,
   license_type_id: null,
+  degree_id: null,
   specialty_ids: [],
   city: null,
   state: null,

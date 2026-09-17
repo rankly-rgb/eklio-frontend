@@ -529,9 +529,65 @@ describe("la ligne de kit précède le crédit", () => {
  * is invisible to the enumeration above. A second, small, parallel check
  * rather than folding it into machinery built for a different guard.
  */
+/*
+ * ── UN ÉTAT NON VÉRIFIÉ N'EST PAS VENDABLE ──────────────────────────────
+ *
+ * `license_type_states` est le seul objet dont dépend la légalité du titre
+ * qu'on imprime, et aucune de ses lignes n'est vérifiée contre un board. La
+ * production payante doit donc refuser — et refuser AVANT toute dépense,
+ * sinon on aurait débité pour un livrable qu'on n'avait pas le droit de
+ * produire.
+ *
+ * ⚠ L'ORDRE EST CE QUI EST GARDÉ ICI, pas seulement la présence. Un appel
+ * placé après `consume_generation_credit` serait une garde qui arrive une
+ * fois l'argent parti, ce que ce dépôt appelle un reçu, pas un plafond.
+ */
+describe("la production payante refuse un État non ouvert", () => {
+  const ROUTE = "app/api/briefs/[id]/generate/route.ts";
+
+  it("la route consulte project_state_is_sellable", () => {
+    const source = code(join(ROOT, ROUTE));
+    expect(source).toMatch(/project_state_is_sellable/);
+  });
+
+  it("et elle le fait AVANT de consommer le crédit", () => {
+    const source = code(join(ROOT, ROUTE));
+    const guard = source.indexOf("project_state_is_sellable");
+    const spend = source.indexOf("consume_generation_credit", guard);
+    expect(guard).toBeGreaterThan(-1);
+    expect(spend).toBeGreaterThan(guard);
+  });
+
+  /*
+   * ⚠ ET CE N'EST PAS UN 402. Payer ne rend pas la matrice vérifiée : un écran
+   * de paiement ici serait un mensonge poli. Le refus doit dire que l'État
+   * n'est pas encore ouvert.
+   */
+  it("le refus n'est pas un écran de paiement", () => {
+    const source = code(join(ROOT, ROUTE));
+    const guard = source.indexOf("project_state_is_sellable");
+    const block = source.slice(guard, guard + 1600);
+    expect(block).toMatch(/status: 409/);
+    expect(block).not.toMatch(/checkoutUrl/);
+    expect(block).toMatch(/not open in/);
+  });
+});
+
 describe("le paywall de Monthly Presence est gardé séparément", () => {
-  it("app/api/monthly-presence/checkout/route.ts appelle isEntitledToMonthlyPresence", () => {
+  /*
+   * ⚠ LE NOM A CHANGÉ, PAS LA QUESTION. La route passait par
+   * `isEntitledToMonthlyPresence` — la règle d'ABONNEMENT seule — et envoyait
+   * donc un compte comp payer une chose à laquelle il a déjà droit. Elle passe
+   * maintenant par `canUseMonthlyPresence`, le point d'étranglement qui OU-e
+   * l'abonnement et l'octroi comp.
+   *
+   * Ce qui est gardé ici reste le même : que cette route se garde avec LA
+   * règle mensuelle, et jamais avec celle du kit, qui répond à une autre
+   * question.
+   */
+  it("app/api/monthly-presence/checkout/route.ts passe par le point d'étranglement mensuel", () => {
     const source = code(join(ROOT, "app/api/monthly-presence/checkout/route.ts"));
-    expect(source).toMatch(/\bisEntitledToMonthlyPresence\s*\(/);
+    expect(source).toMatch(/\bcanUseMonthlyPresence\s*\(/);
+    expect(source).not.toMatch(/\bisBrandKitEntitled\s*\(/);
   });
 });

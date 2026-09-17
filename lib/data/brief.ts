@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@/types/supabase";
 import { previewModelSchema, type PreviewModel } from "@/lib/brand/shapes";
 import { readCatalog } from "@/lib/catalog/read";
+import { licenseAllowedInState } from "@/lib/brief/license-state";
 import type { Catalog } from "@/lib/catalog/types";
 
 /*
@@ -138,6 +139,7 @@ export const briefPatchSchema = z
   .object({
     practice_name: z.string().max(120).nullable(),
     license_type_id: z.string().nullable(),
+    degree_id: z.string().nullable(),
     specialty_ids: z.array(z.string()),
     city: z.string().max(80).nullable(),
     state: stateCode.nullable(),
@@ -215,6 +217,7 @@ export type BriefPatch = z.infer<typeof briefPatchSchema>;
 /** Les ids que chaque champ doit référencer, et où les trouver dans le catalogue. */
 const ID_SOURCES = {
   license_type_id: (c: Catalog) => c.licenseTypes,
+  degree_id: (c: Catalog) => c.degrees,
   specialty_ids: (c: Catalog) => c.specialties,
   problem_card_ids: (c: Catalog) => c.problemCards,
   gain_card_ids: (c: Catalog) => c.gainCards,
@@ -348,6 +351,13 @@ export type PatchOutcome =
   | { ok: true; brief: BriefRow; data: BriefData; preview: PreviewModel | null }
   | { ok: false; reason: "not-found" }
   | { ok: false; reason: "unknown-id"; field: string; id: string }
+  /*
+   * ⚠ LE COUPLE TITRE/ÉTAT. Distinct de `unknown-id` : les deux valeurs
+   * VIENNENT du catalogue, c'est leur rencontre qui n'existe pas. Un LMHC
+   * existe, l'Oregon existe, un LMHC en Oregon n'existe pas — et cette
+   * combinaison-là est repartie en production sur un profil public.
+   */
+  | { ok: false; reason: "license-state"; licenseTypeId: string; state: string }
   | { ok: false; reason: "write-failed"; detail: unknown };
 
 /**
@@ -373,6 +383,32 @@ export async function patchBrief(
   const catalog = await readCatalog(supabase);
   const unknown = findUnknownCatalogId(patch, catalog);
   if (unknown) return { ok: false, reason: "unknown-id", ...unknown };
+
+  /*
+   * ⚠ LE COUPLE EST VÉRIFIÉ SUR L'ÉTAT FUSIONNÉ, pas sur le correctif.
+   * L'autosave envoie un champ à la fois : un patch qui ne porte que `state`
+   * doit être confronté au titre DÉJÀ enregistré, sinon il suffirait de
+   * changer l'État tout seul pour reconstituer le couple impossible — la
+   * faille exacte qu'un trigger mal colonné laisserait passer côté base.
+   *
+   * ⚠ ET CE N'EST PAS UN DOUBLON DE LA BASE. `project_briefs_license_state_gate`
+   * refuse en dernier ressort et refusera toujours ; ceci rend une PHRASE
+   * plutôt qu'une 500, pour la seule requête qui peut porter ce couple.
+   */
+  const nextLicense =
+    patch.license_type_id !== undefined
+      ? patch.license_type_id
+      : existing.brief.license_type_id;
+  const nextState = patch.state !== undefined ? patch.state : existing.brief.state;
+
+  if (!licenseAllowedInState(nextLicense, nextState, catalog.licenseTypeStates)) {
+    return {
+      ok: false,
+      reason: "license-state",
+      licenseTypeId: nextLicense ?? "",
+      state: (nextState ?? "").toUpperCase(),
+    };
+  }
 
   const { data: dataPatch, ...columns } = patch;
 

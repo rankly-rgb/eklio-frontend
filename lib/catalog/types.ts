@@ -13,6 +13,20 @@ import type { SitePlatform } from "@/lib/brief/platform";
  */
 
 export type LicenseType = Tables<"license_types">;
+/*
+ * Quelle juridiction délivre quel titre. L'annexe de `license_types`, et la
+ * réponse au défaut du 15 septembre : un LMHC annoncé en Oregon, où le titre
+ * est LPC. La règle qui la lit est `lib/brief/license-state.ts` ; l'autorité
+ * qui REFUSE est `project_briefs_license_state_gate`, en base.
+ */
+export type LicenseTypeState = Tables<"license_type_states">;
+/*
+ * Un DIPLÔME, et il n'est pas une licence. Une université le délivre, aucun
+ * board ne l'accorde ni ne le retire, et il n'autorise à exercer nulle part.
+ * C'est cette séparation qui permet à `checkUnbackedClaims` d'accepter
+ * « PsyD » tout en refusant « psychologist » sur le même brief.
+ */
+export type Degree = Tables<"degrees">;
 export type Specialty = Tables<"specialties">;
 export type PrimaryAction = Tables<"primary_actions">;
 export type SiteGoal = Tables<"site_goals">;
@@ -47,6 +61,8 @@ export type TonePreset = Tables<"tone_cards">;
 
 export type Catalog = {
   licenseTypes: LicenseType[];
+  licenseTypeStates: LicenseTypeState[];
+  degrees: Degree[];
   specialties: Specialty[];
   problemCards: ProblemCard[];
   gainCards: GainCard[];

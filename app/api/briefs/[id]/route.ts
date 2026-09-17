@@ -114,5 +114,18 @@ export async function PATCH(
     return badRequest("That option is no longer available. Reload the page.");
   }
 
+  if (outcome.reason === "license-state") {
+    /*
+     * ⚠ CELLE-CI EST UNE FAUTE DE SAISIE, PAS UNE FAUTE DE CODE, et le message
+     * le dit. Les deux valeurs sont au catalogue ; c'est leur rencontre qui
+     * n'existe pas — un titre que cet État ne délivre pas. Sur une page
+     * publique, ce serait un problème devant son board, pas une coquille.
+     */
+    return badRequest(
+      `${outcome.licenseTypeId.toUpperCase()} isn't a title ${outcome.state} issues. ` +
+        "Pick the one you hold there."
+    );
+  }
+
   return serverError("PATCH /api/briefs", outcome.detail);
 }

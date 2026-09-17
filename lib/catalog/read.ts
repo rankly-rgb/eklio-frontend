@@ -12,12 +12,14 @@ import type { Catalog, PaletteFamily } from "@/lib/catalog/types";
  *
  * Le cache est un cache MÉMOIRE de module, avec un TTL. Deux raisons de ne pas
  * passer par `unstable_cache` / `use cache` :
- *   - les tables de catalogue ne sont lisibles que par le rôle `authenticated`
- *     (policies `*_select_all` sur `{authenticated}`), donc la lecture porte
- *     forcément une session — un cache de données Next indexerait la session ;
- *   - le contenu est IDENTIQUE pour tout le monde, donc un cache par processus
- *     est exactement le bon grain, et il survit entre requêtes sur une même
- *     instance.
+ *   - les policies `*_select_all` ne s'ouvrent pas à n'importe qui : soit la
+ *     lecture porte une session, soit elle porte le jeton d'un brief anonyme
+ *     vivant (§ `20260915053102` côté eklio-backend) — dans les deux cas un
+ *     cache de données Next indexerait l'appelant ;
+ *   - le contenu est IDENTIQUE pour tout le monde — les deux policies rendent
+ *     les mêmes lignes, pas un sous-ensemble par appelant — donc un cache par
+ *     processus est exactement le bon grain, et il survit entre requêtes sur
+ *     une même instance.
  *
  * Le TTL de dix minutes est le délai entre « quelqu'un corrige une carte de
  * ton en base » et « le brief l'affiche ». Sans déploiement, comme demandé.
@@ -38,6 +40,68 @@ export function invalidateCatalog(): void {
   inFlight = null;
 }
 
+/*
+ * ── LES TABLES SANS LESQUELLES LE BRIEF NE POSE PAS SA QUESTION ─────────
+ *
+ * Aucune de ces tables n'est légitimement vide : les migrations du catalogue
+ * épinglent leurs effectifs par un garde-fou qui fait échouer la migration.
+ * Une liste vide côté front ne veut donc jamais dire « rien à afficher », elle
+ * veut dire « la lecture n'a rien ramené » — et PostgREST répond 200 avec `[]`
+ * à un SELECT que RLS refuse, sans la moindre erreur.
+ *
+ * ⚠ C'EST EXACTEMENT COMME ÇA QUE « License type » EST RESTÉ VIDE. Les quinze
+ * policies du catalogue portaient `to authenticated` ; le brief anonyme, lui,
+ * appelle en `anon`. Zéro ligne, zéro erreur, un intitulé sans rien dessous.
+ * La base est réparée (`20260915053102` côté eklio-backend) ; ce garde-fou-ci
+ * est ce qui fait qu'une prochaine régression du même genre se VOIT.
+ */
+const REQUIRED: readonly (keyof Catalog)[] = [
+  "licenseTypes",
+  "specialties",
+  "problemCards",
+  "gainCards",
+  "personaCards",
+  "toneCards",
+  "paletteFamilies",
+  "typePairings",
+  "primaryActions",
+  "siteGoals",
+  "ethicsRules",
+  "sessionStyleCards",
+  "notAFitCards",
+  "modalityCards",
+  "modalityProminenceOptions",
+  /*
+   * La matrice titre/État. Vide = l'écran 1 ne peut plus filtrer ses puces, et
+   * proposerait de nouveau les dix titres dans les cinquante États — c'est
+   * exactement le défaut qu'elle répare, donc elle est REQUISE.
+   */
+  "licenseTypeStates",
+  "degrees",
+  /*
+   * ⚠ ET `sitePlatforms`, QUE LA FUSION AURAIT LAISSÉE DEHORS.
+   *
+   * Le lot qui l'ajoute et le lot qui ajoute les deux lignes au-dessus ont
+   * touché le même tableau, le même `Promise.all` et la même map de retour :
+   * git a signalé quatre conflits et les a tous résolus en gardant les deux
+   * côtés — sauf ici, où il n'y avait rien à résoudre parce que cette liste-ci
+   * n'existe que d'un seul côté. La garde aurait donc cessé de le couvrir sans
+   * qu'aucun conflit ne le dise.
+   *
+   * Vide, elle coûte deux fois : l'écran 1 ne peut plus poser la question de la
+   * plateforme, et les quatre SKU qui portent
+   * `plans.requires_publishable_platform` deviennent invendables à tout le
+   * monde — conditionnés à un ensemble vide. Rien ne lèverait : la liste
+   * serait simplement absente, et la page paraîtrait normale.
+   */
+  "sitePlatforms",
+];
+
+/** Les tables vides, s'il y en a. Un catalogue sain rend une liste vide. */
+function missingTables(catalog: Catalog): string[] {
+  return REQUIRED.filter((key) => catalog[key].length === 0);
+}
+
 export async function readCatalog(supabase: Client): Promise<Catalog> {
   const now = Date.now();
   if (cache && cache.expiresAt > now) return cache.value;
@@ -45,6 +109,29 @@ export async function readCatalog(supabase: Client): Promise<Catalog> {
 
   inFlight = fetchCatalog(supabase)
     .then((value) => {
+      /*
+       * ⚠ UN CATALOGUE AMPUTÉ N'ENTRE PAS DANS LE CACHE, et il ne rentre pas
+       * non plus dans un rendu.
+       *
+       * Le cache est un cache de MODULE, partagé par tous les appelants de
+       * l'instance : une seule lecture creuse — une visiteuse anonyme sous une
+       * policy trop étroite, une coupure réseau à moitié réussie — servirait
+       * des étapes vides à TOUT LE MONDE pendant dix minutes, y compris aux
+       * utilisatrices connectées dont la lecture, elle, aurait marché.
+       *
+       * Le commentaire de `fetchCatalog` disait déjà « mieux vaut échouer
+       * franchement » pour une erreur PostgREST. Zéro ligne est le MÊME
+       * défaut, dans le seul costume qui ne lève rien — alors il lève ici.
+       */
+      const missing = missingTables(value);
+      if (missing.length > 0) {
+        throw new Error(
+          `[catalog] ${missing.length} table(s) vides : ${missing.join(", ")}. ` +
+            "Le catalogue n'est jamais légitimement vide (les migrations en " +
+            "épinglent les effectifs) : c'est une lecture refusée par RLS, pas " +
+            "un catalogue sans contenu."
+        );
+      }
       cache = { value, expiresAt: Date.now() + TTL_MS };
       return value;
     })
@@ -82,6 +169,8 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     modalityCards,
     modalityProminenceOptions,
     sitePlatforms,
+    licenseTypeStates,
+    degrees,
   ] = await Promise.all([
     all(supabase.from("license_types").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("specialties").select("*").eq("active", true).order("sort_order")),
@@ -108,6 +197,14 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
      * pourra faire et ce qu'on ne pourra pas.
      */
     all(supabase.from("site_platforms").select("*").order("sort_order")),
+    /*
+     * ⚠ PAS DE `.eq("active", true)` ICI NON PLUS, pour une raison voisine mais
+     * pas la même : `license_type_states` ne porte pas de colonne `active`. Une
+     * juridiction ne « retire » pas un titre en douceur — elle le délivre ou
+     * non, et la ligne est présente ou absente.
+     */
+    all(supabase.from("license_type_states").select("*").order("state_code")),
+    all(supabase.from("degrees").select("*").eq("active", true).order("sort_order")),
   ]);
 
   const responses = {
@@ -127,6 +224,8 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     modalityCards,
     modalityProminenceOptions,
     sitePlatforms,
+    licenseTypeStates,
+    degrees,
   };
 
   for (const [name, response] of Object.entries(responses)) {
@@ -172,5 +271,7 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
       status: row.status as SitePlatform["status"],
       notice: row.notice,
     })),
+    licenseTypeStates: licenseTypeStates.data ?? [],
+    degrees: degrees.data ?? [],
   };
 }

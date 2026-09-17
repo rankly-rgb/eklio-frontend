@@ -1,5 +1,9 @@
 import type { BriefData } from "@/lib/data/brief";
 import type { BriefRow } from "@/lib/data/brief";
+/* Un type, pas du contenu : la règle « aucun catalogue ici » tient. */
+import type { ToneCards } from "@/lib/generation/how-you-work-shapes";
+import type { LicenseTypeState } from "@/lib/catalog/types";
+import { licenseAllowedInState } from "@/lib/brief/license-state";
 
 /*
  * Les sept étapes du brief — cadrage, validation, avancement.
@@ -131,6 +135,14 @@ export const POSITIONING_MIN_CHARS = 40;
 export type StepDraft = {
   practice_name: string | null;
   license_type_id: string | null;
+  /*
+   * Le DIPLÔME, facultatif, et distinct de la licence. Il ne conditionne
+   * aucune étape : `stepIssue` ne le regarde jamais. Il existe pour que la
+   * prose puisse l'écrire — et pour que la garde déontologique puisse
+   * l'autoriser COMME DIPLÔME sans autoriser le titre d'exercice qui lui
+   * ressemble.
+   */
+  degree_id: string | null;
   specialty_ids: string[];
   city: string | null;
   state: string | null;
@@ -177,8 +189,25 @@ export type StepDraft = {
 /**
  * Ce qui manque à une étape pour être validée, en une phrase qui dit quoi
  * faire. `null` quand l'étape est bonne.
+ *
+ * `generatedToneCards` est ce que l'étape 5 MONTRE quand la génération a
+ * abouti (§2.2) — voir le commentaire du `case "voice"`, qui est la seule
+ * raison pour laquelle ce paramètre existe. `null` = l'étape montre le
+ * catalogue statique, ce qui est aussi l'état par défaut d'un appelant qui ne
+ * valide pas l'étape 5.
  */
-export function stepIssue(step: StepId, draft: StepDraft): string | null {
+export function stepIssue(
+  step: StepId,
+  draft: StepDraft,
+  generatedToneCards: ToneCards | null = null,
+  /*
+   * La matrice titre/État, pour l'étape 1. Vide par défaut : un appelant qui
+   * ne la passe pas ne fait alors AUCUNE vérification de couple, plutôt que de
+   * tous les refuser — ce module n'est pas l'autorité, et un refus qu'il
+   * inventerait serait un mur sans explication.
+   */
+  licenseTypeStates: LicenseTypeState[] = []
+): string | null {
   switch (step) {
     case "practice":
       if (!draft.practice_name?.trim()) {
@@ -199,6 +228,28 @@ export function stepIssue(step: StepId, draft: StepDraft): string | null {
        */
       if (!draft.site_platform_id) {
         return "Tell us where your website lives — we publish your pages there.";
+      }
+      /*
+       * ⚠ LE COUPLE TITRE/ÉTAT, ET IL VIENT EN DERNIER À DESSEIN. Les quatre
+       * conditions au-dessus disent « il manque quelque chose » ; celle-ci dit
+       * « ce que tu as répondu ne peut pas être vrai », ce qui est une autre
+       * phrase et un autre moment.
+       *
+       * `catalog` n'entre PAS dans ce module : il ne porte aucun contenu (§6).
+       * La matrice arrive donc par `licenseTypeStates`, comme les cartes
+       * générées arrivent à l'étape 5 — même forme, même raison.
+       *
+       * Et ce n'est pas l'autorité : `project_briefs_license_state_gate`
+       * refuse en base. Ceci est ce qui l'explique avant qu'elle ne s'y cogne.
+       */
+      if (
+        !licenseAllowedInState(
+          draft.license_type_id,
+          draft.state,
+          licenseTypeStates
+        )
+      ) {
+        return "That title isn't issued in the state you gave. Pick the one you hold there.";
       }
       return null;
 
@@ -246,8 +297,42 @@ export function stepIssue(step: StepId, draft: StepDraft): string | null {
       return null;
     }
 
-    case "voice":
-      return draft.tone_card_id ? null : "Pick the one that sounds most like you.";
+    /*
+     * ⚠ DEUX ENDROITS OÙ LE CHOIX PEUT VIVRE, ET UN SEUL ÉTAIT LU.
+     *
+     * L'étape 5 a deux modes. Quand la génération aboutit — le cas NORMAL —
+     * elle montre six cartes écrites dans sa voix, dont les `id` sont des
+     * slugs inventés par le modèle (« grounded-direct »). Ceux-là ne peuvent
+     * PAS aller dans `tone_card_id` : la colonne porte
+     * `project_briefs_tone_card_id_fkey` vers `tone_cards(id)`, et
+     * `findUnknownCatalogId` les refuserait avant même la base. Ils vivent
+     * donc dans `data.selected_tone_card_id`, et `selectGenerated()` met
+     * `tone_card_id` à null exprès.
+     *
+     * Cette validation ne lisait que `tone_card_id`. Résultat : elle cochait
+     * la carte, le rail reprenait son titre (`applyOptimistic` lit BIEN la
+     * carte générée), et « Continue » répondait quand même « Pick the one
+     * that sounds most like you ». Le seul chemin qui marchait était le repli
+     * statique — celui qu'on ne voit que quand la génération échoue.
+     *
+     * ⚠ ET LA QUESTION EST « CE QUI EST À L'ÉCRAN », PAS « UNE DES DEUX ».
+     * Un `tone_card_id || selected_tone_card_id` permissif validerait une
+     * sélection PÉRIMÉE : rééditer l'étape 4 change
+     * `tone_cards_inputs_hash`, six cartes neuves arrivent avec des id neufs,
+     * et l'ancien `selected_tone_card_id` ne correspond plus à rien
+     * d'affiché. L'étape passerait avec zéro carte cochée — un état que rien
+     * à l'écran n'expliquerait.
+     */
+    case "voice": {
+      const pick = "Pick the one that sounds most like you.";
+      if (generatedToneCards) {
+        const chosen = draft.data.selected_tone_card_id;
+        return chosen && generatedToneCards.some((card) => card.id === chosen)
+          ? null
+          : pick;
+      }
+      return draft.tone_card_id ? null : pick;
+    }
 
     /* Fusion de l'ancien « palette » et de l'ancien « typography » (§9.7). */
     case "look":

@@ -903,6 +903,30 @@ export type Database = {
         }
         Relationships: []
       }
+      degrees: {
+        Row: {
+          active: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          full_name: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          full_name?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       direction_asset_daily_spend: {
         Row: {
           actual_cents: number
@@ -1344,6 +1368,44 @@ export type Database = {
           },
         ]
       }
+      license_type_states: {
+        Row: {
+          abbreviation: string | null
+          license_type_id: string
+          note: string | null
+          source_url: string | null
+          state_code: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          abbreviation?: string | null
+          license_type_id: string
+          note?: string | null
+          source_url?: string | null
+          state_code: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          abbreviation?: string | null
+          license_type_id?: string
+          note?: string | null
+          source_url?: string | null
+          state_code?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_type_states_license_type_id_fkey"
+            columns: ["license_type_id"]
+            isOneToOne: false
+            referencedRelation: "license_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       license_types: {
         Row: {
           active: boolean
@@ -1351,6 +1413,7 @@ export type Database = {
           id: string
           label: string
           sort_order: number
+          supervised_track_of: string | null
         }
         Insert: {
           active?: boolean
@@ -1358,6 +1421,7 @@ export type Database = {
           id: string
           label: string
           sort_order: number
+          supervised_track_of?: string | null
         }
         Update: {
           active?: boolean
@@ -1365,8 +1429,17 @@ export type Database = {
           id?: string
           label?: string
           sort_order?: number
+          supervised_track_of?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "license_types_supervised_track_fkey"
+            columns: ["supervised_track_of"]
+            isOneToOne: false
+            referencedRelation: "license_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       modality_cards: {
         Row: {
@@ -1857,6 +1930,7 @@ export type Database = {
           client_persona_ids: string[]
           completed_steps: number[]
           data: Json
+          degree_id: string | null
           gain_card_ids: string[]
           license_type_id: string | null
           modality_ids: string[] | null
@@ -1894,6 +1968,7 @@ export type Database = {
           client_persona_ids?: string[]
           completed_steps?: number[]
           data?: Json
+          degree_id?: string | null
           gain_card_ids?: string[]
           license_type_id?: string | null
           modality_ids?: string[] | null
@@ -1931,6 +2006,7 @@ export type Database = {
           client_persona_ids?: string[]
           completed_steps?: number[]
           data?: Json
+          degree_id?: string | null
           gain_card_ids?: string[]
           license_type_id?: string | null
           modality_ids?: string[] | null
@@ -1968,6 +2044,13 @@ export type Database = {
             columns: ["builder_target_id"]
             isOneToOne: false
             referencedRelation: "builder_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_briefs_degree_id_fkey"
+            columns: ["degree_id"]
+            isOneToOne: false
+            referencedRelation: "degrees"
             referencedColumns: ["id"]
           },
           {
@@ -2761,6 +2844,15 @@ export type Database = {
       }
     }
     Views: {
+      sellable_states: {
+        Row: {
+          pairs: number | null
+          sellable: boolean | null
+          state_code: string | null
+          verified_pairs: number | null
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           id: string | null
@@ -3028,6 +3120,7 @@ export type Database = {
         Returns: boolean
       }
       hex_rgb: { Args: { p_hex: string }; Returns: number[] }
+      holds_anon_brief: { Args: never; Returns: boolean }
       home_recent_activity: { Args: { p_brand_kit_id: string }; Returns: Json }
       invite_clinician: {
         Args: { p_email: string; p_organization_id: string }
@@ -3035,6 +3128,10 @@ export type Database = {
       }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       kit_paid_access: { Args: { p_brand_kit_id: string }; Returns: string }
+      license_state_allowed: {
+        Args: { p_license_type_id: string; p_state: string }
+        Returns: boolean
+      }
       list_deleted_brand_kits: { Args: never; Returns: Json }
       list_user_uploads: { Args: { p_brand_kit_id: string }; Returns: Json }
       mark_brand_kit_delivered: {
@@ -3060,6 +3157,10 @@ export type Database = {
       project_briefs_data_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_tone_cards_valid: { Args: { p: Json }; Returns: boolean }
       project_briefs_usp_options_valid: { Args: { p: Json }; Returns: boolean }
+      project_state_is_sellable: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
       purchase_status_before: {
         Args: { p_purchase_id: string; p_status: string }
         Returns: string
@@ -3403,7 +3504,12 @@ export type Database = {
         Args: { p_frag: Json; p_spec: Json }
         Returns: string
       }
+      state_is_sellable: { Args: { p_state: string }; Returns: boolean }
       sync_notifications: { Args: { p_brand_kit_id: string }; Returns: Json }
+      title_abbreviation: {
+        Args: { p_license_type_id: string; p_state: string }
+        Returns: string
+      }
       truncate_on_word_boundary: {
         Args: { p_max: number; p_text: string }
         Returns: string
