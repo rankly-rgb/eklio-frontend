@@ -40,6 +40,8 @@ import type { StepDraft } from "@/lib/brief/flow";
  * tested against invented hexes, and colours are not personal data.
  */
 
+import { POSITIONING_KINDS } from "@/lib/positioning/review";
+
 export const FIXTURE_LABEL = "fixture:catalog";
 
 /** `n` items from `make`, so a count is a number and not a copy-paste. */
@@ -243,6 +245,37 @@ export const FIXTURE_CATALOG: Catalog = {
     sort_order: i + 1,
     active: true,
   })) as unknown as Catalog["ethicsRules"],
+
+  /*
+   * ⚠ LA SECONDE FAMILLE, ET ELLE EST DÉRIVÉE, PAS RECOPIÉE. `POSITIONING_KINDS`
+   * vient du module qui les applique : ajouter une sixième forme là-bas fait
+   * apparaître une sixième règle ici, et les sondes qui comptent les formes la
+   * voient. Une liste écrite à la main se serait tue.
+   */
+  positioningRules: POSITIONING_KINDS.map((kind, i) => ({
+    id: `positioning_${kind}`,
+    short_label: `Fixture rule for ${kind}`,
+    description: "Fixture only. Never a product decision.",
+    example_weak: "I hold a PhD and have been licensed for twelve years.",
+    example_strong: "The mornings are the hardest part, and you have stopped saying so.",
+    sort_order: i + 1,
+    active: true,
+    is_example: true,
+  })) as unknown as Catalog["positioningRules"],
+
+  positioningPatterns: POSITIONING_KINDS.map((kind, i) => ({
+    id: `positioning_pattern_${kind}`,
+    rule_id: `positioning_${kind}`,
+    kind,
+    pattern: kind === "length" ? null : "\\y(you|your)\\y",
+    secondary_pattern: kind === "present_without" ? "\\y(mothers)\\y" : null,
+    window_chars: kind === "absent_in_opening" ? 320 : null,
+    min_chars: kind === "length" ? 40 : null,
+    max_chars: kind === "length" ? 700 : null,
+    severity: i === 0 ? "costly" : "minor",
+    sort_order: i + 1,
+    active: true,
+  })) as unknown as Catalog["positioningPatterns"],
 
   sessionStyleCards: rows(8, (i) => ({
     id: `style_${i}`,

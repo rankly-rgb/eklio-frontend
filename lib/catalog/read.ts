@@ -164,6 +164,8 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     primaryActions,
     siteGoals,
     ethicsRules,
+    positioningRules,
+    positioningPatterns,
     sessionStyleCards,
     notAFitCards,
     modalityCards,
@@ -183,6 +185,12 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     all(supabase.from("primary_actions").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("site_goals").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("ethics_rules").select("*").eq("active", true).order("sort_order")),
+    all(
+      supabase.from("positioning_rules").select("*").eq("active", true).order("sort_order")
+    ),
+    all(
+      supabase.from("positioning_patterns").select("*").eq("active", true).order("sort_order")
+    ),
     all(supabase.from("session_style_cards").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("not_a_fit_cards").select("*").eq("active", true).order("sort_order")),
     all(supabase.from("modality_cards").select("*").eq("active", true).order("sort_order")),
@@ -219,6 +227,8 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     primaryActions,
     siteGoals,
     ethicsRules,
+    positioningRules,
+    positioningPatterns,
     sessionStyleCards,
     notAFitCards,
     modalityCards,
@@ -256,6 +266,8 @@ async function fetchCatalog(supabase: Client): Promise<Catalog> {
     primaryActions: primaryActions.data ?? [],
     siteGoals: siteGoals.data ?? [],
     ethicsRules: ethicsRules.data ?? [],
+    positioningRules: positioningRules.data ?? [],
+    positioningPatterns: positioningPatterns.data ?? [],
     sessionStyleCards: sessionStyleCards.data ?? [],
     notAFitCards: notAFitCards.data ?? [],
     modalityCards: modalityCards.data ?? [],

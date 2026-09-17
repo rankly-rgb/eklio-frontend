@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { invalidateCatalog, readCatalog } from "@/lib/catalog/read";
 import { FIXTURE_CATALOG } from "@/lib/brief/fixtures/catalog";
@@ -39,7 +41,29 @@ const TABLES = [
   ["license_type_states", "licenseTypeStates"],
   ["degrees", "degrees"],
   ["site_platforms", "sitePlatforms"],
+  ["positioning_rules", "positioningRules"],
+  ["positioning_patterns", "positioningPatterns"],
 ] as const;
+
+/*
+ * ⚠ DEUX TABLES LUES QUI NE SONT PAS DANS `REQUIRED`, ET LA RAISON EST ÉCRITE
+ * ICI PARCE QU'ELLE N'EST PAS ÉVIDENTE.
+ *
+ * `REQUIRED` fait échouer TOUTE lecture du catalogue — donc le brief, donc les
+ * sept écrans. C'est juste pour une table dont le vide ne peut être qu'un refus
+ * RLS déguisé en `[]`.
+ *
+ * Les règles de positionnement ont un second état vide LÉGITIME : celui où
+ * personne ne les a encore écrites, ou celui, transitoire, où on remplace les
+ * exemples par les vraies. Faire tomber le brief pour ça serait un dégât
+ * collatéral que personne n'a demandé.
+ *
+ * La garde existe donc, mais là où le vide COÛTE quelque chose : la route du
+ * palier gratuit refuse par `positioning_rules_missing` plutôt que de répondre
+ * « rien » et de laisser croire qu'elle a regardé. L'assertion en bas de ce
+ * fichier tient la chaîne : retirer ce refus de la route fait échouer ici.
+ */
+const GARDEES_AILLEURS = ["positioningRules", "positioningPatterns"] as const;
 
 /*
  * `ethics_rules` n'est pas dans le fixture (il ne sert aucun des sept écrans
@@ -106,7 +130,11 @@ describe("readCatalog", () => {
    * lecture lève EN LA NOMMANT. Une table de plus demain est couverte sans que
    * personne ait à s'en souvenir.
    */
-  it.each(TABLES.map(([table, key]) => [table, key] as const))(
+  it.each(
+    TABLES.filter(([, key]) => !GARDEES_AILLEURS.includes(key as never)).map(
+      ([table, key]) => [table, key] as const
+    )
+  )(
     "refuse un catalogue où %s est vide — la garde couvre TOUTES les tables lues",
     async (empty, key) => {
       const { supabase } = clientReturning((t) => (t === empty ? [] : ROWS[t]));
@@ -134,6 +162,29 @@ describe("readCatalog", () => {
     lues.delete("ethicsRules" as never);
     expect([...declarees].filter((k) => !lues.has(k as never))).toEqual([]);
     expect([...lues].filter((k) => !declarees.has(k))).toEqual([]);
+  });
+
+  /*
+   * ⚠ ET LES DEUX EXEMPTÉES SONT GARDÉES AILLEURS, POUR DE VRAI. Sans cette
+   * assertion, `GARDEES_AILLEURS` serait une liste d'exemptions — c'est-à-dire
+   * une liste qu'on allonge au lieu de corriger. Elle nomme l'endroit, et cet
+   * endroit doit exister.
+   */
+  it("⚠ les tables exemptées de REQUIRED sont refusées par la route du palier gratuit", () => {
+    const route = readFileSync(
+      join(process.cwd(), "app/api/first-line/route.ts"),
+      "utf8"
+    );
+    expect(route).toContain("positioning_rules_missing");
+    expect(route).toMatch(/positioningRules \?\? \[\]\)\.length === 0/);
+  });
+
+  it("⚠ et un catalogue sans règles de positionnement se LIT quand même — le brief ne tombe pas", async () => {
+    const { supabase } = clientReturning((t) =>
+      t === "positioning_rules" || t === "positioning_patterns" ? [] : ROWS[t]
+    );
+    const catalog = await readCatalog(supabase);
+    expect(catalog.positioningRules).toEqual([]);
   });
 
   it("rend le catalogue quand la lecture aboutit", async () => {

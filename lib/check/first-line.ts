@@ -4,6 +4,12 @@ import { ETHICS_SYSTEM_RULES } from "@/lib/ethics/rules";
 import { reviewText, type CheckFinding } from "@/lib/check/review";
 import type { Degree, EthicsRule, LicenseType } from "@/lib/catalog/types";
 import type { CheckRewriter } from "@/lib/check/rewrite";
+import {
+  reviewPositioning,
+  type PositioningFinding,
+  type UnusablePattern,
+} from "@/lib/positioning/review";
+import type { PositioningPattern, PositioningRule } from "@/lib/catalog/types";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -137,8 +143,22 @@ function escapeRegExp(value: string): string {
 }
 
 export type FirstLineOutcome = {
-  /** Ce que SON texte déclenche. Rendu même quand la réécriture échoue. */
+  /** Ce que SON texte déclenche en DÉONTOLOGIE. Rendu même si la réécriture échoue. */
   before: CheckFinding[];
+  /*
+   * ⚠ LA SECONDE FAMILLE, À CÔTÉ ET JAMAIS MÉLANGÉE. Ce sont les constats de
+   * POSITIONNEMENT sur son texte à elle. Ils ne bloquent RIEN : ni la
+   * réécriture, ni le rendu, ni quoi que ce soit. Une faute déontologique est
+   * « à corriger » ; ceci est « voilà pourquoi personne ne vous écrit », et on
+   * ne refuse pas un texte parce qu'il est fade.
+   *
+   * ⚠ ET C'EST LA MOITIÉ QUI MANQUAIT. Sans elle, un profil irréprochable et
+   * générique recevait « rien » — la réponse la plus inutile possible à celle
+   * qui en a le plus besoin.
+   */
+  positioning: PositioningFinding[];
+  /** Les motifs que le lecteur n'a pas su appliquer. Remontent, jamais avalés. */
+  positioningUnusable: UnusablePattern[];
   /** Le paragraphe réécrit, ou `null` quand on a refusé de le rendre. */
   rewritten: string | null;
   /** Ce que le texte RENDU déclenche. Toujours mesuré, jamais supposé. */
@@ -164,9 +184,16 @@ export async function rewriteFirstLine(
   degrees: readonly Pick<Degree, "label">[] = [],
   rewrite: CheckRewriter = callRewrite,
   targetChars: number = FIRST_LINE_TARGET_CHARS,
-  maxAttempts: number = FIRST_LINE_MAX_ATTEMPTS
+  maxAttempts: number = FIRST_LINE_MAX_ATTEMPTS,
+  positioningRules: readonly PositioningRule[] = [],
+  positioningPatterns: readonly PositioningPattern[] = []
 ): Promise<FirstLineOutcome> {
   const before = reviewText(text, rules).findings;
+  /*
+   * Sur SON texte, pas sur la réécriture : le constat porte sur ce qu'elle a
+   * publié, et il reste vrai quoi qu'il advienne de la réécriture.
+   */
+  const pos = reviewPositioning(text, positioningRules, positioningPatterns);
 
   const system = [FIRST_LINE_SYSTEM, "", ETHICS_SYSTEM_RULES, "", rulesBlock(rules)]
     .join("\n")
@@ -195,6 +222,8 @@ export async function rewriteFirstLine(
     if (!findings.some((finding) => finding.severity === "block") && introduced.length === 0) {
       return {
         before,
+        positioning: pos.findings,
+        positioningUnusable: pos.unusable,
         rewritten: produced,
         after: findings,
         attempts,
@@ -220,5 +249,15 @@ export async function rewriteFirstLine(
         ? "credential_introduced"
         : "ethics";
 
-  return { before, rewritten: null, after: findings, attempts, resolved: false, refusal: cause, introduced };
+  return {
+    before,
+    positioning: pos.findings,
+    positioningUnusable: pos.unusable,
+    rewritten: null,
+    after: findings,
+    attempts,
+    resolved: false,
+    refusal: cause,
+    introduced,
+  };
 }

@@ -35,6 +35,21 @@ export type GainCard = Tables<"gain_cards">;
 export type PersonaCardData = Tables<"client_persona_cards">;
 export type TypePairing = Tables<"type_pairings">;
 export type EthicsRule = Tables<"ethics_rules">;
+/*
+ * ⚠ LA SECONDE FAMILLE DE RÈGLES, ET ELLE N'EST PAS DE LA DÉONTOLOGIE.
+ * `ethics_rules` dit « à corriger » ; `positioning_rules` dit « voilà pourquoi
+ * personne ne vous écrit ». Un profil peut être irréprochable et vide, et seule
+ * la seconde le voit. Leurs sévérités sont volontairement disjointes
+ * (`block | warn` contre `costly | minor`) pour qu'aucun code ne les confonde.
+ *
+ * ⚠ ET CONTRAIREMENT À `ethics_patterns`, CELLE-CI EST LUE PAR L'APPLICATION.
+ * Les motifs déontologiques ont un jumeau TypeScript parce qu'ils doivent aussi
+ * tourner dans un trigger SQL ; ceux-ci n'ont pas de chemin d'écriture à
+ * garder, donc une seule copie : la table. Les recopier en TypeScript serait
+ * refaire exprès un problème qu'on subit ailleurs.
+ */
+export type PositioningRule = Tables<"positioning_rules">;
+export type PositioningPattern = Tables<"positioning_patterns">;
 export type SessionStyleCard = Tables<"session_style_cards">;
 export type NotAFitCard = Tables<"not_a_fit_cards">;
 export type ModalityCard = Tables<"modality_cards">;
@@ -73,6 +88,8 @@ export type Catalog = {
   primaryActions: PrimaryAction[];
   siteGoals: SiteGoal[];
   ethicsRules: EthicsRule[];
+  positioningRules: PositioningRule[];
+  positioningPatterns: PositioningPattern[];
   /*
    * "How you work" catalogs — same plain-table pattern as the eleven above
    * (FRONTEND_CONTRACT.md §9.8). `banned_phrases` is NOT here and never will

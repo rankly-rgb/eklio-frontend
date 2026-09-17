@@ -122,17 +122,54 @@ export async function POST(request: Request) {
      */
     const catalog = await readCatalog(createAdminClient()).catch(() => null);
 
+    /*
+     * ⚠ UNE TABLE DE POSITIONNEMENT VIDE N'EST PAS UN DIAGNOSTIC AMPUTÉ EN
+     * SILENCE. Sans ce refus, le palier gratuit retomberait exactement sur le
+     * défaut qu'on répare : un profil irréprochable et générique recevrait
+     * « rien », et rien ne dirait que la moitié du diagnostic n'a pas tourné.
+     *
+     * 503 et pas 422 : ce n'est PAS son texte, c'est notre catalogue. C'est le
+     * seul cas de cette route, avec la clé absente, où « c'est de notre faute »
+     * est la phrase juste.
+     */
+    if ((catalog?.positioningRules ?? []).length === 0) {
+      console.error("[api] first-line: positioning_rules is empty");
+      return NextResponse.json(
+        {
+          error:
+            "Half of what we check is missing on our side right now, so we are not going to pretend we looked. Nothing is wrong with your profile — try again shortly.",
+          code: "positioning_rules_missing",
+        },
+        { status: 503 }
+      );
+    }
+
     const outcome = await rewriteFirstLine(
       text,
       catalog?.ethicsRules ?? [],
       catalog?.licenseTypes ?? [],
-      catalog?.degrees ?? []
+      catalog?.degrees ?? [],
+      undefined,
+      undefined,
+      undefined,
+      catalog?.positioningRules ?? [],
+      catalog?.positioningPatterns ?? []
     );
+
+    /*
+     * Un motif illisible remonte dans le journal. Il ne casse pas la réponse —
+     * les autres constats restent vrais — mais il ne disparaît pas non plus.
+     */
+    if (outcome.positioningUnusable.length > 0) {
+      console.error("[api] first-line: unusable positioning patterns", outcome.positioningUnusable);
+    }
 
     // Identifiants de règles et compteurs. Jamais son texte, jamais un extrait.
     track("first_line_used", {
       findings: outcome.before.length,
       rules: outcome.before.map((finding) => finding.ruleId).join(","),
+      positioning: outcome.positioning.length,
+      positioningRules: outcome.positioning.map((finding) => finding.ruleId).join(","),
       attempts: outcome.attempts,
       resolved: outcome.resolved,
       refusal: outcome.refusal ?? "",
@@ -148,6 +185,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           findings: outcome.before,
+          positioning: outcome.positioning,
           rewritten: null,
           targetChars: FIRST_LINE_TARGET_CHARS,
           error:
@@ -169,6 +207,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       findings: outcome.before,
+      positioning: outcome.positioning,
       rewritten: outcome.rewritten,
       after: outcome.after,
       attempts: outcome.attempts,

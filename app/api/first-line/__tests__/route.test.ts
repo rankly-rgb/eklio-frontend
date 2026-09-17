@@ -30,8 +30,38 @@ vi.mock("@/lib/supabase/server", () => ({
   createAdminClient: () => ({}),
 }));
 
+/* Réglable : une sonde vérifie ce qui se passe quand la table est vide. */
+let reglesPositionnement: unknown[] = [
+  {
+    id: "example_opens_on_the_writer",
+    short_label: "EXAMPLE — the opening is about you, not about her",
+    description: "Provisional example.",
+    example_weak: "I hold a PhD.",
+    example_strong: "The mornings are the hardest part.",
+    sort_order: 1,
+    active: true,
+    is_example: true,
+  },
+];
+
 vi.mock("@/lib/catalog/read", () => ({
   readCatalog: async () => ({
+    positioningRules: reglesPositionnement,
+    positioningPatterns: [
+      {
+        id: "example_no_second_person_up_front",
+        rule_id: "example_opens_on_the_writer",
+        kind: "absent_in_opening",
+        pattern: "\\y(you|your)\\y",
+        secondary_pattern: null,
+        window_chars: 320,
+        min_chars: null,
+        max_chars: null,
+        severity: "costly",
+        sort_order: 1,
+        active: true,
+      },
+    ],
     ethicsRules: [
       {
         id: "proven",
@@ -66,12 +96,24 @@ async function poste(text: string, ip = "203.0.113.7") {
   return { status: response.status, body: await response.json() };
 }
 
+const REGLE_EXEMPLE = {
+  id: "example_opens_on_the_writer",
+  short_label: "EXAMPLE — the opening is about you, not about her",
+  description: "Provisional example.",
+  example_weak: "I hold a PhD.",
+  example_strong: "The mornings are the hardest part.",
+  sort_order: 1,
+  active: true,
+  is_example: true,
+};
+
 const SON_TEXTE =
   "I hold a PhD from Berkeley and have been licensed in California for twelve years.";
 
 describe("le mur est retiré", () => {
   beforeEach(() => {
     consumeAnonSpend.mockClear();
+    reglesPositionnement = [REGLE_EXEMPLE];
     refusalAnon = null;
     appelsModele = 0;
     reponseModele = "You are struggling to sleep, and the mornings are hardest.";
@@ -97,6 +139,7 @@ describe("le mur est retiré", () => {
 describe("⚠ ce qui remplace le mur mord", () => {
   beforeEach(() => {
     consumeAnonSpend.mockClear();
+    reglesPositionnement = [REGLE_EXEMPLE];
     refusalAnon = null;
     appelsModele = 0;
     reponseModele = "You are struggling to sleep, and the mornings are hardest.";
@@ -129,6 +172,7 @@ describe("⚠ ce qui remplace le mur mord", () => {
 describe("les refus disent le leur, et aucun ne s'excuse", () => {
   beforeEach(() => {
     consumeAnonSpend.mockClear();
+    reglesPositionnement = [REGLE_EXEMPLE];
     refusalAnon = null;
     appelsModele = 0;
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -171,6 +215,67 @@ describe("les refus disent le leur, et aucun ne s'excuse", () => {
     expect(body.code).toBe("generation_unavailable");
     expect(body.error).toMatch(/that's on us/i);
     vi.restoreAllMocks();
+  });
+});
+
+describe("⚠ la seconde famille de constats, celle qui manquait", () => {
+  beforeEach(() => {
+    consumeAnonSpend.mockClear();
+    reglesPositionnement = [REGLE_EXEMPLE];
+    refusalAnon = null;
+    appelsModele = 0;
+    reponseModele = "You are struggling to sleep, and the mornings are hardest.";
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  /*
+   * ⚠ LE DÉFAUT QUE CE LOT RÉPARE, EN UNE SONDE. Ce texte ne déclenche AUCUNE
+   * des six règles déontologiques — il est irréprochable. Avant, la réponse
+   * était « rien ». Maintenant elle dit pourquoi personne ne lui écrit.
+   */
+  it("un profil irréprochable et générique reçoit enfin un constat", async () => {
+    const { status, body } = await poste(SON_TEXTE, "203.0.113.41");
+    expect(status).toBe(200);
+    expect(body.findings).toEqual([]);
+    expect(body.positioning).toHaveLength(1);
+    expect(body.positioning[0].severity).toBe("costly");
+    expect(body.positioning[0].excerpt).toBeNull();
+  });
+
+  it("les deux familles arrivent dans DEUX champs, jamais fondues en un", async () => {
+    reponseModele = "You are struggling to sleep, and the mornings are hardest.";
+    const { body } = await poste(
+      "I guarantee you will heal from your anxiety, and I hold a PhD.",
+      "203.0.113.42"
+    );
+    expect(Array.isArray(body.findings)).toBe(true);
+    expect(Array.isArray(body.positioning)).toBe(true);
+    expect(body.findings).not.toEqual(body.positioning);
+  });
+
+  /*
+   * ⚠ UN POSITIONNEMENT FAIBLE NE REFUSE RIEN. On ne retient pas une
+   * réécriture parce que le texte d'origine était fade — ce serait confondre
+   * « à corriger » et « voilà pourquoi personne ne vous écrit ».
+   */
+  it("⚠ et un constat de positionnement ne bloque PAS la réécriture", async () => {
+    const { status, body } = await poste(SON_TEXTE, "203.0.113.43");
+    expect(status).toBe(200);
+    expect(body.positioning.length).toBeGreaterThan(0);
+    expect(body.rewritten).not.toBeNull();
+  });
+
+  /*
+   * ⚠ ET UNE TABLE VIDE NE SE FAIT PAS PASSER POUR UN DIAGNOSTIC COMPLET.
+   * Sans ce refus, on retomberait exactement sur le défaut réparé : « rien »,
+   * sans que rien ne dise que la moitié n'a pas tourné.
+   */
+  it("⚠ une table de positionnement vide REFUSE au lieu de répondre « rien »", async () => {
+    reglesPositionnement = [];
+    const { status, body } = await poste(SON_TEXTE, "203.0.113.44");
+    expect(status).toBe(503);
+    expect(body.code).toBe("positioning_rules_missing");
+    expect(appelsModele).toBe(0);
   });
 });
 

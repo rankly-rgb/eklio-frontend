@@ -1851,6 +1851,89 @@ export type Database = {
           },
         ]
       }
+      positioning_patterns: {
+        Row: {
+          active: boolean
+          id: string
+          kind: string
+          max_chars: number | null
+          min_chars: number | null
+          pattern: string | null
+          rule_id: string
+          secondary_pattern: string | null
+          severity: string
+          sort_order: number
+          window_chars: number | null
+        }
+        Insert: {
+          active?: boolean
+          id: string
+          kind: string
+          max_chars?: number | null
+          min_chars?: number | null
+          pattern?: string | null
+          rule_id: string
+          secondary_pattern?: string | null
+          severity: string
+          sort_order: number
+          window_chars?: number | null
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          kind?: string
+          max_chars?: number | null
+          min_chars?: number | null
+          pattern?: string | null
+          rule_id?: string
+          secondary_pattern?: string | null
+          severity?: string
+          sort_order?: number
+          window_chars?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positioning_patterns_rule_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "positioning_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      positioning_rules: {
+        Row: {
+          active: boolean
+          description: string
+          example_strong: string | null
+          example_weak: string | null
+          id: string
+          is_example: boolean
+          short_label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          description: string
+          example_strong?: string | null
+          example_weak?: string | null
+          id: string
+          is_example?: boolean
+          short_label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          description?: string
+          example_strong?: string | null
+          example_weak?: string | null
+          id?: string
+          is_example?: boolean
+          short_label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       primary_actions: {
         Row: {
           active: boolean
