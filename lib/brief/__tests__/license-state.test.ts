@@ -25,7 +25,7 @@ import { FIXTURE_DRAFT } from "@/lib/brief/fixtures/catalog";
  *
  * Trois couches doivent refuser, et ce fichier les prend une par une. La
  * quatrième — le trigger en base, qui est L'AUTORITÉ — est sondée dans
- * `eklio-backend/supabase/tests/20260915114500_license_state.test.sql`.
+ * `eklio-backend/supabase/tests/20260915100122_license_state.test.sql`.
  *
  * ⚠ CHAQUE REFUS EST DOUBLÉ DE SON ACCEPTATION. Une matrice qui refuserait
  * TOUT passerait toute la moitié rouge de ce fichier sans en rater une ligne.
