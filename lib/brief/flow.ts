@@ -134,6 +134,20 @@ export type StepDraft = {
   specialty_ids: string[];
   city: string | null;
   state: string | null;
+  /*
+   * ⚠ LA QUALIFICATION DE PLATEFORME, À L'ÉTAPE 1 ET PAS À LA 7.
+   *
+   * L'offre promet des pages « publiées par Eklio sur son CMS ». Quelqu'un
+   * dont la plateforme n'est pas atteignable doit l'apprendre AVANT d'écrire
+   * son positionnement, pas après cinq écrans de travail — et l'étape 7 est
+   * facultative, donc la question s'y serait sautée.
+   *
+   * La DÉCISION (accepté, conditionnel, refusé) n'est pas ici : elle vit dans
+   * `lib/brief/platform.ts`, qui lit `site_platforms` en base. Cette étape
+   * demande seulement qu'on ait répondu.
+   */
+  site_platform_id: string | null;
+  site_url: string | null;
   positioning: string | null;
   problem_card_ids: string[];
   gain_card_ids: string[];
@@ -175,6 +189,16 @@ export function stepIssue(step: StepId, draft: StepDraft): string | null {
       }
       if (draft.specialty_ids.length === 0) {
         return "Choose at least one specialty.";
+      }
+      /*
+       * ⚠ ON EXIGE UNE RÉPONSE, PAS UNE BONNE RÉPONSE. Cette fonction dit ce
+       * qui manque à une étape ; elle ne décide pas si on peut vendre à
+       * quelqu'un. Ce jugement-là lit `site_platforms` en base et vit dans
+       * `lib/brief/platform.ts` — un module pur ne peut pas, et ne doit pas,
+       * porter une liste que la base est seule à faire autorité sur.
+       */
+      if (!draft.site_platform_id) {
+        return "Tell us where your website lives — we publish your pages there.";
       }
       return null;
 

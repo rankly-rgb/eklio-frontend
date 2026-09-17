@@ -46,18 +46,74 @@ export type ToneCards = z.infer<typeof toneCardsSchema>;
  * `evidence` un tableau de chaînes, et les `angle` DISTINCTS entre eux.
  */
 
-export const USP_ANGLES = ["population", "method", "lived_experience"] as const;
+/*
+ * ── LES TROIS ANGLES, RECADRÉS SUR LES MOTS DE LA PATIENTE ──────────────
+ *
+ * L'offre du 13 septembre demande « sa niche, formulée dans les mots de ses
+ * patients, PAS en modalités ni en démographie ».
+ *
+ * ⚠ DEUX DES TROIS ANGLES PRÉCÉDENTS ÉTAIENT EXACTEMENT CE QUE L'OFFRE
+ * INTERDIT. `population` était la démographie, `method` était la modalité.
+ * Les renommer n'aurait rien changé : c'est ce qu'ils demandaient au modèle
+ * d'écrire qui était devenu faux.
+ *
+ * Les trois nouveaux sont trois façons de dire LA MÊME niche, toutes du point
+ * de vue de la personne qui cherche :
+ *
+ *   presenting_problem   ce qu'elle porte, dans ses mots à elle
+ *   the_moment           l'instant où quelqu'un se décide à chercher
+ *   what_keeps_returning ce qu'elle a déjà essayé, et qui revient
+ */
+export const USP_ANGLES = [
+  "presenting_problem",
+  "the_moment",
+  "what_keeps_returning",
+] as const;
 export type UspAngle = (typeof USP_ANGLES)[number];
+
+/*
+ * ⚠ CE QUI A DÉJÀ ÉTÉ ÉCRIT RESTE LISIBLE. Des briefs portent des
+ * `usp_options` avec les anciens angles, et la validation en base les accepte
+ * toujours. Une lecture qui les refuserait ferait disparaître le
+ * positionnement de quelqu'un au rechargement d'une page — une valeur qui
+ * s'efface sans erreur, le défaut que ce dépôt documente depuis le lot 6.
+ *
+ * On GÉNÈRE les trois nouveaux ; on LIT les six.
+ */
+export const LEGACY_USP_ANGLES = [
+  "population",
+  "method",
+  "lived_experience",
+] as const;
+
+export const READABLE_USP_ANGLES = [
+  ...USP_ANGLES,
+  ...LEGACY_USP_ANGLES,
+] as const;
+export type ReadableUspAngle = (typeof READABLE_USP_ANGLES)[number];
 
 export const uspOptionSchema = z.object({
   id: z.string().min(1),
-  angle: z.enum(USP_ANGLES),
+  // Lecture : les six. Cf. READABLE_USP_ANGLES ci-dessus.
+  angle: z.enum(READABLE_USP_ANGLES),
   statement: z.string().max(200),
   rationale: z.string().max(240),
   /** Noms de COLONNES de `project_briefs` — jamais affichés bruts, §9.9. */
   evidence: z.array(z.string()),
 });
 export type UspOption = z.infer<typeof uspOptionSchema>;
+
+/*
+ * ⚠ CE QUE LE MODÈLE A LE DROIT DE PRODUIRE, plus étroit que ce qu'on LIT.
+ * `uspOptionSchema` accepte les six angles parce que des briefs en portent
+ * d'anciens ; une génération qui rendrait un angle retiré est, elle, un échec
+ * — le prompt ne les propose plus, donc les voir revenir voudrait dire que le
+ * modèle a inventé. La gate 1 valide la forme avec celui-ci.
+ */
+export const generatedUspOptionSchema = uspOptionSchema.extend({
+  angle: z.enum(USP_ANGLES),
+});
+export type GeneratedUspOption = z.infer<typeof generatedUspOptionSchema>;
 
 export const uspOptionsSchema = z
   .array(uspOptionSchema)

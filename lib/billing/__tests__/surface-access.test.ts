@@ -11,7 +11,7 @@ import {
   surfaceVerb,
   type Surface,
 } from "@/lib/billing/surfaces";
-import { KIT_TIERS, type KitTier } from "@/lib/kit/tiers";
+import { KIT_TIERS, type KitTier, LEGACY_KIT_TIERS } from "@/lib/kit/tiers";
 import { SOLD_TIER_NAME } from "@/lib/billing/tier-names";
 
 /*
@@ -89,6 +89,14 @@ const EXPECTED_MIN_TIER: Record<Surface, KitTier> = {
   image_regeneration: "starter",
   own_uploads: "starter",
 
+  /*
+   * ⚠ LA PREMIÈRE LIGNE À NOMMER UN PALIER DE LA NOUVELLE OFFRE. Le profil
+   * d'annuaire intégral est un livrable de The Foundation ; il n'existe dans
+   * aucun des trois paliers précédents, donc l'ouvrir plus bas donnerait à une
+   * acheteuse de 79 $ une chose que personne ne lui a vendue.
+   */
+  kit_directory: "foundation",
+
   site_editor: "practice",
   assets_sizes_and_formats: "practice",
   assets_in_situ: "practice",
@@ -115,17 +123,48 @@ describe("⚠ la distribution est celle-ci, et rien d'autre", () => {
     ).toBe(EXPECTED_MIN_TIER[surface]);
   });
 
-  it("les trois tiers portent chacun quelque chose", () => {
+  it("les trois tiers vendus portent chacun quelque chose", () => {
     /*
      * Garde anti-vacuité de la distribution elle-même : si tout retombait à
      * `starter`, chaque assertion ci-dessus resterait verte une fois
      * EXPECTED_MIN_TIER aplati avec — et le paywall ne vendrait plus rien
      * sans qu'un seul test rougisse.
+     *
+     * ⚠ `LEGACY_KIT_TIERS`, PAS `KIT_TIERS`. Ce dernier porte maintenant cinq
+     * valeurs : c'est le miroir de `brand_kits.tier`, qui doit pouvoir relire
+     * un kit livré sous n'importe quel palier. La distribution, elle, porte
+     * encore sur les trois paliers vendus.
      */
-    const counts = KIT_TIERS.map(
+    const counts = LEGACY_KIT_TIERS.map(
       (tier) => Object.values(SURFACE_MIN_TIER).filter((value) => value === tier).length
     );
     expect(counts).toEqual([13, 4, 2]);
+  });
+
+  it("⚠ UNE surface est réservée à The Foundation, et c'est la première", () => {
+    /*
+     * Ce test disait `[]` et rougissait au premier qui attribuerait une
+     * surface à l'un des deux paliers. C'est arrivé, et c'était le but.
+     *
+     * `kit_directory` — le profil Psychology Today intégral — est un livrable
+     * que The Foundation vend et qu'aucun des trois paliers précédents n'a
+     * jamais contenu. L'ouvrir à `starter` donnerait à une acheteuse de 79 $
+     * une chose que personne ne lui a vendue.
+     *
+     * `roster` n'en garde toujours aucune : un cabinet reçoit ce qu'une solo
+     * reçoit, plus des sièges — ce qui est une question de NOMBRE, pas de
+     * surface. Distribuer le reste des surfaces sur la nouvelle offre
+     * appartient toujours au lot qui retire l'offre précédente de la vente.
+     */
+    const reserved = Object.entries(SURFACE_MIN_TIER)
+      .filter(([, value]) => value === "foundation" || value === "roster")
+      .map(([surface]) => surface);
+    expect(reserved).toEqual(["kit_directory"]);
+
+    // ⚠ Et rien n'est réservé à Roster : le jour où ça change, il faut le dire.
+    expect(
+      Object.values(SURFACE_MIN_TIER).filter((value) => value === "roster")
+    ).toEqual([]);
   });
 
   it("et le tier le plus bas est bien celui qui est vendu le moins cher", () => {
@@ -444,9 +483,22 @@ describe("les trois noms sont ceux de la page de tarifs", () => {
       starter: "Brand Kit",
       practice: "Brand Kit Plus",
       signature: "Practice Suite",
+      // L'offre du 13 septembre nomme ses paliers elle-même.
+      foundation: "The Foundation",
+      roster: "The Roster",
     });
+
+    /*
+     * ⚠ LA RÈGLE ANTI-ENUM TIENT ENCORE, ET PAS PAR HASARD. « The Foundation »
+     * ressemble à `foundation` — c'est la première fois que le nom vendu et la
+     * valeur d'enum se ressemblent. Comparer en minuscules SANS l'article les
+     * rendrait égaux, et le test ne prouverait plus rien ; comparer la chaîne
+     * entière montre que ce sont bien deux choses, et que l'une porte un
+     * article que l'autre n'a pas.
+     */
     for (const tier of KIT_TIERS) {
       expect(SOLD_TIER_NAME[tier].toLowerCase()).not.toBe(tier);
+      expect(SOLD_TIER_NAME[tier]).not.toBe(tier);
     }
   });
 

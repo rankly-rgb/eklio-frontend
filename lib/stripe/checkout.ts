@@ -10,6 +10,7 @@ import { includesMonthlyPresence, tierRank } from "@/lib/billing/plans";
 import { siteUrl } from "@/lib/site-url";
 import { buildCheckoutMetadata } from "@/lib/stripe/metadata";
 import type { KitTier } from "@/lib/kit/tiers";
+import { loadSitePlatforms, qualify } from "@/lib/brief/platform";
 
 /*
  * Création de la session Stripe Checkout (hébergée) — serveur uniquement.
@@ -150,6 +151,133 @@ function lineItems(
  * correspondance customer → user n'a pas pu être écrite au moment du checkout.
  */
 /**
+ * Ce SKU n'est pas en vente.
+ *
+ * ⚠ PAS « pas encore disponible ». Trois lignes du catalogue portent un prix
+ * et ne livrent rien : `roster_seat` (un siège acheté ne produit aucun kit
+ * tant que L21 n'a pas écrit ce que l'arrivée d'une clinicienne déclenche),
+ * `fill_solo` et `fill_practice` (le cycle mensuel qu'elles vendent n'existe
+ * pas). `DECISIONS_NEEDED.md` §4 et §7 l'ont écrit au lot 1, et se terminaient
+ * tous les deux par « il ne faut pas les mettre en vente » — une consigne, qui
+ * survit tant que quelqu'un est là pour la rappeler.
+ *
+ * `plans.sellable` est cette consigne devenue une donnée, et cette classe est
+ * ce qui la lit à l'endroit où l'argent bouge.
+ */
+export class UnsellableSkuError extends Error {
+  constructor(public readonly sku: string) {
+    super(`${sku} is not on sale.`);
+    this.name = "UnsellableSkuError";
+  }
+}
+
+/**
+ * Refuse le checkout d'un SKU que le produit ne sait pas livrer.
+ *
+ * ⚠ CETTE GARDE-CI ÉCHOUE FERMÉ, ET C'EST L'INVERSE DE SA VOISINE. Dix lignes
+ * plus bas, `alreadyPaidFor` rend `null` quand la lecture échoue, avec une
+ * raison écrite : un hoquet de base ne doit pas coûter une cliente. Les deux
+ * règles coexistent parce qu'elles ne répondent pas à la même sorte de
+ * question.
+ *
+ *   `alreadyPaidFor`  « CETTE cliente-ci a-t-elle déjà payé CE projet-là ? »
+ *                     La réponse change d'une cliente à l'autre et d'une
+ *                     minute à l'autre. Il FAUT une lecture vivante pour avoir
+ *                     raison, et quand elle manque, on ne sait pas.
+ *
+ *   ici               « cette ligne de catalogue est-elle en vente ? »
+ *                     La réponse est la même pour tout le monde et ne bouge
+ *                     qu'au rythme des lots. Une lecture manquante sur un fait
+ *                     quasi statique n'est pas une incertitude : c'est une
+ *                     absence de réponse, et une absence de réponse n'ouvre
+ *                     pas une caisse.
+ *
+ * Et le coût réel de ce choix est petit : `ensureStripeCustomer`, juste après,
+ * lit `profiles` avec le MÊME client. Une base qui ne rend pas `plans` ne
+ * rendra pas `profiles` non plus, et ce checkout allait échouer de toute façon.
+ * Échouer fermé ici ne perd donc presque aucune vente réelle — il ferme le cas
+ * où la lecture échoue précisément sur la ligne qui disait non.
+ *
+ * ⚠ UNE LIGNE ABSENTE EST UN REFUS AUSSI. Un `tier` qui n'est pas dans `plans`
+ * est un SKU que le catalogue ne connaît pas. Le laisser passer ferait de la
+ * garde une garde sur les noms qu'on a pensé à écrire.
+ */
+async function refuseIfUnsellable(
+  supabase: Client,
+  sku: string,
+  projectId: string | null
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("plans")
+    .select("sellable, requires_publishable_platform")
+    .eq("tier", sku)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[checkout] sellability read: ${error.message}`);
+    throw new UnsellableSkuError(sku);
+  }
+  if (!data || !data.sellable) {
+    throw new UnsellableSkuError(sku);
+  }
+
+  /*
+   * ── LA SECONDE RAISON, À LA MÊME PORTE ────────────────────────────────
+   *
+   * `sellable` répond « à personne ». Celle-ci répond « pas à elle ». Elles
+   * vivent dans la même fonction parce qu'un second point de passage serait un
+   * second endroit où l'on peut oublier de brancher une règle — et c'est
+   * précisément le défaut que ce lot corrige.
+   *
+   * ⚠ CE N'EST PAS UN REFUS. Ce qui est fermé ici, ce sont les SKU qui
+   * PROMETTENT qu'Eklio publie. L'offre précédente ne le promet pas, porte
+   * `requires_publishable_platform = false`, et ne passe donc jamais par ce
+   * bloc : quelqu'un sur Wix continue d'acheter tout ce qu'on sait lui livrer.
+   */
+  if (!data.requires_publishable_platform) return;
+
+  /*
+   * ⚠ SANS PROJET, PAS DE RÉPONSE — ET PAS DE VENTE DE CE SKU-LÀ. La
+   * plateforme est une réponse du brief ; un checkout parti de `/pricing` n'en
+   * a pas. On ne DEVINE pas : encaisser 390 $ en promettant de publier sur une
+   * plateforme dont on ne sait rien est exactement ce que cette colonne existe
+   * pour empêcher. Le `notice` est nul, et l'écran dit alors de commencer un
+   * brief — ce qui est la vraie prochaine étape, pas une porte fermée.
+   *
+   * C'est le même sens de repli que `loadSitePlatforms`, qui rend une liste
+   * VIDE sur une lecture ratée, et pour la même raison écrite là-bas.
+   */
+  if (!projectId) throw new PlatformNotEligibleError(sku, null);
+
+  const { data: brief, error: briefError } = await supabase
+    .from("project_briefs")
+    .select("site_platform_id")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (briefError) {
+    console.error(`[checkout] platform read: ${briefError.message}`);
+    throw new PlatformNotEligibleError(sku, null);
+  }
+
+  const platforms = await loadSitePlatforms(supabase);
+  const verdict = qualify(brief?.site_platform_id, platforms);
+
+  /*
+   * ⚠ `conditional` PASSE. C'est la raison d'être du troisième état : on prend
+   * l'inscription, et ce qui n'est pas garanti a déjà été dit à l'étape 1,
+   * avant qu'elle arrive ici. Le transformer en refus au paiement rendrait
+   * `conditional` identique à `refused`, et la colonne ne dirait plus rien.
+   */
+  if (verdict.ok) return;
+
+  throw new PlatformNotEligibleError(
+    sku,
+    "notice" in verdict ? verdict.notice : null
+  );
+}
+
+/**
  * A kit this project has already been paid for.
  *
  * ⚠ MEASURED, NOT SUPPOSED. Two Checkout sessions for the same project and
@@ -166,6 +294,32 @@ function lineItems(
  * because there is no refund primitive anywhere in this product. A guard in
  * front of the payment can only ever fail towards not charging.
  */
+/**
+ * Ce SKU promet une publication, et on ne publiera pas sur SA plateforme.
+ *
+ * ⚠ CE N'EST PAS UN REFUS DE VENTE, ET LA DISTINCTION EST TOUT LE SUJET.
+ * `UnsellableSkuError` dit « on ne sait livrer ça à personne ».
+ * Celle-ci dit « on ne sait pas livrer CE SKU-LÀ à ELLE » — et tout ce qui ne
+ * promet pas de publication lui reste ouvert. L'offre précédente n'est pas
+ * retirée de la vente et n'a jamais promis qu'Eklio publierait : elle livre des
+ * fichiers et un texte à coller.
+ *
+ * Elle porte le `notice` de `site_platforms`, donc la phrase que la cliente lit
+ * vient de la base et pas d'ici. Un écran qui refuse sans expliquer est un
+ * ticket de support ; un écran qui explique avec une phrase écrite en dur
+ * cesse d'être vrai au premier changement d'avis.
+ */
+export class PlatformNotEligibleError extends Error {
+  constructor(
+    public readonly sku: string,
+    /** La phrase de `site_platforms.notice`, ou `null` si on n'a pas de réponse. */
+    public readonly notice: string | null
+  ) {
+    super(`${sku} needs a platform we can publish to.`);
+    this.name = "PlatformNotEligibleError";
+  }
+}
+
 export class AlreadyPurchasedError extends Error {
   constructor(public readonly tier: KitTier) {
     super(`This project already has a paid ${tier} kit.`);
@@ -215,6 +369,22 @@ export async function createCheckoutSession(
   input: CheckoutInput
 ): Promise<string> {
   const { userId, email, tier, projectId, withMonthlyPresence } = input;
+
+  /*
+   * ⚠ PREMIÈRE QUESTION, AVANT TOUTE AUTRE : est-ce seulement en vente ?
+   *
+   * Avant la cliente, avant le projet, avant Stripe. Les autres gardes de
+   * cette fonction demandent si CETTE vente-ci est légitime ; celle-ci demande
+   * si la chose vendue existe. Une réponse « non » ici rend les suivantes sans
+   * objet.
+   *
+   * `kitTierSchema`, dans l'action serveur, refuse déjà les trois SKU
+   * invendables — ils ne sont pas des `KitTier`. Cette garde n'est donc pas la
+   * seule, et c'est voulu : le jour où L20 ou L21 élargit `startCheckout` pour
+   * accepter un SKU plutôt qu'un palier, le refus est DÉJÀ sur le chemin de
+   * l'argent, et il se lève par un UPDATE au lieu d'être réinventé.
+   */
+  await refuseIfUnsellable(supabase, tier, projectId);
 
   /*
    * Before Stripe, before the customer: a second charge for a kit she already

@@ -20,6 +20,8 @@ function draft(overrides: Partial<StepDraft> = {}): StepDraft {
     specialty_ids: [],
     city: null,
     state: null,
+    site_platform_id: null,
+    site_url: null,
     positioning: null,
     problem_card_ids: [],
     gain_card_ids: [],
@@ -66,7 +68,7 @@ describe("stepIssue — étape 2 (positioning)", () => {
 });
 
 describe("stepIssue — les autres étapes", () => {
-  it("l'étape 1 demande un nom, une licence et une spécialité", () => {
+  it("l'étape 1 demande un nom, une licence, une spécialité et une plateforme", () => {
     expect(stepIssue("practice", draft())).toMatch(/name/);
     expect(
       stepIssue("practice", draft({ practice_name: "Elm & Ember" }))
@@ -77,6 +79,13 @@ describe("stepIssue — les autres étapes", () => {
         draft({ practice_name: "Elm & Ember", license_type_id: "lcsw" })
       )
     ).toMatch(/specialty/);
+    /*
+     * ⚠ LA PLATEFORME EST LA QUATRIÈME EXIGENCE, ET ELLE EST À L'ÉTAPE 1.
+     * L'offre promet des pages « publiées par Eklio sur son CMS » : quelqu'un
+     * dont la plateforme n'est pas atteignable doit l'apprendre en trente
+     * secondes, pas après cinq écrans. L'étape 7, qui aurait été le lieu
+     * naturel, est facultative — la question s'y serait sautée.
+     */
     expect(
       stepIssue(
         "practice",
@@ -84,6 +93,42 @@ describe("stepIssue — les autres étapes", () => {
           practice_name: "Elm & Ember",
           license_type_id: "lcsw",
           specialty_ids: ["anxiety"],
+        })
+      )
+    ).toMatch(/website lives/);
+
+    expect(
+      stepIssue(
+        "practice",
+        draft({
+          practice_name: "Elm & Ember",
+          license_type_id: "lcsw",
+          specialty_ids: ["anxiety"],
+          site_platform_id: "wordpress",
+        })
+      )
+    ).toBeNull();
+  });
+
+  it("⚠ l'étape 1 demande une RÉPONSE, pas une bonne réponse", () => {
+    /*
+     * `stepIssue` dit ce qui manque à une étape. Il ne décide PAS si on peut
+     * vendre à quelqu'un : ce jugement lit `site_platforms` en base et vit
+     * dans `lib/brief/platform.ts`. Un module pur ne peut pas porter une
+     * liste dont la base est seule à faire autorité — et surtout il ne doit
+     * pas, puisque cette liste bougera le jour où Squarespace sera tranché.
+     *
+     * Donc : une plateforme REFUSÉE passe cette étape. Elle est arrêtée
+     * ailleurs, et avec une phrase qui explique.
+     */
+    expect(
+      stepIssue(
+        "practice",
+        draft({
+          practice_name: "Elm & Ember",
+          license_type_id: "lcsw",
+          specialty_ids: ["anxiety"],
+          site_platform_id: "wix",
         })
       )
     ).toBeNull();

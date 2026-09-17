@@ -4,7 +4,8 @@ import { checkBannedPhrases } from "@/lib/generation/banned-phrases";
 import { buildHowYouWorkContext } from "@/lib/generation/how-you-work-context";
 import {
   USP_ANGLES,
-  uspOptionSchema,
+  generatedUspOptionSchema,
+  type GeneratedUspOption,
   type UspAngle,
   type UspOption,
 } from "@/lib/generation/how-you-work-shapes";
@@ -15,6 +16,11 @@ import {
   tokenSet,
 } from "@/lib/generation/usp-specificity";
 import { fetchUspGuardrails, type UspGuardrails } from "@/lib/generation/usp-guardrails";
+import {
+  checkRegister,
+  registerReason,
+  type RegisterVocabulary,
+} from "@/lib/generation/usp-register";
 import { track } from "@/lib/analytics";
 import type { Catalog } from "@/lib/catalog/types";
 import type { BriefBundle } from "@/lib/data/brief";
@@ -30,7 +36,19 @@ import type { Database } from "@/types/supabase";
 
 const MAX_MODEL_CALLS = 2;
 
-export type UspGateName = "banned_phrases" | "specificity" | "distance" | "collision";
+/*
+ * ⚠ `register` EST LA CINQUIÈME, AJOUTÉE LE 14 SEPTEMBRE. L'offre demande la
+ * niche « dans les mots de ses patients, pas en modalités ni en démographie ».
+ * Le prompt le dit ; la gate le mesure. Un modèle à qui on interdit « EMDR »
+ * écrit « une approche fondée sur le retraitement des souvenirs » — c'est la
+ * même leçon que `lib/check/rewrite.ts` a apprise sur les garanties.
+ */
+export type UspGateName =
+  | "banned_phrases"
+  | "register"
+  | "specificity"
+  | "distance"
+  | "collision";
 
 export type DiscardedCandidate = {
   id: string;
@@ -76,12 +94,12 @@ const TOOL: Anthropic.Tool = {
               type: "string",
               enum: [...USP_ANGLES],
               description:
-                "population = who this is for, in lived terms. method = how the work is done. lived_experience = her own trajectory and stance.",
+                "presenting_problem = what the person is carrying, in the words she would use herself. the_moment = the point at which someone decides to look for help. what_keeps_returning = what she has already tried, and what keeps coming back.",
             },
             statement: {
               type: "string",
               description:
-                "One or two sentences, 200 characters at most. Must reuse at least one concrete element she actually supplied -- generic directory language is a failure.",
+                "One or two sentences, 200 characters at most, in the words a PATIENT would use. Must reuse at least one concrete element she actually supplied. Naming a modality or a demographic bracket is a failure, and so is generic directory language.",
             },
             rationale: {
               type: "string",
@@ -104,11 +122,32 @@ const TOOL: Anthropic.Tool = {
   },
 };
 
-const SYSTEM_PROMPT = `You are a senior brand director at Eklio, which builds brand identities for licensed mental-health clinicians in private practice in the United States.
+/*
+ * ⚠ RECADRÉ LE 14 SEPTEMBRE. L'ancien prompt demandait une phrase de marque, et
+ * deux de ses trois angles étaient la démographie et la modalité — c'est-à-dire
+ * exactement les deux choses que l'offre interdit. Le modèle faisait ce qu'on
+ * lui demandait ; c'est la demande qui était devenue fausse.
+ *
+ * La cible est la NICHE, dite comme la patiente la dirait. Le test de lecture
+ * est écrit dans le prompt lui-même, parce qu'il est vérifiable : est-ce que
+ * quelqu'un qui vit ça se reconnaîtrait dans cette phrase, ou est-ce qu'il
+ * faudrait lui expliquer un mot d'abord ?
+ */
+const SYSTEM_PROMPT = `You write the positioning line for a licensed mental-health clinician in private practice in the United States.
 
-Write six positioning-statement candidates from the brief below. American English. One or two sentences, 200 characters at most. No outcome promises, no clinical claims, no testimonial language -- board-safe under ACA and APA advertising standards.
+WHAT A POSITIONING LINE IS HERE. It names the niche IN THE WORDS OF THE PEOPLE WHO COME. Not the modality, not the demographic bracket, not the credential. Someone living the thing should read the line and recognise herself in it without having to be taught a word first.
 
-Every candidate must reuse at least one concrete element she actually supplied in the brief. A statement that could have been written without reading her brief is a failure, not a safe default.`;
+Write six candidates from the brief below. American English. One or two sentences, 200 characters at most.
+
+NEVER:
+- a modality, a method name, an acronym or a school of therapy (CBT, EMDR, IFS, psychodynamic, somatic...). She may practise it; it is not what the person searching is looking for.
+- a demographic bracket as the subject ("women 25-40", "high-achieving professionals", "new moms"). Naming a life SITUATION is allowed; naming a market segment is not.
+- outcome promises, clinical claims, testimonial language. Board-safe under ACA and APA advertising standards.
+- directory filler that could sit on any profile in the state.
+
+ALWAYS:
+- reuse at least one concrete element she actually supplied. A line that could have been written without reading her brief is a failure, not a safe default.
+- plain words. If a sentence needs a clinical vocabulary to be understood, rewrite it until it does not.`;
 
 async function callUspOptionsModel(
   prompt: string,
@@ -139,6 +178,37 @@ async function callUspOptionsModel(
 }
 
 /* ── Le contexte de spécificité (gate 2) ───────────────────────────────── */
+
+/**
+ * Le vocabulaire de la gate de registre : ce qu'ELLE a coché.
+ *
+ * ⚠ AUCUNE LISTE UNIVERSELLE DE MODALITÉS. Elle serait incomplète le jour de
+ * son écriture et fausse un mois plus tard. Le catalogue porte `full_name` ET
+ * `label` pour les modalités — « Eye movement desensitization and
+ * reprocessing » et « EMDR » — et les deux sont donnés à la gate, qui en dérive
+ * aussi l'acronyme du libellé long.
+ */
+function buildRegisterVocabulary(
+  bundle: BriefBundle,
+  catalog: Catalog
+): RegisterVocabulary {
+  const { brief } = bundle;
+
+  const modalityLabels = (brief.modality_ids ?? []).flatMap((id) => {
+    const card = catalog.modalityCards.find((entry) => entry.id === id);
+    if (!card) return [];
+    // `full_name` n'existe pas sur toutes les cartes ; `label` si.
+    const full = (card as { full_name?: string }).full_name;
+    return full && full !== card.label ? [card.label, full] : [card.label];
+  });
+
+  const personaLabels = brief.client_persona_ids.flatMap((id) => {
+    const card = catalog.personaCards.find((entry) => entry.id === id);
+    return card ? [card.label] : [];
+  });
+
+  return { modalityLabels, personaLabels };
+}
 
 function buildContentTokens(
   bundle: BriefBundle,
@@ -177,6 +247,8 @@ function buildContentTokens(
 type GateInput = {
   candidates: RawUspCandidate[];
   contentTokens: Set<string>;
+  /** Ce qu'ELLE a coché : la gate de registre ne connaît aucune autre liste. */
+  vocabulary: RegisterVocabulary;
   guardrails: UspGuardrails;
   admin: SupabaseClient<Database>;
   scopeKey: string;
@@ -186,10 +258,11 @@ type GateInput = {
 
 async function runGates(
   input: GateInput
-): Promise<{ survivors: (UspOption & { bestSimilarity: number })[]; discarded: DiscardedCandidate[] }> {
+): Promise<{ survivors: (GeneratedUspOption & { bestSimilarity: number })[]; discarded: DiscardedCandidate[] }> {
   const {
     candidates,
     contentTokens,
+    vocabulary,
     guardrails,
     admin,
     scopeKey,
@@ -202,7 +275,7 @@ async function runGates(
   // Gate 1 — banned phrases.
   const afterBanned: RawUspCandidate[] = [];
   for (const candidate of candidates) {
-    const parsed = uspOptionSchema.safeParse(candidate);
+    const parsed = generatedUspOptionSchema.safeParse(candidate);
     if (!parsed.success) {
       discarded.push({
         id: candidate.id,
@@ -220,9 +293,34 @@ async function runGates(
     afterBanned.push(candidate);
   }
 
-  // Gate 2 — specificity: must share a content token with what she wrote.
-  const afterSpecificity: RawUspCandidate[] = [];
+  /*
+   * Gate 2 — le REGISTRE. Ni modalité, ni segment de marché.
+   *
+   * ⚠ AVANT LA SPÉCIFICITÉ, ET L'ORDRE COMPTE. La gate de spécificité exige
+   * qu'un candidat reprenne un élément du brief — et le moyen le plus facile
+   * d'y arriver est de citer une modalité qu'elle a cochée. Passer le registre
+   * en second ferait survivre, puis éliminer, exactement les candidats que la
+   * gate précédente aurait récompensés : deux mesures qui se contredisent.
+   * Ici, ce qui survit à la spécificité y est arrivé autrement.
+   */
+  const afterRegister: RawUspCandidate[] = [];
   for (const candidate of afterBanned) {
+    const verdict = checkRegister(candidate.statement, vocabulary);
+    if (verdict.ok) {
+      afterRegister.push(candidate);
+    } else {
+      discarded.push({
+        id: candidate.id,
+        angle: candidate.angle,
+        gate: "register",
+        reason: registerReason(verdict),
+      });
+    }
+  }
+
+  // Gate 3 — specificity: must share a content token with what she wrote.
+  const afterSpecificity: RawUspCandidate[] = [];
+  for (const candidate of afterRegister) {
     if (passesSpecificity(candidate.statement, contentTokens, stopwords)) {
       afterSpecificity.push(candidate);
     } else {
@@ -289,7 +387,7 @@ async function runGates(
   }
 
   // Gate 4 — cross-user collision, the only gate that leaves this process.
-  const survivors: (UspOption & { bestSimilarity: number })[] = [];
+  const survivors: (GeneratedUspOption & { bestSimilarity: number })[] = [];
   for (const candidate of afterDistance) {
     const { data, error } = await admin.rpc("usp_check_distinct", {
       p_scope_key: scopeKey,
@@ -340,8 +438,9 @@ export async function generateUspOptions(
   // fixée au début de CETTE génération.
   const guardrails = await fetchGuardrails(admin);
   const contentTokens = buildContentTokens(bundle, catalog, guardrails.stopwords);
+  const vocabulary = buildRegisterVocabulary(bundle, catalog);
 
-  const byAngle = new Map<UspAngle, UspOption & { bestSimilarity: number }>();
+  const byAngle = new Map<UspAngle, GeneratedUspOption & { bestSimilarity: number }>();
   const allDiscarded: DiscardedCandidate[] = [];
   let avoid: { statement: string; reason: string }[] = [];
   let modelCalls = 0;
@@ -352,6 +451,7 @@ export async function generateUspOptions(
     const { survivors, discarded } = await runGates({
       candidates: raw,
       contentTokens,
+      vocabulary,
       guardrails,
       admin,
       scopeKey,

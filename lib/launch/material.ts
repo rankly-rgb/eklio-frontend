@@ -2,6 +2,7 @@ import type { LaunchStepKey } from "@/lib/data/checklist";
 import type { LaunchStepContext } from "@/components/checklist/launch-checklist";
 import {
   emailSignatureText,
+  googleDescription,
   personalStatement,
   shortBio,
 } from "@/lib/kit/launch-copy";
@@ -50,9 +51,23 @@ export function stepTextBlocks(
   };
 
   switch (key) {
+    /*
+     * ⚠ DEUX CAS, PLUS UN SEUL. Ils tombaient tous les deux sur le même
+     * `push("Statement", …)` : la fiche Google recevait mot pour mot le bloc
+     * de Psychology Today. Ce sont deux lecteurs différents — l'un compare
+     * des profils de thérapeutes, l'autre a tapé « therapist near me » et ne
+     * sait pas encore s'il veut appeler — et le même paragraphe ne fait pas
+     * les deux.
+     */
     case "update_directory":
-    case "google_profile":
       push("Statement", personalStatement(context.practitionerLine, context.practiceDetails));
+      break;
+
+    case "google_profile":
+      push(
+        "Description",
+        googleDescription(context.aboutExcerpt, context.practiceDetails)
+      );
       break;
 
     case "social_setup":

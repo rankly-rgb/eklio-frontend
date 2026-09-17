@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, PurchaseStatus, SubscriptionStatus } from "@/types/supabase";
 import { highestTier } from "@/lib/billing/plans";
-import { parseKitTier, type KitTier } from "@/lib/kit/tiers";
+import { KIT_TIERS, parseKitTier, type KitTier } from "@/lib/kit/tiers";
 
 /*
  * Ce à quoi un praticien a DROIT.
@@ -76,6 +76,48 @@ export function isEntitledToMonthlyPresence(
 
   return periodEnd + GRACE_MS > now.getTime();
 }
+
+/* ── LES STATUTS, ET QUI EN DÉCIDE ──────────────────────────────────────── */
+
+/**
+ * Les statuts qui veulent dire « l'argent est reparti ».
+ *
+ * `partially_refunded` n'en est PAS : elle a acheté la chose et en a récupéré
+ * une part. Lui fermer le kit pour un geste commercial serait exactement le
+ * genre de mur qu'on a retiré du plafond de projets.
+ */
+export const REVERSED_STATUSES = ["refunded", "disputed"] as const;
+
+/**
+ * Les statuts qui laissent le kit ouvert. Le complément exact du précédent.
+ *
+ * ⚠ C'EST LA TRANSCRIPTION DE `brand_kit_entitling_statuses()`, EN BASE, et la
+ * base est la seule autorité. La fonction SQL rend `{paid,
+ * partially_refunded}` ; cette liste doit dire exactement cela.
+ *
+ * ── POURQUOI ELLE A REMONTÉ DANS LE FICHIER ─────────────────────────────
+ *
+ * Elle était déclarée tout en bas, sous les deux lectures qui auraient dû
+ * s'en servir — et ces deux lectures filtraient `status = 'paid'` en dur. La
+ * constante était juste et personne ne la lisait. Ce n'était pas une
+ * inélégance : une acheteuse partiellement remboursée avait son kit OUVERT
+ * (la base le disait) et se voyait refuser en 402 toutes les surfaces
+ * au-dessus de `starter`, avec un message lui proposant d'acheter ce qu'elle
+ * avait déjà.
+ *
+ * Une constante déclarée loin de ses lecteurs est une constante qu'on
+ * réécrira à la main. Elle est donc ici, au-dessus d'eux, et les deux
+ * lectures la lisent.
+ *
+ * ⚠ ET UNE LISTE VIDE N'EST PAS UN FILTRE. `.in("status", [])` ne rend aucune
+ * ligne : si quelqu'un vide cette liste, tout le monde perd son palier
+ * silencieusement. `entitlements-single-source.test.ts` refuse la liste vide
+ * pour cette raison précise.
+ */
+export const ENTITLING_STATUSES = [
+  "paid",
+  "partially_refunded",
+] as const satisfies readonly PurchaseStatus[];
 
 /* ── Lectures ───────────────────────────────────────────────────────────── */
 
@@ -152,7 +194,28 @@ export async function resolveEntitledTier(
   const { data, error } = await supabase
     .from("purchases")
     .select("tier, project_id")
-    .eq("status", "paid")
+    /*
+     * ⚠ `ENTITLING_STATUSES`, PAS `'paid'`. La base dit `{paid,
+     * partially_refunded}` (`brand_kit_entitling_statuses()`), et un
+     * remboursement partiel laisse le kit ouvert. Filtrer sur `paid` seul
+     * faisait rendre `null` ici pendant que `brand_kit_entitled` rendait
+     * `true` : kit ouvert, surfaces payantes fermées.
+     */
+    .in("status", [...ENTITLING_STATUSES])
+    /*
+     * ⚠ ET SEULS LES ACHATS DE PALIER. Depuis l'offre du 13 septembre,
+     * `purchases` porte trois formes : `tier`, `addon` et `seat`. Seule la
+     * première monte l'échelle — celle que `highestTier` lit, et que
+     * `lib/billing/surface-access.ts` relit pour décider ce qui est ouvert.
+     *
+     * Sans ce filtre, un add-on à 89 $ entrerait dans le calcul du palier.
+     * `parseKitTier` l'écarterait AUJOURD'HUI, parce que `identity_addon`
+     * n'est pas un `KitTier` — mais c'est un accident heureux, pas une règle :
+     * la question posée ici est « quel PALIER a-t-elle payé », et elle doit
+     * être posée à ce qui est un palier. Une règle tenue par un accident est
+     * une règle qui tombe au premier SKU qu'on nomme comme un palier.
+     */
+    .eq("kind", "tier")
     .eq("project_id", projectId);
 
   if (error) {
@@ -164,7 +227,94 @@ export async function resolveEntitledTier(
     .map((row) => parseKitTier(row.tier))
     .filter((tier): tier is KitTier => tier !== null);
 
-  return highestTier(tiers);
+  const purchased = highestTier(tiers);
+
+  /*
+   * ── ⚠ L'OCTROI COMP RÉPOND ICI, AU MÊME POINT D'ÉTRANGLEMENT ──────────
+   *
+   * `brand_kit_entitled`, en base, OU-e déjà `comp_access_active()` : un
+   * compte comp franchit le mur du paiement. Mais CETTE fonction-ci, qui
+   * répond « jusqu'où est-elle montée », ne lisait que `purchases` — donc un
+   * compte comp entrait dans l'atelier et trouvait chaque section fermée par
+   * `surfaceAccess(_, null)`. Droit ouvert, palier inconnu : la pire des deux
+   * moitiés.
+   *
+   * ⚠ ET SURTOUT PAS UNE LIGNE FABRIQUÉE DANS `purchases`. C'est la table de
+   * l'ARGENT — le chiffre d'affaires, les remboursements, `funnel/glance` la
+   * lisent — et `comp_grants` existe précisément pour qu'un accès interne n'y
+   * apparaisse jamais. Son commentaire de table le dit : « This is NEVER
+   * revenue — exclude comp_grants from every financial query ». Une fausse
+   * ligne d'achat rendrait ce commentaire faux.
+   *
+   * ⚠ LE PALIER EST DÉRIVÉ, PAS ÉCRIT. `comp_grants` ne porte aucun palier :
+   * ce qu'il promet est « le produit payant complet ». C'est donc le DERNIER
+   * de `KIT_TIERS`, dont l'ordre est déjà un contrat que `rank()` lit. Écrire
+   * « foundation » ici laisserait un compte comp derrière au premier palier
+   * ajouté au-dessus.
+   *
+   * ⚠ ET IL NE BAISSE JAMAIS CE QU'UN ACHAT A DONNÉ. `highestTier` tranche
+   * entre les deux, dans ce sens-là et dans l'autre.
+   */
+  if (purchased === COMP_TIER) return purchased;
+
+  /*
+   * Sur une lecture de `purchases` en ÉCHEC, on est déjà sorti plus haut avec
+   * `null`, et c'est voulu : le comp est un fait distinct, mais répondre
+   * « palier maximum » alors qu'on n'a pas pu lire ce qu'elle a acheté
+   * remplacerait une incertitude par une affirmation. Le repli fermé de cette
+   * fonction vaut pour tout le monde, comptes comp compris.
+   */
+  if (!(await isCompAccessActive(supabase))) return purchased;
+
+  return highestTier(purchased === null ? [COMP_TIER] : [purchased, COMP_TIER]);
+}
+
+/**
+ * Le palier qu'un octroi comp vaut : le plus haut de l'échelle.
+ *
+ * `comp_grants` ne porte pas de palier — il promet « le produit payant
+ * complet » (commentaire de la table). Dérivé de la fin de `KIT_TIERS` plutôt
+ * qu'écrit, pour qu'un palier ajouté au-dessus l'emporte avec lui.
+ */
+const COMP_TIER: KitTier = KIT_TIERS[KIT_TIERS.length - 1];
+
+/* ── Un achat qui ne monte aucun palier ──────────────────────────────────── */
+
+/**
+ * A-t-elle acheté cet accessoire sur ce projet ?
+ *
+ * ⚠ CE N'EST PAS UNE QUESTION DE PALIER, et c'est tout l'intérêt d'avoir une
+ * fonction séparée. `resolveEntitledTier` répond « jusqu'où est-elle montée » ;
+ * celle-ci répond « a-t-elle pris cette chose-là », et les deux réponses ne se
+ * déduisent pas l'une de l'autre. L'identité visuelle à 89 $ s'achète par
+ * quelqu'un qui n'a que The Foundation, et ne monte personne d'un palier.
+ *
+ * ── ÉCHEC FERMÉ ─────────────────────────────────────────────────────────
+ * Une erreur de lecture rend `false`, pour la même raison que
+ * `isBrandKitEntitled` : le pire résultat d'un refus injustifié est un
+ * checkout montré à quelqu'un qui a payé — visible, réparable, et qui remonte
+ * en support. Le pire résultat de l'inverse ne remonte jamais.
+ */
+export async function hasPurchasedAddon(
+  supabase: Client,
+  projectId: string,
+  sku: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("id")
+    // La même liste de statuts que partout ailleurs, et pour la même raison.
+    .in("status", [...ENTITLING_STATUSES])
+    .eq("kind", "addon")
+    .eq("tier", sku)
+    .eq("project_id", projectId)
+    .limit(1);
+
+  if (error) {
+    console.error("[entitlements] lecture d'un achat accessoire", error);
+    return false;
+  }
+  return (data ?? []).length > 0;
 }
 
 /* ── Le droit sur UN kit — la base fait autorité ─────────────────────────── */
@@ -273,7 +423,16 @@ export async function countUnpaidProjects(
   const [{ data: projects, error: projectsError }, { data: purchases, error: purchasesError }] =
     await Promise.all([
       supabase.from("projects").select("id").eq("user_id", userId),
-      supabase.from("purchases").select("project_id").eq("status", "paid"),
+      /*
+       * ⚠ La MÊME liste que `resolveEntitledTier` et que la base. Un achat
+       * partiellement remboursé a bien payé ce projet : le compter comme non
+       * payé consommerait un des trois briefs gratuits de quelqu'un qui a
+       * réglé.
+       */
+      supabase
+        .from("purchases")
+        .select("project_id")
+        .in("status", [...ENTITLING_STATUSES]),
     ]);
 
   if (projectsError || purchasesError) {
@@ -301,28 +460,6 @@ export async function countUnpaidProjects(
 }
 
 /* ── Ce qu'on dit quand un achat a été annulé ────────────────────────────── */
-
-/**
- * Les statuts qui veulent dire « l'argent est reparti ».
- *
- * `partially_refunded` n'en est PAS : elle a acheté la chose et en a récupéré
- * une part. Lui fermer le kit pour un geste commercial serait exactement le
- * genre de mur qu'on vient de retirer du plafond de projets.
- *
- * ⚠ CETTE LISTE DOIT DIRE LA MÊME CHOSE QUE `brand_kit_entitled`, qui est la
- * seule autorité sur le droit. Elle ne décide rien — elle choisit un TEXTE —
- * mais si les deux divergent, la praticienne lit « votre achat a été annulé »
- * sur un kit qui s'ouvre, ou l'inverse. Exporté pour être épinglé par un test :
- * le jour où la base change d'avis, la divergence doit se voir ici et pas en
- * production.
- */
-export const REVERSED_STATUSES = ["refunded", "disputed"] as const;
-
-/** Les statuts qui laissent le kit ouvert. Le complément exact du précédent. */
-export const ENTITLING_STATUSES = [
-  "paid",
-  "partially_refunded",
-] as const satisfies readonly PurchaseStatus[];
 
 /**
  * L'achat de ce projet a-t-il été annulé ?

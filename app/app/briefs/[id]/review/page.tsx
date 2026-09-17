@@ -44,6 +44,9 @@ export default async function ReviewPage({
     specialty_ids: bundle.brief.specialty_ids,
     city: bundle.brief.city,
     state: bundle.brief.state,
+    // La qualification de plateforme, posée à l'étape 1.
+    site_platform_id: bundle.brief.site_platform_id,
+    site_url: bundle.brief.site_url,
     positioning: bundle.brief.positioning,
     problem_card_ids: bundle.brief.problem_card_ids,
     gain_card_ids: bundle.brief.gain_card_ids,

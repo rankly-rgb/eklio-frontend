@@ -34,9 +34,16 @@ function client(
           }),
         };
       }
+      /*
+       * ⚠ `.in(...)`, pas `.eq(...)`. `countUnpaidProjects` filtrait
+       * `status = 'paid'` en dur ; il lit maintenant `ENTITLING_STATUSES`,
+       * c'est-à-dire la même liste que `brand_kit_entitling_statuses()` en
+       * base. Ce faux client suit le vrai appel — s'il ne le suivait pas, il
+       * prouverait une règle sans parcourir le chemin.
+       */
       return {
         select: () => ({
-          eq: async () => ({ data: purchases, error: errors.purchases ?? null }),
+          in: async () => ({ data: purchases, error: errors.purchases ?? null }),
         }),
       };
     },

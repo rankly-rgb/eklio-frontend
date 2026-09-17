@@ -9,7 +9,9 @@ import {
   ORDERED_PLANS,
   RECOMMENDED_TIER,
 } from "@/lib/billing/plans";
-import { KIT_TIERS, KIT_TIER_RULES, type KitTier } from "@/lib/kit/tiers";
+// ⚠ `LEGACY_KIT_TIERS` : cette page vend encore l'offre précédente, et
+// `KIT_TIERS` en porte maintenant cinq (cf. lib/kit/tiers.ts).
+import { LEGACY_KIT_TIERS, KIT_TIER_RULES, type KitTier } from "@/lib/kit/tiers";
 import { PageBeacon } from "@/components/analytics/page-beacon";
 
 /*
@@ -270,7 +272,7 @@ export default function PricingPage() {
                       >
                         {row.label}
                       </th>
-                      {KIT_TIERS.map((tier) => (
+                      {LEGACY_KIT_TIERS.map((tier) => (
                         <td key={tier} className="py-3 pr-4 text-ink">
                           {row.value(tier)}
                         </td>

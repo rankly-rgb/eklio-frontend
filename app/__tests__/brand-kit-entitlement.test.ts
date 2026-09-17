@@ -196,6 +196,8 @@ const KIT_PAGES = [
   "app/app/brand-kits/[id]/(sections)/site/page.tsx",
   "app/app/brand-kits/[id]/(sections)/words/page.tsx",
   "app/app/brand-kits/[id]/(sections)/assets/page.tsx",
+  /* Le profil d'annuaire — la première section à exiger `foundation`. */
+  "app/app/brand-kits/[id]/(sections)/directory/page.tsx",
   "app/app/brand-kits/[id]/site-editor/page.tsx",
   "app/app/brand-kits/[id]/delivered/page.tsx",
   "app/app/brand-kits/[id]/handoff/page.tsx",

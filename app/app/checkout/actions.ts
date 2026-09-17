@@ -5,6 +5,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   AlreadyPurchasedError,
+  UnsellableSkuError,
+  PlatformNotEligibleError,
   createCheckoutSession,
 } from "@/lib/stripe/checkout";
 import { StripeConfigError } from "@/lib/stripe/client";
@@ -75,6 +77,46 @@ export async function startCheckout(input: {
         ok: false,
         error:
           "You've already paid for this project's kit — it's unlocked. Open it from your projects; nothing new was charged.",
+      };
+    }
+
+    /*
+     * ⚠ CE SKU N'EST PAS EN VENTE. Ni une panne ni un refus de sa part : le
+     * produit ne sait pas encore livrer cette ligne-là, et la phrase le dit
+     * sans promettre de date. « Bientôt » serait un engagement qu'aucun lot
+     * n'a pris.
+     *
+     * Le nom du SKU n'est PAS renvoyé au navigateur. Il ne lui apprendrait
+     * rien — elle n'a pas choisi un identifiant, elle a cliqué sur un prix —
+     * et il nomme la structure interne du catalogue.
+     */
+    /*
+     * ⚠ SA PLATEFORME NE PORTE PAS CE SKU-LÀ — ET CE N'EST PAS UN REFUS. Ce
+     * palier promet qu'Eklio PUBLIE sur son site ; on ne publie pas là où elle
+     * est. Tout ce qui ne promet pas de publication lui reste ouvert, et la
+     * phrase le dit, parce qu'un écran qui ferme sans dire ce qui reste ouvert
+     * se lit comme une porte.
+     *
+     * La raison vient de `site_platforms.notice`, en base. Elle est reprise
+     * telle quelle : c'est la même phrase qu'à l'étape 1 du brief, et deux
+     * formulations pour un même fait donnent l'impression de deux règles.
+     */
+    if (error instanceof PlatformNotEligibleError) {
+      console.error(`[startCheckout] plateforme non éligible : ${error.sku}`);
+      return {
+        ok: false,
+        error: error.notice
+          ? `${error.notice} You haven't been charged, and everything that doesn't involve us publishing for you is still available.`
+          : "Tell us where your website lives first — we need to know before selling you anything we publish for you. You haven't been charged.",
+      };
+    }
+
+    if (error instanceof UnsellableSkuError) {
+      console.error(`[startCheckout] SKU non vendable : ${error.sku}`);
+      return {
+        ok: false,
+        error:
+          "That option isn't available to buy yet, and you haven't been charged. Everything else on the page is.",
       };
     }
 

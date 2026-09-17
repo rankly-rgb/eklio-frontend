@@ -53,6 +53,7 @@ export const SURFACES = [
   "kit_site",
   "kit_words",
   "kit_assets",
+  "kit_directory",
   "site_editor",
   "assets_download",
   "assets_sizes_and_formats",
@@ -85,6 +86,19 @@ export const SURFACE_MIN_TIER: Record<Surface, KitTier> = {
   kit_site: "starter",
   kit_words: "starter",
   kit_assets: "starter",
+
+  /*
+   * ⚠ LA SEULE LIGNE DE CETTE TABLE QUI NOMME UN PALIER DE LA NOUVELLE OFFRE.
+   *
+   * Le profil d'annuaire intégral est un livrable de The Foundation — il
+   * n'existait dans aucun des trois paliers précédents, donc l'ouvrir à
+   * `starter` donnerait à une acheteuse de 79 $ une chose que personne ne lui
+   * a vendue. `foundation` est au rang 3 de `KIT_TIERS`, au-dessus de
+   * `signature` : une acheteuse Foundation ou Roster le voit, les trois
+   * paliers précédents lisent la carte de mise à niveau.
+   */
+  kit_directory: "foundation",
+
   assets_download: "starter",
   brand_kit_pdf: "starter",
   brand_kit_zip: "starter",
@@ -118,6 +132,7 @@ export const SURFACE_LABEL: Record<Surface, string> = {
   kit_site: "Your site",
   kit_words: "Your words",
   kit_assets: "Your assets",
+  kit_directory: "Your Psychology Today profile",
   site_editor: "The site editor",
   assets_download: "Downloading your files",
   assets_sizes_and_formats: "Other sizes and formats",

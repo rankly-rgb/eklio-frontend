@@ -60,7 +60,7 @@ function bundle(): BriefBundle {
 
 function candidate(
   id: string,
-  angle: "population" | "method" | "lived_experience",
+  angle: "presenting_problem" | "the_moment" | "what_keeps_returning",
   statement: string,
 ) {
   return {
@@ -140,17 +140,17 @@ describe("generateUspOptions — ordre des portes", () => {
     const raw = [
       candidate(
         "u1",
-        "population",
+        "presenting_problem",
         "First responders carrying trauma from the job find her here.",
       ),
       candidate(
         "u2",
-        "method",
+        "the_moment",
         "EMDR sits at the center of how she works with trauma.",
       ),
       candidate(
         "u3",
-        "lived_experience",
+        "what_keeps_returning",
         "She trained in EMDR after her own work with trauma.",
       ),
     ];
@@ -192,17 +192,24 @@ describe("generateUspOptions — ordre des portes", () => {
     const modelCall = vi.fn(async () => [
       candidate(
         "u1",
-        "population",
+        "presenting_problem",
         "Built for first responders who carry the job home with them.",
       ),
       candidate(
         "u2",
-        "method",
-        "EMDR anchors every session, steady and unhurried.",
+        "the_moment",
+        /*
+         * ⚠ CETTE PHRASE DISAIT « EMDR anchors every session ». Elle nommait
+         * la modalité qu'elle a cochée, ce que l'offre du 13 septembre
+         * interdit — et la gate de registre l'a refusée à la première
+         * exécution, ce qui est exactement son travail. Reformulée du point
+         * de vue de la personne qui appelle.
+         */
+        "For first responders who put the call off for months.",
       ),
       candidate(
         "u3",
-        "lived_experience",
+        "what_keeps_returning",
         "A reflective, grounded practice shaped by years in the field.",
       ),
     ]);
@@ -234,13 +241,13 @@ describe("generateUspOptions — reprise", () => {
       ) => {
         calls += 1;
         seenAvoid.push(avoid);
-        // Chaque appel ne produit qu'UN candidat exploitable (angle population) :
+        // Chaque appel ne produit qu'UN candidat exploitable (angle presenting_problem) :
         // il faut donc une reprise pour tenter d'en avoir trois, mais jamais un
         // troisième appel.
         return [
           candidate(
             `u-${calls}`,
-            "population",
+            "presenting_problem",
             "First responders carrying trauma from the job find her here.",
           ),
         ];
@@ -276,17 +283,24 @@ describe("generateUspOptions — reprise", () => {
     const modelCall = vi.fn(async () => [
       candidate(
         "u1",
-        "population",
+        "presenting_problem",
         "Built for first responders who carry the job home with them.",
       ),
       candidate(
         "u2",
-        "method",
-        "EMDR anchors every session, steady and unhurried.",
+        "the_moment",
+        /*
+         * ⚠ CETTE PHRASE DISAIT « EMDR anchors every session ». Elle nommait
+         * la modalité qu'elle a cochée, ce que l'offre du 13 septembre
+         * interdit — et la gate de registre l'a refusée à la première
+         * exécution, ce qui est exactement son travail. Reformulée du point
+         * de vue de la personne qui appelle.
+         */
+        "For first responders who put the call off for months.",
       ),
       candidate(
         "u3",
-        "lived_experience",
+        "what_keeps_returning",
         "A reflective, grounded practice shaped by years in the field.",
       ),
     ]);
@@ -315,17 +329,24 @@ describe("generateUspOptions — reprise", () => {
     const modelCall = vi.fn(async () => [
       candidate(
         "u1",
-        "population",
+        "presenting_problem",
         "Built for first responders who carry the job home with them.",
       ),
       candidate(
         "u2",
-        "method",
-        "EMDR anchors every session, steady and unhurried.",
+        "the_moment",
+        /*
+         * ⚠ CETTE PHRASE DISAIT « EMDR anchors every session ». Elle nommait
+         * la modalité qu'elle a cochée, ce que l'offre du 13 septembre
+         * interdit — et la gate de registre l'a refusée à la première
+         * exécution, ce qui est exactement son travail. Reformulée du point
+         * de vue de la personne qui appelle.
+         */
+        "For first responders who put the call off for months.",
       ),
       candidate(
         "u3",
-        "lived_experience",
+        "what_keeps_returning",
         "A reflective, grounded practice shaped by years in the field.",
       ),
     ]);
@@ -354,7 +375,7 @@ describe("generateUspOptions — reprise", () => {
     // 3e angle collide encore.
     expect(result.partial).toBe(true);
     expect(result.options).toHaveLength(2);
-    expect(result.options.some((o) => o.angle === "lived_experience")).toBe(
+    expect(result.options.some((o) => o.angle === "what_keeps_returning")).toBe(
       false,
     );
   });

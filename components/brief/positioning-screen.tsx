@@ -8,7 +8,10 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { resolveEvidenceLabel } from "@/lib/generation/how-you-work-shapes";
-import type { UspOption, UspAngle } from "@/lib/generation/how-you-work-shapes";
+import type {
+  UspOption,
+  ReadableUspAngle,
+} from "@/lib/generation/how-you-work-shapes";
 import type { Catalog } from "@/lib/catalog/types";
 
 /*
@@ -17,7 +20,20 @@ import type { Catalog } from "@/lib/catalog/types";
  * posée par `app/app/briefs/[id]/positioning/page.tsx`, pas ici).
  */
 
-const ANGLE_OVERLINE: Record<UspAngle, string> = {
+/*
+ * ⚠ LES SIX, PAS LES TROIS. Trois angles sont générés aujourd'hui ; trois
+ * autres sont sur des briefs écrits avant le recadrage du 14 septembre, et
+ * cet écran doit continuer de les afficher. Un `Record` des trois nouveaux
+ * rendrait `undefined` sur un ancien, et l'overline disparaîtrait en silence
+ * au-dessus d'une phrase qu'elle a choisie.
+ */
+const ANGLE_OVERLINE: Record<ReadableUspAngle, string> = {
+  // L'offre du 13 septembre : la niche dans les mots de la patiente.
+  presenting_problem: "What they're carrying",
+  the_moment: "When they reach out",
+  what_keeps_returning: "What keeps coming back",
+
+  // Les angles de l'offre précédente, conservés pour ce qui est déjà écrit.
   population: "The people you work with",
   method: "How you work",
   lived_experience: "Where you come from",

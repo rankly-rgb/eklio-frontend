@@ -82,7 +82,58 @@ export type EthicsRuleId =
   | "scarcity"
   | "diagnosis";
 
+/*
+ * ── LES IDENTIFIANTS DE MOTIF, ET POURQUOI ILS EXISTENT ──────────────────
+ *
+ * Depuis L13, la garde déontologique a DEUX implémentations : celle-ci, et
+ * `public.ethics_patterns` en base. `OUT_OF_SCOPE.md` §17 le dit sans détour :
+ * c'est une dette, elle est assumée, et la fusion reste à faire — une fonction
+ * SQL ne peut pas lire du TypeScript, et un scan qui ne tourne que dans
+ * l'application ne couvre pas le texte écrit directement par une RPC.
+ *
+ * `shared-corpus.test.ts` tient les deux côtés sur le COMPORTEMENT : les mêmes
+ * phrases bloquées, les mêmes phrases laissées passer. Ce qu'il ne voit pas,
+ * c'est un motif AJOUTÉ d'un seul côté. Un motif de plus en base attrape du
+ * texte que l'application laisse passer, et l'inverse ; dans les deux cas le
+ * produit se comporte différemment selon le chemin d'écriture emprunté, et
+ * aucun test de phrase ne le remarque tant que personne n'écrit la phrase.
+ *
+ * ⚠ CES IDENTIFIANTS NE SERVENT À RIEN D'AUTRE. Ils ne sont pas lus par
+ * `checkEthics`, ne remontent pas dans les violations et ne sont montrés à
+ * personne. Ils existent pour qu'un motif puisse être NOMMÉ des deux côtés, et
+ * donc compté. Leur valeur est celle de `ethics_patterns.id`, à l'identique.
+ *
+ * ⚠ ET CE N'EST PAS UNE FUSION. Les motifs restent écrits deux fois, en deux
+ * dialectes d'expression régulière. Ce qui est partagé est le NOM, pas le
+ * motif — fusionner reste un lot, consigné dans OUT_OF_SCOPE.md.
+ */
+export const ETHICS_PATTERN_IDS = [
+  "resolution_verb",
+  "free_you_from",
+  "is_gone",
+  "dated_promise",
+  "guarantee",
+  "clinically_proven",
+  "success_rate",
+  "lasting_relief",
+  "therapy_that_works",
+  "testimonial_word",
+  "clients_say",
+  "client_reviews",
+  "star_rating",
+  "success_story",
+  "best_therapist",
+  "award_winning",
+  "weekend_certification",
+  "you_have_condition",
+  "scarcity_urgency",
+] as const;
+
+export type EthicsPatternId = (typeof ETHICS_PATTERN_IDS)[number];
+
 export type ForbiddenPattern = {
+  /** Le nom de ce motif, identique à `ethics_patterns.id` en base. */
+  id: EthicsPatternId;
   /** Insensible à la casse, sans drapeau `g` (exec doit rester sans état). */
   pattern: RegExp;
   /** Règle de `ethics_rules` que ce pattern fait respecter. */
@@ -126,6 +177,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
       `\\b(?:${RESOLUTION_VERB})\\b(?:\\s+\\w+){0,3}\\s+\\b(?:${CONDITION})\\b`,
       "i"
     ),
+    id: "resolution_verb",
     ruleId: "proven",
     reason:
       "Promet de résoudre une condition nommée. Décrire le travail, jamais son résultat.",
@@ -135,6 +187,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.a — "free you from / rid you of" : la même promesse sans le verbe.
     pattern:
       /\b(?:free\s+you\s+from|rid\s+you\s+of|get\s+rid\s+of|take\s+away\s+your|make\s+(?:it|your\s+\w+)\s+go\s+away)\b/i,
+    id: "free_you_from",
     ruleId: "proven",
     reason:
       "Promet de faire disparaître la difficulté du lecteur. Reformuler vers la compréhension de cette difficulté.",
@@ -147,6 +200,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
       `\\b(?:${CONDITION})\\b[^.!?]{0,30}?\\b(?:is|are|will\\s+be|'?ll\\s+be)\\s+(?:gone|behind\\s+you|history|a\\s+thing\\s+of\\s+the\\s+past|no\\s+longer\\s+(?:a\\s+problem|an\\s+issue))\\b`,
       "i"
     ),
+    id: "is_gone",
     ruleId: "proven",
     reason:
       "Promet la disparition de la difficulté. Décrire le travail, pas l'état supposé qu'il laisse.",
@@ -156,6 +210,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.a — une promesse datée reste une promesse de résultat.
     pattern:
       /\b(?:results?|relief|change|changes|healing|progress|improvement|breakthrough|transformation|better)\b[^.!?]{0,40}?\bin\s+(?:as\s+little\s+as\s+|just\s+|only\s+)?\d+\s*(?:days?|weeks?|months?|sessions?)\b/i,
+    id: "dated_promise",
     ruleId: "timeframe",
     reason:
       "Promet un résultat dans un délai donné. Retirer le délai et la promesse.",
@@ -164,6 +219,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
   {
     // ACA C.3.a — "guarantee" est une promesse de résultat sous toutes ses formes.
     pattern: /\bguarantee(?:s|d|ing)?\b/i,
+    id: "guarantee",
     ruleId: "proven",
     reason:
       "Garantit un résultat. Aucun résultat thérapeutique ne peut être garanti en publicité.",
@@ -175,6 +231,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // dire que les résultats sont "proven" ne l'est pas.
     pattern:
       /\b(?:clinically|scientifically|medically|statistically)\s+proven\b|\bproven\s+(?:to\b|results?\b|method|approach|system|technique|protocol|track\s+record)/i,
+    id: "clinically_proven",
     ruleId: "proven",
     reason:
       "Affirme une efficacité prouvée. Nommer la modalité sans affirmer que le résultat est prouvé.",
@@ -187,6 +244,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // « most of my clients feel better » est attrapé par le pattern témoignage.
     pattern:
       /\b(?:\d{1,3}\s*(?:%|percent)|\d+\s+out\s+of\s+\d+|nine\s+out\s+of\s+ten)\s+(?:of\s+)?(?:my|our|her|his|their)?\s*(?:clients?|patients?)\b|\bsuccess\s+rate\b/i,
+    id: "success_rate",
     ruleId: "proven",
     reason:
       "Annonce un taux de réussite auprès des clients. Les statistiques de résultat sont interdites.",
@@ -196,6 +254,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.a — promettre la durabilité d'un résultat reste une promesse.
     pattern:
       /\b(?:lasting|permanent|life-?long|complete|full)\s+(?:relief|results?|recovery|healing|peace|calm|freedom)\b/i,
+    id: "lasting_relief",
     ruleId: "proven",
     reason:
       "Promet un résultat durable ou total. Décrire la direction du travail, pas sa permanence.",
@@ -207,6 +266,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // personnalisation, pas une efficacité — d'où le lookahead négatif.
     pattern:
       /\b(?:treatment|therapy|approach|method)\s+that\s+(?:actually\s+|really\s+)?(?:works|will\s+work)\b(?!\s+(?:best\s+)?for\s+you)/i,
+    id: "therapy_that_works",
     ruleId: "proven",
     reason:
       "Affirme que la prise en charge fonctionne. Décrire la modalité sans promettre qu'elle réussit.",
@@ -218,6 +278,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.b / APA 5.05 — solliciter ou publier un témoignage de client
     // (actuel ou ancien) est interdit ; nommer le format l'est donc aussi.
     pattern: /\btestimonials?\b/i,
+    id: "testimonial_word",
     ruleId: "client_voice",
     reason:
       "Fait référence à des témoignages. Cette audience ne peut en publier aucun.",
@@ -239,6 +300,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
      */
     pattern:
       /\b(?:(?:my|our|her|his|their)\s+)?(?:clients?|patients?)\s+(?:often|frequently|sometimes|usually|always|regularly|routinely|consistently)?\s*(?:say|says|said|report|reports|reported|tell|tells|told|describe|describes|rave|love|feel|feels|felt)\b/i,
+    id: "clients_say",
     ruleId: "client_voice",
     reason:
       "Paraphrase l'éloge de clients. Un témoignage client ne peut être ni sollicité ni publié.",
@@ -250,6 +312,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // supervisor" reste légitime (cas testé).
     pattern:
       /\bclient\s+(?:reviews?|feedback|ratings?)\b|\bpatient\s+reviews?\b|\b(?:reviewed|rated|recommended)\s+by\s+(?:my|our|former|past|hundreds\s+of|\d+)\s*(?:clients?|patients?)\b/i,
+    id: "client_reviews",
     ruleId: "client_voice",
     reason:
       "Utilise un langage d'avis ou de note client, qui fonctionne comme un témoignage.",
@@ -259,6 +322,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // ACA C.3.b — une note en étoiles est un avis client, glyphe compris.
     pattern:
       /\bfive[-\s]star\b|\b\d(?:\.\d)?\s*(?:\/\s*5|out\s+of\s+5)\s*stars?\b|[★⭐]/iu,
+    id: "star_rating",
     ruleId: "client_voice",
     reason:
       "Contient une note en étoiles, qui se lit comme une évaluation de clients.",
@@ -267,6 +331,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
   {
     // ACA C.3.b — "success story" est un témoignage sous un autre nom.
     pattern: /\b(?:success|client|patient)\s+stor(?:y|ies)\b/i,
+    id: "success_story",
     ruleId: "client_voice",
     reason:
       "Présente des parcours clients comme preuve, ce qui fonctionne comme un témoignage.",
@@ -281,6 +346,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // practices" est une expression légitime (cas testé).
     pattern:
       /(?:\b(?:best|top|leading|premier|foremost|most\s+trusted|top-?rated|number\s+one)|#\s*1)\s+(?:\w+\s+){0,2}(?:therapist|therapists|counselor|counselors|counsellor|psychologist|psychologists|clinician|clinicians|clinic|provider|providers|coach|therapy)\b/i,
+    id: "best_therapist",
     ruleId: "scarcity",
     reason:
       "Superlatif auto-décerné. Un classement comparatif ne peut être étayé et reste interdit.",
@@ -291,6 +357,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // la distinction peut être réelle, mais elle doit être vérifiée à la main.
     pattern:
       /\b(?:award-?winning|nationally\s+recognized|world-?class|world-?renowned|renowned)\b/i,
+    id: "award_winning",
     ruleId: "credential",
     reason:
       "Revendique une reconnaissance possiblement non étayable. Préférer des credentials vérifiables.",
@@ -304,6 +371,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     // « Certified in EMDR after a weekend intensive. »
     pattern:
       /\b(?:weekend|two-?day|one-?day|\d+-?(?:day|hour))\s+(?:certification|certificate|certified|intensive)\b|\bcertified\b[^.!?]{0,40}\b(?:weekend|workshop|webinar|ce\s+course|short\s+course)\b/i,
+    id: "weekend_certification",
     ruleId: "credential",
     reason:
       "Présente une formation courte comme une certification. Nommer la formation suivie, pas un titre qu'elle ne confère pas.",
@@ -317,6 +385,7 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
       `\\byou\\s+(?:have|clearly\\s+have|probably\\s+have|likely\\s+have|are\\s+suffering\\s+from|suffer\\s+from)\\s+(?:\\w+\\s+){0,2}\\b(?:${CONDITION})\\b`,
       "i"
     ),
+    id: "you_have_condition",
     ruleId: "diagnosis",
     reason:
       "Pose un diagnostic au lecteur. Décrire une expérience vécue, jamais attribuer un diagnostic.",
@@ -326,8 +395,22 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
   // ── Urgence et rareté ────────────────────────────────────────────────────
   {
     // ACA C.3.a — la pression commerciale est inappropriée pour un soin clinique.
+    /*
+     * ⚠ `limited spots` A ÉTÉ AJOUTÉ LE 14 SEPTEMBRE, ET IL MANQUAIT.
+     *
+     * `ethics_rules.scarcity.example_forbidden` vaut, en base, « Limited
+     * spots available. » — c'est l'exemple que le produit MONTRE à la
+     * praticienne pour lui dire ce qui est interdit. Ce motif ne l'attrapait
+     * pas : il exigeait « only N spots left » ou « limited-TIME offer ».
+     *
+     * Trouvé en portant ces motifs en SQL et en exigeant du scanner qu'il
+     * bloque les six exemples de `ethics_rules`. Aucun test ne posait cette
+     * question, des deux côtés, et le produit affichait donc une règle qu'il
+     * ne faisait pas respecter.
+     */
     pattern:
-      /\bonly\s+\d+\s+(?:spots?|slots?|places?|openings?)\s+(?:left|remaining|available)\b|\blimited[-\s]time\s+offer\b|\bact\s+now\b|\bdon'?t\s+wait\b|\blast\s+chance\b|\bbook\s+(?:now\s+)?before\s+(?:prices|rates|spots)\b/i,
+      /\bonly\s+\d+\s+(?:spots?|slots?|places?|openings?)\s+(?:left|remaining|available)\b|\blimited\s+(?:spots?|slots?|places?|openings?|availability|space)\b|\b(?:spots?|slots?|places?|openings?)\s+(?:are\s+)?(?:limited|filling\s+up)\b|\blimited[-\s]time\s+offer\b|\bact\s+now\b|\bdon'?t\s+wait\b|\blast\s+chance\b|\bbook\s+(?:now\s+)?before\s+(?:prices|rates|spots)\b/i,
+    id: "scarcity_urgency",
     ruleId: "scarcity",
     reason:
       "Emploie une tactique d'urgence ou de rareté, inappropriée pour un service clinique.",
