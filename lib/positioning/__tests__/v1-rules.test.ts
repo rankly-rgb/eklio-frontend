@@ -138,7 +138,13 @@ describe("l'ordre et le plafond du rapport gratuit", () => {
     expect(capPositioning(dix, -4).shown).toHaveLength(1);
   });
 
-  it("le repli par défaut est le PRUDENT, pas l'absence de plafond", () => {
+  /*
+   * ⚠ 3 EST UNE DÉCISION, PAS UN REPLI COMMODE — « un rapport gratuit à trois
+   * constats ouvre une conversation ; à dix, il humilie ». Le repli du lecteur
+   * vaut donc la même chose que la donnée : une base momentanément muette rend
+   * le rapport DÉCIDÉ, pas un rapport au hasard.
+   */
+  it("le repli vaut la décision, et reste sous le nombre de règles", () => {
     expect(FIRST_LINE_FINDINGS_SHOWN_FALLBACK).toBe(3);
     expect(FIRST_LINE_FINDINGS_SHOWN_FALLBACK).toBeLessThan(10);
   });
@@ -213,5 +219,74 @@ describe("le lecteur applique bien les formes de la v1", () => {
 
     expect(lire("I am a licensed therapist in Denver specializing in anxiety, depression, and trauma.")).toBe(1);
     expect(lire("x".repeat(700))).toBe(0);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ written_in_third_person — LES DEUX MOTEURS, CÔTE À CÔTE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * La règle est passée en `present_without` le 18 septembre, et le choix de
+ * `[A-Z][a-z]+` a été fait exprès plutôt que `[[:upper:]]` ou `\p{Lu}` : les
+ * deux autres ne traversent pas la traduction. Ce bloc est la moitié
+ * JavaScript de la preuve ; la moitié PostgreSQL vit dans
+ * `eklio-backend/supabase/tests/20260918_positioning_rules_v1.test.sql`, et les
+ * deux ont été mesurées sur la MÊME batterie de dix cas avant chargement.
+ *
+ * ⚠ CE MOTIF EST UNE COPIE, comme celui du `^` plus haut, et son maître est le
+ * seed. Une sonde de moteur d'expressions régulières a besoin de la chaîne.
+ */
+const THIRD_PERSON = String.raw`\y[A-Z][a-z]+ (is|has|holds) (a |an )?(licensed|certified|board-certified|master)`;
+const SUPERVISION = String.raw`\y(supervised by|under the supervision of)\y`;
+
+describe("⚠ written_in_third_person : ce que JavaScript en fait", () => {
+  const a = compilePattern(THIRD_PERSON) as RegExp;
+  const b = compilePattern(SUPERVISION) as RegExp;
+
+  it("les deux motifs compilent — donc `\\y` traverse dans les deux", () => {
+    expect(a).toBeInstanceOf(RegExp);
+    expect(b).toBeInstanceOf(RegExp);
+  });
+
+  /*
+   * ⚠ LES DEUX ÉCRITURES QUE L'AUTRICE A ÉCARTÉES, ET POURQUOI ELLE AVAIT
+   * RAISON. `[[:upper:]]` est une classe POSIX que JavaScript ne connaît pas :
+   * il la lit comme une classe de caractères littérale et casse. `\p{Lu}`
+   * compile ici mais PostgreSQL ne le connaît pas. Aucune des deux ne traverse.
+   */
+  it("⚠ [[:upper:]] est refusé par JavaScript — le compilateur le dit au lieu de deviner", () => {
+    expect(typeof compilePattern(String.raw`\y[[:upper:]][[:lower:]]+ is`)).toBe("string");
+  });
+
+  it.each([
+    ["le PRONOM", "She is a licensed marriage and family therapist.", true],
+    ["le PRÉNOM — ce que la v1 ratait", "Sarah is a licensed marriage and family therapist.", true],
+    ["⚠ limite connue : prénom accentué", "José is a licensed therapist.", false],
+    ["⚠ limite connue : prénom accentué", "Chloé is a licensed therapist.", false],
+    ["⚠ la casse n'est PAS contrainte (drapeau i)", "sarah is a licensed therapist.", true],
+    ["la première personne n'est pas visée", "I am a licensed therapist in Denver.", false],
+  ])("%s", (_quoi, texte, attendu) => {
+    expect(a.test(texte as string)).toBe(attendu);
+  });
+
+  /*
+   * ⚠⚠ LA SONDE QUI COMPTE LE PLUS. Une associée texane DOIT écrire
+   * « supervised by (nom) » — 22 TAC 681.91(m). La règle doit se taire devant
+   * quelqu'un qui respecte la loi, sinon ce produit reproche l'obéissance.
+   */
+  it.each([
+    ["« supervised by »", "Chen is a licensed professional counselor, supervised by Dana Ruiz, LPC-S."],
+    ["« under the supervision of »", "Chen is a licensed professional counselor under the supervision of Dana Ruiz."],
+  ])("⚠ %s fait taire la règle — on ne reproche pas d'obéir à 22 TAC 681.91(m)", (_quoi, texte) => {
+    expect(a.test(texte as string)).toBe(true);
+    expect(b.test(texte as string)).toBe(true);
+
+    const regle = { id: "r", short_label: "l", description: "d", example_weak: null,
+      example_strong: null, sort_order: 1, active: true, is_example: false } as unknown as PositioningRule;
+    const motif = { id: "p", rule_id: "r", kind: "present_without", pattern: THIRD_PERSON,
+      secondary_pattern: SUPERVISION, window_chars: null, min_chars: null, max_chars: null,
+      severity: "minor", sort_order: 1, active: true } as unknown as PositioningPattern;
+    expect(reviewPositioning(texte as string, [regle], [motif]).findings).toEqual([]);
   });
 });

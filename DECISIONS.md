@@ -845,3 +845,74 @@ acceptable, et elles ne se séparent pas.
 n'a pas de réponse et la seule qui reste est « combien » : `consume_anon_generation`, par bucket d'IP
 hachée, 45/IP/jour et 750/jour au total, remise à zéro à minuit UTC. `consume_check_rewrite` ne pouvait
 pas servir — elle ne prend aucun argument et lit `auth.uid()`.
+
+---
+
+### 2026-09-18 — Le plafond du rapport gratuit est 3, et la règle de troisième personne se tait devant une mention de supervision
+
+**Deux décisions prises par la propriétaire du produit, enregistrées ici parce que ni l'une ni l'autre
+ne peut tenir dans la ligne de base qu'elle gouverne.**
+
+#### 1. `first_line_findings_shown = 3`
+
+**Décision.** Trois constats, pas plus. Ce n'est plus la valeur provisoire du 17 septembre — à
+l'époque la consigne portait « Plafond d'affichage : [MON CHOIX] » et le repère était resté vide, donc
+le nombre avait été posé sans que personne le tienne.
+
+**La raison, telle qu'elle a été formulée.** *Un rapport gratuit à trois constats ouvre une
+conversation ; à dix, il humilie.* Ce n'est pas une contrainte d'écran ni un compromis technique :
+c'est une affirmation sur ce qu'une clinicienne fait d'un diagnostic qu'elle n'a pas demandé. Trois
+choses, elle les lit. Dix, elle ferme l'onglet et n'écrit à personne. On ne vend rien à quelqu'un
+qu'on vient d'accabler.
+
+**⚠ Pourquoi la raison n'est pas dans la ligne.** `app_settings` est une table clé/valeur sans colonne
+de commentaire : un `comment on column` porterait sur les dix-neuf réglages à la fois. La raison vit
+donc à trois endroits qui se lisent — l'en-tête de
+`20260918193221_third_person_becomes_present_without_and_the_cap_is_decided`, le commentaire de
+`lib/positioning/cap.ts` au-dessus de la constante de repli, et cette entrée. Le repli du lecteur vaut
+la même valeur que la donnée : une base momentanément muette rend le rapport **décidé**, pas un
+rapport au hasard.
+
+**Ce qui n'est pas une décision de produit** : l'ordre. Les `costly` passent devant les `minor` parce
+que c'est la définition de la colonne, pas un arbitrage.
+
+#### 2. `written_in_third_person` devient `present_without`
+
+**Le problème, et pourquoi la correction évidente était dangereuse.** Le motif de la v1 exigeait un
+pronom (`he|she|they`) tandis que son exemple disait « Sarah » — la règle ne voyait donc pas la forme
+la plus courante du défaut. La correction proposée, élargir aux prénoms, aurait créé un faux positif
+**grave** :
+
+> ⚠ Une associée texane **doit** écrire « supervised by (nom du superviseur) » — **22 TAC 681.91(m)**.
+> Un motif qui attrape « Chen is a licensed… » reprocherait à quelqu'un de **respecter la loi**.
+
+C'est exactement ce que ce produit existe pour ne jamais faire. La règle change donc de forme plutôt
+que de portée :
+
+```
+kind               present_without
+pattern            \y[A-Z][a-z]+ (is|has|holds) (a |an )?(licensed|certified|board-certified|master)
+secondary_pattern  \y(supervised by|under the supervision of)\y
+severity           minor   (inchangée)
+```
+
+**Ce qui a été vérifié avant de charger**, sur dix cas, dans **les deux moteurs** — PostgreSQL `~*` et
+la regex JavaScript du lecteur :
+
+- **ils coïncident, cas par cas, sur les dix.** `[A-Z][a-z]+` traverse la traduction `\y` → `\b` sans
+  changer de sens ;
+- `[[:upper:]]` est **refusé par JavaScript** (erreur de syntaxe, et le compilateur le déclare
+  inutilisable au lieu de deviner) ; `\p{Lu}` est **refusé par PostgreSQL**. Le choix de
+  `[A-Z][a-z]+` était le bon, et c'est mesuré plutôt que supposé ;
+- **limite connue, écrite dans la description de la règle** : les prénoms accentués sont ratés — José,
+  Chloé, Zoë. `\y` coupe le mot à l'accent, donc « José » se lit « Jos » et l'espace attendue n'arrive
+  jamais. Les deux moteurs se comportent pareil. Ce n'est pas un oubli ;
+- ⚠ **relevé, non tranché** : la majuscule n'est **pas** contrainte. Le lecteur compile avec le drapeau
+  `i` et `~*` est insensible à la casse, donc « sarah is a licensed… » et « My colleague is a
+  licensed… » déclenchent aussi. Les deux moteurs sont d'accord — c'est une propriété de la règle, pas
+  une divergence — mais « My colleague is a licensed therapist » est un faux positif plausible. À
+  relire par l'autrice des règles.
+
+**Le garde-fou sur l'écart connu est tombé**, comme demandé : la règle rentre désormais dans la boucle
+dérivée du test, sans exception. Ce qui l'a remplacé est une sonde de **silence** — la plus importante
+du fichier — qui vérifie que les deux formulations de la supervision font taire la règle.

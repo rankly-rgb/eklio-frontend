@@ -12,10 +12,20 @@ import type { Database } from "@/types/supabase";
  *   update public.app_settings set value = to_jsonb(5)
  *    where key = 'first_line_findings_shown';
  *
- * ⚠ ET LA VALEUR ACTUELLE EST PROVISOIRE. Elle vaut 3 parce que c'est le
- * chiffre cité en exemple par l'autrice des règles, et pour aucune autre
- * raison : la consigne portait « Plafond d'affichage : [MON CHOIX] » et le
- * repère est resté vide.
+ * ⚠ LA VALEUR EST 3, ET C'EST UNE DÉCISION — plus la valeur provisoire du
+ * 17 septembre. La raison, écrite ici parce que `app_settings` est une table
+ * clé/valeur sans colonne où la mettre :
+ *
+ *   UN RAPPORT GRATUIT À TROIS CONSTATS OUVRE UNE CONVERSATION ; À DIX, IL
+ *   HUMILIE.
+ *
+ * Ce n'est pas une contrainte d'écran ni un compromis technique. C'est une
+ * affirmation sur ce qu'une clinicienne fait d'un diagnostic qu'elle n'a pas
+ * demandé : trois choses, elle les lit ; dix, elle ferme l'onglet et n'écrit à
+ * personne. On ne vend rien à quelqu'un qu'on vient d'accabler.
+ *
+ * Décidée le 18 septembre 2026. Voir aussi DECISIONS.md et
+ * `20260918193221_third_person_becomes_present_without_and_the_cap_is_decided`.
  *
  * ⚠ UN RÉGLAGE ILLISIBLE NE VAUT PAS « MONTRE TOUT ». Le repli par défaut est
  * le plus PRUDENT — trois — et non l'absence de plafond : une base
