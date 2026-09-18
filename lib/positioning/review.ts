@@ -222,3 +222,42 @@ export function reviewPositioning(
 
   return { findings, unusable };
 }
+
+/**
+ * Les constats, du plus coûteux au moins, puis dans l'ordre des motifs.
+ *
+ * ⚠ CE TRI N'EST PAS UN ARBITRAGE DE PRODUIT, c'est la définition de `costly`
+ * rendue visible : « ceci seul explique plausiblement qu'on ne lui écrive
+ * pas ». Montrer un `minor` avant un `costly` contredirait la colonne.
+ *
+ * Le tri est STABLE, donc l'ordre des motifs (`sort_order`, déjà appliqué par
+ * `reviewPositioning`) est conservé à l'intérieur de chaque bande.
+ */
+export function rankPositioning(
+  findings: readonly PositioningFinding[]
+): PositioningFinding[] {
+  const rang = (f: PositioningFinding) => (f.severity === "costly" ? 0 : 1);
+  return [...findings].sort((a, b) => rang(a) - rang(b));
+}
+
+/**
+ * Ce que le rapport gratuit montre, et combien il replie.
+ *
+ * ⚠ LE NOMBRE EST UNE DÉCISION DE PRODUIT ET IL VIT EN BASE
+ * (`app_settings.first_line_findings_shown`). Dix règles peuvent mordre à la
+ * fois sur un profil médiocre, et dix reproches d'un coup humilient au lieu de
+ * convaincre — mais QUAND s'arrêter n'est pas une question que le code sait
+ * trancher, donc il ne la tranche pas : il lit.
+ *
+ * ⚠ ET CE QUI EST REPLIÉ EST COMPTÉ. Tronquer en silence serait mentir par
+ * omission ; rendre `hidden` laisse l'écran dire « et trois autres » et la
+ * lectrice décider.
+ */
+export function capPositioning(
+  findings: readonly PositioningFinding[],
+  shown: number
+): { shown: PositioningFinding[]; hidden: number } {
+  const ordonnes = rankPositioning(findings);
+  const n = Math.max(1, Math.trunc(shown));
+  return { shown: ordonnes.slice(0, n), hidden: Math.max(0, ordonnes.length - n) };
+}

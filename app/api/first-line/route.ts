@@ -8,6 +8,8 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { readCatalog } from "@/lib/catalog/read";
 import { CHECK_MAX_CHARS, CHECK_MIN_CHARS } from "@/lib/check/review";
 import { rewriteFirstLine, FIRST_LINE_TARGET_CHARS } from "@/lib/check/first-line";
+import { capPositioning } from "@/lib/positioning/review";
+import { firstLineFindingsShown } from "@/lib/positioning/cap";
 import { AnthropicNotConfiguredError } from "@/lib/ai/client";
 import { track } from "@/lib/analytics";
 
@@ -120,7 +122,8 @@ export async function POST(request: Request) {
      * le catalogue est de la donnée de référence — les mêmes six règles pour
      * toutes. Rien de cette requête ne touche à la donnée de quiconque.
      */
-    const catalog = await readCatalog(createAdminClient()).catch(() => null);
+    const admin = createAdminClient();
+    const catalog = await readCatalog(admin).catch(() => null);
 
     /*
      * ⚠ UNE TABLE DE POSITIONNEMENT VIDE N'EST PAS UN DIAGNOSTIC AMPUTÉ EN
@@ -164,11 +167,23 @@ export async function POST(request: Request) {
       console.error("[api] first-line: unusable positioning patterns", outcome.positioningUnusable);
     }
 
+    /*
+     * ⚠ ON PLAFONNE CE QU'ON MONTRE, ET ON COMPTE CE QU'ON REPLIE. Dix règles
+     * peuvent mordre sur un même profil ; dix reproches d'un coup humilient au
+     * lieu de convaincre. Les `costly` d'abord — c'est la définition de la
+     * colonne, pas un arbitrage — et le reste est COMPTÉ, pas jeté.
+     */
+    const { shown: positioning, hidden: positioningHidden } = capPositioning(
+      outcome.positioning,
+      await firstLineFindingsShown(admin)
+    );
+
     // Identifiants de règles et compteurs. Jamais son texte, jamais un extrait.
     track("first_line_used", {
       findings: outcome.before.length,
       rules: outcome.before.map((finding) => finding.ruleId).join(","),
       positioning: outcome.positioning.length,
+      positioningShown: positioning.length,
       positioningRules: outcome.positioning.map((finding) => finding.ruleId).join(","),
       attempts: outcome.attempts,
       resolved: outcome.resolved,
@@ -185,7 +200,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           findings: outcome.before,
-          positioning: outcome.positioning,
+          positioning,
+          positioningHidden,
           rewritten: null,
           targetChars: FIRST_LINE_TARGET_CHARS,
           error:
@@ -207,7 +223,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       findings: outcome.before,
-      positioning: outcome.positioning,
+      positioning,
+      positioningHidden,
       rewritten: outcome.rewritten,
       after: outcome.after,
       attempts: outcome.attempts,

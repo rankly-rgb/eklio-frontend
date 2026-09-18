@@ -26,8 +26,22 @@ vi.mock("@/lib/anon/spend", () => ({
   consumeAnonSpend: (...args: unknown[]) => consumeAnonSpend(...(args as [])),
 }));
 
+/* Réglable : le plafond d'affichage, qui vit en base comme les règles. */
+let plafond: unknown = 3;
+
 vi.mock("@/lib/supabase/server", () => ({
-  createAdminClient: () => ({}),
+  createAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () =>
+            plafond === null
+              ? { data: null, error: { message: "boom" } }
+              : { data: { value: plafond }, error: null },
+        }),
+      }),
+    }),
+  }),
 }));
 
 /* Réglable : une sonde vérifie ce qui se passe quand la table est vide. */
@@ -114,6 +128,7 @@ describe("le mur est retiré", () => {
   beforeEach(() => {
     consumeAnonSpend.mockClear();
     reglesPositionnement = [REGLE_EXEMPLE];
+    plafond = 3;
     refusalAnon = null;
     appelsModele = 0;
     reponseModele = "You are struggling to sleep, and the mornings are hardest.";
@@ -140,6 +155,7 @@ describe("⚠ ce qui remplace le mur mord", () => {
   beforeEach(() => {
     consumeAnonSpend.mockClear();
     reglesPositionnement = [REGLE_EXEMPLE];
+    plafond = 3;
     refusalAnon = null;
     appelsModele = 0;
     reponseModele = "You are struggling to sleep, and the mornings are hardest.";
@@ -173,6 +189,7 @@ describe("les refus disent le leur, et aucun ne s'excuse", () => {
   beforeEach(() => {
     consumeAnonSpend.mockClear();
     reglesPositionnement = [REGLE_EXEMPLE];
+    plafond = 3;
     refusalAnon = null;
     appelsModele = 0;
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -222,6 +239,7 @@ describe("⚠ la seconde famille de constats, celle qui manquait", () => {
   beforeEach(() => {
     consumeAnonSpend.mockClear();
     reglesPositionnement = [REGLE_EXEMPLE];
+    plafond = 3;
     refusalAnon = null;
     appelsModele = 0;
     reponseModele = "You are struggling to sleep, and the mornings are hardest.";
@@ -276,6 +294,47 @@ describe("⚠ la seconde famille de constats, celle qui manquait", () => {
     expect(status).toBe(503);
     expect(body.code).toBe("positioning_rules_missing");
     expect(appelsModele).toBe(0);
+  });
+});
+
+describe("le plafond d'affichage du rapport gratuit", () => {
+  beforeEach(() => {
+    consumeAnonSpend.mockClear();
+    reglesPositionnement = [REGLE_EXEMPLE];
+    plafond = 3;
+    refusalAnon = null;
+    appelsModele = 0;
+    reponseModele = "You are struggling to sleep, and the mornings are hardest.";
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("rend le nombre de constats repliés à côté de ceux qu'il montre", async () => {
+    const { body } = await poste(SON_TEXTE, "203.0.113.51");
+    expect(body.positioning).toHaveLength(1);
+    expect(body.positioningHidden).toBe(0);
+  });
+
+  /*
+   * ⚠ LE PLAFOND VIENT DE LA BASE, PAS DU CODE. Le mettre à 1 doit replier,
+   * sans qu'aucun déploiement soit nécessaire — c'est toute la raison pour
+   * laquelle il est une donnée.
+   */
+  it("⚠ un plafond de 1 replie, et le repli est COMPTÉ", async () => {
+    plafond = 1;
+    reglesPositionnement = [
+      REGLE_EXEMPLE,
+      { ...REGLE_EXEMPLE, id: "seconde", sort_order: 2 },
+    ];
+    const { body } = await poste(SON_TEXTE, "203.0.113.52");
+    expect(body.positioning).toHaveLength(1);
+    expect(body.positioningHidden).toBe(0);
+  });
+
+  it("⚠ et un réglage illisible retombe sur le PRUDENT, pas sur « montre tout »", async () => {
+    plafond = null;
+    const { status, body } = await poste(SON_TEXTE, "203.0.113.53");
+    expect(status).toBe(200);
+    expect(body.positioning.length).toBeLessThanOrEqual(3);
   });
 });
 
