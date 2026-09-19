@@ -240,6 +240,30 @@ export function rankPositioning(
   return [...findings].sort((a, b) => rang(a) - rang(b));
 }
 
+/*
+ * ⚠ DÉCISION D'ÉCRAN, CONSIGNÉE ICI PARCE QU'IL N'Y A PAS ENCORE D'ÉCRAN
+ * (2026-09-19) : QUAND DEUX CONSTATS CITENT LE MÊME EXTRAIT, L'EXTRAIT EST
+ * CITÉ UNE SEULE FOIS, AVEC LES DEUX EXPLICATIONS DESSOUS.
+ *
+ * Ce n'est pas une hypothèse : c'est mesuré. Sur « Sarah Chen, LCSW, is a
+ * licensed clinical social worker in Sacramento. », `credential_opens_the_text`
+ * (costly) et `written_in_third_person` (minor) mordent tous les deux et
+ * rendent le MÊME `excerpt` — les mêmes trente-et-un caractères. Les deux
+ * constats sont vrais et ne disent pas la même chose : l'un dit « votre
+ * licence ouvre la page », l'autre « le texte parle de vous à la troisième
+ * personne ».
+ *
+ * Mais une lectrice qui voit deux fois la même ligne de son propre profil
+ * conclut à un bug, pas à deux reproches — et le rapport gratuit n'a qu'une
+ * occasion d'être cru.
+ *
+ * ⚠ CE MODULE NE REGROUPE RIEN, ET C'EST VOULU. Il rend des constats, chacun
+ * avec son extrait ; regrouper est une décision de PRÉSENTATION, et la prendre
+ * ici la rendrait invisible à qui lit l'écran. Le regroupement se fait donc
+ * au rendu, sur l'égalité de `excerpt`, APRÈS `capPositioning` — sinon deux
+ * constats regroupés compteraient pour un seul contre le plafond.
+ */
+
 /**
  * Ce que le rapport gratuit montre, et combien il replie.
  *

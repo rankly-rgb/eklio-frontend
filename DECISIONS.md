@@ -962,6 +962,10 @@ JavaScript du lecteur, `\y` → `\b`, drapeaux `iu` :
    l'élargissement, payé exprès : taire un constat **mineur** chez une superviseuse coûte infiniment
    moins que reprocher à une associée d'avoir obéi.
 
+> ⚠ **Les points 2 et 3 ont été corrigés le même jour et n'existent plus** — voir l'entrée suivante.
+> Ils sont laissés ici parce que le raisonnement qui a conduit à les accepter est ce qui a permis de
+> les refuser ensuite.
+
 **Et une limite documentée a été RETIRÉE parce qu'elle est devenue fausse.** « Les prénoms accentués
 sont ratés — José, Chloé, Zoë » était vrai de la forme `[A-Z][a-z]+` et ne l'est plus de la forme
 ancrée : « José is a licensed therapist. » mord, dans les deux moteurs. Une limite documentée qui
@@ -984,3 +988,67 @@ deux reproches distincts appuyés sur le même extrait. Les deux constats sont v
 la même chose (l'un dit « votre licence ouvre la page », l'autre « le texte parle de vous à la
 troisième personne »), et c'est l'écran qui décidera s'il répète l'extrait ou s'il ne le cite qu'une
 fois. **Relevé, pas tranché** : il n'y a pas d'écran.
+
+
+---
+
+### 2026-09-19 (soir) — C'est la fenêtre qui fait le travail de position, pas la frontière de phrase
+
+**Les deux limites acceptées le matin même sont refusées**, et pour la même raison dans les deux cas :
+elles font **taire** la règle devant quelqu'un à qui elle avait quelque chose à dire.
+
+> « Sarah Chen, Ph.D., is a licensed psychologist » **EST** notre cliente type. Une règle qui rate son
+> cas principal est **pire qu'absente** : on croira qu'elle a regardé.
+>
+> Et le silence sur le profil d'une **superviseuse** est la même famille de dégât que le cas texan pris
+> par l'autre bout : ne rien dire à quelqu'un dont le texte est correct.
+
+```
+pattern            ^[^!?]{0,40}\y(is|has|holds) (a |an )?(licensed|certified|board-certified|master)
+secondary_pattern  \y(supervised by|under the supervision of|my supervisor|supervisor's)\y
+severity           minor   (inchangée)
+```
+
+Le point ne ferme plus la classe. Ce qui porte la position est la **fenêtre de quarante caractères**,
+et elle la porte mieux : elle ne dépend pas de la ponctuation d'un titre. Le motif secondaire nomme
+désormais la **mention** de supervision, pas le mot `supervision` où qu'il soit.
+
+**Pourquoi `[^!?]` et non `.`, et c'est la seule divergence entre moteurs que ce dépôt ait mesurée.**
+Le point n'a pas le même rapport au saut de ligne des deux côtés. Sur un collage multiligne
+« Sarah Chen ⏎ Ph.D. ⏎ is a licensed… » :
+
+| écriture | PostgreSQL | JavaScript |
+|---|---|---|
+| `^.{0,40}…` | `true` | **`false`** ← la base dirait autre chose que l'écran |
+| `^[^!?]{0,40}…` | `true` | `true` |
+
+Une classe négative contient le saut de ligne dans les deux moteurs ; le point ne le contient qu'en
+POSIX. L'écriture retenue est mesurée, pas supposée.
+
+**Seize cas, les deux moteurs, avant chargement, zéro écart.** Les six attendus tiennent. Le collage
+multiligne **mord** dans les deux moteurs — la fenêtre traverse les sauts de ligne — et n'a donc pas
+été corrigé.
+
+**Les deux limites retirées de la description**, même geste que pour les prénoms accentués la veille.
+Il en reste **une**, mesurée ce tour : un en-tête long repousse le verbe au-delà des quarante
+caractères, donc un collage « nom ⏎ adresse ⏎ téléphone » avant la première phrase passe inaperçu.
+C'est la fenêtre qui fait son travail, mais c'est un silence, et il est écrit.
+
+#### Décision d'écran, consignée et non construite
+
+**Quand deux constats citent le même extrait, l'extrait est cité UNE fois, avec les deux explications
+dessous.** Une lectrice qui voit deux fois la même ligne de son profil croit à un bug, pas à deux
+reproches — et le rapport gratuit n'a qu'une occasion d'être cru.
+
+Le cas est réel, pas hypothétique : sur « Sarah Chen, LCSW, is a licensed clinical social worker in
+Sacramento. », `credential_opens_the_text` et `written_in_third_person` rendent le même `excerpt`.
+
+⚠ **Le regroupement se fait au RENDU, après `capPositioning`**, jamais dans
+`lib/positioning/review.ts` : deux constats regroupés avant le plafond compteraient pour un seul et
+la lectrice en verrait quatre au lieu de trois. La décision est écrite au-dessus de `capPositioning`,
+là où celui qui construira l'écran la lira.
+
+---
+
+**Le diagnostic est scellé.** La prochaine chose qui y touchera sera un vrai profil montrant un vrai
+manque — pas un raffinement.
