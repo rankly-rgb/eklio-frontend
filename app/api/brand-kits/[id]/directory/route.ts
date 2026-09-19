@@ -1,3 +1,4 @@
+import type { NextResponse } from "next/server";
 import {
   authenticate,
   generationErrorResponse,
@@ -15,6 +16,7 @@ import { surfaceAccess } from "@/lib/billing/surface-access";
 import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import {
   DirectoryCeilingError,
+  DirectoryProseClicheError,
   DirectoryProseInvalidError,
   DirectoryProseRefusedError,
   generateDirectoryProfile,
@@ -40,6 +42,40 @@ import { structuredInputFor } from "@/lib/data/directory";
  */
 
 export const maxDuration = 60;
+
+/*
+ * ── LES DEUX PHRASES DE REFUS, ÉCRITES UNE SEULE FOIS ───────────────────
+ *
+ * ⚠ CHACUNE SORT PAR DEUX CHEMINS : le pré-scan de `generateDirectoryProfile`,
+ * et le trigger `directory_profiles_ethics_gate` si les deux gardes divergent.
+ * Deux textes pour un même `code` briseraient la règle que ce fichier tient —
+ * un code, une phrase — et `directory-route.test.ts` le refuse.
+ *
+ * ⚠ ET AUCUNE NE COMPTE LES ESSAIS. Le premier jet disait « nous l'avons écrit
+ * DEUX FOIS » ; c'est faux sur le chemin de la base, où un brouillon accepté du
+ * premier coup par le pré-scan peut être refusé à l'écriture. Une phrase vraie
+ * sur un seul de ses deux chemins est une phrase fausse.
+ */
+function clicheRefusal(phrases: string): NextResponse {
+  return json(
+    {
+      error: `We wrote it, and it came back leaning on wording that every other profile in this directory already uses (${phrases}). Nothing was saved — your own answers are untouched. Write it again, or add a line to "How you work" to give us something more specific to write from.`,
+      code: "cliche_refused",
+    },
+    { status: 422 }
+  );
+}
+
+function ethicsRefusal(): NextResponse {
+  return json(
+    {
+      error:
+        'We wrote it, and it made a claim we will not publish under a clinical licence. Nothing was saved — your own answers are untouched. Adding a line to "How you work" usually gives us something more specific to write from.',
+      code: "ethics_refused",
+    },
+    { status: 422 }
+  );
+}
 
 /* Deux appels modèle au plus par génération : le plafond horaire est posé sur
    le nombre de GÉNÉRATIONS, pas sur les appels, pour la même raison que
@@ -144,7 +180,34 @@ export async function POST(
       p_structured: result.draft.structured,
       p_ethics_check: result.ethicsCheck,
     });
-    if (error) return serverError("POST /api/brand-kits/[id]/directory", error);
+    /*
+     * ⚠ UN REFUS DE LA BASE N'EST PAS UNE PANNE DE LA BASE, et ce fichier les
+     * a confondus jusqu'au 19 septembre. Le bloc `catch` plus bas avait été
+     * corrigé pour cette distinction exacte ; CETTE ligne-ci, qui est l'endroit
+     * où le refus arrive RÉELLEMENT, renvoyait encore `serverError` — donc un
+     * 500 et « Something didn't go through on our side. Your answers are
+     * saved. » devant quelqu'un dont rien n'était tombé.
+     *
+     * Mesuré en production : deux `save_directory_profile` à 400, sqlstate
+     * 23514, « Directory cliche: you deserve », levé par
+     * `directory_profiles_ethics_gate`. Elle a lu « c'est de notre faute » et
+     * a recliqué ; recliquer ne pouvait rien changer.
+     *
+     * ⚠ `23514` EST LE SEUL CODE TRAITÉ AINSI. C'est celui des deux `raise` du
+     * trigger, et de rien d'autre sur ce chemin. Tout le reste — une panne de
+     * connexion, un droit manquant, une contrainte qu'on n'a pas prévue — reste
+     * une panne et garde le message générique, sinon celui-ci cesse de vouloir
+     * dire quelque chose.
+     */
+    if (error) {
+      if (error.code === "23514") {
+        console.error("[api] directory: la base a refusé l'écriture", error.message);
+        return error.message.startsWith("Directory cliche")
+          ? clicheRefusal(error.message.replace(/^Directory cliche:\s*/, "").trim())
+          : ethicsRefusal();
+      }
+      return serverError("POST /api/brand-kits/[id]/directory", error);
+    }
 
     return json({ ok: true, modelCalls: result.modelCalls });
   } catch (error) {
@@ -158,14 +221,18 @@ export async function POST(
      */
     if (error instanceof DirectoryProseRefusedError) {
       console.error("[api] directory: refus déontologique", error.violations);
-      return json(
-        {
-          error:
-            "We wrote it twice and both drafts made claims we will not publish under your licence. Nothing was saved. Adding a line to \"How you work\" usually gives us something more specific to write from.",
-          code: "ethics_refused",
-        },
-        { status: 422 }
-      );
+      return ethicsRefusal();
+    }
+
+    /*
+     * ⚠ UN CLICHÉ N'EST PAS UNE INFRACTION DÉONTOLOGIQUE. Le message ne doit
+     * pas lui faire craindre pour sa licence quand ce qui manque est une
+     * phrase moins usée — et il nomme les formules, sans quoi « réécrivez »
+     * est un ordre sans objet.
+     */
+    if (error instanceof DirectoryProseClicheError) {
+      console.error("[api] directory: clichés d'annuaire", error.phrases);
+      return clicheRefusal(error.phrases.join(", "));
     }
 
     if (error instanceof DirectoryProseInvalidError) {

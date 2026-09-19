@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DirectoryProseClicheError,
   DirectoryProseInvalidError,
   DirectoryProseRefusedError,
   MAX_MODEL_CALLS,
@@ -66,13 +67,22 @@ const GOOD = {
 
 const callOnce = (value = GOOD): DirectoryCall => vi.fn(async () => value);
 
+/*
+ * ⚠ LA SECONDE GARDE, MUETTE PAR DÉFAUT DANS LES SONDES QUI NE LA VISENT PAS.
+ * `generateDirectoryProfile` appelle réellement `usp_banned_phrases_check` :
+ * sans injection, ces tests ouvriraient un client service-role. Le sonder pour
+ * de vrai est l'objet du bloc « les clichés d'annuaire », plus bas.
+ */
+const NO_CLICHE = async () => [];
+
 describe("le gabarit du lot 1 est respecté", () => {
   it("le premier paragraphe et le reste sont produits SÉPARÉMENT", async () => {
     const result = await generateDirectoryProfile(
       BUNDLE,
       FIXTURE_CATALOG,
       FULL_STRUCTURED,
-      callOnce()
+      callOnce(),
+      NO_CLICHE
     );
     expect(result.draft.prose.firstParagraph).toBe(GOOD.firstParagraph);
     expect(result.draft.prose.body).toBe(GOOD.body);
@@ -86,7 +96,7 @@ describe("le gabarit du lot 1 est respecté", () => {
       body: `${GOOD.firstParagraph} And then more.`,
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
     ).rejects.toBeInstanceOf(DirectoryProseInvalidError);
   });
 
@@ -100,7 +110,7 @@ describe("le gabarit du lot 1 est respecté", () => {
       body: "b".repeat(10),
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
     ).rejects.toMatchObject({ problems: ["first_paragraph_too_long"] });
   });
 
@@ -121,7 +131,8 @@ describe("⚠ aucune composition par concaténation de champs optionnels", () =>
       BUNDLE,
       FIXTURE_CATALOG,
       EMPTY_STRUCTURED,
-      callOnce()
+      callOnce(),
+      NO_CLICHE
     );
     expect(result.draft.structured).toEqual({});
     expect(result.draft.prose.firstParagraph).toBe(GOOD.firstParagraph);
@@ -132,7 +143,8 @@ describe("⚠ aucune composition par concaténation de champs optionnels", () =>
       BUNDLE,
       FIXTURE_CATALOG,
       { ...EMPTY_STRUCTURED, specialties: ["Anxiety"] },
-      callOnce()
+      callOnce(),
+      NO_CLICHE
     );
     expect(result.draft.structured).toEqual({ issues: ["Anxiety"] });
     // ⚠ Pas de `licensed_state: []`, pas de `insurance: []`.
@@ -144,7 +156,8 @@ describe("⚠ aucune composition par concaténation de champs optionnels", () =>
       BUNDLE,
       FIXTURE_CATALOG,
       { ...EMPTY_STRUCTURED, specialties: ["Anxiety", undefined, null, "  "] },
-      callOnce()
+      callOnce(),
+      NO_CLICHE
     );
     expect(result.draft.structured.issues).toEqual(["Anxiety"]);
   });
@@ -164,7 +177,8 @@ describe("l'Ethics Guard, et un seul chemin", () => {
       BUNDLE,
       FIXTURE_CATALOG,
       FULL_STRUCTURED,
-      call
+      call,
+      NO_CLICHE
     );
     expect(result.modelCalls).toBe(2);
     expect(call).toHaveBeenCalledTimes(2);
@@ -185,7 +199,7 @@ describe("l'Ethics Guard, et un seul chemin", () => {
       body: GOOD.body,
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
     ).rejects.toBeInstanceOf(DirectoryProseRefusedError);
     expect(call).toHaveBeenCalledTimes(MAX_MODEL_CALLS);
   });
@@ -201,7 +215,7 @@ describe("l'Ethics Guard, et un seul chemin", () => {
       body: "Limited spots available.",
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
     ).rejects.toBeInstanceOf(DirectoryProseRefusedError);
   });
 
@@ -225,7 +239,7 @@ describe("le plafond de dépense", () => {
       body: GOOD.body,
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
     ).rejects.toBeTruthy();
     /* Jamais MAX + 1 : un plafond lu après coup est un reçu, pas un plafond. */
     expect(call).toHaveBeenCalledTimes(MAX_MODEL_CALLS);
@@ -237,9 +251,110 @@ describe("le plafond de dépense", () => {
       BUNDLE,
       FIXTURE_CATALOG,
       FULL_STRUCTURED,
-      call
+      call,
+      NO_CLICHE
     );
     expect(result.modelCalls).toBe(1);
     expect(call).toHaveBeenCalledTimes(1);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ LES CLICHÉS D'ANNUAIRE — LA MOITIÉ DE LA GARDE QUI MANQUAIT
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Mesuré en production le 19 septembre : un brouillon contenant « you
+ * deserve » passait les DEUX tentatives sans que rien ne le relève, puis
+ * mourait au `save_directory_profile` avec un 23514 levé par
+ * `directory_profiles_ethics_gate`. La boucle de reprise ne voyait que la
+ * moitié de ce que la base applique — elle ne pouvait donc réparer que la
+ * moitié.
+ *
+ * ⚠ CES SONDES N'ÉCRIVENT AUCUNE LISTE DE PHRASES. Les trente clichés vivent
+ * dans `banned_phrases` et s'y ajoutent sans déploiement ; une liste recopiée
+ * ici mesurerait sa propre copie. Le vérificateur est injecté, et ce qui est
+ * sondé est la MÉCANIQUE : est-ce qu'un cliché déclenche une reprise, est-ce
+ * que la reprise le nomme, et est-ce que le second échec refuse proprement.
+ */
+describe("⚠ les clichés d'annuaire sont pré-scannés, donc réparables", () => {
+  const CLICHE = "you deserve";
+
+  it("un cliché au premier jet déclenche une SECONDE tentative, et la prose propre est rendue", async () => {
+    const call = vi.fn(async () => GOOD) as DirectoryCall;
+    /* Le premier jet est sale, le second propre : un seul appel au vérificateur par champ. */
+    let tour = 0;
+    const cliches = vi.fn(async () => (tour++ < 2 ? [CLICHE] : []));
+
+    const result = await generateDirectoryProfile(
+      BUNDLE,
+      FIXTURE_CATALOG,
+      FULL_STRUCTURED,
+      call,
+      cliches
+    );
+
+    expect(result.modelCalls).toBe(2);
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(result.draft.prose.firstParagraph).toBe(GOOD.firstParagraph);
+  });
+
+  it("⚠ la reprise NOMME la formule — « réécrivez » sans dire quoi est un ordre sans objet", async () => {
+    const call = vi.fn(async () => GOOD) as DirectoryCall;
+    let tour = 0;
+    const cliches = vi.fn(async () => (tour++ < 2 ? [CLICHE] : []));
+
+    await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches);
+
+    const secondPrompt = (call as unknown as ReturnType<typeof vi.fn>).mock.calls[1][1] as string;
+    expect(secondPrompt).toContain(CLICHE);
+  });
+
+  it("⚠ deux jets sales REFUSENT, et pas sous l'erreur de déontologie", async () => {
+    const call = vi.fn(async () => GOOD) as DirectoryCall;
+    const cliches = vi.fn(async () => [CLICHE]);
+
+    const echec = generateDirectoryProfile(
+      BUNDLE,
+      FIXTURE_CATALOG,
+      FULL_STRUCTURED,
+      call,
+      cliches
+    );
+
+    await expect(echec).rejects.toBeInstanceOf(DirectoryProseClicheError);
+    /* ⚠ Un cliché n'est pas une infraction déontologique : deux familles, deux erreurs. */
+    await expect(echec).rejects.not.toBeInstanceOf(DirectoryProseRefusedError);
+    await expect(echec).rejects.toMatchObject({ phrases: [CLICHE] });
+    expect(call).toHaveBeenCalledTimes(MAX_MODEL_CALLS);
+  });
+
+  it("⚠ LES DEUX CHAMPS SÉPARÉMENT, comme le trigger — une phrase à cheval n'est pas une phrase", async () => {
+    const call = callOnce();
+    const vus: string[] = [];
+    const cliches = vi.fn(async (texte: string) => {
+      vus.push(texte);
+      return [];
+    });
+
+    await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches);
+
+    expect(vus).toEqual([GOOD.firstParagraph, GOOD.body]);
+    /* Jamais la concaténation des deux. */
+    expect(vus.some((t) => t.includes(GOOD.firstParagraph) && t.includes(GOOD.body))).toBe(false);
+  });
+
+  it("une infraction déontologique passe AVANT le cliché — la licence prime", async () => {
+    const call = vi.fn(async () => ({
+      firstParagraph: "I guarantee results for every client I see.",
+      body: GOOD.body,
+    })) as DirectoryCall;
+    const cliches = vi.fn(async () => [CLICHE]);
+
+    await expect(
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches)
+    ).rejects.toBeInstanceOf(DirectoryProseRefusedError);
+    /* Le vérificateur de clichés n'est même pas consulté sur un jet bloqué. */
+    expect(cliches).not.toHaveBeenCalled();
   });
 });

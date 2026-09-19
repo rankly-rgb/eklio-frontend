@@ -112,6 +112,14 @@ export type AnalyticsEvent =
    */
   | "directory_profile_generated"
   | "directory_profile_refused"
+  /*
+   * ⚠ DEUX REFUS, DEUX ÉVÉNEMENTS. Un profil refusé pour DÉONTOLOGIE et un
+   * profil refusé pour CLICHÉ ne disent pas la même chose de ce qui va mal :
+   * le premier interroge le prompt d'éthique, le second les trente phrases de
+   * `banned_phrases`. Les compter ensemble effacerait exactement la
+   * distinction qu'on voudrait lire.
+   */
+  | "directory_profile_cliche_refused"
   | "usp_selected"
   | "usp_edited"
   | "usp_collision_warned"

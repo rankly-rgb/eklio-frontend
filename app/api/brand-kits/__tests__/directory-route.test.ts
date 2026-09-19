@@ -21,19 +21,33 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * ── LA RÈGLE QUE CE FICHIER GARDE ───────────────────────────────────────
  *
  * UN REFUS QUI N'EST PAS UNE PANNE NE DOIT JAMAIS SE LIRE « C'EST DE NOTRE
- * FAUTE ». Huit sorties, sept phrases, et aucun code ne se replie sur un
+ * FAUTE ». Dix sorties, huit phrases, et aucun code ne se replie sur un
  * autre :
  *
  *   (sans code)            429  trop de réécritures — pas une panne
  *   state_not_open         409  l'État n'est pas relevé — pas une panne
  *   ethics_refused         422  le texte enfreignait une règle — pas une panne
+ *   cliche_refused         422  le texte est celui de tout l'annuaire — pas une panne
  *   prose_invalid          422  le gabarit n'est pas tenu — pas une panne
  *   ceiling_reached        429  deux essais, on s'arrête — pas une panne
  *   model_call_failed      502  le modèle n'a pas répondu — transitoire
  *   generation_unavailable 503  clé absente — LÀ, c'est bien de notre faute
  *
- * ⚠ DEUX SORTIES PARTAGENT UNE PHRASE, ET C'EST VOULU : l'État non relevé et
- * la lecture qui échoue rendent le MÊME `state_not_open`. Pour la lectrice,
+ * ⚠ `cliche_refused` A ÉTÉ AJOUTÉ APRÈS COUP, ET C'EST UN VRAI DÉFAUT QUI L'A
+ * FAIT AJOUTER — pas une complétude théorique. Le 19 septembre, en
+ * production : un brouillon portant « you deserve » traversait les deux
+ * tentatives parce que le pré-scan ne connaissait que la moitié de la garde
+ * de la base, `save_directory_profile` répondait 400 (sqlstate 23514), et la
+ * route rendait le générique. La règle que ce fichier garde était écrite,
+ * testée, et enfreinte à la seule ligne qui n'était pas sondée : celle du
+ * retour de l'écriture.
+ *
+ * ⚠ DEUX PAIRES DE SORTIES PARTAGENT UNE PHRASE, ET C'EST VOULU. L'État non
+ * relevé et la lecture qui échoue rendent le MÊME `state_not_open` ; le cliché
+ * pris par le pré-scan et le cliché pris par la base rendent le MÊME
+ * `cliche_refused`, parce que de son côté c'est le même événement et la même
+ * action — et parce qu'une phrase qui compterait les essais serait fausse sur
+ * l'un des deux chemins. Pour la lectrice,
  * les deux disent la même chose — nous ne savons pas si son État est ouvert,
  * donc nous n'imprimons pas. Distinguer « pas vérifié » de « pas pu vérifier »
  * lui donnerait une information qui ne lui sert à rien et nous ferait prétendre
@@ -71,6 +85,9 @@ let generate: () => Promise<unknown> = async () => ({
  */
 let limite: { allowed: boolean; retryAfterSeconds?: number } = { allowed: true };
 
+/** Ce que `save_directory_profile` renvoie. `null` = l'écriture passe. */
+let ecritureRefusee: { code: string; message: string } | null = null;
+
 const rpc = vi.fn(async (name: string) => {
   if (name === "project_state_is_sellable") return { data: sellable, error: null };
   return { data: null, error: null };
@@ -81,7 +98,12 @@ vi.mock("@/lib/supabase/server", () => ({
     auth: { getUser: async () => ({ data: { user: { id: "u1", email: "a@b.c" } } }) },
     rpc,
   }),
-  createAdminClient: () => ({ rpc: async () => ({ error: null }) }),
+  /*
+   * ⚠ LE REFUS DE LA BASE EST SONDABLE, parce que c'est PAR LÀ que le défaut
+   * du 19 septembre est sorti : `save_directory_profile` a répondu 400 deux
+   * fois et la route a rendu « Something didn't go through on our side ».
+   */
+  createAdminClient: () => ({ rpc: async () => ({ error: ecritureRefusee }) }),
 }));
 
 vi.mock("@/lib/data/brand-kit", () => ({
@@ -119,8 +141,12 @@ vi.mock("@/lib/directory/generate", async (importOriginal) => ({
 }));
 
 const { POST } = await import("@/app/api/brand-kits/[id]/directory/route");
-const { DirectoryCeilingError, DirectoryProseInvalidError, DirectoryProseRefusedError } =
-  await import("@/lib/directory/generate");
+const {
+  DirectoryCeilingError,
+  DirectoryProseClicheError,
+  DirectoryProseInvalidError,
+  DirectoryProseRefusedError,
+} = await import("@/lib/directory/generate");
 const { AnthropicNotConfiguredError } = await import("@/lib/ai/client");
 const Anthropic = (await import("@anthropic-ai/sdk")).default;
 
@@ -168,6 +194,39 @@ const SORTIES: readonly Sortie[] = [
     },
     status: 422,
     code: "ethics_refused",
+    panne: false,
+  },
+  {
+    /*
+     * ⚠ LE DÉFAUT MESURÉ EN PRODUCTION LE 19 SEPTEMBRE, en une sonde. Le
+     * pré-scan ne connaissait que la moitié de la garde de la base : un
+     * brouillon portant « you deserve » passait les deux tentatives, mourait
+     * au `save_directory_profile` (400, sqlstate 23514) et la route rendait le
+     * générique. Elle a lu « c'est de notre faute » et a recliqué.
+     */
+    nom: "⚠ le texte employait un cliché d'annuaire — refusé par le PRÉ-SCAN",
+    arme: () => {
+      generate = async () => {
+        throw new DirectoryProseClicheError(["you deserve"]);
+      };
+    },
+    status: 422,
+    code: "cliche_refused",
+    panne: false,
+  },
+  {
+    /*
+     * ⚠ LE MÊME REFUS, VENU DE LA BASE. Il ne devrait plus arriver — le
+     * pré-scan appelle désormais la MÊME fonction — mais il reste possible si
+     * une phrase est ajoutée à `banned_phrases` entre le scan et l'écriture.
+     * Ce qu'on garde ici est qu'il ne redevienne JAMAIS un 500 générique.
+     */
+    nom: "⚠ la BASE refuse l'écriture (23514) — un refus, pas une panne",
+    arme: () => {
+      ecritureRefusee = { code: "23514", message: "Directory cliche: you deserve" };
+    },
+    status: 422,
+    code: "cliche_refused",
     panne: false,
   },
   {
@@ -235,6 +294,7 @@ describe("chaque refus de la route directory dit le sien", () => {
   beforeEach(() => {
     limite = { allowed: true };
     sellable = true;
+    ecritureRefusee = null;
     generate = async () => ({
       draft: {
         platform: "psychology_today",
@@ -276,6 +336,7 @@ describe("chaque refus de la route directory dit le sien", () => {
     for (const sortie of SORTIES) {
       limite = { allowed: true };
       sellable = true;
+      ecritureRefusee = null;
       generate = async () => ({
         draft: { platform: "x", prose: { firstParagraph: "p", body: "b" }, structured: {} },
         ethicsCheck: {},
@@ -308,6 +369,7 @@ describe("chaque refus de la route directory dit le sien", () => {
     for (const sortie of SORTIES) {
       limite = { allowed: true };
       sellable = true;
+      ecritureRefusee = null;
       generate = async () => ({
         draft: { platform: "x", prose: { firstParagraph: "p", body: "b" }, structured: {} },
         ethicsCheck: {},

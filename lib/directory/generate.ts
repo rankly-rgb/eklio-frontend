@@ -4,6 +4,7 @@ import { ETHICS_SYSTEM_RULES } from "@/lib/ethics/rules";
 import { checkEthics, hasBlockingViolation } from "@/lib/ethics/rules";
 import { rulesBlock } from "@/lib/ethics/guard";
 import { buildHowYouWorkContext } from "@/lib/generation/how-you-work-context";
+import { checkBannedPhrases } from "@/lib/generation/banned-phrases";
 import { track } from "@/lib/analytics";
 import type { Catalog } from "@/lib/catalog/types";
 import { ethicsCheckSchema, type EthicsCheck } from "@/lib/brand/shapes";
@@ -39,9 +40,19 @@ import {
  * TRIGGER `directory_profiles_ethics_gate` passe `first_paragraph` ET `body`
  * par `ethics_blocks` et par `usp_banned_phrases_check` (les trente clichés
  * d'annuaire, écrits pour Psychology Today). Ce module ne le réimplémente pas :
- * il pré-scanne avec le MÊME scanner que le reste de l'application
- * (`checkEthics`), pour offrir une reprise plutôt qu'une exception — et la base
- * reste l'autorité qui tranche à l'écriture.
+ * il pré-scanne avec les MÊMES gardes que la base, pour offrir une reprise
+ * plutôt qu'une exception — et la base reste l'autorité qui tranche à
+ * l'écriture.
+ *
+ * ⚠ LES DEUX GARDES, PAS UNE. Ce fichier n'a longtemps pré-scanné qu'avec
+ * `checkEthics` alors que le trigger applique DEUX gardes. La conséquence
+ * était mesurable et a été mesurée en production le 19 septembre : un
+ * brouillon contenant « you deserve » passait les deux tentatives sans que
+ * rien ne le relève, mourait au `save_directory_profile` avec un 23514, et la
+ * route rendait « Something didn't go through on our side » — un refus
+ * présenté comme une panne, devant quelqu'un qui n'avait qu'à réécrire une
+ * phrase. La boucle de reprise ne peut réparer que ce qu'elle voit ; elle voit
+ * désormais les deux.
  */
 
 /**
@@ -70,6 +81,23 @@ export class DirectoryProseRefusedError extends Error {
         `${violations.join(", ")}.`
     );
     this.name = "DirectoryProseRefusedError";
+  }
+}
+
+/**
+ * ⚠ UN CLICHÉ N'EST PAS UNE INFRACTION DÉONTOLOGIQUE, et les confondre serait
+ * la même faute que confondre un refus et une panne. « Nous n'avons pas réussi
+ * à l'écrire sans une formule que tout l'annuaire emploie » et « nous n'avons
+ * pas réussi à l'écrire sans mettre votre licence en risque » n'appellent ni la
+ * même inquiétude ni la même action. Deux familles, deux erreurs, deux phrases.
+ */
+export class DirectoryProseClicheError extends Error {
+  constructor(readonly phrases: string[]) {
+    super(
+      `La prose produite emploie des formules bannies de l'annuaire : ` +
+        `${phrases.join(", ")}.`
+    );
+    this.name = "DirectoryProseClicheError";
   }
 }
 
@@ -213,7 +241,14 @@ export async function generateDirectoryProfile(
   bundle: BriefBundle,
   catalog: Catalog,
   structured: StructuredInput,
-  call: DirectoryCall = callDirectoryProfile
+  call: DirectoryCall = callDirectoryProfile,
+  /*
+   * ⚠ LE MÊME APPEL QUE LES DEUX AUTRES GÉNÉRATEURS, pas une seconde copie :
+   * `lib/generation/banned-phrases.ts` est le seul chemin vers
+   * `banned_phrases` (contrat §9.6, §9.11). Il s'injecte pour les sondes, comme
+   * `call` juste au-dessus.
+   */
+  bannedPhrasesCheck: (text: string) => Promise<string[]> = checkBannedPhrases
 ): Promise<DirectoryGeneration> {
   const system = directorySystemPrompt(catalog.ethicsRules);
   const brief = buildHowYouWorkContext(bundle, catalog);
@@ -282,6 +317,50 @@ export async function generateDirectoryProfile(
     );
 
     if (!hasBlockingViolation(violations)) {
+      /*
+       * ⚠ LA SECONDE GARDE DE LA BASE, PRÉ-SCANNÉE ICI POUR QU'ELLE SOIT
+       * RÉPARABLE. Le trigger passe chaque champ par `usp_banned_phrases_check`
+       * en plus de `ethics_blocks` ; sans cet appel, un cliché ne se découvrait
+       * qu'à l'écriture, quand il n'y a plus ni tentative ni budget pour le
+       * corriger.
+       *
+       * ⚠ LE MÊME APPEL QUE LA BASE, pas un motif recopié. Les trente phrases
+       * vivent dans `banned_phrases` et s'y ajoutent sans déploiement ; une
+       * liste recopiée ici serait une seconde définition de « cliché », qui
+       * divergerait le jour de la trente-et-unième.
+       *
+       * ⚠ CHAQUE CHAMP SÉPARÉMENT, comme le trigger : une phrase à cheval sur
+       * la jointure des deux champs n'est pas une phrase qu'elle a écrite.
+       */
+      const cliches = [
+        ...new Set(
+          (
+            await Promise.all([
+              bannedPhrasesCheck(built.draft.prose.firstParagraph),
+              bannedPhrasesCheck(built.draft.prose.body),
+            ])
+          ).flat()
+        ),
+      ].sort();
+
+      if (cliches.length > 0) {
+        /*
+         * ⚠ LA DERNIÈRE TENTATIVE REFUSE PLUTÔT QUE DE LAISSER LA BASE REFUSER.
+         * Les deux refusent la même chose ; celui-ci arrive avec les phrases
+         * nommées et sans avoir prétendu qu'il s'agissait d'une panne.
+         */
+        if (attempt + 1 >= MAX_MODEL_CALLS) {
+          track("directory_profile_cliche_refused", { model_calls: modelCalls });
+          throw new DirectoryProseClicheError(cliches);
+        }
+        prompt = `${brief}\n\nYour previous attempt used phrases that every other profile in this directory already uses: ${cliches
+          .map((phrase) => `"${phrase}"`)
+          .join(
+            ", "
+          )}. Write it again without them, and without a synonym that means the same thing. Say what she actually does instead.`;
+        continue;
+      }
+
       track("directory_profile_generated", {
         model_calls: modelCalls,
         warnings: violations.length,
