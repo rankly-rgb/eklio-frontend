@@ -227,18 +227,24 @@ describe("le lecteur applique bien les formes de la v1", () => {
  * ⚠ written_in_third_person — LES DEUX MOTEURS, CÔTE À CÔTE
  * ══════════════════════════════════════════════════════════════════════════
  *
- * La règle est passée en `present_without` le 18 septembre, et le choix de
- * `[A-Z][a-z]+` a été fait exprès plutôt que `[[:upper:]]` ou `\p{Lu}` : les
- * deux autres ne traversent pas la traduction. Ce bloc est la moitié
- * JavaScript de la preuve ; la moitié PostgreSQL vit dans
- * `eklio-backend/supabase/tests/20260918_positioning_rules_v1.test.sql`, et les
- * deux ont été mesurées sur la MÊME batterie de dix cas avant chargement.
+ * La règle est passée en `present_without` le 18 septembre, puis ANCRÉE le 19.
+ * Ce n'est pas la casse qui distingue la troisième personne — les deux moteurs
+ * comparent sans égard à la casse (`~*` côté PostgreSQL, le drapeau `i` ici),
+ * donc `[A-Z][a-z]+` ne contraignait rien et la règle mordait sur une incise
+ * au milieu d'un texte écrit à la première personne. C'est la POSITION qui
+ * distingue : un profil à la troisième personne s'ouvre sur le nom.
  *
- * ⚠ CE MOTIF EST UNE COPIE, comme celui du `^` plus haut, et son maître est le
- * seed. Une sonde de moteur d'expressions régulières a besoin de la chaîne.
+ * Ce bloc est la moitié JavaScript de la preuve ; la moitié PostgreSQL vit
+ * dans `eklio-backend/supabase/tests/20260918_positioning_rules_v1.test.sql`,
+ * et les deux ont été mesurées sur la MÊME batterie de douze cas avant
+ * chargement, sans un seul écart entre les moteurs.
+ *
+ * ⚠ CES MOTIFS SONT UNE COPIE, comme celui du `^` plus haut, et leur maître
+ * est le seed. Une sonde de moteur d'expressions régulières a besoin de la
+ * chaîne.
  */
-const THIRD_PERSON = String.raw`\y[A-Z][a-z]+ (is|has|holds) (a |an )?(licensed|certified|board-certified|master)`;
-const SUPERVISION = String.raw`\y(supervised by|under the supervision of)\y`;
+const THIRD_PERSON = String.raw`^[^.!?]{0,40}\y(is|has|holds) (a |an )?(licensed|certified|board-certified|master)`;
+const SUPERVISION = String.raw`\y(supervised by|under the supervision of|supervisor|supervision)\y`;
 
 describe("⚠ written_in_third_person : ce que JavaScript en fait", () => {
   const a = compilePattern(THIRD_PERSON) as RegExp;
@@ -250,22 +256,50 @@ describe("⚠ written_in_third_person : ce que JavaScript en fait", () => {
   });
 
   /*
-   * ⚠ LES DEUX ÉCRITURES QUE L'AUTRICE A ÉCARTÉES, ET POURQUOI ELLE AVAIT
+   * ⚠ ET L'ANCRE EST UN VRAI `^` DE DÉBUT DE TEXTE, pas de début de ligne :
+   * `compilePattern` ne pose pas le drapeau `m`. C'est la même propriété que
+   * pour `credential_opens_the_text`, et elle porte tout le sens de la règle.
+   */
+  it("⚠ pas de drapeau m — `^` est le début du TEXTE", () => {
+    expect(a.flags).toBe("iu");
+    expect(a.flags).not.toContain("m");
+  });
+
+  /*
+   * ⚠ LES DEUX ÉCRITURES QUE L'AUTRICE AVAIT ÉCARTÉES, ET POURQUOI ELLE AVAIT
    * RAISON. `[[:upper:]]` est une classe POSIX que JavaScript ne connaît pas :
    * il la lit comme une classe de caractères littérale et casse. `\p{Lu}`
    * compile ici mais PostgreSQL ne le connaît pas. Aucune des deux ne traverse.
+   * La forme ancrée n'a plus besoin d'aucune des trois — la sonde reste parce
+   * que la question se reposera.
    */
   it("⚠ [[:upper:]] est refusé par JavaScript — le compilateur le dit au lieu de deviner", () => {
     expect(typeof compilePattern(String.raw`\y[[:upper:]][[:lower:]]+ is`)).toBe("string");
   });
 
   it.each([
-    ["le PRONOM", "She is a licensed marriage and family therapist.", true],
+    ["le PRONOM en ouverture", "She is a licensed marriage and family therapist.", true],
     ["le PRÉNOM — ce que la v1 ratait", "Sarah is a licensed marriage and family therapist.", true],
-    ["⚠ limite connue : prénom accentué", "José is a licensed therapist.", false],
-    ["⚠ limite connue : prénom accentué", "Chloé is a licensed therapist.", false],
+    ["une ouverture nom + credential", "Sarah Chen, LCSW, is a licensed clinical social worker in Sacramento.", true],
+    ["⚠ le prénom accentué EST vu — l'ancre n'a plus besoin de [A-Z][a-z]+", "José is a licensed therapist.", true],
+    ["⚠ idem", "Chloé is a licensed therapist.", true],
     ["⚠ la casse n'est PAS contrainte (drapeau i)", "sarah is a licensed therapist.", true],
     ["la première personne n'est pas visée", "I am a licensed therapist in Denver.", false],
+    [
+      "⚠ CE QUE L'ANCRE ACHÈTE : une incise au MILIEU se tait",
+      "The mornings are the hardest part of your day. My colleague is a licensed therapist.",
+      false,
+    ],
+    [
+      "⚠ LIMITE CONNUE : un titre à points ferme la fenêtre avant le verbe",
+      "Sarah Chen, Ph.D., is a licensed psychologist.",
+      false,
+    ],
+    [
+      "⚠ CE QUE L'ANCRE N'ACHÈTE PAS : la même incise, quand elle OUVRE, mord",
+      "My colleague is a licensed therapist.",
+      true,
+    ],
   ])("%s", (_quoi, texte, attendu) => {
     expect(a.test(texte as string)).toBe(attendu);
   });
@@ -274,19 +308,36 @@ describe("⚠ written_in_third_person : ce que JavaScript en fait", () => {
    * ⚠⚠ LA SONDE QUI COMPTE LE PLUS. Une associée texane DOIT écrire
    * « supervised by (nom) » — 22 TAC 681.91(m). La règle doit se taire devant
    * quelqu'un qui respecte la loi, sinon ce produit reproche l'obéissance.
+   *
+   * Le motif secondaire a été ÉLARGI le 19 septembre pour le troisième cas :
+   * « My supervisor is a licensed psychologist » est la même mention écrite à
+   * l'envers, et `supervised by|under the supervision of` seuls la rataient.
+   *
+   * ⚠ ET CET ÉLARGISSEMENT A UN COÛT, sondé juste après : le profil d'une
+   * SUPERVISEUSE se tait aussi. Taire un constat mineur chez une superviseuse
+   * coûte infiniment moins que reprocher à une associée d'avoir obéi.
    */
+  const regle = { id: "r", short_label: "l", description: "d", example_weak: null,
+    example_strong: null, sort_order: 1, active: true, is_example: false } as unknown as PositioningRule;
+  const motif = { id: "p", rule_id: "r", kind: "present_without", pattern: THIRD_PERSON,
+    secondary_pattern: SUPERVISION, window_chars: null, min_chars: null, max_chars: null,
+    severity: "minor", sort_order: 1, active: true } as unknown as PositioningPattern;
+
   it.each([
     ["« supervised by »", "Chen is a licensed professional counselor, supervised by Dana Ruiz, LPC-S."],
     ["« under the supervision of »", "Chen is a licensed professional counselor under the supervision of Dana Ruiz."],
+    ["⚠ « My supervisor is… » — la mention écrite à l'envers", "My supervisor is a licensed psychologist."],
   ])("⚠ %s fait taire la règle — on ne reproche pas d'obéir à 22 TAC 681.91(m)", (_quoi, texte) => {
     expect(a.test(texte as string)).toBe(true);
     expect(b.test(texte as string)).toBe(true);
-
-    const regle = { id: "r", short_label: "l", description: "d", example_weak: null,
-      example_strong: null, sort_order: 1, active: true, is_example: false } as unknown as PositioningRule;
-    const motif = { id: "p", rule_id: "r", kind: "present_without", pattern: THIRD_PERSON,
-      secondary_pattern: SUPERVISION, window_chars: null, min_chars: null, max_chars: null,
-      severity: "minor", sort_order: 1, active: true } as unknown as PositioningPattern;
     expect(reviewPositioning(texte as string, [regle], [motif]).findings).toEqual([]);
+  });
+
+  it("⚠ LIMITE CONNUE : le profil d'une SUPERVISEUSE se tait aussi — c'est le prix", () => {
+    const texte =
+      "Sarah Chen, LCSW, is a licensed clinical social worker. I provide clinical supervision to associates.";
+    expect(a.test(texte)).toBe(true);
+    expect(b.test(texte)).toBe(true);
+    expect(reviewPositioning(texte, [regle], [motif]).findings).toEqual([]);
   });
 });
