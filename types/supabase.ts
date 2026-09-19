@@ -3616,6 +3616,7 @@ export type Database = {
         Returns: number
       }
       usp_banned_phrases_check: { Args: { p_text: string }; Returns: string[] }
+      usp_banned_phrases_list: { Args: Record<PropertyKey, never>; Returns: string[] }
       usp_check_distinct: {
         Args: {
           p_exclude_brief?: string

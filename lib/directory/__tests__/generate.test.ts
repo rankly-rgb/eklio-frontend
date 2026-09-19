@@ -75,6 +75,13 @@ const callOnce = (value = GOOD): DirectoryCall => vi.fn(async () => value);
  */
 const NO_CLICHE = async () => [];
 
+/*
+ * ⚠ La LISTE des clichés est injectée vide, pour la même raison : sans
+ * injection, construire le prompt système ouvrirait un client service-role.
+ * Ce que la liste change dans le prompt est sondé à part, plus bas.
+ */
+const NO_LIST = async () => [];
+
 describe("le gabarit du lot 1 est respecté", () => {
   it("le premier paragraphe et le reste sont produits SÉPARÉMENT", async () => {
     const result = await generateDirectoryProfile(
@@ -82,7 +89,8 @@ describe("le gabarit du lot 1 est respecté", () => {
       FIXTURE_CATALOG,
       FULL_STRUCTURED,
       callOnce(),
-      NO_CLICHE
+      NO_CLICHE,
+      NO_LIST
     );
     expect(result.draft.prose.firstParagraph).toBe(GOOD.firstParagraph);
     expect(result.draft.prose.body).toBe(GOOD.body);
@@ -96,7 +104,7 @@ describe("le gabarit du lot 1 est respecté", () => {
       body: `${GOOD.firstParagraph} And then more.`,
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE, NO_LIST)
     ).rejects.toBeInstanceOf(DirectoryProseInvalidError);
   });
 
@@ -110,7 +118,7 @@ describe("le gabarit du lot 1 est respecté", () => {
       body: "b".repeat(10),
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE, NO_LIST)
     ).rejects.toMatchObject({ problems: ["first_paragraph_too_long"] });
   });
 
@@ -132,7 +140,8 @@ describe("⚠ aucune composition par concaténation de champs optionnels", () =>
       FIXTURE_CATALOG,
       EMPTY_STRUCTURED,
       callOnce(),
-      NO_CLICHE
+      NO_CLICHE,
+      NO_LIST
     );
     expect(result.draft.structured).toEqual({});
     expect(result.draft.prose.firstParagraph).toBe(GOOD.firstParagraph);
@@ -144,7 +153,8 @@ describe("⚠ aucune composition par concaténation de champs optionnels", () =>
       FIXTURE_CATALOG,
       { ...EMPTY_STRUCTURED, specialties: ["Anxiety"] },
       callOnce(),
-      NO_CLICHE
+      NO_CLICHE,
+      NO_LIST
     );
     expect(result.draft.structured).toEqual({ issues: ["Anxiety"] });
     // ⚠ Pas de `licensed_state: []`, pas de `insurance: []`.
@@ -157,7 +167,8 @@ describe("⚠ aucune composition par concaténation de champs optionnels", () =>
       FIXTURE_CATALOG,
       { ...EMPTY_STRUCTURED, specialties: ["Anxiety", undefined, null, "  "] },
       callOnce(),
-      NO_CLICHE
+      NO_CLICHE,
+      NO_LIST
     );
     expect(result.draft.structured.issues).toEqual(["Anxiety"]);
   });
@@ -178,7 +189,8 @@ describe("l'Ethics Guard, et un seul chemin", () => {
       FIXTURE_CATALOG,
       FULL_STRUCTURED,
       call,
-      NO_CLICHE
+      NO_CLICHE,
+      NO_LIST
     );
     expect(result.modelCalls).toBe(2);
     expect(call).toHaveBeenCalledTimes(2);
@@ -199,7 +211,7 @@ describe("l'Ethics Guard, et un seul chemin", () => {
       body: GOOD.body,
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE, NO_LIST)
     ).rejects.toBeInstanceOf(DirectoryProseRefusedError);
     expect(call).toHaveBeenCalledTimes(MAX_MODEL_CALLS);
   });
@@ -215,7 +227,7 @@ describe("l'Ethics Guard, et un seul chemin", () => {
       body: "Limited spots available.",
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE, NO_LIST)
     ).rejects.toBeInstanceOf(DirectoryProseRefusedError);
   });
 
@@ -239,7 +251,7 @@ describe("le plafond de dépense", () => {
       body: GOOD.body,
     }));
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE, NO_LIST)
     ).rejects.toBeTruthy();
     /* Jamais MAX + 1 : un plafond lu après coup est un reçu, pas un plafond. */
     expect(call).toHaveBeenCalledTimes(MAX_MODEL_CALLS);
@@ -252,7 +264,8 @@ describe("le plafond de dépense", () => {
       FIXTURE_CATALOG,
       FULL_STRUCTURED,
       call,
-      NO_CLICHE
+      NO_CLICHE,
+      NO_LIST
     );
     expect(result.modelCalls).toBe(1);
     expect(call).toHaveBeenCalledTimes(1);
@@ -291,7 +304,8 @@ describe("⚠ les clichés d'annuaire sont pré-scannés, donc réparables", () 
       FIXTURE_CATALOG,
       FULL_STRUCTURED,
       call,
-      cliches
+      cliches,
+      NO_LIST
     );
 
     expect(result.modelCalls).toBe(2);
@@ -304,7 +318,7 @@ describe("⚠ les clichés d'annuaire sont pré-scannés, donc réparables", () 
     let tour = 0;
     const cliches = vi.fn(async () => (tour++ < 2 ? [CLICHE] : []));
 
-    await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches);
+    await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches, NO_LIST);
 
     const secondPrompt = (call as unknown as ReturnType<typeof vi.fn>).mock.calls[1][1] as string;
     expect(secondPrompt).toContain(CLICHE);
@@ -319,7 +333,8 @@ describe("⚠ les clichés d'annuaire sont pré-scannés, donc réparables", () 
       FIXTURE_CATALOG,
       FULL_STRUCTURED,
       call,
-      cliches
+      cliches,
+      NO_LIST
     );
 
     await expect(echec).rejects.toBeInstanceOf(DirectoryProseClicheError);
@@ -337,7 +352,7 @@ describe("⚠ les clichés d'annuaire sont pré-scannés, donc réparables", () 
       return [];
     });
 
-    await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches);
+    await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches, NO_LIST);
 
     expect(vus).toEqual([GOOD.firstParagraph, GOOD.body]);
     /* Jamais la concaténation des deux. */
@@ -352,9 +367,102 @@ describe("⚠ les clichés d'annuaire sont pré-scannés, donc réparables", () 
     const cliches = vi.fn(async () => [CLICHE]);
 
     await expect(
-      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches)
+      generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches, NO_LIST)
     ).rejects.toBeInstanceOf(DirectoryProseRefusedError);
     /* Le vérificateur de clichés n'est même pas consulté sur un jet bloqué. */
     expect(cliches).not.toHaveBeenCalled();
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ LE MODÈLE EST INFORMÉ DES PHRASES QU'ON LUI REFUSERA
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Mesuré en production le 19 septembre : QUATRE refus sur cinq générations,
+ * la même phrase à chaque fois (« you deserve »), y compris après un
+ * changement de type de licence ET de domaine d'expertise. Ce n'est pas le
+ * brief qui produisait le cliché — c'est qu'on demandait au modèle d'écrire un
+ * profil d'annuaire sans jamais lui donner la liste qui le ferait rejeter.
+ *
+ * Une reprise répare un jet. Elle ne répare pas un prompt qui ne dit pas la
+ * règle : c'est le maillon qui manquait, et celui-ci le sonde.
+ *
+ * ⚠ AUCUNE PHRASE RÉELLE N'EST ÉCRITE ICI. Les trente vivent dans
+ * `banned_phrases` ; ce qui est sondé est la MÉCANIQUE — la liste arrive-t-elle
+ * dans le prompt, une seule fois, et le prompt reste-t-il valide sans elle.
+ */
+describe("⚠ les clichés entrent dans le prompt système", () => {
+  it("chaque phrase de la liste est écrite dans le prompt", () => {
+    const system = directorySystemPrompt(FIXTURE_CATALOG.ethicsRules, [
+      "you deserve",
+      "safe space",
+    ]);
+    expect(system).toContain("you deserve");
+    expect(system).toContain("safe space");
+    /* ⚠ Et elles sont présentées comme une INTERDICTION, pas comme un exemple. */
+    expect(system).toMatch(/never use/i);
+  });
+
+  it("⚠ une liste vide ne laisse PAS un bloc vide ni un titre orphelin", () => {
+    const sans = directorySystemPrompt(FIXTURE_CATALOG.ethicsRules, []);
+    expect(sans).not.toMatch(/never use/i);
+    /* Le prompt reste utilisable : les règles déontologiques y sont toujours. */
+    expect(sans).toContain("Psychology Today profile");
+    expect(sans.trim()).toBe(sans);
+  });
+
+  /*
+   * ⚠ L'ORDRE, ET UNE TAUTOLOGIE ÉCRITE PUIS RETIRÉE. La première version de
+   * cette sonde comparait `indexOf(...)` à `x > 0 ? 0 : 0` — toujours vrai,
+   * donc elle passait au vert en affirmant l'ordre INVERSE de celui que le
+   * code produit. Une assertion qui ne peut pas échouer ne mesure rien, et
+   * celle-ci cachait une erreur à moi.
+   *
+   * L'ordre réel, et celui qu'on veut : la déontologie, puis les clichés, puis
+   * le style. Une licence en risque prime sur une phrase usée.
+   */
+  it("⚠ les règles déontologiques passent avant les clichés, et le style après", () => {
+    const system = directorySystemPrompt(FIXTURE_CATALOG.ethicsRules, ["you deserve"]);
+    const deontologie = system.search(/never|not|avoid/i);
+    const cliches = system.indexOf("you deserve");
+    const style = system.indexOf("Psychology Today profile");
+
+    expect(deontologie).toBeGreaterThanOrEqual(0);
+    expect(cliches).toBeGreaterThan(deontologie);
+    expect(style).toBeGreaterThan(cliches);
+  });
+
+  it("⚠ la liste est lue UNE fois, avant la boucle — pas à chaque tentative", async () => {
+    const call = vi.fn(async () => GOOD) as DirectoryCall;
+    let tour = 0;
+    const cliches = vi.fn(async () => (tour++ < 2 ? ["you deserve"] : []));
+    const liste = vi.fn(async () => ["you deserve"]);
+
+    await generateDirectoryProfile(
+      BUNDLE,
+      FIXTURE_CATALOG,
+      FULL_STRUCTURED,
+      call,
+      cliches,
+      liste
+    );
+
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(liste).toHaveBeenCalledTimes(1);
+  });
+
+  it("⚠ et ce que le modèle reçoit contient bien les phrases, pas seulement le prompt construit à part", async () => {
+    const call = vi.fn(async () => GOOD) as DirectoryCall;
+    await generateDirectoryProfile(
+      BUNDLE,
+      FIXTURE_CATALOG,
+      FULL_STRUCTURED,
+      call,
+      NO_CLICHE,
+      async () => ["you deserve"]
+    );
+    const systemRecu = (call as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(systemRecu).toContain("you deserve");
   });
 });

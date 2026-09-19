@@ -9,6 +9,13 @@ import { generateDirectoryProfile, type DirectoryCall } from "@/lib/directory/ge
  * dans `generate.test.ts`.
  */
 const NO_CLICHE = async () => [];
+
+/*
+ * ⚠ La LISTE des clichés est injectée vide, pour la même raison : sans
+ * injection, construire le prompt système ouvrirait un client service-role.
+ * Ce que la liste change dans le prompt est sondé à part, plus bas.
+ */
+const NO_LIST = async () => [];
 import { loadDirectoryProfile } from "@/lib/data/directory";
 import { FIXTURE_CATALOG } from "@/lib/brief/fixtures/catalog";
 import type { BriefBundle } from "@/lib/data/brief";
@@ -80,12 +87,12 @@ describe("⚠ 1. `ethics_check` a la forme que le CHECK exige", () => {
      * `brand_kit_ethics_check_valid`, et il existait AVANT ce module. Le
      * valider ici attrape l'écart sans base de données.
      */
-    const result = await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, EMPTY, GOOD, NO_CLICHE);
+    const result = await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, EMPTY, GOOD, NO_CLICHE, NO_LIST);
     expect(() => ethicsCheckSchema.parse(result.ethicsCheck)).not.toThrow();
   });
 
   it("les trois clés que la base lit sont là, et nommées comme elle les nomme", async () => {
-    const result = await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, EMPTY, GOOD, NO_CLICHE);
+    const result = await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, EMPTY, GOOD, NO_CLICHE, NO_LIST);
     expect(Object.keys(result.ethicsCheck).sort()).toEqual([
       "checked_at",
       "flagged",
@@ -106,7 +113,7 @@ describe("⚠ 1. `ethics_check` a la forme que le CHECK exige", () => {
       firstParagraph: "You keep having the same argument.",
       body: "We will find an approach that works best for you, whatever that takes.",
     });
-    const result = await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, EMPTY, warned, NO_CLICHE);
+    const result = await generateDirectoryProfile(BUNDLE, FIXTURE_CATALOG, EMPTY, warned, NO_CLICHE, NO_LIST);
     expect(() => ethicsCheckSchema.parse(result.ethicsCheck)).not.toThrow();
     for (const entry of result.ethicsCheck.flagged) {
       expect(["first_paragraph", "body"]).toContain(entry.field);

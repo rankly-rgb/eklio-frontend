@@ -4,7 +4,7 @@ import { ETHICS_SYSTEM_RULES } from "@/lib/ethics/rules";
 import { checkEthics, hasBlockingViolation } from "@/lib/ethics/rules";
 import { rulesBlock } from "@/lib/ethics/guard";
 import { buildHowYouWorkContext } from "@/lib/generation/how-you-work-context";
-import { checkBannedPhrases } from "@/lib/generation/banned-phrases";
+import { checkBannedPhrases, listBannedPhrases } from "@/lib/generation/banned-phrases";
 import { track } from "@/lib/analytics";
 import type { Catalog } from "@/lib/catalog/types";
 import { ethicsCheckSchema, type EthicsCheck } from "@/lib/brand/shapes";
@@ -159,10 +159,48 @@ const TOOL: Anthropic.Tool = {
  * comme une permission de les assouplir — et un troisième texte déontologique
  * écrit ici serait exactement le second chemin qu'on refuse.
  */
-export function directorySystemPrompt(rules: Catalog["ethicsRules"]): string {
+/**
+ * ⚠ LES TRENTE CLICHÉS ENTRENT DANS LE PROMPT, ET C'EST UNE MESURE QUI L'A
+ * IMPOSÉ. Cinq générations relevées en production le 19 septembre :
+ *
+ *   19:17  400  Directory cliche: you deserve
+ *   19:18  400  Directory cliche: you deserve
+ *   19:33  200  (celle-ci est passée)
+ *   19:57  400  Directory cliche: you deserve
+ *   19:57  400  Directory cliche: you deserve
+ *
+ * QUATRE FOIS LA MÊME PHRASE, y compris après que la praticienne eut changé
+ * son type de licence ET son domaine d'expertise. Ce n'est donc pas son brief
+ * qui produit le cliché : c'est qu'on demandait au modèle d'écrire un profil
+ * d'annuaire sans jamais lui dire ce qui le ferait rejeter, puis qu'on
+ * rejetait. Une reprise répare un jet ; elle ne répare pas un prompt qui ne
+ * dit pas la règle.
+ *
+ * ⚠ AUCUNE PHRASE N'EST ÉCRITE ICI. Elles viennent de `banned_phrases` par
+ * `listBannedPhrases()`, et s'y ajoutent sans déploiement. Une liste recopiée
+ * dans ce fichier serait une seconde définition de « cliché » — et la
+ * trente-et-unième serait ignorée du modèle et refusée par la base.
+ */
+function clicheBlock(phrases: readonly string[]): string {
+  if (phrases.length === 0) return "";
+  return `Never use any of these phrases, or a close paraphrase of one. Every other profile in this directory already uses them, so they tell the reader nothing:
+
+${phrases.map((phrase) => `- ${phrase}`).join("\n")}`;
+}
+
+export function directorySystemPrompt(
+  rules: Catalog["ethicsRules"],
+  /*
+   * Par défaut vide, et le prompt reste alors valide — c'est le cas des sondes
+   * qui n'ont pas de base. En production la liste vient toujours de la table :
+   * `generateDirectoryProfile` la lit avant le premier appel.
+   */
+  bannedPhrases: readonly string[] = []
+): string {
   return [
     ETHICS_SYSTEM_RULES,
     rulesBlock(rules),
+    clicheBlock(bannedPhrases),
     `You are writing the personal statement for a licensed mental-health clinician's Psychology Today profile.
 
 A directory profile is read by someone who is already looking for help and is deciding whether to call THIS person rather than the next one on the list. Most profiles on that list say the same things. Yours has to say what is true of this practice and not of the others.
@@ -248,9 +286,16 @@ export async function generateDirectoryProfile(
    * `banned_phrases` (contrat §9.6, §9.11). Il s'injecte pour les sondes, comme
    * `call` juste au-dessus.
    */
-  bannedPhrasesCheck: (text: string) => Promise<string[]> = checkBannedPhrases
+  bannedPhrasesCheck: (text: string) => Promise<string[]> = checkBannedPhrases,
+  /** La même liste que la base refuse, donnée au modèle AVANT qu'il écrive. */
+  bannedPhrasesList: () => Promise<string[]> = listBannedPhrases
 ): Promise<DirectoryGeneration> {
-  const system = directorySystemPrompt(catalog.ethicsRules);
+  /*
+   * ⚠ UNE SEULE LECTURE, AVANT LA BOUCLE. Les trente phrases ne changent pas
+   * entre deux tentatives de la même génération, et les relire à chaque tour
+   * serait un aller-retour payé pour rien.
+   */
+  const system = directorySystemPrompt(catalog.ethicsRules, await bannedPhrasesList());
   const brief = buildHowYouWorkContext(bundle, catalog);
 
   let modelCalls = 0;
