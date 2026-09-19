@@ -916,3 +916,71 @@ la regex JavaScript du lecteur :
 **Le garde-fou sur l'écart connu est tombé**, comme demandé : la règle rentre désormais dans la boucle
 dérivée du test, sans exception. Ce qui l'a remplacé est une sonde de **silence** — la plus importante
 du fichier — qui vérifie que les deux formulations de la supervision font taire la règle.
+
+---
+
+### 2026-09-19 — Ce n'est pas la casse qui distingue la troisième personne, c'est la position
+
+**La décision de l'autrice des règles**, sur le point laissé « relevé, non tranché » la veille :
+`written_in_third_person` s'**ancre** au lieu de chercher une majuscule que le lecteur ne peut pas
+voir.
+
+```
+kind               present_without
+pattern            ^[^.!?]{0,40}\y(is|has|holds) (a |an )?(licensed|certified|board-certified|master)
+secondary_pattern  \y(supervised by|under the supervision of|supervisor|supervision)\y
+severity           minor   (inchangée)
+```
+
+**La raison.** Un profil écrit à la troisième personne **s'ouvre sur le nom** ; « my colleague is a
+licensed therapist » au milieu d'un texte est une incise. La position discrimine, la casse non — et
+la mesure de la veille l'avait montré sans qu'on en tire la conséquence : les deux moteurs comparent
+sans égard à la casse, donc `[A-Z][a-z]+` ne contraignait **rien**.
+
+**L'élargissement du motif secondaire** vient d'un cas produit par la sonde elle-même :
+« My supervisor is a licensed psychologist » est la mention exigée par **22 TAC 681.91(m)** écrite à
+l'envers, et `supervised by|under the supervision of` seuls la rataient. La règle mordait donc sur
+une associée texane qui obéit à la loi — le faux positif que toute cette règle existe pour éviter.
+
+**Vérifié avant chargement, douze cas, dans les deux moteurs** — PostgreSQL `~*` et la regex
+JavaScript du lecteur, `\y` → `\b`, drapeaux `iu` :
+
+- **aucun écart entre les deux moteurs, sur les douze.**
+- les huit attendus tiennent : l'ouverture sur le nom mord, l'incise au milieu se tait, la première
+  personne se tait, les **trois** formulations de la supervision font taire la règle.
+
+**Trois choses que la mesure a apprises, et qui sont écrites plutôt que découvertes plus tard :**
+
+1. ⚠ **L'ancre sépare des POSITIONS, pas des personnes.** « My colleague is a licensed therapist. »
+   **en ouverture** mord. Un vrai profil n'ouvre pas ainsi, donc le coût est faible — mais la règle
+   n'est pas « une incise se tait », elle est « une incise qui n'ouvre pas se tait ».
+2. ⚠ **`[^.!?]` se ferme sur un titre à points.** « Sarah Chen, Ph.D., is a licensed psychologist. »
+   **se tait** : les points coupent la fenêtre avant le verbe. Faux négatif sur une ouverture qui est
+   pourtant le cas visé. **Limite connue**, écrite dans la description ; l'élargir est une décision de
+   produit, pas une correction à faire en passant.
+3. ⚠ **`supervision` seul fait taire la règle sur le profil d'une SUPERVISEUSE.** C'est le prix de
+   l'élargissement, payé exprès : taire un constat **mineur** chez une superviseuse coûte infiniment
+   moins que reprocher à une associée d'avoir obéi.
+
+**Et une limite documentée a été RETIRÉE parce qu'elle est devenue fausse.** « Les prénoms accentués
+sont ratés — José, Chloé, Zoë » était vrai de la forme `[A-Z][a-z]+` et ne l'est plus de la forme
+ancrée : « José is a licensed therapist. » mord, dans les deux moteurs. Une limite documentée qui
+n'existe pas est pire que rien — elle empêche de chercher celles qui existent. La phrase est remplacée
+par les deux vraies, et la sonde vérifie désormais l'inverse de ce qu'elle vérifiait.
+
+**Ce qu'une lectrice voit quand les deux règles mordent ensemble.** Sur « Sarah Chen, LCSW, is a
+licensed clinical social worker in Sacramento. », cinq règles sur dix mordent ; le plafond de 3 en
+montre trois et en replie deux :
+
+| rang | sévérité | constat | extrait cité |
+|---|---|---|---|
+| 1 | costly | Your opening talks about you, not her | *(aucun — c'est une absence)* · the first 320 characters |
+| 2 | costly | Your licence is the first thing on the page | « Sarah Chen, LCSW, is a licensed » |
+| 3 | minor | The profile is written about you, not by you | « Sarah Chen, LCSW, is a licensed » |
+
+L'ordre est juste : les deux `costly` passent devant, le `minor` suit, et deux constats sont
+**comptés** plutôt que jetés. ⚠ Mais les rangs 2 et 3 **citent les mêmes trente-et-un caractères** —
+deux reproches distincts appuyés sur le même extrait. Les deux constats sont vrais et ne disent pas
+la même chose (l'un dit « votre licence ouvre la page », l'autre « le texte parle de vous à la
+troisième personne »), et c'est l'écran qui décidera s'il répète l'extrait ou s'il ne le cite qu'une
+fois. **Relevé, pas tranché** : il n'y a pas d'écran.
