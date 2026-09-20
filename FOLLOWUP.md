@@ -314,3 +314,57 @@ crédits.
 libellé d'angle, et Swap répond au lieu de rendre une erreur. Les trois
 signaux viennent de trois migrations différentes : les trois ensemble disent
 que le lot est passé en entier.
+
+---
+
+## F10 — ⚠ UNE SUITE VERTE NE DIT PAS QUE ÇA COMPILE
+
+**Rencontré en** déboguant quatre déploiements Vercel en échec d'affilée.
+
+`2bb14fd` a cassé le build. Les trois commits suivants ne touchaient que du
+markdown et ont échoué aussi : ils héritaient de la casse. Pendant ce temps,
+Vitest (3 902 au vert), ESLint et la suite SQL disaient tous oui.
+
+**La cause tenait en une ligne, dans un fichier de test :**
+
+```ts
+status: "ready",   // ContentMonthRecord["status"] vaut
+                   // "proposed" | "generating" | "approved" | "failed"
+```
+
+**Pourquoi rien ne l'a vue.** Vitest ne vérifie pas les types — il transpile en
+effaçant les annotations, donc un fichier qui ne compile pas peut avoir tous
+ses tests au vert. `next build` lance `tsc` sur TOUT le projet, fichiers de
+test compris, et tombait en 15 secondes.
+
+⚠ **Et c'est exactement l'angle mort du bug d'origine, une couche plus haut :**
+la vérification locale ne reproduisait pas les conditions de déploiement. La
+première fois c'était la base, cette fois c'est le compilateur.
+
+⚠ **Ma part, nommément :** j'ai lancé `tsc` après avoir écrit
+`lib/content/month-screen.ts`, puis j'ai écrit le fichier de test, puis je
+n'ai plus lancé que Vitest et ESLint. Le typage n'a jamais vu le fichier qui
+le cassait. La commande existait ; c'est la discipline qui manquait, et c'est
+pour ça que le correctif est une commande unique plutôt qu'une note.
+
+**Corrigé, et c'est le livrable durable de cette session :**
+
+```bash
+npm run typecheck   # next typegen && tsc --noEmit
+npm run verify      # typecheck + lint + test + build
+```
+
+`npm run verify` est la commande à lancer avant de pousser. Elle est décrite
+dans `README.md` §Commandes, avec le tableau de ce que chaque moitié attrape et
+rate.
+
+⚠ **`typecheck` lance `next typegen` d'abord**, parce que `RouteContext`,
+`PageProps` et `LayoutProps` sont générés par Next. Sur un dépôt fraîchement
+cloné, `tsc --noEmit` seul échoue sur des dizaines d'erreurs sans rapport —
+une commande de vérification qui ne marche qu'après un build est verte chez qui
+vient de builder et rouge partout ailleurs.
+
+**Ce qui reste à faire, et qui est hors périmètre ici :** brancher
+`npm run verify` sur un CI, pour que la discipline ne repose pas sur la mémoire
+de qui pousse. Tant que ce n'est pas fait, Vercel reste le premier endroit où
+un build cassé se voit — c'est-à-dire trop tard.

@@ -60,7 +60,7 @@ const RECORD: ContentMonthRecord = {
   brand_kit_id: "k1",
   month: "2026-09-01",
   themes: ["Rest", "Boundaries", "Beginnings"],
-  status: "ready",
+  status: "approved",
   theme_source: null,
   theme_source_text: null,
   created_at: "2026-09-01T00:00:00Z",

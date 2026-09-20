@@ -133,12 +133,45 @@ connues au build. Les `preconnect` du layout racine existent pour elles.
 ## Commandes
 
 ```bash
-npm run dev      # serveur de dev
-npm run build    # build de production
-npm run start    # sert le build de production
-npm run lint     # ESLint
-npm run test     # Vitest (modules purs, gardes, contraintes de rendu, contraste)
+npm run dev        # serveur de dev
+npm run build      # build de production
+npm run start      # sert le build de production
+npm run lint       # ESLint
+npm run test       # Vitest (modules purs, gardes, contraintes de rendu, contraste)
+npm run typecheck  # next typegen + tsc --noEmit — TOUT le projet, tests compris
+npm run verify     # typecheck + lint + test + build. ⚠ C'EST CELLE-CI AVANT DE POUSSER.
 ```
+
+### ⚠ `npm run test` NE SUFFIT PAS À DIRE QUE ÇA COMPILE
+
+**Vitest ne vérifie pas les types.** Il transpile en effaçant les annotations :
+un fichier qui ne compile pas peut avoir tous ses tests au vert.
+
+Quatre déploiements Vercel de suite ont échoué là-dessus, sur **une seule
+ligne d'un fichier de test** — un statut de mois qui n'existe pas dans son
+type. Vitest passait, ESLint passait, la suite SQL passait. `next build`
+lançait `tsc` sur tout le projet, fichiers de test inclus, et tombait en 15
+secondes.
+
+Les deux moitiés sont nécessaires et aucune ne remplace l'autre :
+
+| | ce que ça attrape | ce que ça rate |
+|---|---|---|
+| `npm run test` | ce que le code FAIT | tout ce qui est de l'ordre du type |
+| `npm run typecheck` | ce qui ne compile pas, **partout, tests compris** | ce que le code fait |
+| `npm run build` | les deux, plus la résolution des modules et le découpage serveur/client | — |
+
+⚠ **Et `npm run verify` lance le build en dernier parce qu'il est le plus
+lent.** Le typecheck rend le même verdict sur ce cas-ci en quelques secondes ;
+le build est la preuve, le typecheck est la boucle courte.
+
+⚠ **`typecheck` lance `next typegen` AVANT `tsc`, et ce n'est pas décoratif.**
+`RouteContext`, `PageProps` et `LayoutProps` sont GÉNÉRÉS par Next dans
+`.next/types`. Sur un dépôt fraîchement cloné — donc sur un CI — `tsc --noEmit`
+seul échoue sur des dizaines de « Cannot find name 'RouteContext' » qui n'ont
+rien à voir avec le code. Une commande de vérification qui ne marche qu'après
+un build est un piège : elle est verte sur le poste de qui vient de builder, et
+rouge partout ailleurs.
 
 ## Déploiement Vercel
 
