@@ -120,6 +120,13 @@ export type AnalyticsEvent =
    * distinction qu'on voudrait lire.
    */
   | "directory_profile_cliche_refused"
+  /*
+   * ⚠ ET UN TROISIÈME REFUS, QU'ON ESPÈRE VOIR À ZÉRO. Un credential infondé
+   * après que la prose a cessé d'écrire des titres signale que le bloc composé
+   * n'a pas pris — pas qu'une cliente a mal rempli son brief. Le compter à
+   * part est ce qui permettra de le lire.
+   */
+  | "directory_profile_unbacked_refused"
   | "usp_selected"
   | "usp_edited"
   | "usp_collision_warned"

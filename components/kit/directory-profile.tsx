@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/site/copy-chip";
 import { MonoLabel } from "@/components/ui/mono-label";
 import type { DirectoryProfileView } from "@/lib/data/directory";
-import type { StructuredFields } from "@/lib/directory/profile";
+import type { CredentialBlock, StructuredFields } from "@/lib/directory/profile";
 
 /*
  * ── LE PROFIL PSYCHOLOGY TODAY, À L'ÉCRAN ───────────────────────────────
@@ -194,6 +194,52 @@ function ProseAbsent({ issue }: { issue: DirectoryProfileView["proseIssue"] }) {
   );
 }
 
+/**
+ * ⚠ LE NOM ET LE TITRE, DANS LEUR PROPRE BLOC — DÉCISION DU 18 SEPTEMBRE.
+ *
+ * La prose n'écrit plus aucun titre d'exercice. Il s'affiche ici, seul, et
+ * rien ne l'imbrique dans une phrase : c'est ce qu'elle recopie dans les deux
+ * champs « Name » et « Credentials » de l'annuaire, et c'est aussi ce qui
+ * rend le titre RECOUPABLE — un titre à l'intérieur d'un paragraphe ne peut
+ * plus être comparé au catalogue sans relire la phrase.
+ *
+ * ⚠ LE SIGLE EST FACULTATIF, L'INTITULÉ NE L'EST PAS. Quand le board de son
+ * État ne publie aucun sigle — la Californie pour une psychologue — on écrit
+ * les mots. C'est la même règle que `title_abbreviation()` en base, et c'est
+ * la Floride qui la rend obligatoire (§490.012(2)(b)).
+ */
+function CredentialLine({ block }: { block: CredentialBlock }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
+        <h3 className="font-display text-subsection font-medium text-ink">
+          Your name and title
+        </h3>
+        <p className="text-helper leading-prose text-ink-2">
+          Copy these into the name and credentials fields. We write the title
+          the way your state board publishes it — not the way it was typed
+          into the brief.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="text-ui text-ink">{block.name}</span>
+        <span className="text-ui text-ink-2">
+          {block.abbreviation ?? block.title}
+        </span>
+        <CopyButton
+          text={
+            block.abbreviation === null
+              ? block.name + ", " + block.title
+              : block.name + ", " + block.abbreviation
+          }
+        >
+          Copy
+        </CopyButton>
+      </div>
+    </section>
+  );
+}
+
 export function DirectoryProfile({
   brandKitId,
   view,
@@ -201,10 +247,12 @@ export function DirectoryProfile({
   brandKitId: string;
   view: DirectoryProfileView;
 }) {
-  const { structured, prose, proseIssue } = view;
+  const { structured, credential, prose, proseIssue } = view;
 
   return (
     <div className="flex max-w-[720px] flex-col gap-10">
+      {credential === null ? null : <CredentialLine block={credential} />}
+
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <h3 className="font-display text-subsection font-medium text-ink">

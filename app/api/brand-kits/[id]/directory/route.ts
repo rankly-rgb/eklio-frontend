@@ -17,6 +17,7 @@ import { resolveEntitledTier } from "@/lib/billing/entitlements";
 import {
   DirectoryCeilingError,
   DirectoryProseClicheError,
+  DirectoryUnbackedCredentialError,
   DirectoryProseInvalidError,
   DirectoryProseRefusedError,
   generateDirectoryProfile,
@@ -61,6 +62,27 @@ function clicheRefusal(phrases: string): NextResponse {
     {
       error: `We wrote it, and it came back leaning on wording that every other profile in this directory already uses (${phrases}). Nothing was saved — your own answers are untouched. Write it again, or add a line to "How you work" to give us something more specific to write from.`,
       code: "cliche_refused",
+    },
+    { status: 422 }
+  );
+}
+
+/*
+ * ⚠ LE MESSAGE NOMME LA CLAUSE ET CE QU'ELLE PEUT EN FAIRE. Un refus qui ne
+ * dit pas quoi corriger est une panne du point de vue de celle qui le lit :
+ * elle recliquera, et recliquer ne changera rien. Les deux issues sont
+ * nommées parce qu'elles sont réellement deux — ajouter le titre au brief s'il
+ * est à elle, relancer sans s'il ne l'est pas.
+ *
+ * ⚠ ET CE REFUS N'EST PAS DE SA FAUTE. C'est NOTRE garde qui a refusé NOTRE
+ * texte ; la phrase ne doit donc ni l'accuser ni s'excuser d'une panne qui
+ * n'en est pas une.
+ */
+function unbackedRefusal(claims: string): NextResponse {
+  return json(
+    {
+      error: `We wrote ${claims} into your statement, and your brief does not carry it. We will not publish a credential we cannot trace to what you told us, so nothing was saved. If the title is yours, add it to your brief and write it again; if it is not, write it again and we will leave it out.`,
+      code: "unbacked_credential",
     },
     { status: 422 }
   );
@@ -230,6 +252,11 @@ export async function POST(
      * phrase moins usée — et il nomme les formules, sans quoi « réécrivez »
      * est un ordre sans objet.
      */
+    if (error instanceof DirectoryUnbackedCredentialError) {
+      console.error("[api] directory: credential infondé", error.claims);
+      return unbackedRefusal(error.claims.map((c) => `"${c}"`).join(", "));
+    }
+
     if (error instanceof DirectoryProseClicheError) {
       console.error("[api] directory: clichés d'annuaire", error.phrases);
       return clicheRefusal(error.phrases.join(", "));

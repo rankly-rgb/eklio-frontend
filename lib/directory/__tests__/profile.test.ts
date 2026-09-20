@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
+  buildCredentialBlock,
   BODY_MAX,
   FIRST_PARAGRAPH_MAX,
   buildDirectoryProfile,
@@ -249,5 +250,60 @@ describe("⚠ une ligne en capitales est un intertitre, et le gabarit le refuse"
     const verdict = checkProse("ABOUT MY PRACTICE\n\n" + BON, "We start by slowing it down.");
     expect(verdict.ok).toBe(false);
     if (!verdict.ok) expect(verdict.problems).toContain("has_section_heading");
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ LE BLOC DE CREDENTIAL — LE TITRE VIENT DU CATALOGUE, PAS DE LA LIGNE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Décision du 18 septembre, construite le 20. Le cas qui suit n'est pas
+ * inventé : c'est l'un des trois briefs réels, relevé en base le 20 septembre.
+ * Sa `practitioner_line` dit « Gary Whitfiled, PSYCH » et son brief dit
+ * `lcsw`. PSYCH est le sigle catalogue de `licensed_psychologist` — le titre
+ * d'un AUTRE board. Recopier la ligne l'imprimerait sur une page publique.
+ */
+describe("⚠ le bloc de credential", () => {
+  it("⚠ LE CAS RÉEL : le titre saisi est écarté, celui du catalogue est écrit", () => {
+    const bloc = buildCredentialBlock("Gary Whitfiled, PSYCH", {
+      full: "Licensed Clinical Social Worker",
+      abbreviation: "LCSW",
+    });
+    expect(bloc).toEqual({
+      name: "Gary Whitfiled",
+      title: "Licensed Clinical Social Worker",
+      abbreviation: "LCSW",
+    });
+    /* Le titre saisi ne survit nulle part dans le bloc. */
+    expect(JSON.stringify(bloc)).not.toContain("PSYCH");
+  });
+
+  /*
+   * ⚠ UN SIGLE ABSENT N'EST PAS UN TITRE ABSENT. La Californie ne publie aucun
+   * sigle pour une psychologue, et l'Oregon n'a aucun couple relevé : dans les
+   * deux cas c'est l'intitulé complet qui s'écrit. C'est la Floride qui rend
+   * cette chaîne obligatoire (§490.012(2)(b)).
+   */
+  it("sans sigle publié, l'intitulé complet reste imprimable", () => {
+    const bloc = buildCredentialBlock("Mike Daniels, LMHC", {
+      full: "Licensed Mental Health Counselor",
+      abbreviation: null,
+    });
+    expect(bloc?.abbreviation).toBeNull();
+    expect(bloc?.title).toBe("Licensed Mental Health Counselor");
+  });
+
+  it("sans nom, ou sans titre au catalogue, il n'y a pas de bloc", () => {
+    expect(buildCredentialBlock(null, { full: "X", abbreviation: null })).toBeNull();
+    expect(buildCredentialBlock("   ", { full: "X", abbreviation: null })).toBeNull();
+    expect(buildCredentialBlock(", LCSW", { full: "X", abbreviation: null })).toBeNull();
+    expect(buildCredentialBlock("Nora Whitfield", null)).toBeNull();
+  });
+
+  it("une ligne sans virgule est un nom entier", () => {
+    expect(buildCredentialBlock("Nora Whitfield", { full: "X", abbreviation: "Y" })?.name).toBe(
+      "Nora Whitfield"
+    );
   });
 });

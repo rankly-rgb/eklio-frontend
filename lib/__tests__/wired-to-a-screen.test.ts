@@ -107,38 +107,6 @@ const SKIP = ["__tests__", "fixtures"] as const;
 const KNOWN_DEBT = [
   {
     /*
-     * ⚠ LA DETTE LA PLUS CHÈRE DE LA LISTE, ET C'EST CETTE GARDE QUI L'A
-     * RÉVÉLÉE. `lib/ethics/claims.ts` a été écrit APRÈS l'incident
-     * LMHC/Oregon pour empêcher qu'un titre absent du brief soit publié. Il
-     * n'a jamais tourné : un seul import dans tout le dépôt, et c'est un test.
-     *
-     * Mesuré le 20 septembre, les deux gardes de credential côte à côte :
-     *
-     *   cas                                   introducedCredentials   claims.ts
-     *   LMHC ajouté, non autorisé             bloque                  bloque
-     *   LMHC DÉJÀ dans son texte, non autorisé  rate                  bloque
-     *   « 15 years of experience » inventé      rate                  bloque
-     *   « board certified » revendiqué          rate                  bloque
-     *   LPC ajouté, AUTORISÉ par le brief      bloque                 passe
-     *
-     * Ce ne sont donc PAS deux copies d'une même règle : `introducedCredentials`
-     * compare le rendu à SON texte (chemin gratuit, pas de brief),
-     * `checkUnbackedClaims` compare au BRIEF. Et la route qui publie le profil
-     * d'annuaire n'appelle NI l'un NI l'autre.
-     *
-     * Le brancher fait refuser des générations d'un livrable vendu : c'est une
-     * décision de produit, et elle est posée plutôt que prise.
-     */
-    module: "lib/ethics/claims",
-    owner: "L24",
-    why:
-      "écrit après l'incident LMHC/Oregon et jamais appelé : la route du " +
-      "profil d'annuaire ne vérifie AUCUN credential contre le brief. Le " +
-      "brancher fait refuser des générations d'un livrable vendu — décision " +
-      "de produit, posée le 20 septembre et non prise.",
-  },
-  {
-    /*
      * ⚠ UNE MESURE QUE LE PRODUIT DIT MONTRER, ET QUE RIEN NE MONTRE. Son
      * propre en-tête l'annonce : « The one reading measure the product shows
      * […] always rendered as "Reading level · 8th grade" ». Aucun écran ne la
@@ -303,21 +271,23 @@ describe("⚠ tout module d'un dossier couvert atteint un écran", () => {
 });
 
 describe("⚠ la dette ne grandit pas, et ne s'efface pas non plus", () => {
-  it("elle tient en TROIS entrées, et chacune nomme son lot", () => {
+  it("elle tient en DEUX entrées, et chacune nomme son lot", () => {
     /*
-     * ⚠ LE COMPTE EST PASSÉ DE 1 À 3 LE 20 SEPTEMBRE, et c'est le but de ce
-     * chiffre épinglé : les deux entrées ajoutées ne sont pas des exemptions
-     * commodes, ce sont deux modules que `lib/ethics` a fait apparaître le
-     * jour où le dossier est entré dans COVERED. Allonger la liste doit rester
-     * un acte visible dans un diff — donc ce nombre bouge à la main, avec sa
-     * raison, ou il ne bouge pas.
+     * ⚠ 1 → 3 → 2, DANS LA MÊME JOURNÉE, ET LES DEUX MOUVEMENTS COMPTENT.
+     * L'entrée de `lib/ethics` dans COVERED a fait apparaître deux orphelins ;
+     * `lib/ethics/claims` a été branché le jour même dans
+     * `generateDirectoryProfile` et sa dette est donc PAYÉE — c'est la sonde
+     * « une dette réellement branchée doit sortir de la liste » qui l'a exigé,
+     * et elle a eu raison : le laisser ici ferait croire à une dette qui
+     * n'existe plus. Allonger OU raccourcir reste un acte visible dans un
+     * diff, avec sa raison.
      */
     expect(
       KNOWN_DEBT.length,
       "Une dette de plus a été ajoutée. Ce n'est pas interdit — c'est " +
         "délibéré, et ça doit se voir dans un diff. Mettez à jour ce compte " +
         "en même temps, avec la raison."
-    ).toBe(3);
+    ).toBe(2);
     for (const entry of KNOWN_DEBT) {
       expect(entry.owner).toMatch(/^L\d+$/);
       expect(entry.why.length).toBeGreaterThan(40);

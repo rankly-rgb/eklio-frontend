@@ -216,6 +216,58 @@ export function checkProse(
     : { ok: true, prose: { firstParagraph: first, body: rest } };
 }
 
+/* ── Le bloc de credential ───────────────────────────────────────────────── */
+
+/**
+ * Le nom et le titre d'exercice, COMPOSÉS PAR LE CODE et jamais par le modèle.
+ *
+ * ⚠ DÉCISION DU 18 SEPTEMBRE, CONSTRUITE LE 20. La prose n'écrit plus aucun
+ * titre ; le titre vit dans un bloc à part, que rien n'imbrique dans une
+ * phrase. Trois sorties du chemin réel annonçaient toutes une licence en
+ * plein texte, et un titre à l'intérieur d'une phrase est un titre que le
+ * modèle a choisi d'écrire — donc qu'il peut choisir d'inventer.
+ *
+ * ⚠ ET LE TITRE NE VIENT PAS DE `practitioner_line`. Mesuré le 20 septembre
+ * sur les trois briefs réels : l'un porte « Gary Whitfiled, PSYCH » alors que
+ * son brief dit `lcsw`. Recopier la ligne imprimerait le titre d'un AUTRE
+ * board. Le nom vient de la ligne, le titre vient du CATALOGUE — c'est-à-dire
+ * de `license_types.description` et de la matrice État, le miroir applicatif
+ * de `title_abbreviation()`.
+ *
+ * ⚠ RIEN N'EST ASSEMBLÉ ICI. On rend trois champs ; c'est l'écran qui met la
+ * virgule. C'est la règle du module (aucun `${` dans ce fichier) et elle vaut
+ * ici plus qu'ailleurs : une chaîne composée en amont est une chaîne qu'on ne
+ * peut plus recouper.
+ */
+export type CredentialBlock = {
+  /** Son nom, sans le titre qui suivait la virgule. */
+  name: string;
+  /** L'intitulé complet, toujours imprimable : « Licensed Clinical Social Worker ». */
+  title: string;
+  /**
+   * Le sigle de SON État, ou `null` quand le board n'en publie pas — la
+   * Californie pour une psychologue, l'Oregon tant que le couple n'est pas
+   * relevé. `null` n'est pas une absence de titre : c'est `title` qui s'écrit.
+   */
+  abbreviation: string | null;
+};
+
+/**
+ * ⚠ LE NOM S'ARRÊTE À LA PREMIÈRE VIRGULE, et c'est la seule coupe faite ici.
+ * `practitioner_line` est saisie par la cliente sous la forme « Nom, TITRE » ;
+ * ce qui suit la virgule est un titre qu'elle a écrit elle-même et que nous ne
+ * réimprimons pas — nous imprimons celui que le catalogue atteste.
+ */
+export function buildCredentialBlock(
+  practitionerLine: string | null | undefined,
+  title: { full: string; abbreviation: string | null } | null
+): CredentialBlock | null {
+  if (!present(practitionerLine) || title === null) return null;
+  const name = practitionerLine.split(",")[0].trim();
+  if (name === "") return null;
+  return { name, title: title.full, abbreviation: title.abbreviation };
+}
+
 /* ── Ce qui part en base ─────────────────────────────────────────────────── */
 
 export type DirectoryProfileDraft = {

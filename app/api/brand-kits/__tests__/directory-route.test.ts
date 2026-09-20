@@ -21,12 +21,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * ── LA RÈGLE QUE CE FICHIER GARDE ───────────────────────────────────────
  *
  * UN REFUS QUI N'EST PAS UNE PANNE NE DOIT JAMAIS SE LIRE « C'EST DE NOTRE
- * FAUTE ». Dix sorties, huit phrases, et aucun code ne se replie sur un
+ * FAUTE ». Onze sorties, neuf phrases, et aucun code ne se replie sur un
  * autre :
  *
  *   (sans code)            429  trop de réécritures — pas une panne
  *   state_not_open         409  l'État n'est pas relevé — pas une panne
  *   ethics_refused         422  le texte enfreignait une règle — pas une panne
+ *   unbacked_credential    422  un titre que le brief ne porte pas — pas une panne
  *   cliche_refused         422  le texte est celui de tout l'annuaire — pas une panne
  *   prose_invalid          422  le gabarit n'est pas tenu — pas une panne
  *   ceiling_reached        429  deux essais, on s'arrête — pas une panne
@@ -144,6 +145,7 @@ const { POST } = await import("@/app/api/brand-kits/[id]/directory/route");
 const {
   DirectoryCeilingError,
   DirectoryProseClicheError,
+  DirectoryUnbackedCredentialError,
   DirectoryProseInvalidError,
   DirectoryProseRefusedError,
 } = await import("@/lib/directory/generate");
@@ -194,6 +196,27 @@ const SORTIES: readonly Sortie[] = [
     },
     status: 422,
     code: "ethics_refused",
+    panne: false,
+  },
+  {
+    /*
+     * ⚠ LE FILET DE L'INCIDENT LMHC/OREGON, ENFIN SUR LE CHEMIN RÉEL.
+     * `lib/ethics/claims.ts` existait depuis l'incident et n'avait jamais
+     * tourné : un import, dans un test. Cette route ne vérifiait AUCUN
+     * credential contre le brief.
+     *
+     * Mesuré sur les trois briefs réels avec la prose sans titre : ZÉRO refus
+     * sur trois. Le filet ne coûte rien sur le chemin normal, et c'est ce qui
+     * en fait un filet et non un péage.
+     */
+    nom: "⚠ un credential que le brief ne porte pas",
+    arme: () => {
+      generate = async () => {
+        throw new DirectoryUnbackedCredentialError(["LMHC"]);
+      };
+    },
+    status: 422,
+    code: "unbacked_credential",
     panne: false,
   },
   {
@@ -325,6 +348,46 @@ describe("chaque refus de la route directory dit le sien", () => {
       expect(body.error.length).toBeGreaterThan(0);
     }
   );
+
+  /*
+   * ⚠⚠ CONDITION (b) DU 20 SEPTEMBRE : UN REFUS NE CONSOMME PAS DE CRÉDIT.
+   *
+   * Le refus vient de NOTRE garde, pas d'une faute de la cliente. Mesuré :
+   * cette route n'appelle AUCUNE RPC de consommation — ni avant, ni après la
+   * génération. Ce qui est sondé n'est donc pas une correction, c'est que la
+   * propriété RESTE vraie : le jour où quelqu'un ajoutera un débit ici, cette
+   * sonde dira qu'il débite aussi les refus.
+   */
+  it("⚠ aucun refus ne consomme de crédit — et aucune sortie non plus", async () => {
+    const debits = [
+      "consume_generation_credit",
+      "consume_check_rewrite",
+      "consume_anon_generation",
+      "release_generation_credit",
+      "grant_plan_allowance",
+    ];
+    for (const sortie of SORTIES) {
+      limite = { allowed: true };
+      sellable = true;
+      ecritureRefusee = null;
+      generate = async () => ({
+        draft: { platform: "x", prose: { firstParagraph: "p", body: "b" }, structured: {} },
+        ethicsCheck: {},
+        modelCalls: 1,
+      });
+      rpc.mockClear();
+      sortie.arme();
+      await call();
+
+      const appeles = rpc.mock.calls.map((c) => c[0] as string);
+      for (const debit of debits) {
+        expect(
+          appeles,
+          `« ${sortie.nom} » a appelé ${debit} : un refus de NOTRE garde ne doit rien coûter`
+        ).not.toContain(debit);
+      }
+    }
+  });
 
   /*
    * ⚠ LA GARDE QUI COMPTE. Sans elle, on pourrait replier six des huit

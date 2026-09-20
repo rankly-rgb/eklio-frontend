@@ -33,6 +33,11 @@ const render = (view: DirectoryProfileView) =>
   );
 
 const FULL: DirectoryProfileView = {
+  credential: {
+    name: "Nora Whitfield",
+    title: "Licensed Marriage and Family Therapist",
+    abbreviation: null,
+  },
   structured: {
     licensed_state: ["OR"],
     issues: ["Anxiety", "Life transitions"],
@@ -113,7 +118,12 @@ describe("les absences se disent, et ne se confondent pas", () => {
      * `profile.test.ts` a déjà son test pour « tous les optionnels vides ».
      * L'écran doit le rendre comme un état normal, avec quoi faire ensuite.
      */
-    const html = render({ structured: {}, prose: FULL.prose, proseIssue: null });
+    const html = render({
+      structured: {},
+      credential: null,
+      prose: FULL.prose,
+      proseIssue: null,
+    });
     expect(html).toMatch(/Nothing to fill in yet/i);
     expect(html).not.toMatch(/Licensed in/);
   });
@@ -146,5 +156,44 @@ describe("⚠ l'écran offre de la faire écrire", () => {
     const html = render(FULL);
     expect(html).toMatch(/Write it again/i);
     expect(html).not.toMatch(/Write my statement/i);
+  });
+});
+
+/*
+ * ⚠ LE BLOC DE CREDENTIAL EST MONTRÉ, ET C'EST CE QUI REND LE POINT 1
+ * COHÉRENT. La prose n'écrit plus aucun titre ; si l'écran ne montrait pas le
+ * bloc, le titre aurait simplement DISPARU du livrable. Cette sonde est le
+ * garde-fou de cette disparition.
+ */
+describe("⚠ le nom et le titre, dans leur propre bloc", () => {
+  it("le bloc est rendu, avec le titre du CATALOGUE", () => {
+    const html = render({
+      ...FULL,
+      credential: {
+        name: "Gary Whitfiled",
+        title: "Licensed Clinical Social Worker",
+        abbreviation: "LCSW",
+      },
+    });
+    expect(html).toMatch(/Your name and title/i);
+    expect(html).toMatch(/Gary Whitfiled/);
+    expect(html).toMatch(/LCSW/);
+  });
+
+  it("⚠ sans sigle publié, c'est l'intitulé complet qui s'affiche", () => {
+    const html = render({
+      ...FULL,
+      credential: {
+        name: "Mike Daniels",
+        title: "Licensed Mental Health Counselor",
+        abbreviation: null,
+      },
+    });
+    expect(html).toMatch(/Licensed Mental Health Counselor/);
+  });
+
+  it("pas de bloc, pas de section — et surtout pas une section vide", () => {
+    const html = render({ ...FULL, credential: null });
+    expect(html).not.toMatch(/Your name and title/i);
   });
 });

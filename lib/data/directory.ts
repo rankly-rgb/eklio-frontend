@@ -1,12 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import {
+  buildCredentialBlock,
   buildStructuredFields,
   checkProse,
+  type CredentialBlock,
   type DirectoryProse,
   type StructuredFields,
   type StructuredInput,
 } from "@/lib/directory/profile";
+import { titleAsWrittenIn } from "@/lib/brief/license-state";
 import { readCatalog } from "@/lib/catalog/read";
 import { loadBrief, type BriefBundle } from "@/lib/data/brief";
 import type { Catalog } from "@/lib/catalog/types";
@@ -39,6 +42,14 @@ type Client = SupabaseClient<Database>;
 export type DirectoryProfileView = {
   /** Toujours présents dès qu'elle a répondu au brief. `{}` est valide. */
   structured: StructuredFields;
+  /*
+   * ⚠ LE NOM ET LE TITRE, COMPOSÉS PAR LE CODE. Depuis le 20 septembre la
+   * prose n'écrit plus aucun titre d'exercice : il vit ici, dans un bloc que
+   * rien n'imbrique dans une phrase. `null` quand le brief ne porte pas de
+   * licence, ou quand la ligne praticienne est vide — un bloc vide ne
+   * s'affiche pas, il n'existe pas.
+   */
+  credential: CredentialBlock | null;
   /** La prose rangée en base, ou `null` si personne ne l'a encore produite. */
   prose: DirectoryProse | null;
   /**
@@ -153,8 +164,33 @@ export async function loadDirectoryProfile(
 
   if (stored.error) console.error("[directory] get_directory_profile", stored.error.message);
 
-  const { structured: input } = await structuredInputFor(supabase, projectId, catalog);
+  const { bundle, structured: input } = await structuredInputFor(supabase, projectId, catalog);
   const structured = buildStructuredFields(input);
+
+  /*
+   * ⚠ LE TITRE VIENT DU CATALOGUE, PAS DE LA LIGNE SAISIE. `titleAsWrittenIn`
+   * est le miroir applicatif de `title_abbreviation()` : un sigle ne sort que
+   * d'un couple VÉRIFIÉ, sinon c'est l'intitulé complet qui s'écrit. Mesuré
+   * le 20 septembre : l'un des trois briefs réels porte « Gary Whitfiled,
+   * PSYCH » pour un brief `lcsw` — recopier la ligne imprimerait le titre
+   * d'un autre board sur une page publique.
+   */
+  const kit = await supabase
+    .from("brand_kits")
+    .select("practitioner_line")
+    .eq("id", brandKitId)
+    .maybeSingle();
+  if (kit.error) console.error("[directory] practitioner_line", kit.error.message);
+
+  const credential = buildCredentialBlock(
+    kit.data?.practitioner_line,
+    titleAsWrittenIn(
+      bundle?.brief.license_type_id,
+      bundle?.brief.state,
+      catalog?.licenseTypeStates ?? [],
+      catalog?.licenseTypes ?? []
+    )
+  );
 
   const envelope = (stored.data ?? null) as StoredEnvelope | null;
 
@@ -166,11 +202,11 @@ export async function loadDirectoryProfile(
    */
   if (envelope?.error != null) {
     console.error("[directory] get_directory_profile refuse", envelope.error);
-    return { structured, prose: null, proseIssue: "not_produced" };
+    return { structured, credential, prose: null, proseIssue: "not_produced" };
   }
 
   const row = envelope?.profile ?? null;
-  if (!row) return { structured, prose: null, proseIssue: "not_produced" };
+  if (!row) return { structured, credential, prose: null, proseIssue: "not_produced" };
 
   /*
    * ⚠ ON REVÉRIFIE CE QUI SORT DE LA BASE. Les bornes y sont (deux CHECK), donc
@@ -181,8 +217,8 @@ export async function loadDirectoryProfile(
   const verdict = checkProse(asString(row.first_paragraph), asString(row.body));
   if (!verdict.ok) {
     console.error("[directory] prose rangée refusée", verdict.problems);
-    return { structured, prose: null, proseIssue: "stored_prose_rejected" };
+    return { structured, credential, prose: null, proseIssue: "stored_prose_rejected" };
   }
 
-  return { structured, prose: verdict.prose, proseIssue: null };
+  return { structured, credential, prose: verdict.prose, proseIssue: null };
 }

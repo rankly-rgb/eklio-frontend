@@ -5,6 +5,7 @@ import { checkEthics, hasBlockingViolation } from "@/lib/ethics/rules";
 import { rulesBlock } from "@/lib/ethics/guard";
 import { buildHowYouWorkContext } from "@/lib/generation/how-you-work-context";
 import { checkBannedPhrases, listBannedPhrases } from "@/lib/generation/banned-phrases";
+import { allowedClaimsFrom, checkUnbackedClaims } from "@/lib/ethics/claims";
 import { track } from "@/lib/analytics";
 import type { Catalog } from "@/lib/catalog/types";
 import { ethicsCheckSchema, type EthicsCheck } from "@/lib/brand/shapes";
@@ -98,6 +99,31 @@ export class DirectoryProseClicheError extends Error {
         `${phrases.join(", ")}.`
     );
     this.name = "DirectoryProseClicheError";
+  }
+}
+
+/**
+ * ⚠ UN CREDENTIAL QUE LE BRIEF NE PORTE PAS — LE FILET, PAS LE PÉAGE.
+ *
+ * `lib/ethics/claims.ts` a été écrit après l'incident LMHC/Oregon et n'a
+ * jamais tourné : un seul import dans le dépôt, et c'était un test. Mesuré le
+ * 20 septembre, la route du profil d'annuaire — le chemin d'où venait
+ * l'incident — ne vérifiait AUCUN credential contre le brief.
+ *
+ * ⚠ ET IL NE DOIT PRESQUE RIEN ATTRAPER, C'EST LE BUT. Depuis que la prose
+ * n'écrit plus aucun titre (le bloc est composé par le code), le chemin normal
+ * ne produit plus la faute. Mesuré sur les trois briefs réels, prose sans
+ * titre : ZÉRO refus sur trois. Une garde qui refuse rarement parce que le
+ * chemin normal ne produit plus la faute est une bonne garde ; une garde qui
+ * refuse souvent dit que le chemin normal est cassé.
+ */
+export class DirectoryUnbackedCredentialError extends Error {
+  constructor(readonly claims: string[]) {
+    super(
+      `La prose produite revendique un credential que le brief ne porte pas : ` +
+        `${claims.join(", ")}.`
+    );
+    this.name = "DirectoryUnbackedCredentialError";
   }
 }
 
@@ -219,7 +245,8 @@ const TICS = `Some moves are worn out or unverifiable. Do not use any of them. D
 - Do not use headings, section labels, or lines in capital letters. This is a personal statement, not a brochure.
 - Do not invent specifics you cannot know: a clock time, a day of the week, a season, a place inside the reader's life. Precision you could not have is audible.
 - Do not do arithmetic on the session hour: one hour out of the week, out of a hundred and sixty-eight, the other six days. It sounds clever and it is not yours.
-- Do not end on a single sentence standing alone as its own paragraph.`;
+- Do not end on a single sentence standing alone as its own paragraph.
+- Do not state a licence, a title, a degree, a certification or a number of years anywhere in the text. Not "As an LCSW", not "I am a licensed professional counselor", not "with fifteen years of experience". Her name and her title are printed separately, from her state board's own wording, above what you write. A title you place inside a sentence is a title you chose — and one you could have chosen wrongly.`;
 
 /*
  * ⚠ UNE QUALITÉ RECHERCHÉE, JAMAIS UNE SECTION NI UN EMPLACEMENT. La dernière
@@ -467,6 +494,42 @@ export async function generateDirectoryProfile(
        * ⚠ CHAQUE CHAMP SÉPARÉMENT, comme le trigger : une phrase à cheval sur
        * la jointure des deux champs n'est pas une phrase qu'elle a écrite.
        */
+      /*
+       * ⚠ LE CREDENTIAL, AVANT LES CLICHÉS. Un titre infondé engage une
+       * licence ; un cliché engage une réputation. L'ordre des deux gardes
+       * dit lequel des deux on refuse en premier quand un jet porte les deux.
+       *
+       * ⚠ ET C'EST LE BRIEF QUI AUTORISE, PAS LE CATALOGUE. `allowedClaimsFrom`
+       * ne lit QUE la licence et le diplôme saisis : un brief sans licence
+       * n'autorise aucun sigle, ce qui est la bonne réponse et non un défaut.
+       */
+      const autorise = allowedClaimsFrom(
+        bundle.brief.license_type_id,
+        catalog.licenseTypes,
+        bundle.brief.degree_id,
+        catalog.degrees
+      );
+      const infondes = [
+        ...new Set(
+          [built.draft.prose.firstParagraph, built.draft.prose.body]
+            .flatMap((texte) => checkUnbackedClaims(texte, autorise))
+            .map((violation) => violation.excerpt ?? violation.reason)
+        ),
+      ].sort();
+
+      if (infondes.length > 0) {
+        if (attempt + 1 >= MAX_MODEL_CALLS) {
+          track("directory_profile_unbacked_refused", { model_calls: modelCalls });
+          throw new DirectoryUnbackedCredentialError(infondes);
+        }
+        prompt = `${brief}\n\nYour previous attempt claimed a credential the brief does not carry: ${infondes
+          .map((claim) => `"${claim}"`)
+          .join(
+            ", "
+          )}. Write it again without stating any licence, title, degree, certification or number of years. Her title is printed separately, above your text.`;
+        continue;
+      }
+
       const cliches = [
         ...new Set(
           (

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   DirectoryProseClicheError,
+  DirectoryUnbackedCredentialError,
   DirectoryProseInvalidError,
   DirectoryProseRefusedError,
   MAX_MODEL_CALLS,
@@ -544,5 +545,118 @@ describe("⚠ la cible de longueur : dans le prompt, en mots, sans contrainte", 
     const schema = source.slice(source.indexOf("const TOOL"), source.indexOf("Le cadrage système"));
     expect(schema).toMatch(/characters at most/);
     expect(schema).not.toMatch(/\bwords\b/);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ LE CREDENTIAL — LA PROSE N'EN ÉCRIT PLUS, ET LE FILET EST DERRIÈRE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Décision du 18 septembre, construite le 20 : le modèle écrit la prose SANS
+ * titre ; le code compose un BLOC à part, depuis `license_types.description`
+ * et la matrice État. Les trois sorties du chemin réel annonçaient toutes une
+ * licence en plein texte.
+ *
+ * `checkUnbackedClaims` vient DERRIÈRE, dans la boucle de reprise. Mesuré sur
+ * les trois briefs réels avec le point 1 appliqué : ZÉRO refus sur trois. Un
+ * filet qui n'attrape rien parce que le chemin normal ne produit plus la faute
+ * est un bon filet ; s'il se met à attraper souvent, c'est le point 1 qui est
+ * cassé, pas lui.
+ */
+describe("⚠ un credential que le brief ne porte pas", () => {
+  const AVEC_LICENCE = {
+    ...BUNDLE,
+    brief: { ...BUNDLE.brief, license_type_id: FIXTURE_CATALOG.licenseTypes[0].id, degree_id: null },
+  } as unknown as BriefBundle;
+
+  const AUTRE_TITRE = FIXTURE_CATALOG.licenseTypes.find(
+    (t) => t.id !== FIXTURE_CATALOG.licenseTypes[0].id
+  )!;
+
+  it("⚠ le prompt interdit d'écrire un titre, et dit POURQUOI il est ailleurs", () => {
+    const system = directorySystemPrompt(FIXTURE_CATALOG.ethicsRules, []);
+    expect(system).toMatch(/Do not state a licence, a title, a degree/i);
+    expect(system).toMatch(/printed separately/i);
+  });
+
+  it("un titre que le brief NE PORTE PAS déclenche une reprise, puis refuse", async () => {
+    const call = vi.fn(async () => ({
+      firstParagraph: `As an ${AUTRE_TITRE.label}, I know the mornings are hardest.`,
+      body: "We start by slowing that argument down until you can both hear it.",
+    })) as DirectoryCall;
+
+    const echec = generateDirectoryProfile(
+      AVEC_LICENCE,
+      FIXTURE_CATALOG,
+      FULL_STRUCTURED,
+      call,
+      NO_CLICHE,
+      NO_LIST
+    );
+
+    await expect(echec).rejects.toBeInstanceOf(DirectoryUnbackedCredentialError);
+    await expect(echec).rejects.toMatchObject({ claims: [AUTRE_TITRE.label] });
+    expect(call).toHaveBeenCalledTimes(MAX_MODEL_CALLS);
+
+    /* ⚠ Et la reprise NOMME le titre : « réécrivez » sans dire lequel est vain. */
+    const second = (call as unknown as ReturnType<typeof vi.fn>).mock.calls[1][1] as string;
+    expect(second).toContain(AUTRE_TITRE.label);
+    expect(second).toMatch(/printed separately/i);
+  });
+
+  it("⚠ le titre du brief LUI-MÊME ne déclenche rien — le filet n'est pas un péage", async () => {
+    const sien = FIXTURE_CATALOG.licenseTypes[0].label;
+    const call = vi.fn(async () => ({
+      firstParagraph: `As an ${sien}, I know the mornings are hardest.`,
+      body: "We start by slowing that argument down until you can both hear it.",
+    })) as DirectoryCall;
+
+    const result = await generateDirectoryProfile(
+      AVEC_LICENCE,
+      FIXTURE_CATALOG,
+      FULL_STRUCTURED,
+      call,
+      NO_CLICHE,
+      NO_LIST
+    );
+    expect(result.modelCalls).toBe(1);
+  });
+
+  /*
+   * ⚠ UN BRIEF SANS LICENCE N'AUTORISE AUCUN SIGLE, et c'est la bonne réponse,
+   * écrite dans `claims.ts` : « une liste vide refuse alors TOUS les sigles ».
+   */
+  it("⚠ un brief sans licence refuse tout sigle", async () => {
+    const sans = {
+      ...BUNDLE,
+      brief: { ...BUNDLE.brief, license_type_id: null, degree_id: null },
+    } as unknown as BriefBundle;
+    const call = vi.fn(async () => ({
+      firstParagraph: "As an LCSW, I know the mornings are hardest.",
+      body: "We start by slowing that argument down until you can both hear it.",
+    })) as DirectoryCall;
+
+    await expect(
+      generateDirectoryProfile(sans, FIXTURE_CATALOG, FULL_STRUCTURED, call, NO_CLICHE, NO_LIST)
+    ).rejects.toBeInstanceOf(DirectoryUnbackedCredentialError);
+  });
+
+  /*
+   * ⚠ L'ORDRE DES DEUX GARDES : un titre infondé engage une LICENCE, un cliché
+   * engage une réputation. Quand un jet porte les deux, c'est le credential
+   * qu'on nomme.
+   */
+  it("⚠ le credential passe AVANT le cliché", async () => {
+    const call = vi.fn(async () => ({
+      firstParagraph: `As an ${AUTRE_TITRE.label}, you deserve better mornings.`,
+      body: "We start by slowing that argument down until you can both hear it.",
+    })) as DirectoryCall;
+    const cliches = vi.fn(async () => ["you deserve"]);
+
+    await expect(
+      generateDirectoryProfile(AVEC_LICENCE, FIXTURE_CATALOG, FULL_STRUCTURED, call, cliches, NO_LIST)
+    ).rejects.toBeInstanceOf(DirectoryUnbackedCredentialError);
+    expect(cliches).not.toHaveBeenCalled();
   });
 });
