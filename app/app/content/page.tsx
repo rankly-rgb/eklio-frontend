@@ -23,6 +23,7 @@ import {
 } from "@/components/content/month-states";
 import { contentGenerationArmed } from "@/lib/content/generate/armed";
 import { deployEnvName, showsTechnicalDetail } from "@/lib/env/deploy";
+import { monthScreen } from "@/lib/content/month-screen";
 import { CreditsMeter } from "@/components/content/credits-meter";
 import { PreferencesForm } from "@/components/content/preferences-form";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -131,6 +132,25 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
    * stayed up for an optional question would be asking for more than sixty
    * seconds.
    */
+  /*
+   * ⚠ L'ENVIRONNEMENT EST LU ICI, AU RENDU, ET UNE SEULE FOIS. La cause
+   * technique ne sort jamais en production ; `lib/env/deploy.ts` ferme par
+   * défaut, y compris quand rien ne dit où l'on est.
+   */
+  const detailVisible = showsTechnicalDetail();
+  const envName = detailVisible ? deployEnvName() : null;
+  const screen = monthScreen({
+    result,
+    record,
+    /*
+     * `contentGenerationArmed()` est lu ICI plutôt qu'au chargement du module :
+     * l'écran ne promet « le 1er » que là où quelque chose écrira vraiment le
+     * 1er.
+     */
+    automatic: contentGenerationArmed(),
+    detail: detailVisible && !result.ok ? (result.detail ?? null) : null,
+  });
+
   const monthLabel = new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -180,42 +200,25 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
         <CreditsMeter meter={credits} />
       </div>
 
-      {!result.ok ? (
-        /*
-         * ⚠ TROIS SITUATIONS, ET ELLES ÉCRIVAIENT LA MÊME PHRASE. Voir
-         * `components/content/month-states.tsx` : « pas encore déployé ici »
-         * n'est pas une panne et ne se réessaie pas, et un mois vide n'est même
-         * pas un échec — il est traité plus bas, du côté `ok`.
-         *
-         * `detail` ne sort qu'hors production, et c'est la page qui le décide
-         * plutôt que le composant : un composant qui lirait l'environnement
-         * lui-même ne pourrait pas être éprouvé dans les deux sens.
-         */
-        (() => {
-          const detail = showsTechnicalDetail() ? (result.detail ?? null) : null;
-          const env = showsTechnicalDetail() ? deployEnvName() : null;
-          return result.code === "not_deployed" || result.code === "schema_mismatch" ? (
-            <MonthNotDeployed detail={detail} env={env} />
-          ) : (
-            <MonthFailedToLoad message={result.message} detail={detail} env={env} />
-          );
-        })()
-      ) : result.data.items.length === 0 &&
-        result.data.unscheduled.length === 0 &&
-        record?.status !== "generating" &&
-        record?.status !== "failed" ? (
-        /*
-         * ⚠ UN MOIS VIDE EST UN ÉTAT, PAS UN ÉCHEC. C'est ce qu'elle voit
-         * entre son abonnement et sa première génération, et une grille vide
-         * sous un titre de mois se lit comme une panne.
-         *
-         * `contentGenerationArmed()` est lu ICI, au rendu, jamais au
-         * chargement du module : l'écran ne promet « le 1er » que là où
-         * quelque chose écrira vraiment le 1er.
-         */
+      {/*
+       * ⚠ LE CHOIX DE L'ÉCRAN EST UNE FONCTION PURE, PAS UNE CASCADE DE
+       * TERNAIRES. Il l'était, et il marchait — mais on ne pouvait pas
+       * l'éprouver : ce dépôt n'a pas d'infrastructure de rendu React, donc la
+       * seule façon de savoir ce que la page ferait dans une configuration
+       * donnée était de la déployer et de regarder. C'est exactement ainsi
+       * que « Something went wrong » a atteint une preview.
+       *
+       * `lib/content/month-screen.ts` prend la décision, et son test la
+       * parcourt dans les quatre configurations du débogage.
+       */}
+      {screen.kind === "not_deployed" ? (
+        <MonthNotDeployed detail={screen.detail} env={envName} />
+      ) : screen.kind === "failed" ? (
+        <MonthFailedToLoad message={screen.message} detail={screen.detail} env={envName} />
+      ) : screen.kind === "empty" ? (
         <MonthEmpty
           monthLabel={monthLabel}
-          automatic={contentGenerationArmed()}
+          automatic={screen.automatic}
           /*
            * ⚠ LE LIEN MÈNE À L'AUTRE VUE, PAS À CELLE QU'ELLE REGARDE. Un
            * « Open the calendar » qui recharge le calendrier est un bouton qui
@@ -228,11 +231,12 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
           }
           calendarLabel={view === "calendar" ? "Back to the cards" : "Open the calendar"}
         />
-      ) : record?.status === "generating" && result.data.items.length === 0 ? (
+      ) : screen.kind === "generating" ? (
         <MonthGenerating monthLabel={monthLabel} />
-      ) : record?.status === "failed" && result.data.items.length === 0 ? (
+      ) : screen.kind === "generation_failed" ? (
         <MonthFailed monthLabel={monthLabel} />
-      ) : view === "calendar" ? (
+      ) : !result.ok ? null /* déjà traité au-dessus ; la garde satisfait le typage */
+      : view === "calendar" ? (
         <ContentCalendar brandKitId={brandKitId} month={month} model={result.data} />
       ) : (
         <>

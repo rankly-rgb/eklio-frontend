@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { contentItemSchema, contentMonthSchema, toleratedKeys } from "@/lib/data/content";
+import {
+  contentItemSchema,
+  contentMonthSchema,
+  getContentMonth,
+  toleratedKeys,
+} from "@/lib/data/content";
+import { monthScreen } from "@/lib/content/month-screen";
 
 /*
  * ── LA CHARGE QUE LA PRODUCTION RENVOIE VRAIMENT ────────────────────────
@@ -172,5 +178,48 @@ describe("⚠ LA LISTE DES CLEFS TOLÉRÉES EST FERMÉE", () => {
     for (const [key, migration] of Object.entries(tolerated)) {
       expect(migration, key).toMatch(/^2026\d{10}_[a-z_]+$/);
     }
+  });
+});
+
+describe("⚠ LE CHEMIN ENTIER — de la charge de production à l'écran choisi", () => {
+  /*
+   * Les blocs ci-dessus prouvent que le schéma accepte. Celui-ci prouve ce qui
+   * compte vraiment : qu'avec CETTE charge, `/app/content` choisit d'afficher
+   * les cartes et non un message d'erreur. C'est la configuration 1 du
+   * débogage — ni variables, ni migrations.
+   */
+  function clientReturning(data: unknown) {
+    return {
+      rpc: async () => ({ data, error: null }),
+    } as unknown as Parameters<typeof getContentMonth>[0];
+  }
+
+  it("la preview affiche SES CARTES, là où elle affichait « Something went wrong »", async () => {
+    const result = await getContentMonth(clientReturning(PRODUCTION_MONTH), "k1", "2026-09-01");
+    expect(result.ok, result.ok ? "" : `${result.code}: ${result.detail ?? result.message}`).toBe(
+      true
+    );
+
+    const screen = monthScreen({
+      result,
+      record: null,
+      automatic: false, // aucune variable posée, comme en preview
+      detail: null,
+    });
+    expect(screen.kind).toBe("month");
+  });
+
+  it("et un mois vide sur la même base montre l'état vide, pas une erreur", async () => {
+    const result = await getContentMonth(
+      clientReturning({ ...PRODUCTION_MONTH, items: [], unscheduled: [] }),
+      "k1",
+      "2026-09-01"
+    );
+    expect(result.ok).toBe(true);
+    const screen = monthScreen({ result, record: null, automatic: false, detail: null });
+    expect(screen.kind).toBe("empty");
+    if (screen.kind !== "empty") return;
+    // Rien n'écrira le 1er dans cet environnement, et l'écran ne le promet pas.
+    expect(screen.automatic).toBe(false);
   });
 });
