@@ -204,3 +204,50 @@ describe("⚠ le module ne fabrique aucune chaîne", () => {
     expect(source, "une concaténation de littéraux").not.toMatch(/["'`]\s*\+\s*/);
   });
 });
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ LES INTERTITRES — UN PROFIL N'EST PAS UNE BROCHURE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Relevé sur le chemin réel le 20 septembre : WHAT THE WORK LOOKS LIKE, et ses
+ * voisines, en capitales, sur leur propre ligne.
+ *
+ * La prohibition est aussi dans le prompt — niveau 1. Celle-ci est le niveau 2,
+ * parce qu'un FORMAT est exactement la consigne qu'un modèle laisse tomber sans
+ * le dire, et parce que ce défaut-là se mesure sans jugement.
+ */
+describe("⚠ une ligne en capitales est un intertitre, et le gabarit le refuse", () => {
+  const BON = "You keep having the same argument, and neither of you can say why.";
+
+  it.each([
+    ["un intertitre franc", "WHAT THE WORK LOOKS LIKE\n\nWe start by slowing it down."],
+    ["un intertitre plus court", "HOW I WORK\n\nSlowly, and out loud."],
+    ["un intertitre avec ponctuation", "WHAT TO EXPECT:\n\nA first session is mostly listening."],
+  ])("%s est refusé", (_quoi, corps) => {
+    const verdict = checkProse(BON, corps);
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) expect(verdict.problems).toContain("has_section_heading");
+  });
+
+  /*
+   * ⚠ ET CE QUI NE DOIT PAS ÊTRE REFUSÉ. La condition « deux mots au moins »
+   * existe pour ces cas-là : un sigle seul est en capitales sans être un titre
+   * de section, et le métier en est plein.
+   */
+  it.each([
+    ["un sigle seul sur sa ligne", "I trained in EMDR.\nEMDR\nIt shapes how I pay attention."],
+    ["des sigles dans une phrase", "I am an LCSW and I trained in EMDR and IFS."],
+    ["une phrase normale", "We start by slowing that argument down until you can both hear it."],
+    ["un mot emphatique isolé", "It is slow. VERY slow, some weeks."],
+  ])("%s passe", (_quoi, corps) => {
+    const verdict = checkProse(BON, corps);
+    if (!verdict.ok) expect(verdict.problems).not.toContain("has_section_heading");
+  });
+
+  it("⚠ le PREMIER PARAGRAPHE est regardé aussi — rien n'empêche un titre d'ouvrir", () => {
+    const verdict = checkProse("ABOUT MY PRACTICE\n\n" + BON, "We start by slowing it down.");
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) expect(verdict.problems).toContain("has_section_heading");
+  });
+});

@@ -127,7 +127,39 @@ export type ProseProblem =
   | "body_missing"
   | "first_paragraph_too_long"
   | "body_too_long"
-  | "body_repeats_first_paragraph";
+  | "body_repeats_first_paragraph"
+  | "has_section_heading";
+
+/*
+ * ⚠ UNE LIGNE EN CAPITALES EST UN INTERTITRE, ET UN PROFIL N'EST PAS UNE
+ * BROCHURE. Relevé sur le chemin réel le 20 septembre : WHAT THE WORK LOOKS
+ * LIKE, et ses voisines.
+ *
+ * La prohibition est aussi écrite dans le prompt, et c'est le niveau 1. Celle-
+ * ci est le niveau 2, parce qu'un format est exactement le genre de consigne
+ * qu'un modèle laisse tomber sans le dire — et parce que ce défaut-là se
+ * mesure sans jugement : ou bien la ligne est en capitales, ou bien elle ne
+ * l'est pas.
+ *
+ * ⚠ DEUX MOTS AU MOINS, ET C'EST LA CONDITION QUI ÉVITE LE FAUX POSITIF. Un
+ * sigle seul sur sa ligne — EMDR, LCSW — est en capitales sans être un
+ * intertitre. La règle ne vise que ce qui se lit comme un titre de section.
+ *
+ * ⚠ ET LA BASE NE LA PORTE PAS. Les deux bornes de longueur sont dupliquées en
+ * base parce qu'elles y sont l'autorité ; celle-ci ne l'est pas — comme
+ * `body_repeats_first_paragraph`, qui vit déjà ici seule. C'est une porte de
+ * QUALITÉ qui offre une reprise, pas une garantie d'intégrité.
+ */
+function looksLikeAHeading(line: string): boolean {
+  const trimmed = line.trim();
+  if (trimmed === "") return false;
+  // Au moins deux mots : un sigle isolé n'est pas un intertitre.
+  if (trimmed.split(/\s+/).length < 2) return false;
+  // Au moins deux lettres, sinon « 12 34 » compterait.
+  const lettres = trimmed.replace(/[^\p{L}]/gu, "");
+  if (lettres.length < 2) return false;
+  return lettres === lettres.toUpperCase() && lettres !== lettres.toLowerCase();
+}
 
 export type ProseVerdict =
   | { ok: true; prose: DirectoryProse }
@@ -162,6 +194,21 @@ export function checkProse(
 
   if (first !== "" && rest !== "" && rest.startsWith(first)) {
     problems.push("body_repeats_first_paragraph");
+  }
+
+  /*
+   * Les deux champs : rien n'empêche un intertitre d'ouvrir le premier
+   * paragraphe.
+   *
+   * ⚠ PAS DE LITTÉRAL DE GABARIT ICI, et ce n'est pas du style. `profile.test.ts`
+   * refuse tout `${` dans ce fichier — c'est la garde qui tient la discipline de
+   * L9 : ce module n'ASSEMBLE aucune chaîne. La première version de cette
+   * ligne joignait les deux champs avec un gabarit et le test l'a refusée, à
+   * juste titre : concaténer pour analyser, c'est déjà concaténer.
+   */
+  const lignes = [...first.split("\n"), ...rest.split("\n")];
+  if (lignes.some(looksLikeAHeading)) {
+    problems.push("has_section_heading");
   }
 
   return problems.length > 0

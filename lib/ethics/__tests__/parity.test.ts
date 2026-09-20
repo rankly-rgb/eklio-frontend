@@ -42,9 +42,11 @@ import {
 
 /**
  * ⚠ RECOPIÉ DE `public.ethics_patterns`, VÉRIFIÉ CONTRE LE PROJET VIVANT LE
- * 14 SEPTEMBRE 2026 : `select id, rule_id from public.ethics_patterns`.
+ * 14 SEPTEMBRE 2026, PUIS LE 20 : `select id, rule_id from public.ethics_patterns`.
  *
- * Dix-neuf lignes, `active` toutes les dix-neuf.
+ * VINGT lignes, `active` toutes les vingt. La vingtième, `third_party_says`,
+ * est sortie du chemin réel — deux profils sur trois relevés portaient
+ * « A colleague once described me as… ».
  */
 const WHAT_THE_DATABASE_CARRIES: readonly (readonly [string, EthicsRuleId])[] = [
   ["resolution_verb", "proven"],
@@ -58,6 +60,7 @@ const WHAT_THE_DATABASE_CARRIES: readonly (readonly [string, EthicsRuleId])[] = 
   ["therapy_that_works", "proven"],
   ["testimonial_word", "client_voice"],
   ["clients_say", "client_voice"],
+  ["third_party_says", "client_voice"],
   ["client_reviews", "client_voice"],
   ["star_rating", "client_voice"],
   ["success_story", "client_voice"],
@@ -132,7 +135,7 @@ describe("⚠ les deux gardes recensent les mêmes motifs", () => {
 
   it("le recensement lui-même ne se vide pas", () => {
     // ⚠ Garde anti-vacuité : deux listes vides sont égales.
-    expect(WHAT_THE_DATABASE_CARRIES.length).toBe(19);
+    expect(WHAT_THE_DATABASE_CARRIES.length).toBe(20);
     expect(FORBIDDEN_PATTERNS.length).toBeGreaterThan(0);
   });
 });

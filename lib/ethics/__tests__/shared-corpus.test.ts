@@ -6,7 +6,7 @@ import { checkEthics, hasBlockingViolation } from "@/lib/ethics/rules";
  *
  * Depuis le 14 septembre, la garde déontologique a DEUX implémentations :
  *
- *   ici        `FORBIDDEN_PATTERNS`, dix-neuf expressions régulières compilées
+ *   ici        `FORBIDDEN_PATTERNS`, vingt expressions régulières compilées
  *   en base    `ethics_patterns`, les mêmes traduites en POSIX
  *
  * ⚠ DEUX IMPLÉMENTATIONS D'UNE MÊME RÈGLE EST EXACTEMENT LA DIVERGENCE QUE CE

@@ -188,6 +188,55 @@ function clicheBlock(phrases: readonly string[]): string {
 ${phrases.map((phrase) => `- ${phrase}`).join("\n")}`;
 }
 
+/*
+ * ⚠ CE BLOC N'INTERDIT QUE, IL NE PRESCRIT RIEN, ET C'EST LA RÈGLE DU LOT.
+ *
+ * Interdire un tic ET prescrire son remplacement fabriquerait exactement le
+ * gabarit qu'on cherche à éviter : chaque profil porterait le remplacement au
+ * même endroit, et la variété qu'on croit acheter serait une uniformité
+ * déplacée d'un cran. On retire, on ne remplace pas — la phrase suivante est à
+ * la praticienne et au modèle de la trouver, pas à ce fichier de la dicter.
+ *
+ * ⚠ ET CES CINQ-LÀ SONT AU NIVEAU 1, DÉLIBÉRÉMENT. Deux d'entre elles ont un
+ * jumeau applicable — les deux clichés de métier vivent dans `banned_phrases`
+ * (donc pré-scan + refus à l'écriture), et les intertitres sont refusés par
+ * `checkProse`. Les trois autres restent du pilotage de modèle, et la raison
+ * est écrite plutôt que tue :
+ *
+ *   l'objet ménager      la table ne porte que des LITTÉRAUX ; « les
+ *                        chaussettes », « le thermostat » sont la même figure
+ *                        et aucun littéral ne les couvre.
+ *   l'horaire inventé    une heure de la journée est indiscernable, par motif,
+ *                        d'une vraie mention de disponibilité (« Tuesdays at
+ *                        9:00 »). Un refus mécanique casserait la seconde.
+ *   le paragraphe seul   c'est un jugement de rythme, pas un défaut de format.
+ *                        Une règle mécanique refuserait aussi les bonnes fins
+ *                        courtes, et coûterait un appel modèle pour le faire.
+ */
+const TICS = `Some moves are worn out or unverifiable. Do not use any of them. Do not replace them with a fixed substitute of your own either — leave the space empty and write something else entirely.
+
+- Do not build an example around an ordinary household object standing in for a deeper conflict: the argument about the dishwasher that is not about the dishwasher, the socks, the thermostat. Every profile in this directory has already used it.
+- Do not use headings, section labels, or lines in capital letters. This is a personal statement, not a brochure.
+- Do not invent specifics you cannot know: a clock time, a day of the week, a season, a place inside the reader's life. Precision you could not have is audible.
+- Do not do arithmetic on the session hour: one hour out of the week, out of a hundred and sixty-eight, the other six days. It sounds clever and it is not yours.
+- Do not end on a single sentence standing alone as its own paragraph.`;
+
+/*
+ * ⚠ UNE QUALITÉ RECHERCHÉE, JAMAIS UNE SECTION NI UN EMPLACEMENT. La dernière
+ * phrase du bloc est ce qui l'empêche de devenir un gabarit : sans elle, le
+ * modèle grouperait les engagements au même endroit dans chaque profil, et on
+ * aurait remplacé un tic par un autre.
+ *
+ * Ce que la mesure a montré : les meilleures phrases des trois sorties étaient
+ * des ENGAGEMENTS de comportement — « I'll interrupt », « I'd rather tell you
+ * up front than surprise you in week three » — et non des descriptions
+ * d'expérience. Une promesse qui coûte quelque chose se croit ; une
+ * description ne se vérifie pas.
+ */
+const COMMITMENTS = `The sentences that earn trust are commitments about your own behaviour — what you will do, what you will say, what you will not let pass — rather than descriptions of experience. A promise that costs the writer something can be believed; a description of experience cannot be checked. Where a sentence could be either, prefer the commitment.
+
+This is a quality to aim for, not a section. Do not group these sentences, do not label them, and do not put them in any particular place.`;
+
 export function directorySystemPrompt(
   rules: Catalog["ethicsRules"],
   /*
@@ -201,6 +250,8 @@ export function directorySystemPrompt(
     ETHICS_SYSTEM_RULES,
     rulesBlock(rules),
     clicheBlock(bannedPhrases),
+    TICS,
+    COMMITMENTS,
     `You are writing the personal statement for a licensed mental-health clinician's Psychology Today profile.
 
 A directory profile is read by someone who is already looking for help and is deciding whether to call THIS person rather than the next one on the list. Most profiles on that list say the same things. Yours has to say what is true of this practice and not of the others.

@@ -119,6 +119,7 @@ export const ETHICS_PATTERN_IDS = [
   "therapy_that_works",
   "testimonial_word",
   "clients_say",
+  "third_party_says",
   "client_reviews",
   "star_rating",
   "success_story",
@@ -304,6 +305,46 @@ export const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
     ruleId: "client_voice",
     reason:
       "Paraphrase l'éloge de clients. Un témoignage client ne peut être ni sollicité ni publié.",
+    severity: "block",
+  },
+  {
+    /*
+     * ⚠ UN TÉMOIGNAGE ANONYMISÉ RESTE UN TÉMOIGNAGE, et celui-ci est sorti du
+     * chemin réel : deux profils sur trois relevés le 20 septembre portaient
+     * « A colleague once described me as direct but not judgmental. »
+     *
+     * L'Ethics Guard l'a laissé passer parce que le locuteur n'est pas un
+     * client. Mais la phrase affirme un ÉVÉNEMENT qui n'a pas eu lieu et prête
+     * un jugement professionnel à un tiers qui n'existe pas. Aucune des deux
+     * choses ne peut être vérifiée, et la seconde engage la réputation de
+     * quelqu'un d'autre.
+     *
+     * ⚠ CE N'EST PAS UNE RÈGLE DE PROMPT. `ETHICS_SYSTEM_RULES` porte déjà sa
+     * règle 3 — « never paraphrase one » — et elle n'a rien arrêté. C'est le
+     * niveau 1, et l'en-tête de ce fichier dit pourquoi il ne suffit jamais.
+     *
+     * ⚠ ET LA LISTE DE NOMS EST FERMÉE, pour la même raison que celle de
+     * `clients_say` juste au-dessus : un `\w+` générique bloquerait « families
+     * describe », qui nomme une population. Ce qu'on attrape est une PAROLE
+     * ATTRIBUÉE, pas la mention d'un tiers — « I trained under a colleague who
+     * specialises in EMDR » ne se déclenche pas, et « I am supervised by Dana
+     * Ruiz, LPC-S » non plus, ce qui compte parce qu'une associée texane est
+     * TENUE de l'écrire (22 TAC 681.91(m)).
+     *
+     * ⚠ LE DÉTERMINANT EST FACULTATIF, ET CE DESSERRAGE A UN COÛT MESURÉ.
+     * Sans lui, « Colleagues have described my style as direct » — la même
+     * affirmation au pluriel nu — passait. Avec lui, deux phrases où le nom
+     * précède un verbe de parole dans un autre rôle grammatical se déclenchent
+     * aussi (« Teachers call the school when something is wrong »). Le choix
+     * est asymétrique et assumé : un faux positif coûte une réécriture, un
+     * faux négatif publie un témoignage inventé.
+     */
+    pattern:
+      /\b(?:(?:a|an|one|my|our|her|his|their|another|the)\s+)?(?:former\s+|current\s+|past\s+|longtime\s+|long-time\s+)?(?:colleagues?|supervisors?|mentors?|peers?|co-?workers?|professors?|instructors?|teachers?)\s+(?:(?:have|has|had)\s+)?(?:once|often|always|recently|sometimes|frequently|usually|more\s+than\s+once)?\s*(?:said|says|say|told|tells|tell|described|describes|describe|called|calls|call|remarked|observed|joked|puts?\s+it)\b/i,
+    id: "third_party_says",
+    ruleId: "client_voice",
+    reason:
+      "Attribue une parole à un tiers non nommé. C'est un témoignage anonymisé : ni l'événement ni le jugement ne peuvent être vérifiés.",
     severity: "block",
   },
   {

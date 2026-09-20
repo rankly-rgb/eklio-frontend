@@ -9,6 +9,7 @@ import {
   ETHICS_SYSTEM_RULES,
   FORBIDDEN_PATTERNS,
   checkEthics,
+  hasBlockingViolation,
   type EthicsSeverity,
 } from "@/lib/ethics/rules";
 
@@ -464,5 +465,74 @@ describe("mentions prohibitives", () => {
 
     expect(violations).toHaveLength(1);
     expect(violations[0].excerpt.toLowerCase()).toContain("clients say");
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ third_party_says — UN TÉMOIGNAGE ANONYMISÉ RESTE UN TÉMOIGNAGE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Relevé sur trois sorties du chemin réel le 20 septembre : DEUX sur trois
+ * portaient « A colleague once described me as direct but not judgmental. »
+ * L'Ethics Guard l'a laissée passer parce que le locuteur n'est pas un client.
+ *
+ * La phrase affirme un ÉVÉNEMENT qui n'a pas eu lieu et prête un jugement
+ * professionnel à un tiers qui n'existe pas. `ETHICS_SYSTEM_RULES` portait
+ * déjà sa règle 3 — « never paraphrase one » — et n'a rien arrêté : c'est le
+ * niveau 1, et il ne suffit jamais.
+ */
+describe("⚠ une parole attribuée à un tiers non nommé est bloquée", () => {
+  const bloque = (texte: string) =>
+    hasBlockingViolation(checkEthics(texte).violations);
+
+  it.each([
+    ["la phrase relevée", "A colleague once described me as direct but not judgmental."],
+    ["un ancien superviseur", "A former supervisor said I have a knack for this work."],
+    ["le pluriel nu, avec auxiliaire", "Colleagues have described my style as direct."],
+    ["un mentor", "A mentor put it better than I can."],
+    ["un co-worker", "A co-worker once said I ask the uncomfortable question."],
+  ])("%s est bloquée", (_quoi, texte) => {
+    expect(bloque(texte as string)).toBe(true);
+  });
+
+  /*
+   * ⚠⚠ LES SONDES QUI COMPTENT LE PLUS, et elles sont du silence. Une associée
+   * texane est TENUE d'écrire la mention de supervision — 22 TAC 681.91(m).
+   * Une garde qui la bloquerait reprocherait à quelqu'un d'obéir à la loi, et
+   * c'est la seule chose que ce produit ne doit jamais faire.
+   *
+   * Ce qu'on attrape est une PAROLE attribuée, jamais la mention d'un tiers.
+   */
+  it.each([
+    ["⚠ 22 TAC 681.91(m)", "I am supervised by Dana Ruiz, LPC-S."],
+    ["⚠ la même mention, autrement", "I practice under the supervision of Dana Ruiz, LPC-S."],
+    ["⚠ le profil d'une superviseuse", "I provide clinical supervision to associates."],
+    ["un tiers nommé sans parole", "I trained under a colleague who specialises in EMDR."],
+    ["les renvois confraternels", "I take referrals from colleagues across the county."],
+    ["un groupe de pairs", "I consult regularly with a peer supervision group."],
+    ["la voix de la praticienne", "I tell clients what I think, even when it is awkward."],
+    ["l'engagement en propre", "I would rather say it in week one than in week three."],
+  ])("%s passe", (_quoi, texte) => {
+    expect(bloque(texte as string)).toBe(false);
+  });
+
+  /*
+   * ⚠ LE COÛT DU DESSERRAGE, SONDÉ PLUTÔT QUE TU. Le déterminant est
+   * facultatif — sans quoi « Colleagues have described my style » passait.
+   * Le prix est qu'une phrase où le nom précède un verbe de parole dans un
+   * AUTRE rôle grammatical se déclenche aussi. Le choix est asymétrique et
+   * assumé : un faux positif coûte une réécriture, un faux négatif PUBLIE un
+   * témoignage inventé.
+   */
+  it("⚠ coût connu : le nom suivi d'un verbe de parole dans un autre rôle mord aussi", () => {
+    expect(bloque("Teachers call the school when something is wrong.")).toBe(true);
+  });
+
+  it("le motif porte la règle des voix empruntées", () => {
+    const violations = checkEthics(
+      "A colleague once described me as direct but not judgmental."
+    ).violations;
+    expect(violations.some((v) => v.ruleId === "client_voice")).toBe(true);
   });
 });
