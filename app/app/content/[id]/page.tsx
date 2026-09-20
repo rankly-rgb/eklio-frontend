@@ -8,6 +8,8 @@ import { getBrandImages } from "@/lib/images/rpc";
 import { ItemEditor } from "@/components/content/item-editor";
 import { ReviewSurface, type LayoutChoice } from "@/components/content/review-surface";
 import { Breadcrumb } from "@/components/app/breadcrumb";
+import { MonthFailedToLoad, MonthNotDeployed } from "@/components/content/month-states";
+import { deployEnvName, showsTechnicalDetail } from "@/lib/env/deploy";
 import { reviewCardFor } from "@/lib/content/review";
 import { layoutAlternatives } from "@/lib/content/alternatives";
 import { ethicsLineFor, payloadPublishedText } from "@/lib/content/ethics-line";
@@ -55,7 +57,33 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
   const result = await getContentItem(supabase, id);
   if (!result.ok) {
     if (result.code === "payment_required") redirect("/app/checkout");
-    notFound();
+    /*
+     * ⚠ UNE PANNE N'EST PAS UN 404, ET C'EST LE DÉFAUT QUI A FAIT LE PLUS DE
+     * DÉGÂTS EN PREVIEW.
+     *
+     * `notFound()` était appelé pour TOUT refus non payant. Quand la base
+     * déployée est en retard sur le schéma, chaque post existant répondait
+     * donc « cette page n'existe pas » — le seul message qui garantisse que
+     * personne n'ira chercher la vraie cause.
+     *
+     * `not_found` reste un 404, parce qu'il en est un : la base a décidé que
+     * cet identifiant n'était pas à elle, et lui dire autre chose
+     * confirmerait qu'il existe.
+     */
+    if (result.code === "not_found") notFound();
+
+    const detail = showsTechnicalDetail() ? (result.detail ?? null) : null;
+    const env = showsTechnicalDetail() ? deployEnvName() : null;
+    return (
+      <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-6 max-md:px-[var(--gutter-sm)]">
+        <Breadcrumb items={[{ label: "Content", href: "/app/content" }, { label: "This post" }]} />
+        {result.code === "not_deployed" || result.code === "schema_mismatch" ? (
+          <MonthNotDeployed detail={detail} env={env} />
+        ) : (
+          <MonthFailedToLoad message={result.message} detail={detail} env={env} />
+        )}
+      </main>
+    );
   }
 
   const item = result.data;

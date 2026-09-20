@@ -16,6 +16,13 @@ import { ContentCalendar } from "@/components/content/content-calendar";
 import { ContentStream, MonthProgress } from "@/components/content/content-stream";
 import { CheckInLine } from "@/components/content/check-in-line";
 import { MonthFailed, MonthGenerating } from "@/components/content/month-generating";
+import {
+  MonthEmpty,
+  MonthFailedToLoad,
+  MonthNotDeployed,
+} from "@/components/content/month-states";
+import { contentGenerationArmed } from "@/lib/content/generate/armed";
+import { deployEnvName, showsTechnicalDetail } from "@/lib/env/deploy";
 import { CreditsMeter } from "@/components/content/credits-meter";
 import { PreferencesForm } from "@/components/content/preferences-form";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -174,7 +181,53 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
       </div>
 
       {!result.ok ? (
-        <p className="text-body text-ink-2">{result.message}</p>
+        /*
+         * ⚠ TROIS SITUATIONS, ET ELLES ÉCRIVAIENT LA MÊME PHRASE. Voir
+         * `components/content/month-states.tsx` : « pas encore déployé ici »
+         * n'est pas une panne et ne se réessaie pas, et un mois vide n'est même
+         * pas un échec — il est traité plus bas, du côté `ok`.
+         *
+         * `detail` ne sort qu'hors production, et c'est la page qui le décide
+         * plutôt que le composant : un composant qui lirait l'environnement
+         * lui-même ne pourrait pas être éprouvé dans les deux sens.
+         */
+        (() => {
+          const detail = showsTechnicalDetail() ? (result.detail ?? null) : null;
+          const env = showsTechnicalDetail() ? deployEnvName() : null;
+          return result.code === "not_deployed" || result.code === "schema_mismatch" ? (
+            <MonthNotDeployed detail={detail} env={env} />
+          ) : (
+            <MonthFailedToLoad message={result.message} detail={detail} env={env} />
+          );
+        })()
+      ) : result.data.items.length === 0 &&
+        result.data.unscheduled.length === 0 &&
+        record?.status !== "generating" &&
+        record?.status !== "failed" ? (
+        /*
+         * ⚠ UN MOIS VIDE EST UN ÉTAT, PAS UN ÉCHEC. C'est ce qu'elle voit
+         * entre son abonnement et sa première génération, et une grille vide
+         * sous un titre de mois se lit comme une panne.
+         *
+         * `contentGenerationArmed()` est lu ICI, au rendu, jamais au
+         * chargement du module : l'écran ne promet « le 1er » que là où
+         * quelque chose écrira vraiment le 1er.
+         */
+        <MonthEmpty
+          monthLabel={monthLabel}
+          automatic={contentGenerationArmed()}
+          /*
+           * ⚠ LE LIEN MÈNE À L'AUTRE VUE, PAS À CELLE QU'ELLE REGARDE. Un
+           * « Open the calendar » qui recharge le calendrier est un bouton qui
+           * ne fait rien, et un bouton qui ne fait rien se lit comme cassé.
+           */
+          calendarHref={
+            view === "calendar"
+              ? `/app/content?month=${month}`
+              : `/app/content?month=${month}&view=calendar`
+          }
+          calendarLabel={view === "calendar" ? "Back to the cards" : "Open the calendar"}
+        />
       ) : record?.status === "generating" && result.data.items.length === 0 ? (
         <MonthGenerating monthLabel={monthLabel} />
       ) : record?.status === "failed" && result.data.items.length === 0 ? (

@@ -71,7 +71,19 @@ describe("un refus de la base devient un refus typé", () => {
     const result = await getContentItem(clientReturning({ id: 12 }), "id");
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.code).toBe("server_error");
+    /*
+     * ⚠ `schema_mismatch` ET NON `server_error`, ET LA DISTINCTION EST LE
+     * CORRECTIF. Une forme qui ne correspond pas n'est presque jamais une
+     * panne : c'est une base déployée plus ancienne que le code qui la lit.
+     * L'écran en tire une phrase juste — « pas encore activé ici », sans
+     * « réessayez » — au lieu du « Something went wrong » qui a coûté une
+     * session de débogage en preview. Voir `CONTENT_BUG_REPORT.md`.
+     */
+    expect(result.code).toBe("schema_mismatch");
+    // Elle reste notre faute, donc elle reste un 500.
+    expect(result.status).toBe(500);
+    // Et la preview doit pouvoir lire CE QUI manque, pas seulement « ça a raté ».
+    expect(result.detail).toContain("get_content_item");
   });
 
   it("une erreur transport n'est pas confondue avec un refus", async () => {

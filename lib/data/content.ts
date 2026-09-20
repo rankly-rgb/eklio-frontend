@@ -315,7 +315,24 @@ const rpcErrorSchema = z.object({
 
 export type ContentResult<T> =
   | { ok: true; data: T }
-  | { ok: false; code: string; message: string; status: number };
+  | {
+      ok: false;
+      code: string;
+      message: string;
+      status: number;
+      /*
+       * ── CE QUE LE MESSAGE NE DIT PAS, POUR QUI A LE DROIT DE LE SAVOIR ──
+       *
+       * ⚠ JAMAIS AFFICHÉ EN PRODUCTION. `detail` porte la cause technique —
+       * le chemin Zod fautif, le message Postgres — et l'écran ne le rend que
+       * hors production (`lib/env/deploy.ts`). En production elle lit une
+       * phrase en anglais, et la cause est dans les logs de fonction.
+       *
+       * Il existe parce qu'une preview qui dit « Something went wrong » coûte
+       * une session de débogage pour une information que le serveur avait déjà.
+       */
+      detail?: string;
+    };
 
 const STATUS_BY_CODE: Record<string, number> = {
   not_found: 404,
@@ -343,6 +360,19 @@ const STATUS_BY_CODE: Record<string, number> = {
    */
   bank_exhausted: 409,
   /*
+   * ⚠ 503, PAS 500. « Cette partie n'est pas déployée ici » n'est pas une
+   * panne : c'est un environnement en retard sur le code. 503 le dit, et un
+   * réessai immédiat n'a aucune raison de mieux marcher.
+   */
+  not_deployed: 503,
+  /*
+   * ⚠ 500 ASSUMÉ. Une forme qui ne correspond pas EST notre faute — soit le
+   * code lit une base plus ancienne que lui, soit le contrat a changé sans que
+   * les deux côtés bougent. Dans les deux cas c'est à nous de le réparer, et
+   * un 4xx dirait le contraire.
+   */
+  schema_mismatch: 500,
+  /*
    * Une mise en page qui n'est pas au catalogue : la cliente a envoyé quelque
    * chose que le serveur refuse. 400, comme les quatre ci-dessus.
    */
@@ -361,8 +391,8 @@ export function contentStatusForCode(code: string): number {
   return STATUS_BY_CODE[code] ?? 500;
 }
 
-function refusal(code: string, message: string): ContentResult<never> {
-  return { ok: false, code, message, status: contentStatusForCode(code) };
+function refusal(code: string, message: string, detail?: string): ContentResult<never> {
+  return { ok: false, code, message, status: contentStatusForCode(code), detail };
 }
 
 /**
@@ -375,11 +405,29 @@ function decode<T>(
   context: string,
   schema: z.ZodType<T>,
   data: unknown,
-  error: { message: string } | null
+  error: PostgrestLikeError | null
 ): ContentResult<T> {
   if (error) {
-    console.error(`[content] ${context}`, error);
-    return refusal("server_error", "Something went wrong. Try again.");
+    /*
+     * ⚠ L'OBJET ENTIER, PAS SEULEMENT SON MESSAGE. Une erreur PostgREST porte
+     * `code`, `details` et `hint` en plus de `message`, et c'est `code` qui
+     * distingue « cette fonction n'existe pas » (42883, PGRST202) de « cette
+     * colonne n'existe pas » (42703) de « la connexion a lâché ». Journaliser
+     * le seul message jette précisément ce qui permettrait d'agir.
+     */
+    console.error(`[content] ${context}: rpc failed`, {
+      code: error.code ?? null,
+      message: error.message,
+      details: error.details ?? null,
+      hint: error.hint ?? null,
+    });
+    return refusal(
+      missingObjectCode(error) ? "not_deployed" : "server_error",
+      missingObjectCode(error)
+        ? "This part of Eklio is not switched on for this environment yet."
+        : "Something went wrong. Try again.",
+      `${context}: ${error.code ?? "?"} ${error.message}`
+    );
   }
 
   const asError = rpcErrorSchema.safeParse(data);
@@ -389,10 +437,61 @@ function decode<T>(
 
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
-    console.error(`[content] ${context} shape`, parsed.error.issues);
-    return refusal("server_error", "Something went wrong. Try again.");
+    /*
+     * ⚠ UNE FORME QUI NE CORRESPOND PAS N'EST PAS « UNE PANNE ». C'est presque
+     * toujours la même chose : la base déployée est plus ancienne que le code
+     * qui la lit. Le dire sous son propre code permet à l'écran d'écrire une
+     * phrase juste, et à la preview d'afficher QUELLES clefs manquent au lieu
+     * de faire chercher.
+     */
+    const paths = parsed.error.issues
+      .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .slice(0, 6);
+    console.error(`[content] ${context}: shape mismatch`, paths);
+    return refusal(
+      "schema_mismatch",
+      "Eklio is reading this month with a newer plan than the database has.",
+      `${context} — ${paths.join(" · ")}`
+    );
   }
   return { ok: true, data: parsed.data };
+}
+
+/**
+ * L'erreur telle que `@supabase/supabase-js` la rend.
+ *
+ * ⚠ LE TYPE ÉTAIT `{ message: string }`, ET C'EST CE QUI A FAIT PERDRE LE
+ * CODE. Le code journalisait l'objet entier — donc la donnée était là — mais
+ * rien dans les types ne disait qu'on pouvait s'en servir, et personne ne s'en
+ * est servi.
+ */
+type PostgrestLikeError = {
+  message: string;
+  code?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
+/**
+ * Cette erreur dit-elle « l'objet demandé n'existe pas » ?
+ *
+ * ⚠ LES CODES SONT NOMMÉS, PAS DEVINÉS SUR LE TEXTE DU MESSAGE. Un message
+ * d'erreur est traduit, reformulé et versionné ; un SQLSTATE ne l'est pas.
+ *
+ *   42883  undefined_function  — la RPC n'existe pas
+ *   42P01  undefined_table     — la table n'existe pas
+ *   42703  undefined_column    — la colonne n'existe pas
+ *   PGRST202                   — PostgREST ne trouve pas la fonction dans son schéma
+ *   PGRST204                   — PostgREST ne trouve pas la colonne
+ *
+ * C'est exactement ce que voit un déploiement dont les migrations n'ont pas
+ * été appliquées, et ce n'est pas une panne : c'est un environnement en
+ * retard, et il mérite sa propre phrase.
+ */
+const MISSING_OBJECT_CODES = new Set(["42883", "42P01", "42703", "PGRST202", "PGRST204"]);
+
+export function missingObjectCode(error: { code?: string | null } | null): boolean {
+  return error?.code ? MISSING_OBJECT_CODES.has(error.code) : false;
 }
 
 /*
