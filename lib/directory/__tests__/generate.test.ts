@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   DirectoryProseClicheError,
@@ -8,7 +10,7 @@ import {
   generateDirectoryProfile,
   type DirectoryCall,
 } from "@/lib/directory/generate";
-import { BODY_MAX, FIRST_PARAGRAPH_MAX } from "@/lib/directory/profile";
+import { BODY_MAX, FIRST_PARAGRAPH_MAX, checkProse } from "@/lib/directory/profile";
 import { FIXTURE_CATALOG } from "@/lib/brief/fixtures/catalog";
 import type { BriefBundle } from "@/lib/data/brief";
 import type { StructuredInput } from "@/lib/directory/profile";
@@ -464,5 +466,83 @@ describe("⚠ les clichés entrent dans le prompt système", () => {
     );
     const systemRecu = (call as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     expect(systemRecu).toContain("you deserve");
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ LA CIBLE DE LONGUEUR EST UNE CIBLE, ET RIEN NE L'APPLIQUE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Décidée le 20 septembre après mesure : trois sorties du chemin réel à 470,
+ * 830 et 560 mots. La cause n'était pas un plafond mal réglé — c'est qu'aucun
+ * signal de longueur n'atteignait le modèle. Les deux bornes de `profile.ts`
+ * valent ensemble ~1 260 mots et les trois sorties en occupaient 37 %, 44 %
+ * et 66 % : le plafond ne mord jamais.
+ *
+ * ⚠ CE FICHIER SONDE SURTOUT CE QUE LA CIBLE N'EST PAS. Une cible qui se
+ * mettrait à refuser, ou qui prescrirait une structure, serait un autre
+ * objet — et c'est exactement la dérive que ces sondes existent pour voir.
+ */
+describe("⚠ la cible de longueur : dans le prompt, en mots, sans contrainte", () => {
+  const system = () => directorySystemPrompt(FIXTURE_CATALOG.ethicsRules, []);
+
+  it("la fourchette décidée est écrite, en MOTS", () => {
+    expect(system()).toMatch(/450 to 650 words/);
+  });
+
+  it("⚠ elle se dit CIBLE, pas limite — le mot est dans le prompt", () => {
+    expect(system()).toMatch(/target,? not a limit/i);
+  });
+
+  /*
+   * ⚠ PAS DE STRUCTURE. « Trois à cinq paragraphes » contraindrait la FORME en
+   * croyant contraindre la longueur, et fabriquerait le gabarit que le bloc
+   * des tics existe pour empêcher.
+   *
+   * ⚠ ET LA SONDE PORTE SUR LA PHRASE DE LONGUEUR, PAS SUR LE PROMPT ENTIER.
+   * Sa première version cherchait « section » partout — or le mot y apparaît
+   * DEUX fois, légitimement, et les deux fois dans une INTERDICTION (« Do not
+   * use headings, section labels » ; « not a section »). Elle mesurait donc
+   * l'inverse de son intention : elle serait devenue verte le jour où ces
+   * deux prohibitions auraient disparu.
+   */
+  it("⚠ elle ne prescrit AUCUNE structure", () => {
+    const texte = system();
+    const debut = texte.indexOf("Aim for");
+    expect(debut).toBeGreaterThan(-1);
+    const phrase = texte.slice(debut, texte.indexOf("\n", debut) + 1 || undefined);
+
+    expect(phrase).not.toMatch(/paragraphs?/i);
+    expect(phrase).not.toMatch(/sections?/i);
+    expect(phrase).not.toMatch(/sentences?/i);
+    // Et la seule mesure qu'elle nomme est le MOT.
+    expect(phrase).toMatch(/\bwords\b/);
+    expect(phrase).not.toMatch(/characters?/i);
+  });
+
+  /*
+   * ⚠⚠ LA SONDE QUI COMPTE : RIEN NE L'APPLIQUE. `checkProse` n'a aucun
+   * plancher, et un texte de 40 mots passe. Un refus qui coûte un appel modèle
+   * parce qu'un texte est court est un mauvais échange, et un profil court
+   * peut être bon — c'est `too_short_to_say_anything`, côté diagnostic, qui le
+   * DIT à la cliente, et c'est un conseil, pas un refus.
+   */
+  it("⚠ aucun plancher : un texte bien en deçà de la cible passe le gabarit", () => {
+    const court = checkProse(
+      "The mornings are the hardest part.",
+      "We start there, and we go slowly."
+    );
+    expect(court.ok).toBe(true);
+  });
+
+  it("⚠ et le mot « words » n'apparaît PAS dans le schéma de l'outil — les bornes y restent en caractères", () => {
+    const source = readFileSync(
+      resolve(__dirname, "../../directory/generate.ts"),
+      "utf8"
+    );
+    const schema = source.slice(source.indexOf("const TOOL"), source.indexOf("Le cadrage système"));
+    expect(schema).toMatch(/characters at most/);
+    expect(schema).not.toMatch(/\bwords\b/);
   });
 });

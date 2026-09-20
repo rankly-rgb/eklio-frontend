@@ -233,6 +233,44 @@ const TICS = `Some moves are worn out or unverifiable. Do not use any of them. D
  * d'expérience. Une promesse qui coûte quelque chose se croit ; une
  * description ne se vérifie pas.
  */
+/*
+ * ⚠ UNE CIBLE, PAS UNE BORNE — ET LA DIFFÉRENCE EST TOUT LE SUJET.
+ *
+ * Décidée le 20 septembre, après mesure. Trois sorties du chemin réel
+ * faisaient 470, 830 et 560 mots : trop de variance pour un livrable vendu.
+ * La cause n'était pas un plafond mal réglé, c'était qu'il n'y en avait
+ * AUCUN qui morde. Les deux bornes de `profile.ts` valent ensemble ~1 260
+ * mots, et les trois sorties en occupaient 37 %, 44 % et 66 %. Rien, nulle
+ * part, ne disait au modèle quelle longueur viser.
+ *
+ * ⚠ LES PLAFONDS RESTENT EN CARACTÈRES ET EN BASE. Ce sont eux l'autorité, et
+ * ils REFUSENT. Ceci est une cible : elle n'est appliquée nulle part, elle ne
+ * refuse rien, et `checkProse` n'a toujours AUCUN plancher — un refus qui
+ * coûte un appel modèle parce qu'un texte est court est un mauvais échange, et
+ * un profil court peut être bon.
+ *
+ * ⚠ ET C'EST UNE FOURCHETTE DE MOTS, RIEN D'AUTRE. Pas « trois à cinq
+ * paragraphes », pas de sections, pas d'emplacements. Une cible de structure
+ * produirait le gabarit que le bloc des tics ci-dessus existe pour empêcher :
+ * on aurait contraint la forme en croyant contraindre la longueur.
+ *
+ * ⚠ CE QUE LA CIBLE NE FAIT PAS, ET QUI EST DÉJÀ FAIT AILLEURS : dire à la
+ * CLIENTE que SON texte est trop court. C'est `too_short_to_say_anything`, une
+ * règle de positionnement — un conseil qu'elle lit, pas un refus qu'on lui
+ * oppose. Les deux ne doivent pas être confondues : ici on vise, là-bas on
+ * conseille, et nulle part on ne refuse pour cause de brièveté.
+ */
+/*
+ * ⚠ LE MOT « paragraph » A ÉTÉ RETIRÉ DE CETTE PHRASE, et ce n'est pas du
+ * style. La première rédaction disait « across the opening paragraph and the
+ * rest together » — pour nommer les deux CHAMPS, pas pour prescrire un
+ * découpage. Mais la sonde qui interdit toute structure dans cette phrase l'a
+ * refusée, et elle a eu raison : le mot ouvre la porte au comptage, et les
+ * deux champs sont déjà décrits dans le schéma de l'outil. « opening and rest
+ * combined » dit la même chose sans nommer une unité de forme.
+ */
+const LENGTH = `Aim for 450 to 650 words in total, opening and rest combined. This is a target, not a limit: a good statement that lands outside it is better than a padded or clipped one that lands inside.`;
+
 const COMMITMENTS = `The sentences that earn trust are commitments about your own behaviour — what you will do, what you will say, what you will not let pass — rather than descriptions of experience. A promise that costs the writer something can be believed; a description of experience cannot be checked. Where a sentence could be either, prefer the commitment.
 
 This is a quality to aim for, not a section. Do not group these sentences, do not label them, and do not put them in any particular place.`;
@@ -252,6 +290,7 @@ export function directorySystemPrompt(
     clicheBlock(bannedPhrases),
     TICS,
     COMMITMENTS,
+    LENGTH,
     `You are writing the personal statement for a licensed mental-health clinician's Psychology Today profile.
 
 A directory profile is read by someone who is already looking for help and is deciding whether to call THIS person rather than the next one on the list. Most profiles on that list say the same things. Yours has to say what is true of this practice and not of the others.

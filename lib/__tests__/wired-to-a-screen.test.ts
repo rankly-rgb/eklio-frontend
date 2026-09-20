@@ -60,6 +60,14 @@ const COVERED = [
       "Foundation : un module non branché est un livrable vendu et jamais montré",
   },
   {
+    dir: "lib/ethics",
+    why:
+      "ce dossier décrit ce qui REFUSE, et le refus fait partie de ce qui est " +
+      "vendu : le badge BOARD-SAFE COPY est une promesse faite à la cliente. " +
+      "Un module de refus qu'aucun chemin n'appelle est une protection " +
+      "annoncée et absente — pire qu'absente, puisqu'elle rassure",
+  },
+  {
     dir: "lib/billing",
     why:
       "ce dossier décrit ce qui est VENDU — paliers, SKU, droits : une règle " +
@@ -79,7 +87,7 @@ const COVERED = [
 const SKIP = ["__tests__", "fixtures"] as const;
 
 /**
- * ⚠ LA DETTE CONNUE, NOMMÉE — UNE SEULE LIGNE, ET ELLE DOIT RACCOURCIR.
+ * ⚠ LA DETTE CONNUE, NOMMÉE — ELLE DOIT RACCOURCIR.
  *
  * `lib/billing/offer.ts` est le miroir applicatif des six SKU de l'offre du
  * 13 septembre. Aucun écran ne le lit pour une raison précise et déjà écrite :
@@ -97,6 +105,57 @@ const SKIP = ["__tests__", "fixtures"] as const;
  * d'exister, sinon la dette a été effacée au lieu d'être payée.
  */
 const KNOWN_DEBT = [
+  {
+    /*
+     * ⚠ LA DETTE LA PLUS CHÈRE DE LA LISTE, ET C'EST CETTE GARDE QUI L'A
+     * RÉVÉLÉE. `lib/ethics/claims.ts` a été écrit APRÈS l'incident
+     * LMHC/Oregon pour empêcher qu'un titre absent du brief soit publié. Il
+     * n'a jamais tourné : un seul import dans tout le dépôt, et c'est un test.
+     *
+     * Mesuré le 20 septembre, les deux gardes de credential côte à côte :
+     *
+     *   cas                                   introducedCredentials   claims.ts
+     *   LMHC ajouté, non autorisé             bloque                  bloque
+     *   LMHC DÉJÀ dans son texte, non autorisé  rate                  bloque
+     *   « 15 years of experience » inventé      rate                  bloque
+     *   « board certified » revendiqué          rate                  bloque
+     *   LPC ajouté, AUTORISÉ par le brief      bloque                 passe
+     *
+     * Ce ne sont donc PAS deux copies d'une même règle : `introducedCredentials`
+     * compare le rendu à SON texte (chemin gratuit, pas de brief),
+     * `checkUnbackedClaims` compare au BRIEF. Et la route qui publie le profil
+     * d'annuaire n'appelle NI l'un NI l'autre.
+     *
+     * Le brancher fait refuser des générations d'un livrable vendu : c'est une
+     * décision de produit, et elle est posée plutôt que prise.
+     */
+    module: "lib/ethics/claims",
+    owner: "L24",
+    why:
+      "écrit après l'incident LMHC/Oregon et jamais appelé : la route du " +
+      "profil d'annuaire ne vérifie AUCUN credential contre le brief. Le " +
+      "brancher fait refuser des générations d'un livrable vendu — décision " +
+      "de produit, posée le 20 septembre et non prise.",
+  },
+  {
+    /*
+     * ⚠ UNE MESURE QUE LE PRODUIT DIT MONTRER, ET QUE RIEN NE MONTRE. Son
+     * propre en-tête l'annonce : « The one reading measure the product shows
+     * […] always rendered as "Reading level · 8th grade" ». Aucun écran ne la
+     * rend. Ce n'est pas un refus qui dort, c'est une promesse d'affichage
+     * sans affichage — le cas exact des trois occurrences qui ont fait écrire
+     * ce fichier.
+     *
+     * Il n'est pas branché ici parce que le brancher demande un ÉCRAN, et
+     * « ni écran, ni vitrine » tient depuis le 18 septembre.
+     */
+    module: "lib/ethics/readability",
+    owner: "L24",
+    why:
+      "son en-tête annonce « the one reading measure the product shows », et " +
+      "aucun écran ne la rend. La brancher demande un écran, ce que le lot " +
+      "en cours exclut explicitement.",
+  },
   {
     module: "lib/billing/offer",
     owner: "L23",
@@ -244,13 +303,21 @@ describe("⚠ tout module d'un dossier couvert atteint un écran", () => {
 });
 
 describe("⚠ la dette ne grandit pas, et ne s'efface pas non plus", () => {
-  it("elle tient en UNE entrée, et chacune nomme son lot", () => {
+  it("elle tient en TROIS entrées, et chacune nomme son lot", () => {
+    /*
+     * ⚠ LE COMPTE EST PASSÉ DE 1 À 3 LE 20 SEPTEMBRE, et c'est le but de ce
+     * chiffre épinglé : les deux entrées ajoutées ne sont pas des exemptions
+     * commodes, ce sont deux modules que `lib/ethics` a fait apparaître le
+     * jour où le dossier est entré dans COVERED. Allonger la liste doit rester
+     * un acte visible dans un diff — donc ce nombre bouge à la main, avec sa
+     * raison, ou il ne bouge pas.
+     */
     expect(
       KNOWN_DEBT.length,
       "Une dette de plus a été ajoutée. Ce n'est pas interdit — c'est " +
         "délibéré, et ça doit se voir dans un diff. Mettez à jour ce compte " +
         "en même temps, avec la raison."
-    ).toBe(1);
+    ).toBe(3);
     for (const entry of KNOWN_DEBT) {
       expect(entry.owner).toMatch(/^L\d+$/);
       expect(entry.why.length).toBeGreaterThan(40);
