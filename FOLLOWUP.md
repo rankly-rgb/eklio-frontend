@@ -42,3 +42,37 @@ une référence utilisable. Le travail se fait sur `claude/great-brahmagupta-za7
 
 Rien à faire, sinon cesser de la citer. Sa suppression relèverait de l'hygiène de
 branches, hors périmètre.
+
+---
+
+## F3 — `local-verify.sh` sort en 1 quand la dérive est grande, et cache son propre résumé
+
+**Rencontré en** PHASE 6.3.
+
+Le script termine par
+
+```bash
+python3 supabase/tests/helpers/schema_drift_report.py … | grep -E '…' | head -20
+…
+echo "Migrations replayed clean. Tests: $ran run, $failed failed."
+```
+
+Sous `set -euo pipefail`, `head -20` ferme le tuyau dès la vingtième ligne, le
+processus amont reçoit SIGPIPE, et le script **s'arrête là** — avant la ligne
+qui dit combien de tests ont tourné et combien ont échoué.
+
+Tant que la dérive tient en vingt lignes, on ne le voit pas. Ce chantier ajoute
+478 objets (tables, policies, contraintes, index, fonctions), le rapport en fait
+plus de vingt, et le script est sorti en 1 avec **zéro test en échec** — un
+signal rouge pour une raison qui n'est pas celle qu'on croit lire.
+
+**Correctif** : capturer la sortie du rapport dans une variable avant de la
+tronquer, ou remplacer `head -20` par `sed -n '1,20p'` qui lit jusqu'au bout.
+Une ligne, mais dans un fichier que ce chantier n'avait pas à toucher.
+
+**Ce que la dérive elle-même dit** : `ONLY IN PRODUCTION: 0`, `DIFFERENT: 0`,
+et 478 objets que le rejeu produit et que l'empreinte enregistrée n'a pas.
+C'est la forme attendue — les migrations produisent tout ce que la production a,
+plus tout ce que ce chantier ajoute. L'empreinte
+`supabase/tests/helpers/schema_fingerprint.production.txt` sera à réenregistrer
+le jour où ces migrations seront appliquées.
