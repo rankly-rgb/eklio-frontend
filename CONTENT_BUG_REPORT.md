@@ -408,9 +408,11 @@ dépôt n'en fait pas. La preview reste le juge de ce dernier point.
 - **Vitest : 3 902 tests au vert, 164 fichiers, 0 échec** **[chemin réel]**.
 - **Lint : 0 erreur**, un avertissement préexistant sans rapport
   (`lib/directory/__tests__/database-contract.test.ts`).
-- **SQL : inchangée** — aucun fichier du dépôt backend n'a été modifié dans
-  cette session. Le dernier rejeu complet sur ce commit (`5567d16`) donnait
-  **146 migrations, 95 fichiers de tests, 0 échec**.
+- **SQL : 146 migrations rejouées depuis zéro, 95 fichiers de tests, 0 échec**
+  **[chemin réel]**, rejouée dans cette session sur la stack PostgreSQL 16
+  locale. Aucun fichier du dépôt backend n'a été modifié ici — la suite est
+  rejouée quand même, parce que « rien n'a changé donc ça passe encore » est
+  une déduction, et cette section ne contient que des mesures.
 
 ---
 
