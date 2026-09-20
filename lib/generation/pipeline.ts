@@ -3,6 +3,7 @@ import type { Database } from "@/types/supabase";
 import { loadBrief, type BriefBundle } from "@/lib/data/brief";
 import { readCatalog } from "@/lib/catalog/read";
 import type { Catalog } from "@/lib/catalog/types";
+import { titleAsWrittenIn } from "@/lib/brief/license-state";
 import {
   directionBases,
   heroOverline,
@@ -415,6 +416,65 @@ function slug(value: string, index: number): string {
   return base || `direction-${index + 1}`;
 }
 
+/**
+ * La ligne de la tuile `signature`, dans l'ordre de ce qu'on sait vraiment :
+ *
+ *   1. ce qu'elle a écrit elle-même (`practitioner_line`) ;
+ *   2. son NOM, composé avec le titre PUBLIÉ PAR SON ÉTAT ;
+ *   3. le nom du cabinet — le repli d'avant, qui nommait la structure et
+ *      jamais la personne.
+ *
+ * Rien ne se COMPOSE à partir de `practitioner_line` en sens inverse : un nom
+ * portant une virgule, un titre en deux mots ou un suffixe ne se redécoupe
+ * pas, et c'est pour ça que les deux champs existent séparément.
+ *
+ * ⚠⚠ LE SUFFIXE EST LE TITRE PUBLIÉ PAR SON ÉTAT, PAS LA POIGNÉE DU
+ * CATALOGUE — DIXIÈME OCCURRENCE DE LA CLASSE, MESURÉE LE 20 SEPTEMBRE.
+ *
+ * Cette ligne composait `nom, license_types.label`. `label` est une POIGNÉE
+ * INTERNE : pour `licensed_psychologist` elle vaut « PSYCH », qu'aucun board
+ * ne publie. C'est exactement la fuite de `site_spec_credential_line()` en
+ * septembre, sur un champ qui part en carte de visite, en signature d'e-mail,
+ * en PDF, dans le prompt du site et sur le profil d'annuaire.
+ *
+ * Mesuré en base : les TROIS lignes existantes ont été composées ici — la
+ * ligne saisie dans le brief est `null` pour les trois — et deux des trois
+ * portent un sigle que leur État ne publie pas (Oregon, aucun couple relevé).
+ *
+ * `titleAsWrittenIn` est le miroir applicatif de `title_abbreviation()` : un
+ * sigle ne sort que d'un couple VÉRIFIÉ, sinon ce sont les mots. C'est la même
+ * autorité que le bloc du profil d'annuaire, et il ne doit pas y en avoir deux.
+ *
+ * ⚠ EXTRAITE POUR ÊTRE SONDÉE. Elle vivait au milieu de `assemble`, qui n'est
+ * pas exportée : remettre la poignée à sa place laissait la suite VERTE. Une
+ * correction qu'aucune sonde ne tient est une correction qui reviendra.
+ */
+export function practitionerLineFor(
+  bundle: BriefBundle,
+  catalog: Catalog,
+  practiceName: string
+): string {
+  const titre = titleAsWrittenIn(
+    bundle.brief.license_type_id,
+    bundle.brief.state,
+    catalog.licenseTypeStates,
+    catalog.licenseTypes
+  );
+  const suffixe = titre ? (titre.abbreviation ?? titre.full) : null;
+  const practitionerName = bundle.data.practitioner_name?.trim();
+
+  return (
+    bundle.data.practitioner_line?.trim() ||
+    (practitionerName
+      ? suffixe
+        ? `${practitionerName}, ${suffixe}`
+        : practitionerName
+      : suffixe
+        ? `${practiceName}, ${suffixe}`
+        : practiceName)
+  );
+}
+
 function assemble(
   draft: GenerationDraft,
   bases: DirectionBasis[],
@@ -560,16 +620,7 @@ function assemble(
    * portant une virgule, un titre en deux mots ou un suffixe ne se redécoupe
    * pas, et c'est pour ça que les deux champs existent séparément.
    */
-  const practitionerName = bundle.data.practitioner_name?.trim();
-  const practitionerLine =
-    bundle.data.practitioner_line?.trim() ||
-    (practitionerName
-      ? license?.label
-        ? `${practitionerName}, ${license.label}`
-        : practitionerName
-      : license?.label
-        ? `${practiceName}, ${license.label}`
-        : practiceName);
+  const practitionerLine = practitionerLineFor(bundle, catalog, practiceName);
 
   return { directions, socialTemplates, voiceGuide, practitionerLine };
 }

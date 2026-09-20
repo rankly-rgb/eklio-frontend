@@ -55,6 +55,16 @@ export type AllowedClaims = {
   degreeLabels: string[];
   /** Intitulés complets de diplôme : « Doctor of Psychology »… */
   degreeNames: string[];
+  /**
+   * ⚠ TOUT SIGLE QUE LE CATALOGUE CONNAÎT, autorisé ou non par CE brief.
+   *
+   * C'est le VOCABULAIRE de la garde, pas sa permission : il dit ce qu'on sait
+   * reconnaître comme un credential. Dérivé de `license_types.label`, de
+   * `license_type_states.abbreviation` et de `degrees.label` — jamais recopié.
+   * Un titre ajouté au catalogue entre ainsi dans la garde sans que personne
+   * y pense, et c'est la seule forme qui ne diverge pas.
+   */
+  catalogAcronyms: string[];
 };
 
 /**
@@ -66,6 +76,26 @@ export type AllowedClaims = {
  * pour une LPC choisirait un sigle réel, et c'est précisément celui-là qu'il
  * faut savoir repérer. Un sigle absent des deux listes passe — on préfère un
  * trou nommé à une garde qui refuse des mots ordinaires.
+ */
+/**
+ * ⚠ CE QUI EXISTE DANS LE MONDE AU-DELÀ DE NOTRE CATALOGUE — ET RIEN D'AUTRE.
+ *
+ * Cette liste ne DOUBLE plus `license_types`. Depuis le 20 septembre, les
+ * sigles du catalogue sont DÉRIVÉS (voir `allowedClaimsFrom`) et s'ajoutent à
+ * celle-ci : un titre ajouté à la table entre dans la garde sans que personne
+ * y pense.
+ *
+ * Ce qui reste écrit ici est ce que la table ne porte pas : des sigles d'États
+ * ou de professions voisines qu'une praticienne peut revendiquer alors que le
+ * produit ne les propose pas — LADC, NCC, PMHNP, APRN. Les retirer
+ * rétrécirait la garde ; les fondre dans le catalogue inventerait des titres
+ * que nous ne vendons pas.
+ *
+ * ⚠ CE QUI A FAIT ÉCRIRE CE COMMENTAIRE : « PSYCH », la poignée de
+ * `licensed_psychologist`, était dans la table et PAS dans cette liste. Une
+ * ligne portant « Gary Whitfiled, PSYCH » passait donc la garde. Une liste
+ * recopiée à côté d'une table est une liste qui diverge — c'est la règle du
+ * dépôt, et celle-ci l'avait enfreinte en silence.
  */
 const KNOWN_CREDENTIALS = [
   // Conseil
@@ -182,8 +212,18 @@ export function checkUnbackedClaims(
     n.toLowerCase()
   );
 
-  /* 1. Les sigles. */
-  for (const acronym of KNOWN_CREDENTIALS) {
+  /*
+   * 1. Les sigles — CEUX DU MONDE ET CEUX DU CATALOGUE.
+   *
+   * ⚠ L'UNION, ET PAS L'UNE DES DEUX. `KNOWN_CREDENTIALS` porte ce que la
+   * table ne vend pas ; `catalogAcronyms` porte ce qu'elle vend. Scanner la
+   * première seule laissait passer « PSYCH » ; scanner la seconde seule
+   * laisserait passer « NCC ».
+   */
+  const vocabulaire = [
+    ...new Set([...KNOWN_CREDENTIALS, ...allowed.catalogAcronyms]),
+  ];
+  for (const acronym of vocabulaire) {
     if (NEVER_A_CLAIM.has(acronym)) continue;
     if (okLabels.has(acronym.toUpperCase())) continue;
 
@@ -279,17 +319,46 @@ export function allowedClaimsFrom(
   licenseTypeId: string | null | undefined,
   licenseTypes: readonly { id: string; label: string; description: string }[],
   degreeId: string | null | undefined = null,
-  degrees: readonly { id: string; label: string; full_name: string }[] = []
+  degrees: readonly { id: string; label: string; full_name: string }[] = [],
+  /*
+   * ⚠ LA MATRICE ÉTAT AUSSI, et pas seulement les libellés nationaux. Le sigle
+   * appartient au COUPLE : le Texas écrit « LP » là où le catalogue porte
+   * « PSYCH ». Un sigle publié par un board et absent de la garde serait
+   * exactement le trou qu'on vient de fermer, un cran plus loin.
+   *
+   * Facultatif : les appelants qui n'ont pas la matrice gardent le
+   * comportement d'avant, en plus court d'autant.
+   */
+  licenseTypeStates: readonly { abbreviation: string | null }[] = []
 ): AllowedClaims {
   const license = licenseTypeId
     ? licenseTypes.find((row) => row.id === licenseTypeId)
     : undefined;
   const degree = degreeId ? degrees.find((row) => row.id === degreeId) : undefined;
 
+  /*
+   * ⚠ DÉRIVÉ, JAMAIS RECOPIÉ. C'est tout le sujet de ce champ : le jour où un
+   * titre entre dans `license_types`, il entre dans la garde le même jour,
+   * sans qu'une seconde liste soit à mettre à jour quelque part.
+   */
+  const catalogAcronyms = [
+    ...new Set(
+      [
+        ...licenseTypes.map((row) => row.label),
+        ...licenseTypeStates.map((row) => row.abbreviation),
+        ...degrees.map((row) => row.label),
+      ].filter(
+        (label): label is string =>
+          typeof label === "string" && label.trim().length > 0
+      )
+    ),
+  ].sort();
+
   return {
     licenseLabels: license ? [license.label] : [],
     licenseNames: license ? [license.description] : [],
     degreeLabels: degree ? [degree.label] : [],
     degreeNames: degree ? [degree.full_name] : [],
+    catalogAcronyms,
   };
 }

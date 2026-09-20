@@ -507,7 +507,9 @@ export async function generateDirectoryProfile(
         bundle.brief.license_type_id,
         catalog.licenseTypes,
         bundle.brief.degree_id,
-        catalog.degrees
+        catalog.degrees,
+        /* Le sigle appartient au couple : la matrice fait partie du vocabulaire. */
+        catalog.licenseTypeStates
       );
       const infondes = [
         ...new Set(
