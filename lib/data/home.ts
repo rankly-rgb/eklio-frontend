@@ -156,7 +156,7 @@ export async function loadHome(
    * ouverte. Le point d'étranglement est dans `entitlements.ts` ; ici on
    * l'appelle, on ne le redécide pas.
    */
-  const entitled = await canUseMonthlyPresence(supabase, subscription, now);
+  const entitled = await canUseMonthlyPresence(supabase);
   const firstName = firstNameFrom(profile?.full_name);
 
   if (!project) {

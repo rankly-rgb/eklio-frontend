@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import {
   ENTITLING_STATUSES,
+  PAST_DUE_GRACE_DAYS,
   countUnpaidProjects,
   resolveEntitledTier,
 } from "@/lib/billing/entitlements";
@@ -37,6 +38,9 @@ import {
 
 /** La liste que la base rend. Écrite à la main ici : c'est le point d'épingle. */
 const WHAT_THE_DATABASE_SAYS = ["paid", "partially_refunded"];
+
+/** Ce que `monthly_presence_past_due_grace()` rend, en jours. Même rôle. */
+const WHAT_THE_DATABASE_GRANTS_IN_DAYS = 3;
 
 type Recorded = { column: string; values: readonly string[] };
 
@@ -111,6 +115,24 @@ function recordingClient(rows: {
 describe("la constante dit ce que la base dit", () => {
   it("ENTITLING_STATUSES est exactement brand_kit_entitling_statuses()", () => {
     expect([...ENTITLING_STATUSES]).toEqual(WHAT_THE_DATABASE_SAYS);
+  });
+
+  /*
+   * ⚠ LA SECONDE CONSTANTE PARTAGÉE, DEPUIS LE 20 SEPTEMBRE. La grâce de trois
+   * jours sur `past_due` décidait en TypeScript ; elle décide maintenant dans
+   * `monthly_presence_past_due_grace()`, en base, appelée par le chokepoint que
+   * `reserve_credit` consulte avant toute dépense.
+   *
+   * `PAST_DUE_GRACE_DAYS` reste exporté parce que la fonction pure en a besoin
+   * pour choisir un TEXTE sans aller-retour. Deux copies d'un même nombre, donc
+   * deux épingles : celle-ci, et
+   * `supabase/tests/20260920140100_credit_ledger.test.sql` (backend) qui
+   * épingle `interval '3 days'`. Si la règle commerciale change par migration
+   * sans que cette constante suive, l'écran et le portefeuille se mettront à
+   * dire deux choses différentes — et c'est cette épingle qui tombe en premier.
+   */
+  it("PAST_DUE_GRACE_DAYS est exactement monthly_presence_past_due_grace()", () => {
+    expect(PAST_DUE_GRACE_DAYS).toBe(WHAT_THE_DATABASE_GRANTS_IN_DAYS);
   });
 
   it("elle n'est jamais vide", () => {

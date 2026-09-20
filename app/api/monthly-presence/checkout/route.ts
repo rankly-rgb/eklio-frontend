@@ -1,8 +1,5 @@
 import { authenticate, json, serverError } from "@/lib/api/handler";
-import {
-  canUseMonthlyPresence,
-  getSubscription,
-} from "@/lib/billing/entitlements";
+import { canUseMonthlyPresence } from "@/lib/billing/entitlements";
 import { createMonthlyPresenceCheckout } from "@/lib/stripe/checkout";
 import { track } from "@/lib/analytics";
 
@@ -28,9 +25,14 @@ export async function POST() {
    * compte comp — qui n'a AUCUNE ligne `subscriptions` — serait envoyé payer
    * une chose à laquelle il a déjà droit, et se heurterait au checkout Stripe
    * pour un client qui n'existe pas.
+   *
+   * ⚠ PLUS DE LECTURE `subscriptions` ICI. Elle n'existait que pour nourrir la
+   * règle que cette fonction tenait en mémoire ; la règle est en base depuis
+   * `20260920140000`, et la ligne d'abonnement n'était plus lue par personne.
+   * Un `getSubscription` gardé « au cas où » aurait fini par redevenir une
+   * seconde décision.
    */
-  const subscription = await getSubscription(supabase, userId);
-  if (await canUseMonthlyPresence(supabase, subscription)) {
+  if (await canUseMonthlyPresence(supabase)) {
     return json({ entitled: true, checkoutUrl: null });
   }
 

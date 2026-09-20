@@ -903,6 +903,125 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_balances: {
+        Row: {
+          actual_cost_usd: number
+          consumed: number
+          estimated_cost_usd: number
+          kind: string
+          month: string
+          releases: number
+          reservations: number
+          settlements: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_cost_usd?: number
+          consumed?: number
+          estimated_cost_usd?: number
+          kind: string
+          month: string
+          releases?: number
+          reservations?: number
+          settlements?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_cost_usd?: number
+          consumed?: number
+          estimated_cost_usd?: number
+          kind?: string
+          month?: string
+          releases?: number
+          reservations?: number
+          settlements?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_ledger: {
+        Row: {
+          actual_cost_usd: number | null
+          created_at: string
+          delta: number
+          entry_type: string
+          estimated_cost_usd: number | null
+          id: string
+          kind: string
+          model: string | null
+          month: string
+          provider: string | null
+          reason: string
+          ref_id: string | null
+          ref_type: string | null
+          reservation_id: string | null
+          user_id: string
+        }
+        Insert: {
+          actual_cost_usd?: number | null
+          created_at?: string
+          delta: number
+          entry_type: string
+          estimated_cost_usd?: number | null
+          id?: string
+          kind: string
+          model?: string | null
+          month: string
+          provider?: string | null
+          reason: string
+          ref_id?: string | null
+          ref_type?: string | null
+          reservation_id?: string | null
+          user_id: string
+        }
+        Update: {
+          actual_cost_usd?: number | null
+          created_at?: string
+          delta?: number
+          entry_type?: string
+          estimated_cost_usd?: number | null
+          id?: string
+          kind?: string
+          model?: string | null
+          month?: string
+          provider?: string | null
+          reason?: string
+          ref_id?: string | null
+          ref_type?: string | null
+          reservation_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "credit_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_quotas: {
+        Row: {
+          kind: string
+          monthly_limit: number | null
+          plan: string
+        }
+        Insert: {
+          kind: string
+          monthly_limit?: number | null
+          plan: string
+        }
+        Update: {
+          kind?: string
+          monthly_limit?: number | null
+          plan?: string
+        }
+        Relationships: []
+      }
       degrees: {
         Row: {
           active: boolean
@@ -2998,6 +3117,10 @@ export type Database = {
       }
       brief_step_renumber_up: { Args: { p_step: number }; Returns: number }
       caller_is_the_database: { Args: never; Returns: boolean }
+      check_monthly_presence_entitlement: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
       comp_access_active: { Args: never; Returns: boolean }
       comp_grant_active: { Args: { p_user_id: string }; Returns: boolean }
       comp_grant_credits: { Args: { p_user_id: string }; Returns: number }
@@ -3023,6 +3146,27 @@ export type Database = {
           p_archetype: string
           p_brand_kit_id: string
           p_scheduled_for?: string
+        }
+        Returns: Json
+      }
+      credit_plan_for: { Args: { p_user: string }; Returns: string }
+      credit_meter: { Args: { p_month?: string }; Returns: Json }
+      credit_monthly_limit: { Args: { p_kind: string; p_user: string }; Returns: number }
+      monthly_presence_entitled: { Args: never; Returns: boolean }
+      monthly_presence_past_due_grace: { Args: never; Returns: string }
+      release_stale_credit_reservations: { Args: { p_older_than?: string }; Returns: number }
+      settle_credit: { Args: { p_actual_cost_usd?: number; p_reservation_id: string; p_succeeded?: boolean }; Returns: Json }
+      reserve_credit: {
+        Args: {
+          p_estimated_cost_usd?: number
+          p_kind: string
+          p_model?: string
+          p_month?: string
+          p_provider?: string
+          p_reason: string
+          p_ref_id?: string
+          p_ref_type?: string
+          p_user: string
         }
         Returns: Json
       }

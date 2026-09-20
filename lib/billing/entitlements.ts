@@ -28,6 +28,12 @@ type Client = SupabaseClient<Database>;
  * Le délai de grâce sur `past_due`. Il existe pour qu'une carte refusée ne
  * vide pas le calendrier de contenu de quelqu'un le matin même : Stripe
  * réessaie, et trois jours suffisent presque toujours.
+ *
+ * ⚠ CE N'EST PLUS LA SOURCE. L'autorité est `monthly_presence_past_due_grace()`
+ * en base, et `entitlements-single-source.test.ts` épingle les deux. Les trois
+ * jours restent ici parce que la fonction pure ci-dessous en a besoin pour
+ * choisir un TEXTE sans aller-retour ; changer la règle commerciale se fait
+ * par migration, et cette constante suit.
  */
 export const PAST_DUE_GRACE_DAYS = 3;
 const GRACE_MS = PAST_DUE_GRACE_DAYS * 24 * 60 * 60 * 1000;
@@ -41,12 +47,21 @@ export type Subscription = {
 };
 
 /**
- * LA RÈGLE D'ABONNEMENT de Monthly Presence — pure, et volontairement aveugle
- * à tout le reste.
+ * CE QUE SA LIGNE `subscriptions` DIT — pure, et volontairement aveugle à tout
+ * le reste.
  *
- * ⚠ CE N'EST PLUS LE SEUL CHEMIN VERS LA SURFACE, et c'est écrit ici pour
- * qu'on ne le découvre pas ailleurs : un octroi comp ouvre Monthly Presence
- * aussi, et il le fait dans `canUseMonthlyPresence` ci-dessous, pas ici.
+ * ⚠ CE N'EST PLUS LA DÉCISION, ET CE N'EST PLUS ELLE QUI GARDE LA SURFACE.
+ * Depuis `20260920140000_monthly_presence_has_a_chokepoint`, la règle vit en
+ * base — `check_monthly_presence_entitlement(uuid)` — et `canUseMonthlyPresence`
+ * ci-dessous ne fait plus que l'appeler. Cette fonction-ci reste exportée pour
+ * ce qu'elle a toujours su faire et que la base ne fera pas : répondre
+ * SYNCHRONEMENT, sans aller-retour, à une question de TEXTE — « lui dit-on
+ * "vous êtes abonnée" ou "abonnez-vous" » sur `/app/checkout/success`.
+ *
+ * Se tromper de texte est réparable ; se tromper de droit ne l'est pas. C'est
+ * pour ça que l'une reste ici et que l'autre est partie.
+ *
+ * ⚠ UN OCTROI COMP N'ENTRE TOUJOURS PAS ICI, et pour la raison inchangée :
  * Cette fonction-ci reste « qu'est-ce que son ABONNEMENT dit », un fait, une
  * seule réponse — la règle que `independence.test.ts` garde en inspectant ce
  * corps ligne à ligne. Y faire entrer le comp mettrait deux faits distincts
@@ -397,35 +412,47 @@ export async function isCompAccessActive(supabase: Client): Promise<boolean> {
 /**
  * Peut-elle se servir de Monthly Presence, là, maintenant ?
  *
- * LE point d'étranglement de la surface mensuelle. Deux faits distincts,
- * OU-és une seule fois, ici :
+ * ⚠ ELLE NE DÉCIDE PLUS RIEN. Elle appelle `monthly_presence_entitled()`, en
+ * base, qui est `check_monthly_presence_entitlement(auth.uid())` — la MÊME
+ * fonction que `reserve_credit` consulte avant toute dépense. Une seule
+ * phrase, un seul endroit, et l'écran ne peut plus dire oui pendant que le
+ * portefeuille dit non.
  *
- *   son ABONNEMENT le dit  (`isEntitledToMonthlyPresence`, pure, testable)
- *   OU son compte est COMP (`comp_access_active()`, en base)
+ * ── CE QUE CE DÉPLACEMENT A COÛTÉ, ET POURQUOI ON LE PAIE ───────────────
  *
- * ⚠ L'ORDRE N'EST PAS COSMÉTIQUE. La règle pure d'abord, le comp ensuite :
- * l'abonnement est déjà en mémoire, le comp est un aller-retour réseau. Une
- * abonnée payante — c'est-à-dire presque tout le monde — ne paie donc jamais
- * cette requête. C'est aussi la lecture qu'on veut pour un défaut : si la
- * lecture comp échoue, `isCompAccessActive` rend `false` et il ne reste que
- * l'abonnement, jamais l'inverse.
+ * Un aller-retour réseau de plus pour une abonnée payante. La version
+ * précédente l'évitait en tranchant en mémoire d'abord et en n'interrogeant la
+ * base que pour le comp, et un test comptait les appels pour le garantir.
+ *
+ * Ce compte-là n'est plus tenable, et il ne doit pas l'être. Une règle en
+ * mémoire est une règle que le prochain appelant peut ne pas poser : elle
+ * répond bien à qui l'interroge et n'a aucune prise sur qui ne l'interroge
+ * pas. Le chantier Content a mis des appels d'API payants derrière ce droit ;
+ * à partir de là, « la bonne réponse pour qui demande » ne suffit plus, il
+ * faut « aucune dépense possible sans passer par là ». Seule la base peut
+ * tenir cette seconde phrase, parce qu'elle est le seul endroit par où tout
+ * passe.
+ *
+ * ── ÉCHEC FERMÉ, inchangé ───────────────────────────────────────────────
+ * Une erreur de lecture rend `false`. Un droit qu'on n'a pas pu vérifier n'est
+ * pas un droit accordé.
  *
  * ⚠ CE N'EST PAS LA PORTE DU CALENDRIER. `/app/content` est gardé par
  * `isBrandKitEntitled` — planifier ses propres posts fait partie de la marque
- * qu'elle a achetée. Monthly Presence est le contenu généré POUR elle, et
- * c'est cette carte-là, et la route qui l'ouvre, que cette fonction décide.
+ * qu'elle a achetée. Monthly Presence est le contenu généré POUR elle.
  *
  * ⚠ LE PORTAIL STRIPE N'EN EST PAS UN APPELANT, et ne doit pas le devenir :
  * un compte comp n'a aucun client Stripe, donc rien à ouvrir. Il lit
  * l'abonnement brut, ce qui est la bonne question pour lui.
  */
-export async function canUseMonthlyPresence(
-  supabase: Client,
-  subscription: Subscription | null,
-  now: Date = new Date()
-): Promise<boolean> {
-  if (isEntitledToMonthlyPresence(subscription, now)) return true;
-  return isCompAccessActive(supabase);
+export async function canUseMonthlyPresence(supabase: Client): Promise<boolean> {
+  const { data, error } = await supabase.rpc("monthly_presence_entitled");
+
+  if (error) {
+    console.error("[entitlements] monthly_presence_entitled", error);
+    return false;
+  }
+  return data === true;
 }
 
 /* ── Les projets qu'on n'a pas payés ─────────────────────────────────────── */
