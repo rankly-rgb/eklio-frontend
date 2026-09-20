@@ -1,5 +1,5 @@
 import {
-  CONTENT_IMAGE_MODEL,
+  contentImageModel,
   CONTENT_IMAGE_SIZE,
   type ContentImageQuality,
 } from "@/lib/content/images/config";
@@ -49,6 +49,17 @@ export type ContentImageResult = {
 
 export interface ContentImageClient {
   generate(request: ContentImageRequest): Promise<ContentImageResult>;
+  /**
+   * `false` quand ce client SAIT qu'il ne peut pas appeler — typiquement une
+   * `OPENAI_API_KEY` absente.
+   *
+   * ⚠ IL EXISTE POUR QU'ON N'AIT PAS À RÉSERVER UN CRÉDIT POUR L'APPRENDRE.
+   * Sans lui, le chemin réserve, appelle, échoue, relâche : trois lignes de
+   * journal et un aller-retour pour une configuration qu'on pouvait lire
+   * d'abord. Optionnel, parce qu'un double de test est toujours capable
+   * d'appeler et n'a rien à déclarer.
+   */
+  configured?(): boolean;
 }
 
 /** Le prompt a été refusé. Terminal : un opérateur doit le voir, pas une boucle de réessai. */
@@ -96,6 +107,9 @@ function classify(status: number, body: string): Error {
  */
 export function openAiContentImageClient(): ContentImageClient {
   return {
+    // ⚠ LUE À CHAQUE APPEL. Une clef posée après le démarrage doit être vue.
+    configured: () => Boolean(process.env.OPENAI_API_KEY),
+
     async generate(request) {
       const key = process.env.OPENAI_API_KEY;
       if (!key) throw new ContentImageNotConfiguredError();
@@ -109,7 +123,7 @@ export function openAiContentImageClient(): ContentImageClient {
             Authorization: `Bearer ${key}`,
           },
           body: JSON.stringify({
-            model: CONTENT_IMAGE_MODEL,
+            model: contentImageModel(),
             prompt: request.prompt,
             size: CONTENT_IMAGE_SIZE,
             quality: request.quality,

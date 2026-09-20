@@ -25,8 +25,24 @@
  * le jour où une régression de rendu doit être reproduite. Le non daté suit
  * les améliorations ; le daté suit une enquête.
  */
-export const CONTENT_IMAGE_MODEL =
-  process.env.CONTENT_IMAGE_MODEL ?? "gpt-image-2.5-flare";
+export const CONTENT_IMAGE_MODEL_DEFAULT = "gpt-image-2.5-flare";
+
+/**
+ * ⚠ UNE FONCTION, PAS UNE CONSTANTE DE MODULE.
+ *
+ * La valeur était lue au chargement du module. Elle avait un `??`, donc elle
+ * ne pouvait pas lever — mais elle fige la réponse au moment de l'import, ce
+ * qui est le mauvais moment : une variable d'exécution posée après le
+ * démarrage n'aurait jamais été vue, et changer de modèle aurait demandé un
+ * redéploiement au lieu d'une variable.
+ *
+ * La règle vaut pour tout le dépôt depuis l'incident `/app/content` : aucune
+ * lecture d'environnement au chargement d'un module. Voir
+ * `CONTENT_BUG_REPORT.md` §2.2.
+ */
+export function contentImageModel(): string {
+  return process.env.CONTENT_IMAGE_MODEL ?? CONTENT_IMAGE_MODEL_DEFAULT;
+}
 
 /** Portrait 4:5, le même cadre que le moteur de composition. */
 export const CONTENT_IMAGE_SIZE = "1024x1536" as const;

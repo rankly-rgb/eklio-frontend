@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import {
-  CONTENT_IMAGE_MODEL,
+  contentImageModel,
   CONTENT_IMAGE_SIZE,
   ESTIMATE_DRIFT_WARN,
   estimatedCostUsd,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/content/images/config";
 import {
   ContentImageModerationError,
+  ContentImageNotConfiguredError,
   ContentImageTransientError,
   type ContentImageClient,
 } from "@/lib/content/images/client";
@@ -107,7 +108,29 @@ export async function generateCustomVisual(
   // Une variable d'environnement au-dessus du plafond lève ici : avant
   // l'appel, avant la réservation, avant qu'une ligne soit écrite.
   const quality = resolveQuality();
-  const hash = promptHash(input.prompt, CONTENT_IMAGE_MODEL, quality, CONTENT_IMAGE_SIZE);
+  /*
+   * ⚠ LU UNE FOIS, ICI, ET RÉUTILISÉ. Le modèle entre dans le `prompt_hash` et
+   * dans la ligne enregistrée : le relire à chaque usage ouvrirait la porte à
+   * un hachage calculé sur un modèle et une ligne écrite sur un autre, si la
+   * variable changeait entre deux lectures.
+   */
+  const model = contentImageModel();
+  const hash = promptHash(input.prompt, model, quality, CONTENT_IMAGE_SIZE);
+
+  /*
+   * ── 0. LA CLEF, AVANT TOUT LE RESTE ───────────────────────────────────
+   *
+   * ⚠ ET AVANT LA RÉSERVATION, PAS APRÈS. Sans cette porte, une
+   * `OPENAI_API_KEY` absente faisait réserver un crédit, lever à l'appel,
+   * relâcher, et rendre `failed` avec `calledModel: true` — trois lignes de
+   * journal, un aller-retour, et un mot faux : rien n'avait été appelé.
+   *
+   * `not_configured` est un refus d'environnement, pas une panne : le reste de
+   * l'écran fonctionne, et seul ce chemin-ci est fermé.
+   */
+  if (deps.client.configured?.() === false) {
+    return { ok: false, reason: "not_configured", calledModel: false };
+  }
 
   // ── 1. Déjà généré ? Alors ni appel, ni crédit, ni journal ─────────────
   const cached = await deps.lookup(input.brandKitId, hash);
@@ -120,7 +143,7 @@ export async function generateCustomVisual(
   const reservation = await deps.reserve({
     userId: input.userId,
     estimatedCostUsd: estimated,
-    model: CONTENT_IMAGE_MODEL,
+    model,
     contentItemId: input.contentItemId,
   });
 
@@ -139,6 +162,15 @@ export async function generateCustomVisual(
     if (error instanceof ContentImageModerationError) {
       return { ok: false, reason: "moderated", calledModel: true };
     }
+    /*
+     * ⚠ UNE CLEF ABSENTE N'EST PAS UN APPEL RATÉ. Elle peut arriver ici malgré
+     * la porte ci-dessus — un client qui ne déclare pas `configured` — et
+     * `calledModel: true` serait alors un mensonge dans le sens qui coûte :
+     * un appelant qui compte les appels facturés en compterait un de trop.
+     */
+    if (error instanceof ContentImageNotConfiguredError) {
+      return { ok: false, reason: "not_configured", calledModel: false };
+    }
     return { ok: false, reason: "failed", calledModel: true };
   }
 
@@ -152,7 +184,7 @@ export async function generateCustomVisual(
       // compare jamais au réel est une constante que personne ne relira.
       (deps.warn ?? console.warn)(
         `[content-images] estimate drift ${(drift * 100).toFixed(0)}%: estimated ` +
-          `$${estimated.toFixed(6)}, actual $${actual.toFixed(6)} for ${CONTENT_IMAGE_MODEL} ` +
+          `$${estimated.toFixed(6)}, actual $${actual.toFixed(6)} for ${model} ` +
           `at quality "${quality}". ESTIMATED_OUTPUT_TOKENS in config.ts is out of date.`
       );
     }
@@ -171,7 +203,7 @@ export async function generateCustomVisual(
     brandKitId: input.brandKitId,
     promptHash: hash,
     contentItemId: input.contentItemId,
-    model: CONTENT_IMAGE_MODEL,
+    model,
     quality,
     size: CONTENT_IMAGE_SIZE,
     storagePath,

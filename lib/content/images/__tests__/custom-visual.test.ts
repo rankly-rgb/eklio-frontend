@@ -4,7 +4,7 @@ import {
   ContentImageTransientError,
 } from "@/lib/content/images/client";
 import {
-  CONTENT_IMAGE_MODEL,
+  contentImageModel,
   CONTENT_IMAGE_SIZE,
   ContentImageQualityError,
   ESTIMATE_DRIFT_WARN,
@@ -19,6 +19,7 @@ import {
   promptHash,
   type CustomVisualDeps,
 } from "@/lib/content/images/generate";
+import { ContentImageNotConfiguredError } from "@/lib/content/images/client";
 import { FIXTURE_USAGE, fixtureImageClient } from "@/lib/content/images/fixture-client";
 
 /*
@@ -122,7 +123,7 @@ describe("le coût vient d'`usage`, jamais d'une table de prix", () => {
 
 describe("le hachage de prompt", () => {
   it("est un SHA-256 minuscule, la forme que la base exige", () => {
-    expect(promptHash("a prompt", CONTENT_IMAGE_MODEL, "low", CONTENT_IMAGE_SIZE)).toMatch(
+    expect(promptHash("a prompt", contentImageModel(), "low", CONTENT_IMAGE_SIZE)).toMatch(
       /^[0-9a-f]{64}$/
     );
   });
@@ -133,8 +134,8 @@ describe("le hachage de prompt", () => {
    * configuration avait produit.
    */
   it("change avec la qualité", () => {
-    expect(promptHash("p", CONTENT_IMAGE_MODEL, "low", CONTENT_IMAGE_SIZE)).not.toBe(
-      promptHash("p", CONTENT_IMAGE_MODEL, "medium", CONTENT_IMAGE_SIZE)
+    expect(promptHash("p", contentImageModel(), "low", CONTENT_IMAGE_SIZE)).not.toBe(
+      promptHash("p", contentImageModel(), "medium", CONTENT_IMAGE_SIZE)
     );
   });
 
@@ -355,5 +356,66 @@ describe("la dérive d'estimation se dénonce", () => {
     expect(warn).not.toHaveBeenCalled();
     // Et le coût réel est null, pas zéro : on n'a pas mesuré, on ne prétend pas.
     expect(out.ok && out.reason === "generated" && out.costUsd).toBeNull();
+  });
+});
+
+describe("⚠ SANS CLEF, LE CHEMIN SE FERME — IL NE CASSE PAS", () => {
+  /*
+   * C'est la configuration de la preview : aucune variable de ce chantier
+   * n'est posée. Voir `CONTENT_BUG_REPORT.md` §2.2.
+   */
+  it("un client qui se déclare non configuré ne fait RIEN réserver", async () => {
+    const calls = { n: 0 };
+    let reserved = 0;
+    const out = await generateCustomVisual(
+      { brandKitId: "k", userId: "u", contentItemId: null, prompt: "a prompt" },
+      {
+        client: { ...fixtureImageClient({ calls }), configured: () => false },
+        lookup: async () => null,
+        reserve: async () => {
+          reserved += 1;
+          return { ok: true, reason: "reserved", reservationId: "r1" };
+        },
+        upload: async () => {},
+        record: async () => ({ ok: true, reason: "generated", storagePath: "p" }),
+        release: async () => {},
+      }
+    );
+
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.reason).toBe("not_configured");
+    expect(out.calledModel).toBe(false);
+    // ⚠ LES DEUX COMPTES SONT LE TEST. Ni appel, ni crédit engagé.
+    expect(calls.n).toBe(0);
+    expect(reserved).toBe(0);
+  });
+
+  it("et si l'erreur remonte quand même, elle ne compte pas comme un appel facturé", async () => {
+    /*
+     * Un client qui ne déclare pas `configured` lève à l'appel. Le crédit est
+     * relâché, et `calledModel` doit dire `false` : un appelant qui somme les
+     * appels facturés en compterait un de trop.
+     */
+    let released = 0;
+    const out = await generateCustomVisual(
+      { brandKitId: "k", userId: "u", contentItemId: null, prompt: "a prompt" },
+      {
+        client: fixtureImageClient({ throws: new ContentImageNotConfiguredError() }),
+        lookup: async () => null,
+        reserve: async () => ({ ok: true, reason: "reserved", reservationId: "r1" }),
+        upload: async () => {},
+        record: async () => ({ ok: true, reason: "generated", storagePath: "p" }),
+        release: async () => {
+          released += 1;
+        },
+      }
+    );
+
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.reason).toBe("not_configured");
+    expect(out.calledModel).toBe(false);
+    expect(released).toBe(1);
   });
 });

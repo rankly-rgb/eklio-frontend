@@ -45,7 +45,17 @@ import { budgetErrors, type BudgetError } from "@/lib/compose/budget";
  */
 
 /** Le modèle de rédaction de masse. Identifiant daté, voir la note ci-dessus. */
-export const MASS_COPY_MODEL = process.env.CONTENT_COPY_MODEL ?? "claude-haiku-4-5-20251001";
+export const MASS_COPY_MODEL_DEFAULT = "claude-haiku-4-5-20251001";
+
+/**
+ * ⚠ UNE FONCTION, PAS UNE CONSTANTE DE MODULE. Même raison que pour le modèle
+ * d'image : une lecture d'environnement au chargement fige la réponse à
+ * l'import. Aucune lecture d'environnement au chargement d'un module dans ce
+ * dépôt — voir `CONTENT_BUG_REPORT.md` §2.2.
+ */
+export function massCopyModel(): string {
+  return process.env.CONTENT_COPY_MODEL ?? MASS_COPY_MODEL_DEFAULT;
+}
 
 /**
  * Tarifs, en dollars par million de tokens, pour l'estimation de coût.
@@ -183,7 +193,7 @@ export function buildBatchRequests(
   return topics.map((topic) => ({
     custom_id: topic.topicId,
     params: {
-      model: MASS_COPY_MODEL,
+      model: massCopyModel(),
       max_tokens: 2000,
       /*
        * ⚠ LE PRÉFIXE EST DANS `system`, PAS DANS `messages`. L'ordre de rendu

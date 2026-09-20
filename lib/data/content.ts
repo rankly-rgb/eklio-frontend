@@ -162,9 +162,27 @@ export const CONTENT_IMAGE_SLOTS = [
  */
 function sinceMigration<T extends z.ZodType>(
   schema: T,
-  _migration: string
+  migration: string
 ): z.ZodDefault<z.ZodNullable<T>> {
-  return schema.nullable().default(null);
+  /*
+   * ⚠ LE NOM DE LA MIGRATION EST PORTÉ PAR LE SCHÉMA, pas seulement écrit en
+   * commentaire. `.describe()` le rend lisible à l'exécution, donc
+   * énumérable par un test — et une tolérance qu'on peut compter est une
+   * tolérance qui ne s'élargit pas sans qu'on le voie.
+   */
+  return schema.nullable().default(null).describe(`absent before ${migration}`);
+}
+
+/** Les clefs tolérées d'un schéma, avec la migration que chacune nomme. */
+export function toleratedKeys(shape: z.ZodObject): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, field] of Object.entries(shape.shape)) {
+    const described = (field as z.ZodType).description;
+    if (described?.startsWith("absent before ")) {
+      out[key] = described.slice("absent before ".length);
+    }
+  }
+  return out;
 }
 
 export const contentItemSchema = z.object({

@@ -215,6 +215,19 @@ async function currentPhotoUrl(
 async function archetypeLabels(
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<Record<string, string>> {
-  const { data } = await supabase.from("content_archetypes").select("id, label");
+  const { data, error } = await supabase.from("content_archetypes").select("id, label");
+  if (error) {
+    /*
+     * ⚠ LA TABLE PEUT NE PAS EXISTER ICI, et la page doit s'en remettre. Le
+     * repli plus bas déguise la clef en mots — visiblement moins bon qu'un
+     * libellé, ce qui est le bon comportement pour un repli. Mais l'échec est
+     * dit, sinon « cycle » au lieu de « A cycle » passe pour un choix.
+     */
+    console.error("[content] archetypeLabels: content_archetypes", {
+      code: error.code ?? null,
+      message: error.message,
+    });
+    return {};
+  }
   return Object.fromEntries((data ?? []).map((row) => [row.id, row.label]));
 }

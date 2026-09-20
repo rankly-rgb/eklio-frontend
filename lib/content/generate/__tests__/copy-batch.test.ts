@@ -5,7 +5,7 @@ import {
   cachedPrefix,
   collectCopy,
   HAIKU_PRICE,
-  MASS_COPY_MODEL,
+  massCopyModel,
   validateCopy,
   variablePart,
   type BrandContext,
@@ -105,7 +105,7 @@ describe("the variable part comes after the cache breakpoint", () => {
   it("each request is keyed by its topic id", () => {
     const requests = buildBatchRequests(BRAND, [TOPIC, { ...TOPIC, topicId: "other" }]);
     expect(requests.map((r) => r.custom_id)).toEqual([TOPIC.topicId, "other"]);
-    expect(requests[0].params.model).toBe(MASS_COPY_MODEL);
+    expect(requests[0].params.model).toBe(massCopyModel());
   });
 });
 

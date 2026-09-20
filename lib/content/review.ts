@@ -93,11 +93,29 @@ export async function reviewCardFor(
      * ajouter une RPC pour relire ce qu'une policy autorise déjà, ce serait une
      * seconde porte sur la même pièce.
      */
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("content_topics")
       .select("payload, archetype_key")
       .eq("id", item.topic.id)
       .maybeSingle();
+
+    /*
+     * ⚠ L'ERREUR EST JOURNALISÉE, PUIS LA PAGE CONTINUE. `content_topics`
+     * n'existe pas sur un déploiement dont les migrations du chantier ne sont
+     * pas appliquées : la lecture échoue, il n'y a pas de carte à composer, et
+     * c'est une réponse acceptable — l'écran de relecture rend le reste.
+     *
+     * Ce qui ne serait PAS acceptable est de l'avaler en silence. La version
+     * précédente ne lisait même pas `error` : une table absente et un sujet
+     * retiré de la banque produisaient exactement la même page, et rien ne
+     * permettait de les distinguer depuis les logs.
+     */
+    if (error) {
+      console.error("[content] reviewCardFor: content_topics", {
+        code: error.code ?? null,
+        message: error.message,
+      });
+    }
     if (data) {
       payload = data.payload;
       /*

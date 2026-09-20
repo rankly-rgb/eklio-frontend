@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentItemSchema, contentMonthSchema } from "@/lib/data/content";
+import { contentItemSchema, contentMonthSchema, toleratedKeys } from "@/lib/data/content";
 
 /*
  * ── LA CHARGE QUE LA PRODUCTION RENVOIE VRAIMENT ────────────────────────
@@ -116,7 +116,8 @@ describe("⚠ ET LA TOLÉRANCE RESTE BORNÉE", () => {
      * `title` disparaît de la réponse le schéma se taisait, on aurait échangé
      * une panne visible contre un écran vide inexplicable.
      */
-    const { title: _title, ...withoutTitle } = PRODUCTION_MONTH.items[0];
+    const withoutTitle: Record<string, unknown> = { ...PRODUCTION_MONTH.items[0] };
+    delete withoutTitle.title;
     expect(contentItemSchema.safeParse(withoutTitle).success).toBe(false);
   });
 
@@ -152,5 +153,24 @@ describe("⚠ ET LA TOLÉRANCE RESTE BORNÉE", () => {
     expect(parsed.rationale).toBe("Because burnout keeps coming up.");
     expect(parsed.compose_archetype).toBe("cycle");
     expect(parsed.topic?.angle_label).toBe("A soft invitation");
+  });
+});
+
+describe("⚠ LA LISTE DES CLEFS TOLÉRÉES EST FERMÉE", () => {
+  /*
+   * Une tolérance qu'on n'énumère pas s'élargit : à la première charge qui ne
+   * parse pas, la tentation est d'ajouter un `sinceMigration` de plus, et
+   * personne ne compte. Ici on compte.
+   */
+  it("exactement trois, et chacune nomme sa migration", () => {
+    const tolerated = toleratedKeys(contentItemSchema);
+    expect(Object.keys(tolerated).sort()).toEqual([
+      "compose_archetype",
+      "rationale",
+      "topic",
+    ]);
+    for (const [key, migration] of Object.entries(tolerated)) {
+      expect(migration, key).toMatch(/^2026\d{10}_[a-z_]+$/);
+    }
   });
 });
