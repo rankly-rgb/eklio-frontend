@@ -138,6 +138,35 @@ export const CONTENT_IMAGE_SLOTS = [
 ] as const;
 
 /** What the calendar tile and the editor both render. */
+/*
+ * ── UNE CLEF QU'UNE BASE PLUS ANCIENNE N'ENVOIE PAS ─────────────────────
+ *
+ * ⚠ EN ZOD, `.nullable()` N'EST PAS `.optional()`, ET C'EST CE QUI A CASSÉ LA
+ * PREVIEW. `nullable` accepte la valeur `null` ; il EXIGE quand même que la
+ * clef soit présente. Une charge à qui il manque la clef échoue donc, et
+ * `decode` rend un refus — d'où « Something went wrong » sur un écran dont la
+ * seule faute était de parler à une base d'avant la migration.
+ *
+ * `sinceMigration` dit les deux choses à la fois : la valeur est nullable
+ * PARCE QUE `null` est un état réel du métier, et la CLEF est facultative
+ * PARCE QUE les bases d'avant cette migration ne l'envoient pas. Absente vaut
+ * `null`, donc le type de sortie ne bouge pas et aucun écran n'a à connaître
+ * cette histoire.
+ *
+ * ⚠ ET CE N'EST PAS « TOUT EN OPTIONNEL PAR PRUDENCE ». Chaque appel nomme la
+ * migration qui a introduit la clef. Le jour où elle est appliquée partout, ce
+ * `sinceMigration` peut redevenir un `nullable` nu, et le nom de la migration
+ * dit quand on a le droit de le faire. Une clef que le code attend d'une base
+ * à jour et qui manque quand même reste une vraie erreur, dite par
+ * `schema_mismatch`.
+ */
+function sinceMigration<T extends z.ZodType>(
+  schema: T,
+  _migration: string
+): z.ZodDefault<z.ZodNullable<T>> {
+  return schema.nullable().default(null);
+}
+
 export const contentItemSchema = z.object({
   id: z.string(),
   brand_kit_id: z.string(),
@@ -197,7 +226,7 @@ export const contentItemSchema = z.object({
    * une phrase générique à la place, ce qui serait précisément le contraire
    * de ce que cette ligne existe pour dire.
    */
-  rationale: z.string().nullable(),
+  rationale: sinceMigration(z.string(), "20260921090000_an_item_knows_why_it_was_chosen"),
   /*
    * La MISE EN PAGE qu'elle a gardée sur l'écran de relecture.
    *
@@ -210,7 +239,7 @@ export const contentItemSchema = z.object({
    *
    * `null` est l'état normal : « celle du sujet ». Ce n'est pas « à remplir ».
    */
-  compose_archetype: z.string().nullable(),
+  compose_archetype: sinceMigration(z.string(), "20260921110000_a_layout_is_hers_to_change"),
   /*
    * Le sujet de la banque dont ce post vient.
    *
@@ -219,8 +248,8 @@ export const contentItemSchema = z.object({
    * plus. L'écran n'affiche alors aucun libellé d'angle, et surtout pas
    * « Uncategorised ».
    */
-  topic: z
-    .object({
+  topic: sinceMigration(
+    z.object({
       id: z.string(),
       angle: z.string(),
       /*
@@ -231,8 +260,9 @@ export const contentItemSchema = z.object({
       angle_label: z.string().nullable(),
       archetype_key: z.string(),
       timely: z.boolean(),
-    })
-    .nullable(),
+    }),
+    "20260921090000_an_item_knows_why_it_was_chosen"
+  ),
 });
 export type ContentItem = z.infer<typeof contentItemSchema>;
 
