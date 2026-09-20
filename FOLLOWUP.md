@@ -232,3 +232,85 @@ savoir qu'elle lit un repli.
 **Ce qu'il faut faire** : rien tant que les migrations ne sont pas appliquées —
 le repli disparaît avec elles. Noté pour que « pourquoi les libellés sont
 moches » ait déjà sa réponse.
+
+---
+
+## F9 — ⚠ CE QU'IL FAUT FAIRE POUR QUE `/app/content` SOIT PLEINEMENT FONCTIONNEL
+
+**La seule entrée à lire avant un déploiement du contenu.** Les morceaux
+existaient dispersés — `ENV_REQUIRED.md` pour les variables, F1 pour les
+migrations, `IMPLEMENTATION_REPORT.md` §10 pour le reste. Ceci est la liste
+unique, dans l'ordre d'exécution.
+
+⚠ **Aujourd'hui la page FONCTIONNE mais DÉGRADE** : elle se rend, elle montre
+les cartes, et tout ce que les migrations apportent — la ligne « Why this
+one », le libellé d'angle, la mise en page gardée, le compteur de crédits,
+Swap — est absent. La dégradation est visible et nommée, pas masquée.
+
+### 1. Appliquer les migrations (13, dans cet ordre)
+
+```
+20260920140000_monthly_presence_has_a_chokepoint
+20260920140100_credit_ledger_append_only
+20260920150000_content_archetypes
+20260920150100_topic_bank_and_assignment
+20260920150200_insight_watch
+20260920150300_rendered_assets_and_libraries
+20260920160000_a_diagram_label_is_published_text
+20260920160100_render_dedup_and_cost_report
+20260920170000_the_collision_window_is_computed_once
+20260920180000_a_cte_referenced_once_is_inlined
+20260921090000_an_item_knows_why_it_was_chosen
+20260921100000_swap_is_a_draw_not_a_generation
+20260921110000_a_layout_is_hers_to_change
+```
+
+⚠ **Elles s'insèrent proprement APRÈS les 14 de F1** — celles-ci s'arrêtent à
+`20260920081641`, celles-ci commencent à `20260920140000`, donc l'horodatage
+ne s'entrelace pas. **Mais F1 reste à traiter d'abord** : merger
+`claude/stoic-ritchie-1liqrz` casse cinq tests d'énumération, et c'est plus
+simple à réparer avant qu'après.
+
+**À ce stade, `/app/content` est entièrement fonctionnel en lecture et en
+écriture manuelle.** Rien de ce qui suit n'est nécessaire pour ça. Après
+application, les trois `sinceMigration` de `lib/data/content.ts` peuvent
+redevenir de simples `nullable` — chacun porte le nom de la migration qui le
+libère.
+
+### 2. Saisir les variables
+
+**Requises pour la génération :**
+
+| variable | pourquoi |
+|---|---|
+| `ANTHROPIC_API_KEY` | ⚠ **probablement déjà posée** — le reste de l'app s'en sert. À vérifier, pas à supposer. |
+| `OPENAI_API_KEY` | uniquement pour les visuels custom, et **ce chemin n'est câblé à aucun écran** (F6). Sans elle, il refuse proprement sans rien réserver. |
+
+**Facultatives — toutes ont un défaut qui marche.** `CONTENT_COPY_MODEL`,
+`CONTENT_IMAGE_MODEL`, `CONTENT_IMAGE_QUALITY`,
+`CONTENT_IMAGE_QUALITY_CEILING`. Détail et défauts dans
+`eklio-backend/ENV_REQUIRED.md`. Une variable oubliée ici ne casse rien : elle
+change ce qui est facturé.
+
+### 3. Basculer le drapeau — **deux verrous, et les deux doivent s'ouvrir**
+
+1. ajouter l'entrée `/api/cron/content-month` dans `vercel.json` ;
+2. poser `CONTENT_GENERATION_ARMED` à **exactement** `"true"` — toute autre
+   valeur, `"false"` et `"1"` compris, laisse fermé.
+
+⚠ **`content_pipeline_enabled` N'EXISTE PAS**, malgré ce qu'on peut lire
+ailleurs. Voir F7 : c'est ce couple-là, et rien d'autre.
+
+⚠ **Dans cet ordre, et le drapeau EN DERNIER.** Il fait dépenser de l'argent
+au nom de quelqu'un d'autre — un appel de modèle par post, deux fois. Armer la
+génération avant que les migrations soient là écrirait dans des tables qui
+n'existent pas ; l'armer avant les clefs échouerait après avoir réservé des
+crédits.
+
+### Vérifier que c'est fait
+
+`/app/content` montre le compteur de crédits (invisible tant que
+`credit_meter` est absente), une carte porte « Why this one: … » et son
+libellé d'angle, et Swap répond au lieu de rendre une erreur. Les trois
+signaux viennent de trois migrations différentes : les trois ensemble disent
+que le lot est passé en entier.

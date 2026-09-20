@@ -8,13 +8,61 @@ de ce rapport viennent toutes d'exécutions, pas de lectures de code.
 
 ---
 
-## RÉSUMÉ EN UNE PHRASE
+## LA CAUSE RACINE, POUR QUI N'ÉTAIT PAS LÀ
 
-`get_content_month` déployé en production ne porte pas les trois champs que le
-schéma Zod de cette branche exige (`rationale`, `compose_archetype`, `topic`),
-donc `safeParse` échoue, donc `decode` rend `server_error`, donc l'écran écrit
-« Something went wrong. Try again. » — **et ce n'est vrai que si le mois
-contient au moins un post ; un mois vide se rend normalement.**
+**En une phrase :** le code lisait la base avec un contrat plus récent que
+celui que la base déployée sait remplir, et il refusait la réponse entière au
+lieu d'accepter ce qu'elle contenait.
+
+### Ce que la valeur portait
+
+Trois champs — `rationale`, `compose_archetype`, `topic` — ont été ajoutés aux
+posts par des migrations de ce chantier. Le code du frontend les déclarait
+`z.string().nullable()`, ce qui veut dire « cette valeur peut être vide ».
+
+**Mais en Zod, « peut être vide » et « peut être absente » sont deux choses
+différentes.** `.nullable()` accepte la VALEUR `null` ; il exige quand même que
+la CLEF soit présente dans la réponse. `{ rationale: null }` passe ;
+`{ }` échoue.
+
+### Pourquoi ça faisait tomber la route
+
+Les migrations ne sont pas appliquées en production. La base déployée ne
+connaît donc pas ces trois colonnes et n'envoie pas les trois clefs. Le
+validateur rejetait la réponse entière, la couche de données traduisait ce
+rejet en erreur serveur, et l'écran affichait « Something went wrong. Try
+again. » — **à propos d'un mois dont la seule faute était de vivre dans une
+base plus ancienne que le code qui la lit.**
+
+⚠ **Et ça n'arrivait qu'à partir du premier post.** Un mois vide ne contient
+aucun item à valider, donc il passait. C'est pourquoi la panne semblait
+aléatoire : elle attendait qu'une praticienne ait écrit quelque chose.
+
+### Pourquoi la borner à trois clefs énumérables corrige
+
+Les trois champs passent maintenant par un emballage,
+`sinceMigration(schéma, migration)`, qui dit **deux choses à la fois** : la
+valeur peut être vide (parce que « pas de justification » est un état réel du
+métier), et la clef peut être absente (parce que les bases d'avant cette
+migration ne l'envoient pas). Une clef absente est lue comme `null`, donc
+aucun écran n'a à connaître cette histoire.
+
+**Le mot important est « bornée ».** On aurait pu rendre tout le schéma
+facultatif, et la page se serait rendue aussi — mais plus aucune divergence
+n'aurait jamais été signalée, et le prochain contrat cassé serait devenu un
+écran vide inexplicable au lieu d'une erreur. Alors :
+
+1. **chaque emballage nomme la migration** qui a introduit la clef, portée sur
+   le schéma lui-même et donc lisible à l'exécution ;
+2. **un test fige la liste à exactement trois.** Ajouter une quatrième
+   tolérance fait échouer ce test, ce qui force à l'écrire sciemment plutôt
+   qu'à l'ajouter sous la pression d'une charge qui ne parse pas ;
+3. **tout le reste continue de refuser** : une clef vraiment obligatoire qui
+   manque, ou une valeur du mauvais type, restent des erreurs.
+
+Le jour où les migrations sont appliquées partout, ces trois emballages
+peuvent redevenir de simples `nullable`, et le nom de la migration inscrit sur
+chacun dit à partir de quand on en a le droit.
 
 ---
 
