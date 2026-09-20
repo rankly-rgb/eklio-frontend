@@ -201,7 +201,31 @@ export function ItemEditor({
       <aside className="flex flex-col gap-6">
         <SaveIndicator state={save} updatedAt={item.updated_at} />
 
-        <Field label="Kind">
+        {/*
+         * ⚠ « Kind » ET « State » ÉTAIENT DES MOTS DE SYSTÈME, ET ILS ONT ÉTÉ
+         * TRADUITS PLUTÔT QUE RETIRÉS.
+         *
+         * Les retirer aurait enlevé deux réglages qu'elle utilise vraiment :
+         * changer la forme d'une carte, et dire qu'une carte est prête. Ce qui
+         * était faux n'était pas leur existence, c'était leur nom. « Kind »
+         * n'est pas une question qu'on se pose ; « What kind of post » en est
+         * une. « State » décrit une colonne ; « Where it is » décrit sa
+         * situation.
+         *
+         * ⚠ ET CE N'EST PAS « COMMENT ELLE EST DESSINÉE ». `archetype` est le
+         * FORMAT du post — déclaration, question, notes, signature, récit,
+         * fiche Google. La MISE EN PAGE de la carte est un autre vocabulaire
+         * (`content_archetypes`) et elle se choisit plus haut, sur la surface
+         * de relecture. Les deux colonnes portent des noms qui se ressemblent
+         * et ne veulent pas dire la même chose ; un libellé « How it looks »
+         * ici aurait fait croire que ce réglage change le dessin.
+         *
+         * Et `proposed` ne figure pas dans la liste : c'est l'état d'une carte
+         * qu'EKLIO a écrite et qu'elle n'a pas encore regardée. Se l'attribuer
+         * à soi-même n'a pas de sens, et le proposer comme choix le lui
+         * demanderait.
+         */}
+        <Field label="What kind of post">
           <Select
             id="content-archetype"
             value={draft.archetype}
@@ -213,13 +237,17 @@ export function ItemEditor({
           />
         </Field>
 
-        <Field label="State">
+        <Field label="Where it is">
           <Select
             id="content-status"
             value={draft.status}
-            options={CONTENT_STATUSES.map((value) => [
+            options={CONTENT_STATUSES.filter((value) => value !== "proposed").map((value) => [
               value,
-              value === "draft" ? "Draft" : value === "ready" ? "Ready to post" : "Archived",
+              value === "draft"
+                ? "Still working on it"
+                : value === "ready"
+                  ? "Ready to post"
+                  : "Put away",
             ])}
             onChange={(value) => {
               queue({ status: value });

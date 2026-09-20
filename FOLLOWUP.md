@@ -13,9 +13,36 @@ Ce fichier ne porte que ce qui a été **rencontré** pendant le chantier Conten
 et `origin/main` en portent 133. Les 14 manquantes existent sur
 `origin/claude/stoic-ritchie-1liqrz` (tête `46d4111`) et n'ont été mergées nulle part :
 
-`20260917160202` → `20260920081641`, soit la Californie et la Floride comme premiers
-États vérifiés, la quatrième licence BBS, la seconde famille de règles (positionnement),
-les dix règles v1, et **deux ajouts à `banned_phrases`** (30 → 32).
+### La liste exacte, une par une
+
+Colonne « conflit » : ce que la migration ferait à CE chantier si les deux branches se
+rencontraient. Elle a été établie en lisant les quatorze fichiers sur
+`origin/claude/stoic-ritchie-1liqrz`, pas en les devinant d'après leurs noms.
+
+| # | Identifiant | Ce qu'elle touche | Conflit avec ce chantier |
+|---|---|---|---|
+| 1 | `20260917160202_california_is_the_first_verified_state` | Supprime cinq paires de `license_type_states` pour `CA` (lpc, lmhc, lcpc, licsw, lmsw), qui ne figurent pas au tableau du BBS | Aucun. Aucune migration de ce chantier ne lit `license_type_states`. |
+| 2 | `20260917164228_lep_the_fourth_bbs_licence` | Ajoute `lep` à `license_types` et la paire `(lep, CA)` à `license_type_states` | Aucun. |
+| 3 | `20260917164434_a_closure_is_a_decision_with_a_snapshot` | **Crée `public.sellability_decisions`** (+ RLS, + données) | ⚠ **OUI.** `supabase/tests/20260911180620_tenancy_layer.test.sql` énumère TOUTES les tables et exige une déclaration par table. Une table nouvelle sans déclaration fait échouer ce test au merge. Une ligne à ajouter, mais elle doit être ajoutée. |
+| 4 | `20260917164505_florida_settles_the_national_description` | Réécrit le `comment on column license_types.description` (cite Florida Statutes 490.012(2)(b)) + garde-fou | Aucun pour le schéma. ⚠ **Attention** : `20260827107000_english_only_schema.test.sql` scanne les commentaires ; celui-ci est en anglais, donc il passe — mais c'est une coïncidence heureuse, pas une garantie. |
+| 5 | `20260917165937_the_decision_table_says_no_out_loud` | Remplace la policy `sellability_decisions_no_browser` par des policies qui refusent explicitement | ⚠ Dépend de la n°3. Même remarque. |
+| 6 | `20260917210004_positioning_is_a_second_family_of_rules` | **Crée `public.positioning_rules` et `public.positioning_patterns`** (+ RLS, + policies) | ⚠ **OUI, deux fois.** Même raison que la n°3 : deux tables de plus à déclarer dans `tenancy_layer.test.sql`. |
+| 7 | `20260918185950_the_ten_positioning_rules_v1` | Insère les dix règles et leurs motifs dans les deux tables ci-dessus | ⚠ Dépend de la n°6. |
+| 8 | `20260918190034_how_many_findings_the_free_report_shows` | Une ligne dans `app_settings` | Aucun. |
+| 9 | `20260918193221_third_person_becomes_present_without_and_the_cap_is_decided` | `update` sur `positioning_patterns` / `positioning_rules` (règle « troisième personne ») + plafond | ⚠ Dépend de la n°6. |
+| 10 | `20260919132507_third_person_is_anchored_not_capitalised` | Réécrit le motif de la même règle : `[A-Z]` ne contraignait rien, les deux moteurs compilent sans égard à la casse | ⚠ Dépend de la n°6. |
+| 11 | `20260919172421_the_window_does_the_work_not_the_sentence_boundary` | Réécrit encore le même motif : `[^.!?]` se fermait sur « Ph.D. » | ⚠ Dépend de la n°6. |
+| 12 | `20260919200211_the_model_is_told_the_thirty_phrases` | **Redéfinit `public.usp_banned_phrases_list()`** | ⚠ **OUI, indirectement.** `20260831090000_revoke_internal_function_surface.test.sql` énumère la surface de fonctions exposée ; un `create or replace` qui ne rejoue pas ses `revoke`/`grant` peut rouvrir la fonction. À vérifier au merge, pas à supposer. |
+| 13 | `20260920081353_an_anonymised_testimonial_is_still_a_testimonial` | **Insère un motif dans `ethics_patterns`** | ⚠ **OUI, et c'est le plus franc.** `supabase/tests/20260914200000_ethics_parity.test.sql` affirme « 19 motifs, mêmes identifiants, mêmes règles ». Un vingtième motif fait échouer ce test tel quel. Côté écran, `lib/content/ethics-line.ts` retombe sur l'identifiant mis en mots pour une règle inconnue — dégradé, pas cassé. |
+| 14 | `20260920081641_two_craft_cliches_join_the_thirty` | **Insère deux phrases dans `banned_phrases`** (30 → 32) | ⚠ **OUI, en comportement.** `content_topics_banned_phrases_gate` (20260920160000) appelle `usp_banned_phrases_check` : un sujet accepté par la banque en local peut être refusé en production. C'est le bon sens du décalage — la production est plus stricte — mais il faut le savoir avant de charger une banque. |
+
+**Résumé des conflits** : trois tables nouvelles à déclarer dans `tenancy_layer.test.sql`
+(n°3, n°6 ×2), un test de parité déontologique à remonter de 19 à 20 motifs (n°13), une
+surface de fonction à revérifier (n°12), et un gate de phrases qui devient plus strict
+(n°14). Aucun conflit de schéma au sens strict : **rien de ce chantier ne redéfinit un
+objet que ces quatorze touchent, et réciproquement.** Ce sont des tests d'énumération
+qui casseront, pas des `create table` qui se marcheront dessus.
+
 
 **Pourquoi c'est un problème et pas une nuance.** Un CI qui rejoue les migrations depuis
 zéro depuis cette branche produit un schéma qui n'est pas celui de la production. La
@@ -27,8 +54,12 @@ introduit par ces 14, et tout contrôle de phrase passe par le RPC
 `usp_banned_phrases_check` plutôt que par une copie de la liste.
 
 **Ce qu'il faut faire** : merger `claude/stoic-ritchie-1liqrz` dans le tronc backend,
-puis rejouer `scripts/verify-recovered-migrations.sh`. C'est de l'hygiène de branches,
-explicitement hors périmètre ici.
+puis rejouer `scripts/verify-recovered-migrations.sh`, puis reprendre les cinq points du
+résumé ci-dessus. C'est de l'hygiène de branches, explicitement hors périmètre ici.
+
+⚠ **L'enjeu, en une phrase** : les 143 migrations que le CI rejoue ne décrivent pas la
+production, et quelqu'un doit le savoir AVANT le prochain déploiement. Appliquer ces
+quatorze est hors périmètre ; les ignorer au moment de déployer ne l'est pas.
 
 ---
 
@@ -76,3 +107,65 @@ C'est la forme attendue — les migrations produisent tout ce que la production 
 plus tout ce que ce chantier ajoute. L'empreinte
 `supabase/tests/helpers/schema_fingerprint.production.txt` sera à réenregistrer
 le jour où ces migrations seront appliquées.
+
+---
+
+## F4 — Deux des « réglages limités » de l'écran de relecture n'ont pas de mécanisme
+
+**Rencontré en** PHASE 5, en câblant `/app/content/[id]`. **Clause d'arrêt appliquée :
+rapporté, pas contourné.**
+
+Le chantier demande, pour l'écran de relecture, « des réglages limités (variante de
+teinte, changement d'archétype, mot accentué) ». Le troisième est livré (voir
+`IMPLEMENTATION_REPORT.md`). Les deux autres ne le sont pas, et chacun pour une raison
+différente :
+
+**La variante de teinte.** Il n'existe aucune colonne qui porte le choix clair/sombre
+d'un post. Le choix appartient au planificateur du mois (`DARK_CARD_RATIO` dans la
+couche de composition), qui décide combien de cartes d'un mois tournent sur fond sombre.
+`content_items.theme` ressemble au bon endroit et ne l'est pas : c'est le THÈME du mois
+auquel le post appartient, validé contre `content_months.themes` par trigger, et
+délibérément absent de la liste blanche de `update_content_item`.
+
+Un sélecteur clair/sombre aurait donc été un réglage qui ne se garde pas : elle choisit
+sombre, elle recharge, c'est clair. C'est pire qu'un réglage absent. **Ce qu'il faudrait
+pour le livrer** : une colonne `content_items.dark` nullable (null = « ce que le mois a
+décidé »), dans la liste blanche du patch, et une décision produit sur qui gagne quand
+le planificateur et elle ne sont pas d'accord. Cette dernière question n'est pas une
+question d'implémentation.
+
+**Le mot accentué.** Le moteur de composition n'a aucune notion d'accentuation : aucun
+des onze modules d'archétype, ni `svg.ts`, ni `layout.ts`, ni `measure.ts` ne porte de
+concept de mot mis en valeur. Le livrer voudrait dire ajouter un balisage inline au
+texte des payloads, le faire traverser la mesure (un mot en 600 ne mesure pas comme le
+même mot en 400), le faire traverser l'émission SVG, et le faire entrer dans
+`contentHash` — sinon deux cartes qui diffèrent par leur accentuation partageraient une
+entrée de cache et l'une servirait l'image de l'autre.
+
+C'est un chantier de composition, pas un réglage d'écran. **Ce qu'il faudrait pour le
+livrer** : un champ `accent` optionnel par élément de payload, propagé à travers les
+cinq fichiers ci-dessus, avec sa propre suite — dont un cas négatif prouvant que le hash
+change quand l'accentuation change.
+
+---
+
+## F5 — `lib/images/config.ts` porte une table de prix par image, et elle est correcte
+
+**Rencontré en** relisant la DÉCISION 1 (« si une telle table existe déjà dans ce que tu
+as écrit, supprime-la »).
+
+Il existe deux chemins d'image dans ce dépôt, et ils ne sont pas facturés pareil :
+
+- **`lib/images/`** — les photographies de marque, modèle `gpt-image-1`. Ce modèle A une
+  grille de prix par image, et `lib/images/client.ts` dit en toutes lettres que `usage`
+  est enregistré mais **jamais** utilisé pour calculer de l'argent. La table de prix y
+  est la bonne source. Ce chemin précède ce chantier et n'a pas été touché.
+- **`lib/content/images/`** — les visuels custom de ce chantier, modèle
+  `gpt-image-2.5-flare`. Ce modèle n'a PAS de grille par image : il est facturé au
+  token. `actual_cost_usd` y est donc calculé depuis `usage`, et il n'existe aucune
+  table de prix par image dans ces fichiers.
+
+La table qui existe n'est donc pas celle que la décision demande de supprimer : elle
+décrit un autre modèle, sur un autre chemin, et elle y est juste. **Ce qu'il faut
+faire** : rien, tant que `lib/images/` reste sur `gpt-image-1`. Le jour où il migre vers
+un modèle facturé au token, la table devient un mensonge et doit partir avec lui.

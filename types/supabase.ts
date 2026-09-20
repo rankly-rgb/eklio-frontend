@@ -689,6 +689,39 @@ export type Database = {
           },
         ]
       }
+      content_archetypes: {
+        Row: {
+          active: boolean
+          id: string
+          illustration_zone: string
+          is_multi_card: boolean
+          items_max: number
+          items_min: number
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          id: string
+          illustration_zone: string
+          is_multi_card?: boolean
+          items_max: number
+          items_min: number
+          label: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          illustration_zone?: string
+          is_multi_card?: boolean
+          items_max?: number
+          items_min?: number
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       content_items: {
         Row: {
           alt_text: string | null
@@ -696,6 +729,7 @@ export type Database = {
           brand_kit_id: string
           caption: string | null
           category: string | null
+          compose_archetype: string | null
           created_at: string
           id: string
           image_slot: string | null
@@ -703,10 +737,12 @@ export type Database = {
           on_image_text: string | null
           register: string | null
           scheduled_for: string | null
+          rationale: string | null
           status: string
           tags: string[]
           theme: string | null
           title: string | null
+          topic_id: string | null
           updated_at: string
         }
         Insert: {
@@ -715,6 +751,7 @@ export type Database = {
           brand_kit_id: string
           caption?: string | null
           category?: string | null
+          compose_archetype?: string | null
           created_at?: string
           id?: string
           image_slot?: string | null
@@ -722,10 +759,12 @@ export type Database = {
           on_image_text?: string | null
           register?: string | null
           scheduled_for?: string | null
+          rationale?: string | null
           status?: string
           tags?: string[]
           theme?: string | null
           title?: string | null
+          topic_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -734,6 +773,7 @@ export type Database = {
           brand_kit_id?: string
           caption?: string | null
           category?: string | null
+          compose_archetype?: string | null
           created_at?: string
           id?: string
           image_slot?: string | null
@@ -741,10 +781,12 @@ export type Database = {
           on_image_text?: string | null
           register?: string | null
           scheduled_for?: string | null
+          rationale?: string | null
           status?: string
           tags?: string[]
           theme?: string | null
           title?: string | null
+          topic_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -900,6 +942,54 @@ export type Database = {
           label?: string
           safety_rule?: string
           sort_order?: number
+        }
+        Relationships: []
+      }
+      content_topics: {
+        Row: {
+          archetype_key: string
+          caption_seed: string
+          created_at: string
+          ethics_reviewed_at: string | null
+          hook: string
+          id: string
+          intent: string
+          payload: Json
+          rationale_template: string
+          retired_at: string | null
+          segment_id: string
+          timely: boolean
+          title: string
+        }
+        Insert: {
+          archetype_key: string
+          caption_seed: string
+          created_at?: string
+          ethics_reviewed_at?: string | null
+          hook: string
+          id?: string
+          intent: string
+          payload: Json
+          rationale_template: string
+          retired_at?: string | null
+          segment_id: string
+          timely?: boolean
+          title: string
+        }
+        Update: {
+          archetype_key?: string
+          caption_seed?: string
+          created_at?: string
+          ethics_reviewed_at?: string | null
+          hook?: string
+          id?: string
+          intent?: string
+          payload?: Json
+          rationale_template?: string
+          retired_at?: string | null
+          segment_id?: string
+          timely?: boolean
+          title?: string
         }
         Relationships: []
       }
@@ -3138,6 +3228,10 @@ export type Database = {
         Returns: boolean
       }
       content_error: { Args: { p_code: string }; Returns: Json }
+      custom_visual_path: {
+        Args: { p_brand_kit_id: string; p_prompt_hash: string }
+        Returns: string
+      }
       content_item_json: { Args: { p_id: string }; Returns: Json }
       content_kit_access: { Args: { p_brand_kit_id: string }; Returns: string }
       content_normalize_tags: { Args: { p_tags: string[] }; Returns: string[] }
@@ -3155,6 +3249,11 @@ export type Database = {
       monthly_presence_entitled: { Args: never; Returns: boolean }
       monthly_presence_past_due_grace: { Args: never; Returns: string }
       release_stale_credit_reservations: { Args: { p_older_than?: string }; Returns: number }
+      swap_content_item: { Args: { p_id: string }; Returns: Json }
+      set_content_item_topic: {
+        Args: { p_id: string; p_rationale: string; p_topic_id: string }
+        Returns: Json
+      }
       settle_credit: { Args: { p_actual_cost_usd?: number; p_reservation_id: string; p_succeeded?: boolean }; Returns: Json }
       reserve_credit: {
         Args: {

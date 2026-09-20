@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ARCHETYPE_KEYS } from "@/lib/compose/archetypes/index";
-import { CLEARANCE } from "@/lib/compose/constants";
-import { FOOTER } from "@/lib/compose/constants-bands";
+import {
+  aboveFooterFindings,
+  fieldToFieldFindings,
+  glyphToStrokeFindings,
+} from "@/lib/compose/audit";
 import { render, renderCarousel } from "@/lib/compose/engine";
 import { gap, parseBoxes } from "@/lib/compose/svg";
 import { CARD, LENGTHS, PALETTES, payloadFor } from "@/lib/compose/__tests__/fixtures";
@@ -18,6 +21,14 @@ import { CARD, LENGTHS, PALETTES, payloadFor } from "@/lib/compose/__tests__/fix
  * tolerance: a card that puts a label 39px from a stroke is a card that gets
  * posted to a stranger's feed at 1080px, and the only moment anybody can
  * cheaply notice is this one.
+ *
+ * ⚠ LES RÈGLES ELLES-MÊMES VIVENT DANS `lib/compose/audit.ts`, ET C'EST
+ * DÉLIBÉRÉ. Une règle écrite à l'intérieur d'un `expect` ne peut pas être mise
+ * en échec volontairement : on ne peut donc pas prouver qu'elle attraperait la
+ * régression qu'elle est censée attraper. `negatives.test.ts` appelle CES
+ * fonctions-ci sur des documents fabriqués pour les violer. Les deux moitiés
+ * sont nécessaires : celle-ci dit que les cartes sont propres, l'autre dit que
+ * le contrôle sait voir une carte sale.
  */
 
 const MATRIX = ARCHETYPE_KEYS.flatMap((archetype) =>
@@ -37,19 +48,7 @@ describe("no glyph box comes within 40px of a drawn stroke", () => {
   for (const { archetype, palette, length } of MATRIX) {
     it(`${archetype} · ${palette.key} · ${length}`, () => {
       for (const svg of svgsFor(archetype, palette, length)) {
-        const boxes = parseBoxes(svg);
-        const texts = boxes.filter((b) => b.role === "text");
-        const strokes = boxes.filter((b) => b.role === "stroke");
-
-        for (const t of texts) {
-          for (const s of strokes) {
-            const d = gap(t.box, s.box);
-            expect(
-              d,
-              `glyph box ${JSON.stringify(t.box)} is ${d}px from stroke ${JSON.stringify(s.box)}`
-            ).toBeGreaterThanOrEqual(CLEARANCE.glyphToStroke);
-          }
-        }
+        expect(glyphToStrokeFindings(svg)).toEqual([]);
       }
     });
   }
@@ -59,15 +58,7 @@ describe("no two tinted fields come within 48px of each other", () => {
   for (const { archetype, palette, length } of MATRIX) {
     it(`${archetype} · ${palette.key} · ${length}`, () => {
       for (const svg of svgsFor(archetype, palette, length)) {
-        const fields = parseBoxes(svg).filter((b) => b.role === "field");
-        for (let i = 0; i < fields.length; i += 1) {
-          for (let j = i + 1; j < fields.length; j += 1) {
-            const d = gap(fields[i].box, fields[j].box);
-            expect(d, `fields ${i} and ${j} are ${d}px apart`).toBeGreaterThanOrEqual(
-              CLEARANCE.fieldToField
-            );
-          }
-        }
+        expect(fieldToFieldFindings(svg)).toEqual([]);
       }
     });
   }
@@ -77,13 +68,7 @@ describe("nothing comes within 64px of the footer band", () => {
   for (const { archetype, palette, length } of MATRIX) {
     it(`${archetype} · ${palette.key} · ${length}`, () => {
       for (const svg of svgsFor(archetype, palette, length)) {
-        for (const b of parseBoxes(svg)) {
-          if (b.band === "footer") continue;
-          const clear = FOOTER.y - (b.box.y + b.box.h);
-          expect(clear, `${b.role} in ${b.band} is ${clear}px above the footer`).toBeGreaterThanOrEqual(
-            CLEARANCE.aboveFooter
-          );
-        }
+        expect(aboveFooterFindings(svg)).toEqual([]);
       }
     });
   }

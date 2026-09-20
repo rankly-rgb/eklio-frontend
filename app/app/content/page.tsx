@@ -7,13 +7,16 @@ import {
   contentMonthKey,
   getContentCheckin,
   getContentMonth,
+  getContentMonthRecord,
   getContentPreferences,
   getContentRegisters,
 } from "@/lib/data/content";
 import { getCreditMeter } from "@/lib/billing/credits";
 import { ContentCalendar } from "@/components/content/content-calendar";
+import { ContentStream, MonthProgress } from "@/components/content/content-stream";
+import { CheckInLine } from "@/components/content/check-in-line";
+import { MonthFailed, MonthGenerating } from "@/components/content/month-generating";
 import { CreditsMeter } from "@/components/content/credits-meter";
-import { CheckInCard } from "@/components/content/check-in-card";
 import { PreferencesForm } from "@/components/content/preferences-form";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { ButtonLink } from "@/components/ui/button";
@@ -61,11 +64,34 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
     redirect(`/app/checkout?project=${kit.projectId}${reversed ? "&reversed=1" : ""}`);
   }
 
-  const requested = (await searchParams).month;
+  const params = await searchParams;
+  const requested = params.month;
   const raw = Array.isArray(requested) ? requested[0] : requested;
   const month = raw && /^\d{4}-\d{2}-01$/.test(raw) ? raw : contentMonthKey(new Date());
 
-  const [result, checkin, preferences, registers, credits] = await Promise.all([
+  const requestedView = Array.isArray(params.view) ? params.view[0] : params.view;
+  /*
+   * ⚠ LE FLUX EST LE DÉFAUT, ET IL FAUT DEMANDER LE CALENDRIER. N'importe
+   * quelle autre valeur rend le flux : une URL bricolée ne doit pas produire
+   * un troisième écran qui n'existe pas.
+   */
+  const view = requestedView === "calendar" ? "calendar" : "stream";
+
+  /*
+   * La palette de sa direction choisie. La vignette du flux l'utilise pour
+   * poser la ligne d'image dans SES couleurs — ce n'est pas la carte composée
+   * (le pipeline qui la produit n'est pas câblé), c'est la ligne que le
+   * compositeur posera, et la vignette le dit en toutes lettres.
+   */
+  const palette = kit.selectedDirection?.palette ?? kit.directions?.[0]?.palette ?? null;
+  const streamTokens = {
+    primary: palette?.primary ?? "#6B7F6E",
+    light: palette?.light ?? "#E7E2D6",
+    dark: palette?.dark ?? "#2B2724",
+    paper: palette?.paper ?? "#FAF7F2",
+  };
+
+  const [result, checkin, preferences, registers, credits, record] = await Promise.all([
     getContentMonth(supabase, brandKitId, month),
     getContentCheckin(supabase, brandKitId, month),
     getContentPreferences(supabase, brandKitId),
@@ -81,6 +107,13 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
      * dépense — au pire il affiche mal.
      */
     getCreditMeter(supabase, month),
+    /*
+     * L'état du mois LUI-MÊME, distinct de ses items. Un mois `generating` n'a
+     * pas encore d'items, et un écran vide est indiscernable d'un mois raté :
+     * c'est cette ligne qui fait la différence entre « ça arrive » et « ça
+     * n'est pas venu ».
+     */
+    getContentMonthRecord(supabase, brandKitId, month),
   ]);
 
   /*
@@ -111,13 +144,20 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
         <div className="mb-8 max-w-[720px]">
           <PreferencesForm brandKitId={brandKitId} registers={registers} initial={null} />
         </div>
-      ) : checkinAnswered(checkin) ? null : (
+      ) : (
+        /*
+         * ⚠ LE CHECK-IN NE DISPARAÎT PLUS, IL SE REPLIE. Il disparaissait dès
+         * qu'il était répondu, et ce qu'elle avait écrit devenait invisible —
+         * donc impossible à corriger sans deviner où. Une ligne garde la
+         * réponse à l'écran et garde « Edit » à portée.
+         */
         <div className="mb-8 max-w-[720px]">
-          <CheckInCard
+          <CheckInLine
             brandKitId={brandKitId}
             month={month}
             monthLabel={monthLabel}
-            initial={checkin}
+            checkin={checkin}
+            answered={checkinAnswered(checkin)}
           />
         </div>
       )}
@@ -133,10 +173,39 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
         <CreditsMeter meter={credits} />
       </div>
 
-      {result.ok ? (
+      {!result.ok ? (
+        <p className="text-body text-ink-2">{result.message}</p>
+      ) : record?.status === "generating" && result.data.items.length === 0 ? (
+        <MonthGenerating monthLabel={monthLabel} />
+      ) : record?.status === "failed" && result.data.items.length === 0 ? (
+        <MonthFailed monthLabel={monthLabel} />
+      ) : view === "calendar" ? (
         <ContentCalendar brandKitId={brandKitId} month={month} model={result.data} />
       ) : (
-        <p className="text-body text-ink-2">{result.message}</p>
+        <>
+          <header className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <h1 className="font-display text-h1 font-medium leading-tight tracking-h1 text-ink">
+                {monthLabel}
+              </h1>
+              <MonthProgress model={result.data} />
+            </div>
+            {/*
+             * ⚠ LE CALENDRIER EST UNE BASCULE SECONDAIRE, pas un onglet de
+             * même poids. Il répond à « quand », qui est une vraie question
+             * une fois par mois ; le flux répond à « est-ce que celui-ci me
+             * ressemble », qui est la question trente fois.
+             */}
+            <ButtonLink
+              href={`/app/content?month=${month}&view=calendar`}
+              variant="secondary"
+              className="text-helper"
+            >
+              Calendar
+            </ButtonLink>
+          </header>
+          <ContentStream model={result.data} tokens={streamTokens} />
+        </>
       )}
     </main>
   );

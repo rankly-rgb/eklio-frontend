@@ -33,19 +33,18 @@ import { budgetErrors, type BudgetError } from "@/lib/compose/budget";
  * zéro constant est la preuve qu'un invalidateur est entré, et c'est le seul
  * symptôme qu'il ait.
  *
- * ── ⚠ SUR L'IDENTIFIANT DE MODÈLE ───────────────────────────────────────
+ * ── SUR L'IDENTIFIANT DE MODÈLE ─────────────────────────────────────────
  *
- * Le chantier nomme `claude-haiku-4-5-20251001`. La référence d'API de cette
- * session donne `claude-haiku-4-5` et dit explicitement de ne jamais suffixer
- * un identifiant par une date. Les deux ne peuvent pas être vrais.
+ * `claude-haiku-4-5-20251001` est l'identifiant Claude API de Haiku 4.5, et il
+ * est DATÉ. Les identifiants non datés (`claude-opus-5`, `claude-sonnet-5`)
+ * valent pour les modèles plus récents ; les deux formes coexistent, selon la
+ * génération.
  *
- * L'identifiant est donc piloté par variable d'environnement, avec le nom du
- * chantier comme défaut — parce que c'est l'instruction reçue — et l'écart est
- * relevé dans IMPLEMENTATION_REPORT.md plutôt que tranché ici. Corriger la
- * valeur est un changement de configuration, pas de code.
+ * Piloté par `CONTENT_COPY_MODEL` pour qu'un changement de modèle soit une
+ * variable et non un déploiement.
  */
 
-/** Le modèle de rédaction de masse. Voir la note ci-dessus. */
+/** Le modèle de rédaction de masse. Identifiant daté, voir la note ci-dessus. */
 export const MASS_COPY_MODEL = process.env.CONTENT_COPY_MODEL ?? "claude-haiku-4-5-20251001";
 
 /**

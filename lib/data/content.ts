@@ -184,6 +184,55 @@ export const contentItemSchema = z.object({
   posted: z.boolean(),
   posted_at: z.string().nullable(),
   channel: z.string().nullable(),
+  /*
+   * ── « Why this one: … » ────────────────────────────────────────────────
+   *
+   * La ligne de justification, RENDUE pour elle. `content_topics` porte un
+   * gabarit avec des substitutions ; ce qui est ici est ce que le gabarit
+   * donne une fois son brief à elle substitué, et ce n'est donc vrai que pour
+   * une personne.
+   *
+   * Null sur tout ce qu'elle a écrit elle-même. « Pas de justification » est
+   * un état réel, et l'écran n'affiche alors pas la ligne — il n'écrit pas
+   * une phrase générique à la place, ce qui serait précisément le contraire
+   * de ce que cette ligne existe pour dire.
+   */
+  rationale: z.string().nullable(),
+  /*
+   * La MISE EN PAGE qu'elle a gardée sur l'écran de relecture.
+   *
+   * ⚠ CE N'EST PAS `archetype`, ET LES DEUX MOTS NE DÉSIGNENT PAS LA MÊME
+   * CHOSE. `archetype` est le FORMAT DU POST (`statement`, `question`,
+   * `notes`…), qui existait avant ce chantier. `compose_archetype` est une
+   * clef de `content_archetypes` (`single_statement`, `cycle`,
+   * `quadrant_model`…), le vocabulaire du moteur de composition. Les deux
+   * jeux sont disjoints, et une sonde de migration vérifie qu'ils le restent.
+   *
+   * `null` est l'état normal : « celle du sujet ». Ce n'est pas « à remplir ».
+   */
+  compose_archetype: z.string().nullable(),
+  /*
+   * Le sujet de la banque dont ce post vient.
+   *
+   * ⚠ `null` EST NORMAL, PAS UNE ERREUR : un post qu'elle a créé elle-même
+   * n'en vient d'aucun, et un post dont le sujet a été retiré de la banque non
+   * plus. L'écran n'affiche alors aucun libellé d'angle, et surtout pas
+   * « Uncategorised ».
+   */
+  topic: z
+    .object({
+      id: z.string(),
+      angle: z.string(),
+      /*
+       * ⚠ LE LIBELLÉ VIENT DE LA BASE (`content_intents`), jamais d'une table
+       * de correspondance en TypeScript. Une seconde copie voudrait dire
+       * qu'une sixième intention arrive à l'écran sans mots.
+       */
+      angle_label: z.string().nullable(),
+      archetype_key: z.string(),
+      timely: z.boolean(),
+    })
+    .nullable(),
 });
 export type ContentItem = z.infer<typeof contentItemSchema>;
 
@@ -282,10 +331,38 @@ const STATUS_BY_CODE: Record<string, number> = {
   invalid_preferences: 400,
   invalid_checkin: 400,
   month_not_ready: 409,
+  /*
+   * ⚠ 409, PAS 500, ET PAS 404 NON PLUS. La banque n'a plus de sujet pour ce
+   * kit : la requête est valide, l'item existe, et l'état du monde refuse. Un
+   * 500 dirait « Eklio est cassé » pour un dimensionnement de banque, et un
+   * 404 dirait que l'item n'existe pas.
+   *
+   * ⚠ ET CE CODE MANQUAIT ICI. `refusal()` retombe sur 500 pour un code
+   * inconnu — délibérément, pour qu'un nouveau refus se remarque. Celui-ci
+   * s'est remarqué.
+   */
+  bank_exhausted: 409,
+  /*
+   * Une mise en page qui n'est pas au catalogue : la cliente a envoyé quelque
+   * chose que le serveur refuse. 400, comme les quatre ci-dessus.
+   */
+  unknown_layout: 400,
 };
 
+/**
+ * Le statut HTTP d'un code de refus, ou 500.
+ *
+ * ⚠ EXPORTÉ POUR QUE LA TABLE SOIT ÉNUMÉRABLE PAR UN TEST. Elle a manqué
+ * `bank_exhausted` — un refus attendu, rendu en 500, donc affiché comme une
+ * panne d'Eklio pour un dimensionnement de banque. Une table qu'aucun test ne
+ * parcourt est une table dont on découvre les trous en production.
+ */
+export function contentStatusForCode(code: string): number {
+  return STATUS_BY_CODE[code] ?? 500;
+}
+
 function refusal(code: string, message: string): ContentResult<never> {
-  return { ok: false, code, message, status: STATUS_BY_CODE[code] ?? 500 };
+  return { ok: false, code, message, status: contentStatusForCode(code) };
 }
 
 /**
@@ -349,6 +426,19 @@ export const contentPatchSchema = z
     tags: z.array(z.string().max(24)).max(8, "Eight tags is the ceiling."),
     category: z.string().max(40).nullable(),
     image_slot: z.enum(CONTENT_IMAGE_SLOTS).nullable(),
+    /*
+     * La mise en page du moteur de composition.
+     *
+     * ⚠ PAS UN `z.enum` DES ONZE CLEFS, ET C'EST DÉLIBÉRÉ. Le catalogue est
+     * `content_archetypes`, en base ; une liste recopiée ici serait une
+     * seconde source, et la douzième mise en page arriverait un jour en base
+     * sans pouvoir être choisie, sans que rien ne le dise. La base répond
+     * `unknown_layout` sur une valeur inconnue — un refus lisible, pas une
+     * 500 — et la clef étrangère est la garantie derrière.
+     *
+     * `null` efface et veut dire « celle du sujet ».
+     */
+    compose_archetype: z.string().max(64).nullable(),
     scheduled_for: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Give a date as YYYY-MM-DD.")
@@ -369,6 +459,27 @@ export async function getContentMonth(
     p_month: month,
   });
   return decode("get_content_month", contentMonthSchema, data, error);
+}
+
+/**
+ * « Pas celui-là. » Tire le sujet suivant de la banque et recopie ce qu'il
+ * porte déjà.
+ *
+ * ⚠ AUCUN MODÈLE N'EST APPELÉ. `content_topics.caption_seed` EST la caption,
+ * `hook` EST la ligne d'image, `payload` EST le diagramme. C'est ce qui rend
+ * Swap instantané, gratuit et déterministe — et donc ce qui lui permet d'être
+ * l'action dominante de l'écran : « celui-ci n'est pas moi » doit être un
+ * geste, pas une décision budgétaire.
+ *
+ * `bank_exhausted` est une réponse, pas une panne : la banque n'a plus rien
+ * d'éligible pour ce segment. L'écran le DIT et ne réessaie pas.
+ */
+export async function swapContentItem(
+  supabase: Client,
+  id: string
+): Promise<ContentResult<ContentItem>> {
+  const { data, error } = await supabase.rpc("swap_content_item", { p_id: id });
+  return decode("swap_content_item", contentItemSchema, data, error);
 }
 
 export async function getContentItem(

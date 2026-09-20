@@ -77,6 +77,11 @@ const DB_REFUSED = [
   /* Les préférences de contenu : `set_content_preferences` appelle
      `content_kit_access` en base, dans le bon ordre. La route ne décide rien. */
   /\bsetContentPreferences\s*\(/,
+  /* Le swap : `swap_content_item` résout le kit de l'item, puis appelle
+     `content_kit_access` — `not_found` avant `payment_required`, comme
+     partout, parce qu'un 402 à une inconnue confirmerait que cet identifiant
+     existe. La route ne décide rien : elle rend le refus. */
+  /\bswapContentItem\s*\(/,
   /* Prendre le mois : `approve_content_month` résout le kit du mois puis
      appelle `content_kit_access`, qui répond `not_found` avant
      `payment_required` — un 402 à un inconnu confirmerait que le mois existe.

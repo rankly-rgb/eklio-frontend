@@ -179,6 +179,16 @@ export const FIXTURE_ITEMS: ContentItem[] = SEEDS.map((seed, index) => ({
   archetype: seed.archetype,
   status: "proposed",
   title: null,
+  /*
+   * ⚠ FIXTURE. Ces deux champs existent ici pour que la forme soit complète,
+   * pas pour montrer ce qu'un vrai sujet produirait : ce jeu de données a été
+   * écrit avant la banque de sujets, et aucun de ces posts n'en vient.
+   * `topic: null` est donc la valeur HONNÊTE — c'est exactement ce que la base
+   * rend pour un post sans sujet.
+   */
+  rationale: null,
+  compose_archetype: null,
+  topic: null,
   caption: seed.caption,
   on_image_text: seed.line,
   /*

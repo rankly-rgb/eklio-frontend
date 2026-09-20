@@ -6,7 +6,11 @@ import { loadImageContext } from "@/lib/images/context";
 import { computeImageFingerprint } from "@/lib/images/fingerprint";
 import { getBrandImages } from "@/lib/images/rpc";
 import { ItemEditor } from "@/components/content/item-editor";
+import { ReviewSurface, type LayoutChoice } from "@/components/content/review-surface";
 import { Breadcrumb } from "@/components/app/breadcrumb";
+import { reviewCardFor } from "@/lib/content/review";
+import { layoutAlternatives } from "@/lib/content/alternatives";
+import { ethicsLineFor, payloadPublishedText } from "@/lib/content/ethics-line";
 
 /*
  * /app/content/[id] — one item, edited in place.
@@ -19,6 +23,21 @@ import { Breadcrumb } from "@/components/app/breadcrumb";
  * current, ready row for the slot this item names, its signed URL is handed to
  * `<PhotoSlot>`; otherwise the same component renders its gradient. Nothing on
  * this page can cause an image to be generated.
+ *
+ * ── CE QUE LA RELECTURE A AJOUTÉ ────────────────────────────────────────
+ *
+ * La carte composée, deux ou trois autres façons de la poser, la ligne
+ * déontologique, et les deux gestes qui comptent — copier la légende,
+ * télécharger l'image. L'éditeur de champs reste, EN DESSOUS : c'était
+ * l'élément le plus visible de l'écran, et ce n'est pas ce qu'elle vient faire.
+ *
+ * ⚠ TOUT CE QUI EST COMPOSÉ ICI L'EST PENDANT CETTE REQUÊTE, PAR LE VRAI
+ * MOTEUR. Aucune image exportée, aucune fixture : si `lib/compose/` refuse une
+ * mise en page, la variante n'apparaît pas, et si elle a dû couper des gloses
+ * pour tenir, la page le dit sous la carte.
+ *
+ * ⚠ ET RIEN ICI NE DÉPENSE. Composer est de l'arithmétique. Aucune
+ * réservation de crédit n'est prise sur cette page ni sur la route PNG.
  */
 export const runtime = "nodejs";
 
@@ -51,6 +70,47 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
 
   const photoUrl = await currentPhotoUrl(supabase, kit, item.image_slot);
 
+  /*
+   * ⚠ LA CARTE D'ABORD, PARCE QUE LE SCAN DÉONTOLOGIQUE EN DÉPEND. Les
+   * libellés du diagramme font partie du texte publié, et ils sont dans le
+   * payload du sujet — que seul `reviewCardFor` est allé chercher. Lancer les
+   * deux ensemble scannerait la légende sans la carte, ce qui est exactement
+   * l'angle mort que la base a fermé.
+   */
+  const card = await reviewCardFor(supabase, item, palette, kit.practiceName);
+
+  const [labels, ethics] = await Promise.all([
+    archetypeLabels(supabase),
+    /*
+     * ⚠ LE DIAGRAMME EST SCANNÉ AUSSI. Un mot posé sur la carte est publié
+     * aussi fort qu'une phrase de légende — c'est l'écart que
+     * `20260920160000_a_diagram_label_is_published_text` a fermé côté base, et
+     * une ligne d'écran qui ne regarderait que la légende dirait « rien à
+     * signaler » d'un texte que la base, elle, regarde.
+     */
+    ethicsLineFor(supabase, [
+      item.title,
+      item.caption,
+      item.on_image_text,
+      item.alt_text,
+      ...(card ? payloadPublishedText(card.payload) : []),
+    ]),
+  ]);
+
+  const layouts: LayoutChoice[] = card
+    ? layoutAlternatives({
+        archetypeKey: card.archetypeKey,
+        payload: card.payload,
+        palette: card.palette,
+        eyebrow: card.eyebrow,
+        headline: card.headline,
+        footer: card.footer,
+      }).map((alternative) => ({
+        ...alternative,
+        label: labels[alternative.archetypeKey] ?? alternative.archetypeKey.replace(/_/g, " "),
+      }))
+    : [];
+
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-6 max-md:px-[var(--gutter-sm)]">
       <Breadcrumb
@@ -64,7 +124,25 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
         {item.title ?? "Untitled"}
       </h1>
 
-      <ItemEditor item={item} tokens={tokens} photoUrl={photoUrl} />
+      <ReviewSurface
+        itemId={item.id}
+        caption={item.caption}
+        rationale={item.rationale}
+        angleLabel={item.topic?.angle_label ?? null}
+        ethics={ethics}
+        layouts={layouts}
+        chosen={item.compose_archetype}
+      />
+
+      {/*
+       * ⚠ L'ÉDITEUR RESTE, ET IL PASSE DESSOUS. Il porte encore la seule façon
+       * de corriger un mot, de dater un post, de cocher « I posted this » et
+       * d'alimenter le journal de publication. Ce qui change est son rang :
+       * il était le premier élément de l'écran, il est maintenant le second.
+       */}
+      <div className="mt-10 border-t border-line pt-8">
+        <ItemEditor item={item} tokens={tokens} photoUrl={photoUrl} />
+      </div>
     </main>
   );
 }
@@ -95,4 +173,20 @@ async function currentPhotoUrl(
     .from("brand-assets")
     .createSignedUrl(row.storage_path, SIGNED_URL_TTL_SECONDS);
   return signed.data?.signedUrl ?? null;
+}
+
+/**
+ * Les libellés des mises en page, DEPUIS LA BASE.
+ *
+ * ⚠ PAS UNE TABLE DE CORRESPONDANCE EN TYPESCRIPT. `content_archetypes.label`
+ * est le catalogue ; une seconde copie ici voudrait dire qu'une douzième mise
+ * en page arrive à l'écran sans mots. Le repli sur la clef déguisée en mots
+ * couvre le cas où la lecture échoue, et il est visiblement moins bon — ce qui
+ * est le bon comportement pour un repli.
+ */
+async function archetypeLabels(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<Record<string, string>> {
+  const { data } = await supabase.from("content_archetypes").select("id, label");
+  return Object.fromEntries((data ?? []).map((row) => [row.id, row.label]));
 }
