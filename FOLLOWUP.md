@@ -169,3 +169,66 @@ La table qui existe n'est donc pas celle que la décision demande de supprimer :
 décrit un autre modèle, sur un autre chemin, et elle y est juste. **Ce qu'il faut
 faire** : rien, tant que `lib/images/` reste sur `gpt-image-1`. Le jour où il migre vers
 un modèle facturé au token, la table devient un mensonge et doit partir avec lui.
+
+---
+
+## F6 — Le chemin visuel custom n'est importé par aucun écran
+
+**Rencontré en** déboguant `/app/content` (`CONTENT_BUG_REPORT.md` §1.2).
+
+```
+$ grep -rln "lib/content/images" app lib components | grep -v __tests__
+lib/content/images/generate.ts
+lib/content/images/fixture-client.ts
+lib/content/images/client.ts
+```
+
+Le répertoire ne s'importe que lui-même. La bibliothèque est écrite, testée
+(26 tests) et **injoignable** : aucune route, aucun composant, aucun script ne
+l'appelle. C'est cohérent avec `IMPLEMENTATION_REPORT.md` §7.1, qui l'annonce
+comme non câblée — mais ça veut dire que **les quatre variables d'environnement
+d'image ne servent à rien tant que rien ne l'appelle**, et que la ligne 2 de
+l'estimation de coût (§10.7) porte sur un chemin que personne n'emprunte.
+
+**Ce qu'il faut faire** : le câbler à l'écran de relecture (un bouton « make me
+an image for this »), ou l'assumer comme livré-en-avance. Hors périmètre du
+débogage.
+
+---
+
+## F7 — `content_pipeline_enabled` n'existe pas, et le brief le suppose
+
+**Rencontré en** PHASE 1 du débogage. **Clause d'arrêt appliquée.**
+
+Le brief de débogage dit « le pipeline est livré derrière
+`content_pipeline_enabled` à `false` ». Ce réglage n'existe ni en base
+(`app_settings` porte 19 clefs, aucune approchante) ni dans le code des deux
+dépôts.
+
+Le vrai mécanisme est **double** : `CONTENT_GENERATION_ARMED` non posée, **et**
+aucune entrée `vercel.json` pour `/api/cron/content-month`. Voir
+`lib/content/generate/armed.ts`, qui explique pourquoi il y a deux verrous.
+
+**Ce qu'il faut faire** : rien au code. Mais quiconque cherchera
+`content_pipeline_enabled` pour activer la génération ne trouvera rien, et
+conclura peut-être qu'il manque une migration. Les deux verrous sont nommés
+ici pour que la prochaine recherche tombe sur la bonne réponse.
+
+---
+
+## F8 — Le repli des libellés d'archétype est plus visible qu'il n'y paraît
+
+**Rencontré en** PHASE 2.2.
+
+`archetypeLabels()` lit `content_archetypes`. Table absente en production →
+repli sur la clef déguisée en mots : `single_statement` devient
+« single statement » au lieu de « A single statement ».
+
+C'est délibérément moins bon qu'un libellé — c'est le bon comportement pour un
+repli — et c'est maintenant journalisé. Mais sur l'écran de relecture, les
+vignettes de variantes portent ces mots, et une praticienne n'a aucun moyen de
+savoir qu'elle lit un repli.
+
+**Ce qu'il faut faire** : rien tant que les migrations ne sont pas appliquées —
+le repli disparaît avec elles. Noté pour que « pourquoi les libellés sont
+moches » ait déjà sa réponse.
