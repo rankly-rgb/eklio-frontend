@@ -10,7 +10,9 @@ import {
   getContentPreferences,
   getContentRegisters,
 } from "@/lib/data/content";
+import { getCreditMeter } from "@/lib/billing/credits";
 import { ContentCalendar } from "@/components/content/content-calendar";
+import { CreditsMeter } from "@/components/content/credits-meter";
 import { CheckInCard } from "@/components/content/check-in-card";
 import { PreferencesForm } from "@/components/content/preferences-form";
 import { MonoLabel } from "@/components/ui/mono-label";
@@ -63,11 +65,22 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
   const raw = Array.isArray(requested) ? requested[0] : requested;
   const month = raw && /^\d{4}-\d{2}-01$/.test(raw) ? raw : contentMonthKey(new Date());
 
-  const [result, checkin, preferences, registers] = await Promise.all([
+  const [result, checkin, preferences, registers, credits] = await Promise.all([
     getContentMonth(supabase, brandKitId, month),
     getContentCheckin(supabase, brandKitId, month),
     getContentPreferences(supabase, brandKitId),
     getContentRegisters(supabase),
+    /*
+     * ⚠ LE COMPTEUR EST LU ICI, PAS DANS LE COMPOSANT. `credit_meter()` est
+     * scopée `auth.uid()` et demande le client de session ; un composant
+     * client qui l'appellerait ferait un second aller-retour pour un chiffre
+     * que cette page a déjà le droit de lire.
+     *
+     * Et il ne décide de rien : dépenser passe par `reserve_credit`, en base,
+     * qui ne lit pas ceci. Un compteur faux ne peut donc pas ouvrir une
+     * dépense — au pire il affiche mal.
+     */
+    getCreditMeter(supabase, month),
   ]);
 
   /*
@@ -108,6 +121,17 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
           />
         </div>
       )}
+
+      {/*
+       * ⚠ DISCRET, ET SOUS LE RESTE. Le compteur est visible et n'est jamais
+       * l'élément le plus fort de l'écran : swaps illimités, régénérations et
+       * visuels custom finis. Il disparaît entièrement quand il n'a rien à
+       * dire — un essai sans visuel custom ne voit pas « 0 a month », qui est
+       * un mur là où il n'y avait pas de porte.
+       */}
+      <div className="mb-6 max-w-[720px]">
+        <CreditsMeter meter={credits} />
+      </div>
 
       {result.ok ? (
         <ContentCalendar brandKitId={brandKitId} month={month} model={result.data} />
