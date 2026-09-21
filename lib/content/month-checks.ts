@@ -132,6 +132,40 @@ export function checkDuplicateTitles(titles: string[]): Finding[] {
 
 /* ── 3. Le mot suspendu ──────────────────────────────────────────────── */
 
+/**
+ * Les mots outils sur lesquels AUCUNE ligne ne peut finir.
+ *
+ * ── ⚠ DEUX LISTES, PARCE QU'IL Y A DEUX TRAVAUX ────────────────────────
+ *
+ * `DANGLING`, importée de la consigne, est faite pour un TITRE : elle
+ * comprend les pronoms, les auxiliaires et les négations, parce qu'un titre
+ * qui finit sur « you get » ou « doesn't » attend visiblement la suite.
+ *
+ * Appliquée aux champs d'un payload, elle refuse des gloses parfaitement
+ * finies. Mesuré sur un vrai mois, seize refus d'un coup : « your body says
+ * no », « before you know why », « You misread it », « what happened and what
+ * didn't ». Ce sont des fragments, et un fragment est ce qu'une glose EST.
+ *
+ * Le cahier des charges nomme précisément les catégories : article,
+ * préposition, conjonction, relatif. Celle-ci s'y tient — et rien d'autre.
+ *
+ * ⚠ `that` N'Y EST PAS. Il n'est relatif qu'au MILIEU d'une proposition ;
+ * en dernier mot il est démonstratif, et « After that » est fini.
+ */
+const DANGLING_IN_FIELD = new Set([
+  // articles
+  "a", "an", "the",
+  // prépositions
+  "of", "in", "on", "at", "to", "for", "with", "from", "by", "into", "onto",
+  "about", "over", "under", "between", "through", "during", "before", "after",
+  "against", "toward", "towards", "upon", "within", "without",
+  // conjonctions
+  "and", "or", "but", "nor", "so", "yet", "because", "although", "though",
+  "while", "whereas", "unless", "until",
+  // relatifs
+  "which", "who", "whom", "whose",
+]);
+
 const lastWord = (text: string) => {
   const words = text.trim().split(/\s+/);
   return (words[words.length - 1] ?? "").toLowerCase().replace(/[^a-z']/g, "");
@@ -146,13 +180,18 @@ const lastWord = (text: string) => {
  * coupée, le modèle avait écrit une phrase inachevée, et elle est sortie telle
  * quelle.
  */
-export function checkDangling(lines: Array<{ where: string; text: string }>): Finding[] {
+export function checkDangling(
+  lines: Array<{ where: string; text: string }>,
+  /** `"line"` pour un titre, `"field"` pour un libellé ou une glose. */
+  kind: "line" | "field" = "line"
+): Finding[] {
+  const list = kind === "line" ? DANGLING : DANGLING_IN_FIELD;
   const out: Finding[] = [];
   for (const { where, text } of lines) {
     const word = lastWord(text);
     // Un seul mot n'est pas une phrase suspendue : c'est une étiquette.
     if (text.trim().split(/\s+/).length < 2) continue;
-    if (DANGLING.has(word)) {
+    if (list.has(word)) {
       out.push({ check: "text.dangling", detail: `${where} se termine sur « ${word} » : « ${text} »` });
     }
   }
@@ -293,11 +332,12 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
 
   for (const post of month.posts) {
     const where = `« ${post.cardLine || post.title} »`;
+    out.push(...checkDangling([{ where: `${where} — ligne de carte`, text: post.cardLine || post.title }], "line"));
     out.push(
-      ...checkDangling([
-        { where: `${where} — ligne de carte`, text: post.cardLine || post.title },
-        ...stringsIn(post.payload).map((s) => ({ where: `${where} — ${s.where}`, text: s.text })),
-      ])
+      ...checkDangling(
+        stringsIn(post.payload).map((s) => ({ where: `${where} — ${s.where}`, text: s.text })),
+        "field"
+      )
     );
     out.push(...checkEcho(post.cardLine, post.title, post.payload));
     if (post.svg) out.push(...checkTints(post.svg, month.direction));

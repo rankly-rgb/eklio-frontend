@@ -60,7 +60,14 @@ const ZERO = (): { input: number; output: number; cacheRead: number; cacheWrite:
  * par la banque et par le plafond de dépense. Mesuré : il faut environ 1,2
  * essai par post écrit.
  */
-const CANDIDATES = 44;
+/*
+ * ⚠ ASSEZ POUR QUE LA RÉSERVE EXISTE VRAIMENT. À 44, le rendement réel
+ * (~75 % des candidats donnent un post utilisable) laissait 33 utilisables
+ * pour 30 voulus : le sélecteur trouvait un banc VIDE et ne pouvait échanger
+ * aucun post refusé. Un mois refusé sans remplaçant n'est pas une correction,
+ * c'est un abandon.
+ */
+const CANDIDATES = 54;
 
 /*
  * ── LE MÉLANGE DU MOIS ──────────────────────────────────────────────────

@@ -87,6 +87,47 @@ describe("les défauts de la seconde notation sont rejetés", () => {
     expect(checkDangling([{ where: "l", text: "Your nervous system doesn't" }])).toHaveLength(1);
   });
 
+  /*
+   * ── ⚠ UNE GLOSE N'EST PAS UN TITRE, ET LE CONTRÔLE L'A OUBLIÉ UNE FOIS ─
+   *
+   * La première version appliquait aux champs du payload la liste faite pour
+   * les titres — pronoms, auxiliaires, négations compris. Sur un vrai mois,
+   * **seize refus d'un coup**, tous sur des gloses parfaitement finies. Un
+   * fragment est ce qu'une glose EST.
+   *
+   * Le cahier des charges nomme les catégories : article, préposition,
+   * conjonction, relatif. Les six lignes ci-dessous sont celles que le
+   * contrôle avait refusées à tort, reprises telles quelles.
+   */
+  it.each([
+    "your body says no",
+    "before you know why",
+    "You misread it",
+    "what happened and what didn't",
+    "still braced for it",
+    "After that",
+  ])("une glose finie passe : « %s »", (text) => {
+    expect(checkDangling([{ where: "payload.x.gloss", text }], "field")).toEqual([]);
+  });
+
+  it.each([
+    "the body learns to",
+    "what it costs and",
+    "the weeks that follow the",
+    "a shape you notice which",
+  ])("une glose vraiment suspendue est vue : « %s »", (text) => {
+    expect(checkDangling([{ where: "payload.x.gloss", text }], "field")).toHaveLength(1);
+  });
+
+  /*
+   * ⚠ ET LA LISTE DES TITRES RESTE LARGE. Sans ce cas, « adoucir » le contrôle
+   * des champs pourrait se faire en adoucissant les deux.
+   */
+  it("un titre, lui, ne peut pas finir sur un pronom ni un auxiliaire", () => {
+    expect(checkDangling([{ where: "ligne", text: "You misread it" }], "line")).toHaveLength(1);
+    expect(checkDangling([{ where: "ligne", text: "Your nervous system doesn't" }], "line")).toHaveLength(1);
+  });
+
   it("une ligne finie passe", () => {
     expect(checkDangling([{ where: "l", text: "When life interrupts" }])).toEqual([]);
     expect(checkDangling([{ where: "l", text: "Rest is not a reward" }])).toEqual([]);
