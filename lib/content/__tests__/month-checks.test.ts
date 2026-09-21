@@ -112,15 +112,27 @@ describe("les défauts de la seconde notation sont rejetés", () => {
     "Mind moved on",
     "the week after",
     "what it is about",
+    // ⚠ Troisième tour : l'anglais strande ses prépositions.
+    "information to work with",
+    "where it comes from",
+    "what she is good at",
+    "what it turns into",
   ])("une glose finie passe : « %s »", (text) => {
     expect(checkDangling([{ where: "payload.x.gloss", text }], "field")).toEqual([]);
   });
 
+  /*
+   * ⚠ CE QUI RESTE ATTRAPÉ APRÈS TROIS RESSERREMENTS. La liste a beaucoup
+   * maigri ; ces quatre-là disent ce qu'elle tient encore, et sans eux rien
+   * n'empêcherait de la vider tout à fait.
+   */
   it.each([
     "the body learns to",
     "what it costs and",
     "the weeks that follow the",
     "a shape you notice which",
+    "it costs more than",
+    "the sort of",
   ])("une glose vraiment suspendue est vue : « %s »", (text) => {
     expect(checkDangling([{ where: "payload.x.gloss", text }], "field")).toHaveLength(1);
   });

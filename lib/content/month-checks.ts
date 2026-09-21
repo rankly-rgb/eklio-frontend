@@ -153,29 +153,23 @@ export function checkDuplicateTitles(titles: string[]): Finding[] {
  * en dernier mot il est démonstratif, et « After that » est fini.
  */
 const DANGLING_IN_FIELD = new Set([
-  // articles — toujours faux en dernier mot
+  // articles — aucun emploi ne les met en fin de phrase
   "a", "an", "the",
   /*
-   * prépositions qui ne servent PAS de particule verbale.
+   * ⚠ PRESQUE PLUS AUCUNE PRÉPOSITION, ET C'EST L'ANGLAIS QUI L'IMPOSE.
    *
-   * ⚠ « on », « in », « up », « out », « off », « over », « by », « after »,
-   * « about » ont été RETIRÉS, chacun après un faux positif mesuré. Ce sont
-   * des particules autant que des prépositions : « Mind moved on » est fini,
-   * « the week after » est fini, « what it's about » est fini. Une liste plate
-   * ne sait pas distinguer l'emploi, donc elle ne garde que les mots dont
-   * AUCUN emploi ne termine une phrase.
+   * Trois tours de faux positifs ont fini par dire la même chose : l'anglais
+   * STRANDE ses prépositions. « information to work with », « where it comes
+   * from », « what she's good at », « what it turns into » sont tous finis, et
+   * chacun a été refusé à tort par une version de cette liste.
+   *
+   * Ne restent que celles qui ne strandent pas : `of`, `to` (marqueur
+   * d'infinitif — « the body learns to » est vraiment coupé) et `than`.
    */
-  "of", "at", "from", "with", "into", "onto", "during", "between", "among",
-  "against", "toward", "towards", "upon", "within", "without", "than", "to",
-  // conjonctions de subordination et de coordination sans emploi adverbial
+  "of", "to", "than",
+  // conjonctions sans emploi adverbial
   "and", "or", "but", "nor", "because", "although", "though", "unless",
   "until", "whereas",
-  /*
-   * ⚠ « so », « yet » et « while » ne sont PAS ici. Ils sont aussi adverbes
-   * ou noms : « not caught up to yet » est fini, « even so » est fini, « a
-   * while » est un nom. Mesuré sur un vrai mois : deux refus sur trois
-   * portaient sur « yet » et « on ».
-   */
   // relatifs
   "which", "who", "whom", "whose",
 ]);

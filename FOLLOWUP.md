@@ -550,6 +550,25 @@ Pour mémoire, la banque du bac à sable a demandé **cinq remplissages pour
 atteindre 295 sujets tirables** sur deux segments, et elle s'est vidée à
 chaque mois généré : douze mois réels l'ont traversée en une journée.
 
+### ⚠ Le stock se dimensionne PAR ARCHÉTYPE, pas en total
+
+Trouvé en regardant une banque qui se vide. `PER_SEGMENT` vise 16
+`single_statement` pour 4 de chaque diagramme — un rapport de 4 pour 1, qui
+correspond au mélange souhaité d'un mois. Mais les diagrammes s'épuisent
+QUATRE FOIS PLUS VITE, et à mesure que la banque se vide, le tirage ne trouve
+plus que des phrases seules.
+
+Mesuré le 2026-09-21 sur le douzième mois de la journée : la banque ne portait
+plus que des `single_statement` tirables, le mois est sorti à **46,7 % de
+phrases seules (14 sur 30)**, et `checkMonth` l'a refusé — correctement, pour
+`mix.dominant` et `mix.loneSentence` à la fois.
+
+**Conséquence** : le seuil d'alerte doit être posé par archétype, et les
+cibles de remplissage inversées par rapport à l'intuition — il faut PLUS de
+diagrammes que de phrases seules en stock, pas moins, parce qu'un mois sain en
+consomme plus. Un total sain qui cache un archétype à zéro produit un mois
+refusé.
+
 **Seuil d'alerte** : quand le stock TIRABLE d'un segment — les sujets ni
 assignés, ni bloqués par la fenêtre — descend sous `N × 90`, soit le tiers de
 la cible, il reste de quoi servir un mois par praticienne et plus aucune marge
@@ -557,17 +576,24 @@ pour les refus. C'est là qu'un remplissage doit partir, pas quand la banque
 est vide : un mois généré sur une banque à sec sort court, et **rien dans le
 produit ne le signale aujourd'hui** à l'abonnée.
 
-La requête qui le mesure :
+La requête qui le mesure — **par archétype**, sinon elle rassure à tort :
 
 ```sql
-select s.id, s.modality_id, s.persona_id, count(t.id) as tirables
+select s.id, s.modality_id, s.persona_id, t.archetype_key, count(t.id) as tirables
   from public.content_segments s
   join public.content_topics t on t.segment_id = s.id
  where t.ethics_reviewed_at is not null
    and (t.expires_at is null or t.expires_at > now())
    and not exists (select 1 from public.topic_assignments a where a.topic_id = t.id)
- group by 1, 2, 3;
+ group by 1, 2, 3, 4
+ order by 5 asc;
 ```
+
+⚠ **Et la banque du bac à sable est à SEC au moment où ceci est écrit** : 1
+sujet tirable sur les 499 générés en cinq remplissages, consommés par douze
+mois réels en une journée. Ce n'est pas une anomalie de test — c'est le débit
+réel d'une seule praticienne fictive multiplié par douze, et il dit ce que
+coûte un segment vivant.
 
 
 3. ce que le produit RÉPOND quand la banque est vide. Aujourd'hui le tirage

@@ -62,5 +62,41 @@
     "moisFinal": 0.0857,
     "banqueDeSujets": 0.71744,
     "note": "la génération de kit n est inscrite dans aucun ledger — voir FOLLOWUP F14"
+  },
+  "regenerationAttempts": {
+    "note": "Trois tentatives de régénération sous la barrière ; les trois REFUSÉES par `checkMonth`, jamais livrées.",
+    "sable.wynford": {
+      "refused": true,
+      "why": [
+        "titles.duplicate ×2",
+        "text.dangling ×16 (faux positifs : liste de titres appliquée aux gloses)"
+      ],
+      "bench": 0
+    },
+    "corin.aldhelm": {
+      "refused": true,
+      "why": [
+        "titles.duplicate",
+        "text.echo",
+        "text.dangling ×3 (dont « yet » adverbe et « on » particule)"
+      ],
+      "bench": 0
+    },
+    "devon.marrable": {
+      "refused": true,
+      "why": [
+        "mix.dominant : single_statement à 46,7 % (14/30)",
+        "mix.loneSentence à 46,7 %",
+        "text.dangling « Processing is »"
+      ],
+      "bench": 0,
+      "cause": "banque à sec : plus aucun diagramme tirable"
+    },
+    "conclusion": "La banque était vide (1 sujet sur 499). La reconstituer coûtait ~0,70 $ et aurait franchi le plafond de 1,50 $ du tour ; la régénération s'arrête donc là, et la planche de ce dossier reste celle du mois validé à l'œil."
+  },
+  "board": {
+    "posts": 30,
+    "filesRendered": 39,
+    "note": "39 fichiers pour 30 posts : deux carrousels rendus volet par volet."
   }
 }
