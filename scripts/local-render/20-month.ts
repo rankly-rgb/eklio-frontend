@@ -41,7 +41,10 @@ import { deriveThemes } from "../../lib/content/generate/themes";
 import { composeWithFallback } from "../../lib/compose/fallback";
 import { cardPalette } from "../../lib/compose/palette";
 import { checkEthics } from "../../lib/ethics/rules";
+import { checkinLeaks } from "../../lib/content/leakage";
+import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
+import { redundantAgainst } from "../../lib/content/dedup";
 import { admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD } from "./lib";
 
 const WANTED = 30;
@@ -141,12 +144,18 @@ async function main() {
     .eq("brand_kit_id", kitId).eq("month", MONTH).maybeSingle();
   const { data: rules } = await db.from("ethics_rules").select("*");
   const { data: brief } = await db
-    .from("project_briefs").select("practice_name, positioning, usp_statement").limit(1).single();
+    .from("project_briefs").select("practice_name, positioning, usp_statement, city, state").limit(1).single();
   if (!preferences || !rules?.length || !brief) throw new Error("the account is not complete");
 
   const directions = (kit?.directions ?? []) as Array<{ id: string; palette: never }>;
   const direction = directions.find((d) => d.id === kit?.selected_direction_id) ?? directions[0];
   const practiceName = brief.practice_name ?? "the practice";
+  /*
+   * La ville et l'État viennent du brief, pas du bilan — mais ils fuitaient
+   * sur les cartes de la même façon (« Oakland, California » en libellé de
+   * diagramme), et c'est le même contrôle qui les arrête.
+   */
+  const briefLocation = [brief.city, brief.state].filter(Boolean).join(", ") || null;
 
   const voice = (() => {
     const guide = kit?.voice_guide as { tone?: string; sounds_like?: string[] } | null;
@@ -171,6 +180,34 @@ async function main() {
   const candidates: Candidate[] = [];
   const drawnIds: string[] = [];
   const shortfall: string[] = [];
+  /*
+   * ── ⚠ LE DOUBLON SE REFUSE AU TIRAGE, ET SON SUJET EST RELÂCHÉ ────────
+   *
+   * Le mois du 2026-09-21b portait six paires de titres de même sens — « Life
+   * rewrote itself » et « When life rewrites itself », trois variantes de
+   * « competence masks ». Chacun passait tous les contrôles, parce qu'aucun ne
+   * regardait les AUTRES titres du mois.
+   *
+   * Refuser à l'écriture arriverait trop tard : le sujet est déjà marqué
+   * assigné et sort de la banque pour 90 jours. Il est donc écarté ICI, et son
+   * assignation part dans `released` avec les sujets sur-générés non utilisés
+   * — la règle du cahier des charges, « les sujets non utilisés ne sont pas
+   * marqués assignés », vaut aussi pour ceux-là.
+   */
+  const rejected: Array<{ title: string; because: string }> = [];
+  const releasedEarly: string[] = [];
+
+  const accept = (topic: Topic, family: string): boolean => {
+    const clash = redundantAgainst(topic.title, candidates.map((c) => c.topic.title));
+    if (clash) {
+      rejected.push({ title: topic.title, because: clash });
+      releasedEarly.push(topic.id);
+      return false;
+    }
+    candidates.push({ topic, family, reservationId: null, result: null, usage: ZERO() });
+    drawnIds.push(topic.id);
+    return true;
+  };
 
   for (const [family, archetypes] of Object.entries(FAMILIES)) {
     let taken = 0;
@@ -186,9 +223,7 @@ async function main() {
         const { data: topic } = await db
           .from("content_topics").select("id, archetype_key, intent, title, hook").eq("id", topicId).single();
         if (!topic) break;
-        drawnIds.push(topic.id);
-        candidates.push({ topic: topic as Topic, family, reservationId: null, result: null, usage: ZERO() });
-        taken += 1;
+        if (accept(topic as Topic, family)) taken += 1;
       }
       if (taken >= perFamily) break;
     }
@@ -221,8 +256,7 @@ async function main() {
     if (!topic) break;
     const family =
       Object.entries(FAMILIES).find(([, keys]) => keys.includes(topic.archetype_key))?.[0] ?? "varied";
-    drawnIds.push(topic.id);
-    candidates.push({ topic: topic as Topic, family, reservationId: null, result: null, usage: ZERO() });
+    accept(topic as Topic, family);
   }
 
   /*
@@ -450,6 +484,7 @@ async function main() {
   const dates = scheduleDates(MONTH.slice(0, 7), [1, 2, 3, 4, 5, 6, 7], WANTED);
   const fallbacks: Array<{ topic: string; from: string; to: string; steps: string }> = [];
   const ethicsFlags: Array<{ topic: string; rule: string; excerpt: string }> = [];
+  const checkinLeakFlags: Array<{ topic: string; quoted: string[] }> = [];
   let written = 0;
   let previousArchetype: Parameters<typeof chooseArchetype>[1] = null;
 
@@ -459,10 +494,29 @@ async function main() {
     const layout = chooseArchetype(register, previousArchetype);
     previousArchetype = layout;
 
-    const cardLine = (result.cardLine ?? candidate.topic.title).slice(0, 34);
+    // ⚠ La majuscule est posée ici comme elle l'est sur l'écran de relecture :
+    // par `capitaliseTitle`, qui ne touche pas à un mot portant déjà une
+    // capitale. Les titres du mois précédent sortaient tout en minuscules.
+    const cardLine = capitaliseTitle((result.cardLine ?? candidate.topic.title).slice(0, 34));
     const scanned = [result.caption, result.altText, JSON.stringify(result.payload)].join("\n");
     for (const violation of checkEthics(scanned).violations) {
       ethicsFlags.push({ topic: candidate.topic.title, rule: violation.ruleId, excerpt: violation.excerpt.slice(0, 80) });
+    }
+
+    /*
+     * ⚠ CE QUE LE BILAN A DIT NE SE RECOPIE PAS SUR LA CARTE. « Oakland,
+     * California » et « Evening slots opening October » sont sortis comme
+     * libellés de diagramme le mois dernier : le bilan oriente le CHOIX des
+     * sujets, il n'est pas du contenu de carte. Seule `practitioner_card` a le
+     * droit de le citer, et `checkinLeaks` la nomme.
+     */
+    const leaks = checkinLeaks(candidate.topic.archetype_key, JSON.stringify(result.payload), {
+      sessionsTheme: checkin?.sessions_theme,
+      happening: checkin?.happening,
+      location: briefLocation,
+    });
+    if (leaks.length > 0) {
+      checkinLeakFlags.push({ topic: candidate.topic.title, quoted: leaks });
     }
 
     /*
@@ -477,7 +531,18 @@ async function main() {
         archetype: candidate.topic.archetype_key,
         payload: result.payload,
         palette: cardPalette(`${monthRow.id}-${index}`, direction.palette, false),
-        eyebrow: (themes.themes[index % themes.themes.length] ?? practiceName).toUpperCase(),
+        /*
+         * ⚠ LE THÈME EN CAPITALES N'EST PAS UN SURTITRE, ET C'ÉTAIT ÇA LA
+         * LIGNE. Un thème dérivé est une PHRASE : les dix cartes d'un même
+         * thème portaient les mêmes quatorze mots dans la bande mono. C'est
+         * maintenant la règle partagée avec l'écran de relecture — une
+         * étiquette d'un à quatre mots, tirée d'abord de ce qui est propre à
+         * cette carte.
+         */
+        eyebrow: eyebrowFor(
+          { angleLabel: candidate.topic.intent, title: cardLine, theme: themes.themes[index % themes.themes.length] },
+          practiceName
+        ),
         headline: cardLine,
         footer: practiceName,
       }, cardLine);
@@ -529,7 +594,14 @@ async function main() {
    * des jetons chez le fournisseur et ne doit rien à la praticienne.
    */
   const keptTopicIds = new Set(succeeded.map((c) => c.topic.id));
-  const released = drawnIds.filter((id) => !keptTopicIds.has(id));
+  /*
+   * ⚠ LES DOUBLONS ÉCARTÉS AU TIRAGE SONT RELÂCHÉS AVEC LE RESTE. Ils ne sont
+   * jamais entrés dans `drawnIds` — `accept` les refuse avant — mais
+   * `assign_topic_to_kit` les a bel et bien marqués assignés avant qu'on
+   * lise leur titre. Sans cette ligne, chaque doublon refusé retirerait un
+   * sujet de la banque pour 90 jours en échange de rien.
+   */
+  const released = [...releasedEarly, ...drawnIds.filter((id) => !keptTopicIds.has(id))];
   if (released.length > 0) {
     await untypedTable(db, "topic_assignments").delete().eq("brand_kit_id", kitId).in("topic_id", released);
   }
@@ -563,6 +635,7 @@ async function main() {
     failures,
     ethicsFlags,
     releasedTopics: released.length,
+    rejectedAsRedundant: rejected,
     themes: { source: themes.source, themes: themes.themes },
     usage, repairUsage,
     costUsd: Number(costUsd.toFixed(5)),

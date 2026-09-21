@@ -9,9 +9,19 @@
 --
 -- Tout le reste du compte — projet, brief, segments, préférences, check-in,
 -- kit, mois — passe par les tables et les RPC du produit.
+--
+-- ── ⚠ L'ADRESSE EST UN PARAMÈTRE, ET ELLE ÉTAIT EN DUR ──────────────────
+--
+-- Chaque preuve demande un compte NEUF — c'est la seule façon de montrer
+-- qu'un mois se génère de bout en bout plutôt que de se rattraper sur un
+-- compte déjà tiède. Avec une adresse en dur, « créer un second compte
+-- identique » voulait dire éditer ce fichier, donc changer le script entre
+-- deux preuves, donc ne plus comparer la même chose.
+--
+--   psql -v email="'quelquun@eklio-test.invalid'" -f 00-account.sql
 
 insert into auth.users (email)
-     values ('rowan.mercier@eklio-test.invalid')
+     values (:'email')
 on conflict do nothing;
 
 insert into public.comp_grants (user_id, reason, granted_by, generation_credits, expires_at)
@@ -21,11 +31,11 @@ select u.id,
        200,
        now() + interval '30 days'
   from auth.users u
- where u.email = 'rowan.mercier@eklio-test.invalid'
+ where u.email = :'email'
    and not exists (select 1 from public.comp_grants g where g.user_id = u.id and g.revoked_at is null);
 
 select p.id as profile_id, p.email from public.profiles p
- where p.email = 'rowan.mercier@eklio-test.invalid';
+ where p.email = :'email';
 
 -- ── ⚠ LA PORTE DE QUALIFICATION, OUVERTE EN LOCAL ET SEULEMENT LÀ ───────
 --

@@ -46,6 +46,27 @@ import { admin, anthropicKeyOrDie, untypedTable, SESSION_CAP_USD } from "./lib";
  * première avait pris. La contention entre consœurs est réelle, elle est ce
  * que la fenêtre de 90 jours existe pour produire, et elle se paie en stock.
  */
+/**
+ * De combien multiplier les cibles ci-dessous — `--scale 2` double la banque.
+ *
+ * ⚠ SANS ÇA, LA SIXIÈME PRATICIENNE D'UN SEGMENT N'A PAS DE MOIS. Les cibles
+ * sont des NOMBRES DE SUJETS EXISTANTS, pas de sujets disponibles : une fois
+ * atteintes, le script répond « the bank is already at target » et s'arrête,
+ * même quand l'anti-collision a rendu tout le stock indisponible pour le
+ * prochain kit. C'est exactement ce qui est arrivé au sixième compte de test —
+ * 118 sujets en banque, 2 tirables.
+ *
+ * Ce n'est pas un artefact du bac à sable : cinq consœurs EMDR en Californie,
+ * c'est le cas que la fenêtre de 90 jours existe pour produire, et il se paie
+ * en stock. Le paramètre rend ce coût explicite au lieu de le laisser
+ * apparaître comme une pénurie inexpliquée au tirage.
+ */
+const SCALE = (() => {
+  const i = process.argv.indexOf("--scale");
+  const n = i === -1 ? 1 : Number(process.argv[i + 1]);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+})();
+
 const PER_SEGMENT: Array<[string, number]> = [
   // une phrase : 15
   ["single_statement", 16],
@@ -173,8 +194,9 @@ async function main() {
     const modality = modalities?.find((m) => m.id === seg.modality_id);
     const persona = personas?.find((p) => p.id === seg.persona_id);
     let angle = 0;
-    for (const [archetype, count] of PER_SEGMENT) {
+    for (const [archetype, target] of PER_SEGMENT) {
       const already = heldCount.get(`${seg.id}|${archetype}`) ?? 0;
+      const count = Math.ceil(target * SCALE);
       for (let i = already; i < count; i += 1) {
         const intent = INTENTS[angle % INTENTS.length];
         const customId = `${seg.persona_id}-${archetype}-${i}-${Date.now().toString(36)}`;

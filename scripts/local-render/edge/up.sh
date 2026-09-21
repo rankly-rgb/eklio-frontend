@@ -58,6 +58,24 @@ CONF
 
 ( cd "$WORK" && nohup ./postgrest postgrest.conf > postgrest.log 2>&1 & )
 sleep 5
+# ── ⚠ `pg` EST UNE DÉPENDANCE DU HARNAIS, PAS DU PRODUIT ───────────────
+#
+# La passerelle parle à PostgreSQL en direct pour signer un JWT contre une
+# ligne d'`auth.users` — c'est la moitié GoTrue du double. Le produit, lui,
+# ne parle jamais à Postgres autrement que par PostgREST : mettre `pg` dans
+# les dépendances de `package.json` ajouterait au bundle de production un
+# pilote que rien n'y appelle, et donnerait à penser qu'un accès direct est
+# une voie prévue.
+#
+# Il était donc installé à la main, et il a disparu au premier `npm ci` — la
+# passerelle tombait alors sur ERR_MODULE_NOT_FOUND pendant que PostgREST,
+# lui, démarrait : le harnais avait l'air debout et répondait 401 sur tout.
+# Il s'installe maintenant ici, sans être écrit dans le manifeste.
+if ! node -e "require.resolve('pg')" 2>/dev/null; then
+  echo "== Installing pg (harness only, --no-save) =="
+  npm install --no-save --silent pg >/dev/null 2>&1
+fi
+
 WORK="$WORK" DB="$DB" nohup node gateway.mjs > "$WORK/gateway.log" 2>&1 &
 sleep 3
 

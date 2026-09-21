@@ -17,11 +17,42 @@
  * l'imprime — pas même tronquée.
  */
 import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "node:fs";
 import type { Database } from "../../types/supabase";
 
+/*
+ * ── `.env.local` EST LU ICI, ET LA CLEF ANTHROPIC N'Y EST PAS ───────────
+ *
+ * ⚠ ET C'EST PRÉCISÉMENT POURQUOI ON PEUT LE LIRE. Ce fichier ne porte que
+ * l'adresse de la façade locale et les deux JWT qu'`edge/up.sh` re-tire à
+ * chaque démarrage — ils ne valent que sur cette machine, et l'un d'eux change
+ * à chaque exécution. La clef Anthropic, elle, continue d'arriver par la ligne
+ * de commande et par elle seule (`anthropicKeyOrDie`).
+ *
+ * Sans cette lecture, chaque script devait être précédé d'un `export` dans le
+ * shell, et un shell qui ne survit pas entre deux commandes — un agent, un
+ * script CI, un second terminal — faisait échouer le harnais sur une erreur de
+ * configuration qui ressemblait à une erreur de produit.
+ */
+function fromEnvLocal(name: string): string | undefined {
+  try {
+    const line = readFileSync(".env.local", "utf8")
+      .split("\n")
+      .find((l) => l.startsWith(`${name}=`));
+    return line?.slice(name.length + 1).trim().replace(/^["']|["']$/g, "") || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** La variable d'environnement, sinon `.env.local`. */
+export function localEnv(name: string): string | undefined {
+  return process.env[name] ?? fromEnvLocal(name);
+}
+
 export function admin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = localEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
   return createClient<Database>(url, key, { auth: { persistSession: false } });
 }
