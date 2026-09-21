@@ -45,15 +45,17 @@ Haiku 4.5 à 1 $ / 5 $ le MTok, Batch −50 %. Opus 5 à 5 $ / 25 $.
 
 | étape | appels | jetons entrée | jetons sortie | coût |
 |---|---|---|---|---|
-| **Banque de sujets**, 4 passes en Batch | 115 + 20 relances | 112 500 | 48 707 | **0,2127 $** |
+| **Banque de sujets**, 6 passes en Batch | 119 + 23 relances | ~117 000 | ~50 500 | **0,2360 $** |
 | **Le mois**, passe jetée (1/30) | 30 | 19 252 | 10 773 | 0,0366 $ |
 | **Le mois**, passe gardée (16/30) | 30 + 25 relances | 47 893 | 21 310 | **0,1159 $** |
-| **Trois générations à la demande**, réussies | 3 | — | — | **0,009616 $** *(lu dans `credit_ledger`)* |
+| **Générations à la demande**, réussies | 6 | — | — | **0,021273 $** *(lu dans `credit_ledger`)* |
 | Les mêmes, **tentatives refusées** | 8 | — | — | **non mesuré** — voir §4, défaut 4 |
 | **Le brand kit** (Opus 5, 1 appel) | 1 | — | — | **non mesuré**, borné à ≤ 0,23 $ — voir §4, défaut 4 |
 | Sondes de diagnostic | 2 | — | — | ~0,006 $ |
 
-**Total mesuré : 0,381 $. Total borné, tout compris : ≤ 0,66 $.**
+**Total mesuré, les deux passes comprises : 0,419 $** — 0,3885 $ en lots et
+relances, plus 0,0213 $ d'écritures à la demande lues dans `credit_ledger`
+(30 lignes). **Total borné, tout compris : ≤ 0,68 $.**
 Plafond de session : 2 $. Jamais approché.
 
 ⚠ **Le `credit_ledger` ne portait aucune somme avant aujourd'hui.** Les
@@ -379,3 +381,43 @@ Le bon prédicat était déjà calculé dix lignes plus bas dans la même page :
 « Why this one », les trois marques qu'une écriture machine laisse et qu'une
 frappe au clavier ne laisse jamais. `postKindFor` s'en sert désormais, et sept
 cas de test figent la distinction.
+
+---
+
+## 7. La seconde passe, en autonomie — 2026-09-21
+
+Le même jour, sans personne pour arbitrer. Ce qui manquait au rendu de la
+matinée a été comblé, et rien n'a été regénéré pour le plaisir de regénérer :
+le mois d'octobre existait déjà, écrit par le vrai chemin, et le script refuse
+d'écraser un mois. **Décision prise seul : garder ce mois-là.** Le refaire
+aurait coûté 0,12 $ et vingt-cinq minutes pour republier les mêmes seize
+posts.
+
+**Ce qui a été ajouté :**
+
+| | |
+|---|---|
+| La banque | complétée à **26 sujets par segment exactement** — deux passes de plus, 4 sujets écrits sur 4 demandés une fois la relance nourrie de l'erreur en place |
+| Les trois « Write it » | **cliqués pour de vrai** cette fois, par Playwright, depuis l'écran de connexion jusqu'au bouton |
+| Le carrousel | photographié **slide par slide**, quatre fichiers en 1080 × 1350, servis par la route du produit |
+
+**Le chiffre à retenir de ces trois clics** — le nombre de tentatives :
+
+| entrée | tentatives |
+|---|---|
+| un sujet suggéré | **4** |
+| son idée libre | **1** |
+| un carrousel | **1** |
+
+Le carrousel, qui échouait trois fois de suite le matin, passe désormais du
+premier coup : c'est le défaut 4 (les formes internes absentes du préfixe) qui
+avait été corrigé entre les deux. Le sujet suggéré, lui, a demandé quatre
+essais — le budget de mots mord plus fort sur un sujet de banque, dont
+l'archétype est imposé, que sur une idée libre, qui part toujours en
+`single_statement`.
+
+**Deux captures retirées du dossier**, et c'est une décision : les anciennes
+`04-write-it-review-single.png` et `05-write-it-review-carousel.png` montraient
+le même écran, mais visité après coup plutôt que photographié au moment où
+l'écriture arrive. `10`, `11` et `12` les remplacent. Deux captures du même
+écran, dont l'une seulement est une preuve, ne se valent pas.

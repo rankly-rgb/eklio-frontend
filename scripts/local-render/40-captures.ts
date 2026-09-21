@@ -69,7 +69,15 @@ async function main() {
   await page.waitForTimeout(2500);
   await page.screenshot({ path: `${OUT}/06-manual-post-incomplete.png`, fullPage: true });
 
-  /* ── 4. Les deux relectures ────────────────────────────────────────── */
+  /*
+   * ── 4. CE QUI A ÉTÉ ÉCRIT, POUR LA PLANCHE ───────────────────────────
+   *
+   * ⚠ LES RELECTURES NE SONT PLUS PRISES ICI. Elles appartiennent au script
+   * qui les PRODUIT — `60-write-it.ts` clique vraiment sur le bouton et
+   * photographie ce qui en sort. Deux captures du même écran, l'une prise
+   * après coup, l'autre prise au moment où l'écriture arrive, ne se valent
+   * pas : la seconde est une preuve, la première une visite.
+   */
   const { data: items } = await db
     .from("content_items")
     .select("id, title, compose_archetype, caption")
@@ -77,19 +85,6 @@ async function main() {
     .order("created_at", { ascending: true });
 
   const written = (items ?? []).filter((item) => (item.caption ?? "").length > 0);
-  const carousel = written.find((item) => item.compose_archetype === "carousel");
-  const simple = written.find((item) => item.compose_archetype !== "carousel");
-
-  if (simple) {
-    await page.goto(`${BASE}/app/content/${simple.id}`, { waitUntil: "domcontentloaded" });
-    await settle(page);
-    await page.screenshot({ path: `${OUT}/04-write-it-review-single.png`, fullPage: true });
-  }
-  if (carousel) {
-    await page.goto(`${BASE}/app/content/${carousel.id}`, { waitUntil: "domcontentloaded" });
-    await settle(page);
-    await page.screenshot({ path: `${OUT}/05-write-it-review-carousel.png`, fullPage: true });
-  }
 
   /* ── 5. La planche des douze premiers visuels ──────────────────────── */
   /*
@@ -147,8 +142,6 @@ async function main() {
     written: written.length,
     visuals: pngs.length,
     refusedToCompose,
-    single: simple?.id ?? null,
-    carousel: carousel?.id ?? null,
   }, null, 2));
 
   await browser.close();
