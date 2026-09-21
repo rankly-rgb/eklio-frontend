@@ -442,7 +442,7 @@ facturation.
 | 5 | **Variables d'environnement.** Voir le tableau ci-dessous. | agent pour les non-secrètes, **humain** pour les secrets |
 | 6 | **Créer `main`** depuis la branche validée. ⚠ Aujourd'hui `main` **n'existe pas** : les seules branches distantes sont `claude/gallant-lamport-mt20i0` et `claude/great-brahmagupta-za7qmx`. La branche source est celle que Naima a validée, nommée explicitement dans la demande — jamais « la dernière ». | **humain** décide laquelle ; agent exécute |
 | 7 | **Repointer Vercel** sur `main`, vérifier que les quatre `crons` de `vercel.json` (`anon-briefs` 05:00, `nudges` 14:00, `purge-deleted-kits` 06:00, `purge-events` 04:00) sont enregistrés et que `CRON_SECRET` les protège. | agent (jeton Vercel) |
-| 8 | **Générer la banque de production.** Voir F13 pour le dimensionnement : `N × 90 × 3` par segment, 0,00287 $ le sujet. ⚠ **Après** les migrations et **après** F12, sinon les segments n'existent pas. Un mois généré sur une banque à sec sort court sans que rien le signale. | agent (clé passée par commande) |
+| 8 | **Générer la banque de production.** Voir F13 pour le dimensionnement : `N × 90 × 3` par segment, 0,00290 $ le sujet. ⚠ **Après** les migrations et **après** F12, sinon les segments n'existent pas. Un mois généré sur une banque à sec sort court sans que rien le signale. | agent (clé passée par commande) |
 | 9 | **Stripe.** ⚠ **Le test de bout en bout n'a jamais été confirmé** — ni en test, ni en production. Avant d'ouvrir : un paiement réel de bout en bout, un webhook reçu et vérifié, un remboursement, une annulation d'abonnement. | **humain** |
 | 10 | **Premier mois réel sur un compte témoin**, planche regardée par une personne avant d'ouvrir aux autres. | agent génère, **humain** regarde |
 
@@ -534,19 +534,21 @@ anti-collision, ×3 pour les ~40 % de sujets que le dédoublonnage refuse au
 tirage (la banque produit des titres qui se recouvrent : ils sortent tous des
 mêmes trois thèmes de segment).
 
-**Coût par sujet, mesuré aujourd'hui** sur deux remplissages réels —
-122 sujets pour 0,343 $ et 128 pour 0,374 $ — soit **0,00287 $ le sujet**,
-en Haiku 4.5, appels synchrones. En Batch API le prix tombe de moitié : ces
-chiffres sont donc un plafond, pas une estimation basse.
+**Coût par sujet, mesuré aujourd'hui** sur trois remplissages réels —
+122 sujets pour 0,343 $, 128 pour 0,374 $, 249 pour 0,732 $ — soit 499 sujets
+pour 1,449 $, **0,00290 $ le sujet**, en Haiku 4.5, appels synchrones. En
+Batch API le prix tombe de moitié : ces chiffres sont un plafond, pas une
+estimation basse.
 
 | praticiennes du segment | stock nécessaire | coût de génération |
 |---|---|---|
-| 5 | 1 350 sujets | **3,87 $** |
-| 20 | 5 400 sujets | **15,50 $** |
-| 40 | 10 800 sujets | **30,99 $** |
+| 5 | 1 350 sujets | **3,92 $** |
+| 20 | 5 400 sujets | **15,66 $** |
+| 40 | 10 800 sujets | **31,32 $** |
 
-Pour mémoire, la banque du bac à sable tient **environ 500 sujets** pour deux
-segments après cinq remplissages, et elle s'est vidée à chaque mois généré.
+Pour mémoire, la banque du bac à sable a demandé **cinq remplissages pour
+atteindre 295 sujets tirables** sur deux segments, et elle s'est vidée à
+chaque mois généré : douze mois réels l'ont traversée en une journée.
 
 **Seuil d'alerte** : quand le stock TIRABLE d'un segment — les sujets ni
 assignés, ni bloqués par la fenêtre — descend sous `N × 90`, soit le tiers de
