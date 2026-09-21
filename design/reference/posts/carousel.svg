@@ -4,7 +4,7 @@
   <rect width="3360" height="1350" fill="#E9E4DC"/>
   <g transform="translate(0, 0)"><rect width="1080" height="1350" fill="#FAF6EE"/>
   <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">REST</text>
-  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">Rest is not a reward</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">Rest is not a <tspan font-style="italic">reward</tspan></text>
   <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">you earn after</text>
   <text x="72" y="484.96000000000004" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">everything else</text>
   <path d="M 72 597.44 C 138 587.44 226 607.44 292 597.44" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>

@@ -7,7 +7,7 @@ import {
   ratioFindings,
 } from "@/lib/compose/audit";
 import { TYPE } from "@/lib/compose/constants";
-import { render, renderCarousel } from "@/lib/compose/engine";
+import { render } from "@/lib/compose/engine";
 import { parseBoxes } from "@/lib/compose/svg";
 import { CARD, LENGTHS, PALETTES, composedFor, payloadFor } from "@/lib/compose/__tests__/fixtures";
 

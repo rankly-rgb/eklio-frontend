@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ARCHETYPE_KEYS } from "@/lib/compose/archetypes/index";
 import { contentHash, normalise } from "@/lib/compose/hash";
-import { CARD, composedFor, LENGTHS, PALETTES, payloadFor } from "@/lib/compose/__tests__/fixtures";
+import { composedFor, LENGTHS, PALETTES, payloadFor } from "@/lib/compose/__tests__/fixtures";
 
 /*
  * ── DETERMINISM, WHICH IS A PREREQUISITE AND NOT A NICETY ───────────────

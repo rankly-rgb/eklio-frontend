@@ -245,11 +245,24 @@ async function main() {
 
   if (sync) {
     console.error(`▸ synchronous, ${requests.length} calls`);
-    for (const request of requests) {
+    /*
+     * ⚠ UN COMPTEUR, PARCE QU'UN REMPLISSAGE DE BANQUE DURE DIX MINUTES SANS
+     * RIEN DIRE. Les appels sont sériels et le script n'écrivait qu'à la fin :
+     * pendant un quart d'heure, « en cours » et « bloqué » se ressemblaient
+     * exactement, et la seule façon de trancher était de compter les lignes en
+     * base depuis un autre terminal.
+     */
+    const started = Date.now();
+    for (const [i, request] of requests.entries()) {
       const message = await client.messages.create(
         request.params as Anthropic.Messages.MessageCreateParamsNonStreaming
       );
       entries.push({ custom_id: request.custom_id, result: { type: "succeeded", message } });
+      if ((i + 1) % 10 === 0 || i + 1 === requests.length) {
+        const elapsed = Math.round((Date.now() - started) / 1000);
+        const eta = Math.round((elapsed / (i + 1)) * (requests.length - i - 1));
+        console.error(`  … ${i + 1}/${requests.length} · ${elapsed}s écoulées · ~${eta}s restantes`);
+      }
     }
   } else {
     const batch = await client.messages.batches.create({ requests });

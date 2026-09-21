@@ -109,9 +109,30 @@ function card(opts: {
   footer: string;
   body: string;
   note: string;
+  /** Le mot à mettre en italique, quand la spécification en demande un. */
+  italic?: string;
 }): string {
+  /*
+   * ⚠ LA DESCRIPTION PROMETTAIT UN MOT EN ITALIQUE QUE LE DESSIN NE POSAIT
+   * PAS. Une référence dont le `<desc>` décrit autre chose que ce qu'elle
+   * montre est pire qu'une référence absente : elle fait juger le produit sur
+   * un critère que le contrat n'illustre nulle part.
+   */
+  const emphasise = (line: string): string => {
+    if (!opts.italic || !line.includes(opts.italic)) return esc(line);
+    const [before, ...rest] = line.split(opts.italic);
+    return (
+      esc(before) +
+      `<tspan font-style="italic">${esc(opts.italic)}</tspan>` +
+      esc(rest.join(opts.italic))
+    );
+  };
   const head = opts.headline
-    .map((l, i) => text(MARGIN, HEAD_TOP + 76 + i * HEAD_SIZE * HEAD_LEAD, l, HEAD_SIZE, 400))
+    .map(
+      (l, i) =>
+        `<text x="${MARGIN}" y="${HEAD_TOP + 76 + i * HEAD_SIZE * HEAD_LEAD}" ` +
+        `font-family="${SANS}" font-size="${HEAD_SIZE}" font-weight="400" fill="${INK}">${emphasise(l)}</text>`
+    )
     .join("\n  ");
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
   <title>référence reconstruite, pas un rendu produit</title>
@@ -136,6 +157,7 @@ function singleStatement(): string {
     headline: ["Rest is not a reward", "you earn after", "everything else"],
     footer: FOOT,
     note: "phrase seule, un mot en italique, une petite marque dessinée",
+    italic: "reward",
     // ⚠ Une marque, pas un objet : la spécification ne demande ici qu'une
     // respiration sous la phrase. C'est le seul archétype où l'illustration
     // ne porte pas le sens — parce que la phrase le porte seule.
