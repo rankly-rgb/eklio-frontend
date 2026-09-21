@@ -395,7 +395,7 @@ qu'une ligne : *l'écran de relecture n'avait jamais montré une carte entière 
 il en rognait les deux tiers droits.*
 
 ⚠ **Ce qui reste bloquant pour une VRAIE mise en service**, et qui n'est pas
-dans le code : `license_type_states.verified_at` est NULL sur les 254 lignes
+dans le code : `license_type_states.verified_at` est NULL sur les 240 lignes
 d'une base fraîche, donc **aucun kit ne peut être généré dans aucun État**.
 Quelqu'un doit lire les sites des boards. Voir défaut 1 du rapport.
 

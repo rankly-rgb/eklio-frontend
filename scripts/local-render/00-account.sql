@@ -30,7 +30,7 @@ select p.id as profile_id, p.email from public.profiles p
 -- ── ⚠ LA PORTE DE QUALIFICATION, OUVERTE EN LOCAL ET SEULEMENT LÀ ───────
 --
 -- Trouvé par le rendu réel, pas par une lecture : sur une base fraîchement
--- rejouée, `license_type_states.verified_at` est NULL sur les 254 lignes de
+-- rejouée, `license_type_states.verified_at` est NULL sur les 240 lignes de
 -- la matrice. `project_state_is_sellable` compte les lignes vérifiées de
 -- l'État, n'en trouve aucune, et `/api/briefs/[id]/generate` répond 409
 -- « We're not open in CA yet » — dans les cinquante États, pour les onze

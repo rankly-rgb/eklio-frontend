@@ -138,7 +138,7 @@ bon comportement, et c'est la seule raison pour laquelle on le sait.
 ### 1 — ⚠ Une base fraîche ne peut générer AUCUN kit, dans les cinquante États
 
 `project_state_is_sellable` compte les lignes vérifiées de
-`license_type_states`. Sur le rejeu, **`verified_at` est NULL sur les 254
+`license_type_states`. Sur le rejeu, **`verified_at` est NULL sur les 240
 lignes**, donc `/api/briefs/[id]/generate` répond `409 We're not open in CA
 yet` — pour les onze titres, partout.
 
