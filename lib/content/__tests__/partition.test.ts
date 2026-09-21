@@ -51,6 +51,7 @@ function item(overrides: Partial<ContentItem> = {}): ContentItem {
     channel: null,
     rationale: null,
     compose_archetype: null,
+    payload: null,
     topic: null,
     ...overrides,
   };

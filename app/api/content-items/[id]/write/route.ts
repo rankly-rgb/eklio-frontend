@@ -11,7 +11,7 @@ import {
   getContentPreferences,
 } from "@/lib/data/content";
 import { applyWrite, beginWrite, releaseWrite, suggestedTopicSchema } from "@/lib/data/on-demand";
-import { runOnDemandWrite, toTopicRequest } from "@/lib/content/generate/on-demand";
+import { runOnDemandWrite, toTopicRequest, writeAction } from "@/lib/content/generate/on-demand";
 import { ethicsRulesFor } from "@/lib/content/generate/ethics-rules";
 
 /*
@@ -98,9 +98,24 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
     const begun = await beginWrite(supabase, id, body.data.idempotencyKey);
     if (!begun.ok) return contentResponse(begun);
 
-    if (begun.data.state === "written") {
+    const action = writeAction(begun.data);
+    if (action === "already_written") {
       // Déjà écrit par la même intention : on rend le post tel qu'il est.
       return contentResponse(await getContentItem(supabase, id));
+    }
+    if (action === "not_reserved") {
+      /*
+       * Rien n'est tenu, donc rien ne sera écrit. Le dire plutôt que de rendre
+       * le post inchangé : un écran qui ne bouge pas après un clic se relit
+       * comme une panne muette.
+       */
+      return Response.json(
+        {
+          error: "That attempt did not finish. Try it again — nothing was charged.",
+          code: "not_reserved",
+        },
+        { status: 409 }
+      );
     }
 
     /*

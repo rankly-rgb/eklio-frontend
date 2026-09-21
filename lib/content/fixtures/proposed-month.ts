@@ -188,6 +188,7 @@ export const FIXTURE_ITEMS: ContentItem[] = SEEDS.map((seed, index) => ({
    */
   rationale: null,
   compose_archetype: null,
+  payload: null,
   topic: null,
   caption: seed.caption,
   on_image_text: seed.line,

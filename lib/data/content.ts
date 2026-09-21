@@ -259,6 +259,37 @@ export const contentItemSchema = z.object({
    */
   compose_archetype: sinceMigration(z.string(), "20260921110000_a_layout_is_hers_to_change"),
   /*
+   * ── CE QUE CE POST-CI PORTE, QUAND IL PORTE QUELQUE CHOSE ─────────────
+   *
+   * Le payload du diagramme ÉCRIT SUR CE POST : une idée libre qu'elle a
+   * formulée, ou les cartes d'un carrousel. `content_topics.payload` est du
+   * stock partagé entre praticiennes ; celui-ci est à elle seule.
+   *
+   * ⚠ ET C'EST LA MOITIÉ QUI MANQUAIT. La base l'écrit depuis
+   * `20260921120000`, `content_item_json` le renvoie — mais ce schéma ne le
+   * lisait pas. Résultat : un post écrit à partir d'une idée libre, ou un
+   * carrousel, arrivait sur l'écran de relecture SANS CARTE, parce que
+   * `reviewCardFor` n'allait chercher le payload que sur le sujet de banque,
+   * et qu'une idée libre n'en a pas.
+   *
+   * Un objet, et pas un schéma par archétype : la forme est validée par la
+   * CHECK en base à l'écriture (`content_topic_payload_valid`), et par le
+   * `parse` du module de composition à la lecture. Une troisième définition
+   * ici serait la première à se périmer.
+   *
+   * ⚠ ET PAS `z.unknown()` NON PLUS, bien que ce soit le type le plus
+   * tolérant. `unknown` CONTIENT `undefined`, donc la clef sortait du schéma
+   * marquée optionnelle : `payload?: unknown`. À l'exécution `.default(null)`
+   * rendait bien `null`, mais le type disait le contraire, et le compilateur
+   * a refusé tous les objets `ContentItem` construits à la main. Le refus
+   * était juste — une clef qui vaut toujours `null` ou un objet n'a aucune
+   * raison de se déclarer absente.
+   */
+  payload: sinceMigration(
+    z.record(z.string(), z.unknown()),
+    "20260921120000_a_post_can_be_asked_for"
+  ),
+  /*
    * Le sujet de la banque dont ce post vient.
    *
    * ⚠ `null` EST NORMAL, PAS UNE ERREUR : un post qu'elle a créé elle-même

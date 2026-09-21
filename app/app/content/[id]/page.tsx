@@ -14,7 +14,8 @@ import { suggestTopics } from "@/lib/data/on-demand";
 import { contentGenerationArmed } from "@/lib/content/generate/armed";
 import { getCreditMeter } from "@/lib/billing/credits";
 import { contentMonthKey } from "@/lib/data/content";
-import { writeScreen, type PostKind } from "@/lib/content/write-screen";
+import { writeScreen, eklioWroteThis, type PostKind } from "@/lib/content/write-screen";
+import { carouselSlides } from "@/lib/content/slides";
 import { deployEnvName, showsTechnicalDetail } from "@/lib/env/deploy";
 import { reviewCardFor } from "@/lib/content/review";
 import { layoutAlternatives } from "@/lib/content/alternatives";
@@ -143,6 +144,18 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
   const postKind: PostKind =
     hasCaption || card !== null ? "generated" : hasTitle ? "manual_partial" : "manual_empty";
   const hasHerWords = hasCaption || hasTitle;
+
+  /*
+   * ⚠ « EST-CE REMPLI » ET « QUI L'A ÉCRIT » SONT DEUX QUESTIONS. La première
+   * décide du panneau, la seconde décide des deux réglages que l'éditeur
+   * montre — et un post où ELLE a tapé une légende répond oui à la première et
+   * non à la seconde.
+   */
+  const written = eklioWroteThis({
+    topicId: item.topic?.id ?? null,
+    payload: item.payload,
+    rationale: item.rationale,
+  });
   /*
    * ⚠ SA DATE, SINON CELLE DE SA CRÉATION — JAMAIS L'HORLOGE. `Date.now()`
    * pendant un rendu est impur (ESLint le refuse), et c'est un bon refus : un
@@ -193,6 +206,16 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
       : screen.notice === "quota_exhausted"
         ? { kind: "quota_exhausted", renewsOn: nextRenewal(month) }
         : { kind: "ready" };
+
+  /*
+   * ── UN CARROUSEL SE REGARDE CARTE PAR CARTE ───────────────────────────
+   *
+   * ⚠ ET `layoutAlternatives` NE LE FAIT PAS, VOLONTAIREMENT : un carrousel
+   * n'est pas une mise en page de rechange, c'est un nombre de cartes. Sans
+   * ce second appel, un carrousel écrit par « Write it » arrivait ici sans
+   * aucune carte à l'écran et sans bouton de téléchargement.
+   */
+  const slides = carouselSlides(card);
 
   const layouts: LayoutChoice[] = card
     ? layoutAlternatives({
@@ -252,6 +275,8 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
         ethics={ethics}
         layouts={layouts}
         chosen={item.compose_archetype}
+        slides={slides.kind === "slides" ? slides.slides : []}
+        slidesRefused={slides.kind === "refused" ? slides.message : null}
       />
 
       {/*
@@ -261,7 +286,7 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
        * il était le premier élément de l'écran, il est maintenant le second.
        */}
       <div className="mt-10 border-t border-line pt-8">
-        <ItemEditor item={item} tokens={tokens} photoUrl={photoUrl} />
+        <ItemEditor item={item} tokens={tokens} photoUrl={photoUrl} written={written} />
       </div>
     </main>
   );

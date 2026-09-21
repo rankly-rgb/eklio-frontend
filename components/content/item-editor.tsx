@@ -56,11 +56,17 @@ export function ItemEditor({
   item,
   tokens,
   photoUrl,
+  written = false,
 }: {
   item: ContentItem;
   tokens: Pick<SitePreviewTokens, "primary" | "dark_neutral">;
   /** A signed URL when this item's slot has a current photograph, else null. */
   photoUrl: string | null;
+  /**
+   * Eklio a écrit ce post (`lib/content/write-screen.ts`, `eklioWroteThis`).
+   * Deux réglages disparaissent alors — voir plus bas.
+   */
+  written?: boolean;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState(item);
@@ -225,6 +231,61 @@ export function ItemEditor({
          * à soi-même n'a pas de sens, et le proposer comme choix le lui
          * demanderait.
          */}
+        {/*
+         * ── CES DEUX RÉGLAGES SONT LES SIENS, ET SEULEMENT LES SIENS ──────
+         *
+         * ⚠ SUR UN POST GÉNÉRÉ, ILS DÉCRIVENT UN CHOIX QU'ELLE N'A PAS FAIT.
+         * « What kind of post: Question » sur une carte qu'Eklio a écrite lui
+         * demande de valider une décision prise ailleurs, et « Where it is:
+         * Still working on it » lui dit qu'elle a du travail en retard sur un
+         * post qui est terminé. Les deux sont donc retirés de cette vue-là.
+         *
+         * ⚠ ET ILS RESTENT ENTIERS SUR SES POSTS À ELLE. Ce sont les seuls
+         * endroits où se choisissent le format d'un post — fiche Google
+         * comprise — et l'état « prêt à publier », qui alimente le compteur du
+         * mois. Les supprimer partout aurait retiré deux fonctions pour
+         * corriger un libellé mal placé.
+         */}
+        {written ? (
+          /*
+           * ⚠ LA FONCTION RESTE, LE MOT DE SYSTÈME PART. « Approve », sur le
+           * flux du mois, est un LIEN vers cette page : retirer « Where it
+           * is » sans rien mettre à la place aurait produit un bouton qui
+           * mène à un écran où l'on ne peut pas faire ce qu'il annonce. Ce
+           * qu'elle veut dire ici tient en une phrase et un geste, et la
+           * phrase n'est pas le nom d'une colonne.
+           */
+          <div className="flex flex-col gap-2">
+            <MonoLabel tracking="16">This one</MonoLabel>
+            {draft.status === "ready" ? (
+              <p className="text-helper leading-prose text-ink-2">
+                Ready to post.{" "}
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-ink"
+                  onClick={() => {
+                    queue({ status: "draft" });
+                    void flush();
+                  }}
+                >
+                  Put it back to a draft
+                </button>
+              </p>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  queue({ status: "ready" });
+                  void flush();
+                }}
+              >
+                Mark it ready to post
+              </Button>
+            )}
+          </div>
+        ) : (
+        <>
         <Field label="What kind of post">
           <Select
             id="content-archetype"
@@ -255,6 +316,8 @@ export function ItemEditor({
             }}
           />
         </Field>
+        </>
+        )}
 
         <Field label="Date">
           <input
@@ -283,16 +346,33 @@ export function ItemEditor({
             }}
           />
           {/*
-           * The one seam for a photograph, everywhere in the product. No src
-           * yet for this kit means the deterministic gradient block, which is
-           * correct rather than missing — and no second loading pattern.
+           * ── LE DÉGRADÉ NE TIENT PLUS LIEU DE VISUEL ─────────────────────
+           *
+           * ⚠ C'ÉTAIT LA SEULE IMAGE D'UN POST VIDE, et elle n'était l'image
+           * de rien. Un bloc coloré grand comme une carte, en haut d'un écran
+           * où rien n'est encore écrit, se lit comme « voici ton post » — puis
+           * le fichier qu'elle télécharge ne lui ressemble pas.
+           *
+           * Le dégradé déterministe reste ce qu'il est ailleurs (la révélation
+           * du kit, la toile d'accueil) : là-bas il tient la place d'une
+           * photographie qui va exister. Ici il tenait la place d'une carte
+           * composée, qui n'est pas une photographie du tout.
+           *
+           * Donc : la photographie quand il y en a une, une phrase quand il
+           * n'y en a pas, et rien du tout quand aucun emplacement n'est choisi.
            */}
-          <PhotoSlot
-            tokens={tokens}
-            src={photoUrl}
-            alt={photoUrl ? (draft.alt_text ?? "") : ""}
-            className="mt-3 aspect-square w-full rounded-card"
-          />
+          {photoUrl ? (
+            <PhotoSlot
+              tokens={tokens}
+              src={photoUrl}
+              alt={draft.alt_text ?? ""}
+              className="mt-3 aspect-square w-full rounded-card"
+            />
+          ) : draft.image_slot ? (
+            <p className="mt-3 text-helper leading-prose text-ink-2">
+              No photograph for this slot yet.
+            </p>
+          ) : null}
         </Field>
 
         <PostedControl

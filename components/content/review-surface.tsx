@@ -40,6 +40,15 @@ export type LayoutChoice = {
   resolution: string[];
 };
 
+/**
+ * Une carte d'un carrousel, déjà composée côté serveur.
+ *
+ * ⚠ RENDUE PAR LE MÊME MODULE QUE LE PNG (`lib/content/slides.ts`), donc le
+ * fichier qu'elle télécharge est la carte qu'elle a regardée — y compris le
+ * « 2/5 » du bandeau, que `renderCarousel` écrit lui-même.
+ */
+export type Slide = { number: number; svg: string; resolution: string[] };
+
 type SaveState =
   | { kind: "idle" }
   | { kind: "saving" }
@@ -53,6 +62,8 @@ export function ReviewSurface({
   ethics,
   layouts,
   chosen,
+  slides = [],
+  slidesRefused = null,
 }: {
   itemId: string;
   caption: string | null;
@@ -62,6 +73,10 @@ export function ReviewSurface({
   layouts: LayoutChoice[];
   /** `compose_archetype` tel qu'il est en base, ou `null` pour « celle du sujet ». */
   chosen: string | null;
+  /** Les cartes d'un carrousel, dans l'ordre. Vide sur un post d'une seule carte. */
+  slides?: Slide[];
+  /** Ce que le moteur a refusé, quand il a refusé. `null` sinon. */
+  slidesRefused?: string | null;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState(
@@ -79,7 +94,8 @@ export function ReviewSurface({
    * carte composée, ou rien. Le `ethics` reçu porte déjà le résultat du scan ;
    * ce booléen dit s'il y avait une SURFACE à scanner.
    */
-  const hasCheckableContent = Boolean(caption?.trim()) || layouts.length > 0;
+  const hasCheckableContent =
+    Boolean(caption?.trim()) || layouts.length > 0 || slides.length > 0;
 
   const keep = useCallback(
     async (index: number) => {
@@ -143,7 +159,7 @@ export function ReviewSurface({
        * une action. Il n'y a rien à copier tant que rien n'est écrit, donc il
        * n'y a pas de bouton.
        */}
-      {caption || current ? (
+      {caption || current || slides.length > 0 ? (
       <div className="flex flex-wrap items-center gap-3">
         {caption ? (
         <Button type="button" onClick={() => void copyCaption()} aria-live="polite">
@@ -151,7 +167,24 @@ export function ReviewSurface({
         </Button>
         ) : null}
 
-        {current ? (
+        {/*
+         * ⚠ UN CARROUSEL SE TÉLÉCHARGE CARTE PAR CARTE. Instagram les demande
+         * une par une ; un seul bouton ne pourrait donner qu'un fichier, donc
+         * la première carte — et elle publierait un carrousel d'une slide sans
+         * comprendre où sont passées les autres.
+         */}
+        {slides.length > 0
+          ? slides.map((slide) => (
+              <a
+                key={slide.number}
+                href={`/api/content-items/${itemId}/image?slide=${slide.number}`}
+                className={buttonClasses("secondary")}
+                download
+              >
+                {`Slide ${slide.number} of ${slides.length}`}
+              </a>
+            ))
+          : current ? (
           /*
            * ⚠ UN `<a>` NU, PAS UN `<Link>`. `next/link` préfetche, et
            * préfetcher cette URL-ci déclencherait une composition et un
@@ -197,8 +230,40 @@ export function ReviewSurface({
        */}
       {hasCheckableContent ? <EthicsNote ethics={ethics} /> : null}
 
+      {/* ── Le carrousel, carte par carte ───────────────────────────────── */}
+      {slidesRefused ? (
+        <p role="alert" className="max-w-[560px] text-helper leading-prose text-danger">
+          {/*
+           * ⚠ UN REFUS DU MOTEUR SE DIT. Un carrousel écrit, facturé, et
+           * invisible sans explication est le pire des trois états possibles.
+           */}
+          These cards do not compose yet: {slidesRefused}
+        </p>
+      ) : null}
+
+      {slides.length > 0 ? (
+        <div className="flex flex-col gap-4">
+          <MonoLabel tracking="16">{`${slides.length} cards, in this order`}</MonoLabel>
+          <ol className="flex flex-wrap gap-4">
+            {slides.map((slide) => (
+              <li key={slide.number} className="flex w-[200px] flex-col gap-2">
+                <div
+                  className="overflow-hidden rounded-card border border-line"
+                  // Même échappement que la grande carte : voir l'en-tête.
+                  dangerouslySetInnerHTML={{ __html: slide.svg }}
+                />
+                <span className="text-helper text-ink-2">
+                  {slide.number === 1 ? "Cover" : `Slide ${slide.number}`}
+                  {slide.resolution.length > 0 ? ` · ${slide.resolution.join(" · ")}` : ""}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+
       {/* ── La carte, et les autres façons de la poser ──────────────────── */}
-      {current ? (
+      {slides.length === 0 && current ? (
         <div className="flex flex-col gap-4">
           <div className="max-w-[420px] overflow-hidden rounded-card border border-line">
             <div dangerouslySetInnerHTML={{ __html: current.svg }} />

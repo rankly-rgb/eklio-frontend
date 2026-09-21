@@ -74,7 +74,21 @@ export async function reviewCardFor(
 
   const bands = cardBands(item, practiceName);
 
-  let payload: unknown = null;
+  /*
+   * ── LE PAYLOAD DE CE POST-CI PASSE AVANT CELUI DU SUJET ───────────────
+   *
+   * ⚠ ET SANS ÇA, UN POST ÉCRIT À LA DEMANDE N'AVAIT PAS DE CARTE. Une idée
+   * libre ne vient d'aucun sujet de banque : son diagramme est écrit sur
+   * `content_items.payload`, et ce module n'allait le chercher que sur
+   * `content_topics`. Un carrousel non plus — ses cartes sont sur le post.
+   * L'écran de relecture affichait donc, pour les deux cas que « Write it »
+   * produit le plus souvent, exactement l'absence de carte que ce chantier
+   * existe pour supprimer.
+   *
+   * L'ordre est celui de la propriété : ce qui est écrit SUR son post est à
+   * elle, le sujet de banque est du stock partagé.
+   */
+  let payload: unknown = item.payload ?? null;
   /*
    * ⚠ PAS `item.archetype`. Celui-là est le FORMAT DU POST (`statement`,
    * `question`, `notes`…) et n'a aucun rapport avec les onze mises en page du
@@ -117,7 +131,9 @@ export async function reviewCardFor(
       });
     }
     if (data) {
-      payload = data.payload;
+      // ⚠ Le payload du sujet ne réécrit PAS celui du post : `apply_on_demand_write`
+      //   a pu écrire une version plus précise que le stock.
+      payload = payload ?? data.payload;
       /*
        * Le sujet est relu ici plutôt que cru sur parole : `topic.archetype_key`
        * arrive bien dans le json de l'item, mais le payload doit de toute façon

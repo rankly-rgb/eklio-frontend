@@ -57,11 +57,11 @@ const PRODUCTION_MONTH = {
   unscheduled: [],
 } as const;
 
-/** Les trois clefs que les migrations du chantier ont ajoutées. */
-const ADDED_BY_THE_CHANTIER = ["rationale", "compose_archetype", "topic"] as const;
+/** Les quatre clefs que les migrations du chantier ont ajoutées. */
+const ADDED_BY_THE_CHANTIER = ["rationale", "compose_archetype", "topic", "payload"] as const;
 
 describe("⚠ RÉGRESSION — une base plus ancienne que le code rend l'écran", () => {
-  it("la charge capturée ne porte VRAIMENT pas les trois clefs", () => {
+  it("la charge capturée ne porte VRAIMENT aucune de ces clefs", () => {
     /*
      * Sans cette assertion, le test suivant passerait le jour où quelqu'un
      * « corrigerait » la fixture en y ajoutant les clefs manquantes — et il ne
@@ -92,6 +92,7 @@ describe("⚠ RÉGRESSION — une base plus ancienne que le code rend l'écran",
     expect(item.rationale).toBeNull();
     expect(item.compose_archetype).toBeNull();
     expect(item.topic).toBeNull();
+    expect(item.payload).toBeNull();
   });
 
   it("un mois VIDE se décodait déjà, et continue", () => {
@@ -142,7 +143,7 @@ describe("⚠ ET LA TOLÉRANCE RESTE BORNÉE", () => {
     expect(contentItemSchema.safeParse(explicit).success).toBe(true);
   });
 
-  it("une base À JOUR fait traverser les trois valeurs", () => {
+  it("une base À JOUR fait traverser les valeurs", () => {
     const current = {
       ...PRODUCTION_MONTH.items[0],
       rationale: "Because burnout keeps coming up.",
@@ -168,10 +169,21 @@ describe("⚠ LA LISTE DES CLEFS TOLÉRÉES EST FERMÉE", () => {
    * parse pas, la tentation est d'ajouter un `sinceMigration` de plus, et
    * personne ne compte. Ici on compte.
    */
-  it("exactement trois, et chacune nomme sa migration", () => {
+  it("exactement quatre, et chacune nomme sa migration", () => {
+    /*
+     * ⚠ LA QUATRIÈME EST `payload`, AJOUTÉE À DESSEIN ET COMPTÉE COMME LES
+     * AUTRES. C'est le payload écrit sur CE post — une idée libre, les cartes
+     * d'un carrousel — que `content_item_json` renvoie depuis
+     * `20260921120000` et que ce schéma ne lisait pas.
+     *
+     * Le chiffre dans le nom du test est ce qui fait que l'élargissement se
+     * voit : passer de trois à quatre demande d'éditer cette ligne, donc de
+     * l'assumer.
+     */
     const tolerated = toleratedKeys(contentItemSchema);
     expect(Object.keys(tolerated).sort()).toEqual([
       "compose_archetype",
+      "payload",
       "rationale",
       "topic",
     ]);

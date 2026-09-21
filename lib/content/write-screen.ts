@@ -50,3 +50,33 @@ export function writeScreen(input: { kind: PostKind; state: WriteState }): Write
   }
   return { panel: true, writeEnabled: false, notice: input.state, warnsOverwrite };
 }
+
+/*
+ * ── QUI A ÉCRIT CE POST ─────────────────────────────────────────────────
+ *
+ * ⚠ CE N'EST PAS `PostKind`, ET LES CONFONDRE COÛTE DEUX RÉGLAGES. `PostKind`
+ * répond « y a-t-il quelque chose dedans » — un post où ELLE a tapé une
+ * légende compte comme rempli. Cette fonction-ci répond « est-ce Eklio qui
+ * l'a écrit », et c'est la question que pose « What kind of post » et « Where
+ * it is » : ces deux réglages restent sur ses posts à elle, et disparaissent
+ * d'un post généré, où ils décrivent un choix qu'elle n'a pas fait.
+ *
+ * Les trois marques sont celles qu'une écriture machine laisse et qu'une
+ * frappe au clavier ne laisse jamais : le sujet de banque dont le post vient,
+ * le payload du diagramme, et la ligne « Why this one ». `update_content_item`
+ * n'accepte aucune des trois — une garde de migration l'affirme pour
+ * `payload` — donc rien de ce qu'elle tape ne peut les poser par accident.
+ */
+export type WrittenMarks = {
+  topicId: string | null;
+  payload: unknown;
+  rationale: string | null;
+};
+
+export function eklioWroteThis(marks: WrittenMarks): boolean {
+  return (
+    marks.topicId !== null ||
+    (marks.payload !== null && marks.payload !== undefined) ||
+    marks.rationale !== null
+  );
+}

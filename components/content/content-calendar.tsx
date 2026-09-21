@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Button } from "@/components/ui/button";
 import {
   ARCHETYPE_LABELS,
-  CONTENT_ARCHETYPES,
   contentMonthLabel,
   daysInMonth,
   firstWeekday,
@@ -30,6 +29,23 @@ import {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/*
+ * Le format d'un post dont le format n'a pas encore été décidé.
+ *
+ * ⚠ `archetype` EST `not null` EN BASE (`content_items_archetype_check`), donc
+ * créer une ligne demande une valeur : il n'y a pas d'état « pas encore
+ * choisi » à écrire. `statement` est le même défaut que celui d'une idée libre
+ * dans `lib/content/generate/on-demand.ts`, et pour la même raison — une idée
+ * qu'on formule en une phrase EST une déclaration. Les formes qui restent
+ * supposent une structure qu'elle n'a pas donnée.
+ *
+ * ⚠ ET IL NE SE FIGE PAS. Sur un post qu'elle écrit elle-même, « What kind of
+ * post » porte les six formats et cette valeur est la première chose qu'elle
+ * peut changer. Sur un post généré, la mise en page vient du sujet et ce
+ * champ ne se montre plus du tout.
+ */
+const NEW_POST_ARCHETYPE: ContentArchetype = "statement";
+
 /** `2026-09-01` shifted by whole months, without touching a local time zone. */
 function shiftMonth(key: string, delta: number): string {
   const [year, month] = key.split("-").map(Number);
@@ -51,18 +67,36 @@ export function ContentCalendar({
   model: ContentMonth;
 }) {
   const router = useRouter();
-  const [picker, setPicker] = useState<{ date: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function create(archetype: ContentArchetype, date: string | null) {
+  /*
+   * ── « NEW POST » N'OUVRE PLUS SUR UNE QUESTION DE SYSTÈME ──────────────
+   *
+   * Avant : une boîte de dialogue demandait « What kind of post is this? » et
+   * six formats. Elle répondait, et atterrissait sur un formulaire vide.
+   * Deux gestes pour arriver nulle part — et le premier lui demandait un choix
+   * de vocabulaire interne avant qu'une seule idée n'existe.
+   *
+   * Maintenant : le post est créé et elle arrive sur le panneau d'écriture,
+   * qui lui propose trois sujets. Le format se décide par ce qu'elle choisit
+   * là-bas, ou reste le sien à régler dans l'éditeur si elle écrit elle-même.
+   *
+   * ⚠ ET RIEN N'EST PERDU. Les six formats, fiche Google comprise, restent
+   * entiers dans « What kind of post » sur un post qu'elle écrit elle-même.
+   * On a retiré la QUESTION, pas la réponse.
+   *
+   * ⚠ AUCUNE DÉPENSE ICI. Créer une ligne ne génère rien ; c'est « Write it »,
+   * sur la page du post, qui coûte un crédit et qui le dit avant le clic.
+   */
+  async function create(date: string | null) {
     setBusy(true);
     setError(null);
     try {
       const response = await fetch(`/api/brand-kits/${brandKitId}/content`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ archetype, scheduled_for: date }),
+        body: JSON.stringify({ archetype: NEW_POST_ARCHETYPE, scheduled_for: date }),
       });
       const body = (await response.json().catch(() => null)) as
         | { id?: string; error?: string }
@@ -72,7 +106,6 @@ export function ContentCalendar({
         setError(body?.error ?? "That could not be created. Try again.");
         return;
       }
-      setPicker(null);
       router.push(`/app/content/${body.id}`);
     } catch {
       setError("That could not be created. Try again.");
@@ -161,7 +194,7 @@ export function ContentCalendar({
               day={day}
               items={model.items.filter((item) => dayOf(item) === day)}
               onAdd={() =>
-                setPicker({ date: `${month.slice(0, 8)}${String(day).padStart(2, "0")}` })
+                void create(`${month.slice(0, 8)}${String(day).padStart(2, "0")}`)
               }
             />
           )
@@ -197,16 +230,16 @@ export function ContentCalendar({
       </ol>
 
       <div className="mt-6 md:hidden">
-        <Button variant="secondary" onClick={() => setPicker({ date: null })}>
-          New item
+        <Button variant="secondary" disabled={busy} onClick={() => void create(null)}>
+          {busy ? "Opening…" : "New post"}
         </Button>
       </div>
 
       <section className="mt-10">
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="font-display text-h2 font-medium text-ink">Not yet scheduled</h2>
-          <Button variant="secondary" onClick={() => setPicker({ date: null })}>
-            New item
+          <Button variant="secondary" disabled={busy} onClick={() => void create(null)}>
+            {busy ? "Opening…" : "New post"}
           </Button>
         </div>
 
@@ -231,14 +264,6 @@ export function ContentCalendar({
         )}
       </section>
 
-      {picker ? (
-        <ArchetypePicker
-          busy={busy}
-          date={picker.date}
-          onCancel={() => setPicker(null)}
-          onChoose={(archetype) => void create(archetype, picker.date)}
-        />
-      ) : null}
     </>
   );
 }
@@ -368,77 +393,5 @@ function ItemMeta({ item }: { item: ContentItem }) {
       {ARCHETYPE_LABELS[item.archetype]}
       {state}
     </span>
-  );
-}
-
-function ArchetypePicker({
-  busy,
-  date,
-  onCancel,
-  onChoose,
-}: {
-  busy: boolean;
-  date: string | null;
-  onCancel: () => void;
-  onChoose: (archetype: ContentArchetype) => void;
-}) {
-  const panel = useRef<HTMLDivElement>(null);
-
-  /*
-   * Escape closes it, and focus moves into it when it opens. A dialog that
-   * traps a keyboard user behind it is not a dialog, it is a wall -- and the
-   * only way out of this one otherwise is a mouse.
-   */
-  useEffect(() => {
-    panel.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/20 p-6">
-      <div
-        ref={panel}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Choose a kind of post"
-        className="w-full max-w-[420px] rounded-card border border-line bg-paper p-6 focus:outline-none"
-      >
-        <MonoLabel tracking="16">
-          {date ? `New item, ${date}` : "New item, no date yet"}
-        </MonoLabel>
-        <h2 className="mt-3 font-display text-h2 font-medium text-ink">
-          What kind of post is this?
-        </h2>
-        <p className="mt-2 text-helper leading-prose text-ink-2">
-          The kind decides which template it is laid out in. You can change it later.
-        </p>
-
-        <ul className="mt-5 flex flex-col gap-2">
-          {CONTENT_ARCHETYPES.map((archetype) => (
-            <li key={archetype}>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onChoose(archetype)}
-                className="w-full rounded-card border border-line px-4 py-3 text-left text-body text-ink hover:border-ink-3 disabled:opacity-50"
-              >
-                {ARCHETYPE_LABELS[archetype]}
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-5 flex justify-end">
-          <Button variant="secondary" onClick={onCancel} disabled={busy}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </div>
   );
 }

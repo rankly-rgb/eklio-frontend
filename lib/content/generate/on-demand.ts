@@ -1,5 +1,3 @@
-import { ARCHETYPES } from "@/lib/compose/archetypes/index";
-import { budgetErrors } from "@/lib/compose/budget";
 import type { BrandContext, TopicRequest } from "@/lib/content/generate/copy-batch";
 import { writeOnePost, type WriteOnePort } from "@/lib/content/generate/write-one";
 import type { SuggestedTopic } from "@/lib/data/on-demand";
@@ -141,23 +139,27 @@ export async function runOnDemandWrite(
   }
 
   /*
-   * ⚠ LE BUDGET EST REVÉRIFIÉ ICI, APRÈS `validateCopy`, ET CE N'EST PAS
-   * REDONDANT. `validateCopy` le vérifie sur le payload tel quel ; pour un
-   * carrousel, chaque carte a AUSSI son propre budget, et le budget du
-   * conteneur ne le dit pas. Un carrousel dont la troisième slide déborde
-   * passerait sinon jusqu'au moteur, qui le refuserait à la composition —
-   * c'est-à-dire après avoir facturé.
+   * ── UNE VÉRIFICATION DE BUDGET PAR CARTE A ÉTÉ RETIRÉE D'ICI ──────────
+   *
+   * ⚠ ELLE SE JUSTIFIAIT PAR UNE AFFIRMATION FAUSSE. Le commentaire disait
+   * que `validateCopy` ne vérifiait le budget que sur le payload du
+   * conteneur, et qu'un carrousel dont la troisième carte déborde passerait.
+   * C'est inexact : `budgetErrors` RÉCURSE sur `cards[i]` (voir
+   * `lib/compose/budget.ts`, cas `carousel`), donc chaque carte est déjà
+   * mesurée avec les bornes de son propre archétype, et un archétype inconnu
+   * dans une carte l'est aussi par le cas `default`.
+   *
+   * Un second contrôle identique n'aurait rien coûté à l'exécution, mais son
+   * motif écrit invitait à croire que le budget du conteneur ne descend pas
+   * dans les cartes. Une garde redondante dont la RAISON est fausse est pire
+   * qu'absente : c'est celle qu'on copiera ailleurs.
+   *
+   * L'ordre réel, et il est éprouvé dans
+   * `lib/content/generate/__tests__/on-demand.test.ts` :
+   *   `carousel.parse` (3 à 8 cartes, pas de carrousel imbriqué)
+   *     → `budgetErrors` par carte
+   *       → composition et clearances de zone, carte par carte
    */
-  const perCard = cardBudgetErrors(input.request.archetypeKey, result.payload);
-  if (perCard.length > 0) {
-    return {
-      ok: false,
-      reason: "over_budget",
-      archetypeKey: input.request.archetypeKey,
-      usage: result.usage,
-      retried: result.retried,
-    };
-  }
 
   return {
     ok: true,
@@ -178,26 +180,6 @@ export async function runOnDemandWrite(
   };
 }
 
-/** Les erreurs de budget de CHAQUE carte d'un carrousel. Vide sinon. */
-export function cardBudgetErrors(archetypeKey: string, payload: unknown): string[] {
-  if (archetypeKey !== CAROUSEL_ARCHETYPE) return [];
-  const cards = (payload as { cards?: Array<{ archetype_key?: string; payload?: unknown }> })?.cards;
-  if (!Array.isArray(cards)) return ["carousel: no cards"];
-
-  const out: string[] = [];
-  cards.forEach((card, index) => {
-    const key = card?.archetype_key;
-    if (typeof key !== "string" || !ARCHETYPES[key]) {
-      out.push(`cards[${index}]: unknown archetype`);
-      return;
-    }
-    for (const error of budgetErrors(key, card.payload)) {
-      out.push(`cards[${index}].${error.path}: said ${error.said}, allowed ${error.allowed}`);
-    }
-  });
-  return out;
-}
-
 /**
  * La ligne qui va sur la carte et sert de titre.
  *
@@ -210,4 +192,38 @@ function displayTitle(request: TopicRequest, payload: unknown): string {
   const statement = (payload as { statement?: unknown })?.statement;
   if (typeof statement === "string" && statement.trim() !== "") return statement;
   return request.title;
+}
+
+/*
+ * ── CE QU'ON FAIT D'UNE RÉSERVATION QU'ON VIENT D'OUVRIR ────────────────
+ *
+ * ⚠ LA DÉCISION EST ICI PARCE QUE C'EST ELLE QUI DÉCIDE S'IL Y A UN APPEL
+ * PAYANT. `begin_on_demand_write` porte une clef unique sur (post, clef
+ * d'intention) : le deuxième clic, le deuxième onglet et la requête rejouée
+ * retombent tous sur la MÊME ligne. Ce que dit son état décide s'il faut
+ * appeler le modèle — et donc si ce clic coûte quelque chose.
+ *
+ * Trois états, tous les trois nommés. Un `if (state === "written")` laisse le
+ * troisième tomber dans la branche « génère », ce qui est le mauvais défaut :
+ * en cas de doute on ne dépense pas.
+ */
+export type WriteAction = "generate" | "already_written" | "not_reserved";
+
+export function writeAction(handle: { state: "reserved" | "written" | "released" }): WriteAction {
+  switch (handle.state) {
+    case "reserved":
+      return "generate";
+    case "written":
+      // Déjà écrit par cette intention : on rend le post, on n'appelle rien.
+      return "already_written";
+    case "released":
+      /*
+       * ⚠ INATTEIGNABLE EN PRATIQUE, ET TRAITÉ QUAND MÊME.
+       * `release_on_demand_write` SUPPRIME la ligne plutôt que de la marquer,
+       * précisément pour qu'un nouvel essai reparte. Si une ligne relâchée
+       * revenait malgré tout, générer dessus voudrait dire écrire sans
+       * réservation tenue — un post produit avec un crédit déjà rendu.
+       */
+      return "not_reserved";
+  }
 }

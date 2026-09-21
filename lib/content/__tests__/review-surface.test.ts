@@ -44,6 +44,7 @@ function item(overrides: Partial<ContentItem> = {}): ContentItem {
     caption: null,
     rationale: null,
     compose_archetype: null,
+    payload: null,
     topic: null,
     alt_text: null,
     tags: [],

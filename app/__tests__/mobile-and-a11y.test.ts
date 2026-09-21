@@ -34,6 +34,18 @@ const SURFACES = [
   "components/kit/asset-library-view.tsx",
   "components/kit/asset-detail-panel.tsx",
   "components/home/content-grid.tsx",
+  /*
+   * ⚠ AJOUTÉ PARCE QUE LA GARDE DU BLOC « dialogue » A MORDU. Le seul
+   * `role="dialog"` de ces surfaces était `ArchetypePicker`, dans le
+   * calendrier — la boîte « What kind of post is this? » que « New post » a
+   * remplacée par le panneau d'écriture. Sans elle, le bloc ne vérifiait plus
+   * rien et son propre garde-fou l'a dit, ce qui est exactement son travail.
+   *
+   * La couverture suit donc les dialogues plutôt que de disparaître avec
+   * celui-ci : ces deux-là en sont, et ils sont sur le chemin d'une cliente.
+   */
+  "components/kit/delete-kit-section.tsx",
+  "components/app/command-palette.tsx",
 ];
 
 const PAGES = [
