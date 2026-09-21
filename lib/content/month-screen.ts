@@ -24,6 +24,9 @@ import type { ContentMonth, ContentMonthRecord, ContentResult } from "@/lib/data
  * `process.env` elle-même ne pourrait pas être éprouvée dans les deux sens.
  */
 
+/** Les deux vues de `/app/content`. Le flux est le défaut. */
+export type MonthView = "stream" | "calendar";
+
 export type MonthScreen =
   /** Cet environnement est en retard sur le code. Pas une panne, pas de réessai. */
   | { kind: "not_deployed"; detail: string | null }
@@ -36,7 +39,15 @@ export type MonthScreen =
   /** La génération a échoué, et rien n'a été facturé. */
   | { kind: "generation_failed" }
   /** Il y a des cartes à montrer. */
-  | { kind: "month" };
+  | { kind: "month" }
+  /**
+   * La grille du mois.
+   *
+   * ⚠ ELLE NE DÉPEND QUE DE LA VUE ET DE LA LECTURE. Un mois sans post généré
+   * a toujours un calendrier : c'est là qu'elle voit ses propres posts, ses
+   * brouillons sans date, et qu'elle en crée.
+   */
+  | { kind: "calendar" };
 
 export function monthScreen(input: {
   result: ContentResult<ContentMonth>;
@@ -45,8 +56,10 @@ export function monthScreen(input: {
   automatic: boolean;
   /** La cause technique, déjà filtrée par l'appelant selon l'environnement. */
   detail: string | null;
+  /** Celle qu'elle regarde. Le flux par défaut. */
+  view: MonthView;
 }): MonthScreen {
-  const { result, record, automatic, detail } = input;
+  const { result, record, automatic, detail, view } = input;
 
   if (!result.ok) {
     /*
@@ -62,6 +75,27 @@ export function monthScreen(input: {
     }
     return { kind: "failed", message: result.message, detail };
   }
+
+  /*
+   * ⚠ LA VUE CALENDRIER GAGNE SUR TOUS LES ÉTATS DE LECTURE RÉUSSIE, ET
+   * C'EST LE CORRECTIF.
+   *
+   * L'état vide, l'attente de génération et l'échec de génération décrivent
+   * tous **le flux de cartes** : ils disent où en est le mois qu'Eklio écrit.
+   * Le calendrier répond à une autre question — « qu'est-ce qui est posé sur
+   * quel jour, et qu'est-ce que j'ajoute » — et cette question a une réponse
+   * même quand Eklio n'a rien écrit.
+   *
+   * Avant, « vide » était évalué au-dessus de la vue et court-circuitait les
+   * deux. Le bouton « Open the calendar » basculait bien l'état — il devenait
+   * « Back to the cards » — et rendait le même écran vide. La grille ne
+   * s'affichait jamais, et le texte de l'état vide promettait pourtant
+   * qu'elle pouvait planifier et écrire ses propres posts.
+   *
+   * ⚠ LES DEUX REFUS DE LECTURE RESTENT AU-DESSUS, eux. On ne dessine pas une
+   * grille à partir de données qu'on n'a pas pu lire.
+   */
+  if (view === "calendar") return { kind: "calendar" };
 
   /*
    * ⚠ « VIDE » VEUT DIRE « AUCUN POST GÉNÉRÉ », PAS « AUCUN ITEM ».

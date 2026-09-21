@@ -86,6 +86,8 @@ describe("⚠ CONFIGURATION 1 — sans variables ET sans migrations (la preview 
       record: null,
       automatic: false,
       detail: "get_content_month — items.0.rationale: expected string",
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("not_deployed");
     if (screen.kind !== "not_deployed") return;
@@ -104,6 +106,8 @@ describe("⚠ CONFIGURATION 1 — sans variables ET sans migrations (la preview 
       record: null,
       automatic: false,
       detail: "credit_meter: 42883 function does not exist",
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("not_deployed");
   });
@@ -121,6 +125,8 @@ describe("⚠ CONFIGURATION 1 — sans variables ET sans migrations (la preview 
       record: null,
       automatic: false,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("not_deployed");
     if (screen.kind !== "not_deployed") return;
@@ -135,6 +141,8 @@ describe("⚠ CONFIGURATION 2 — migrations appliquées, aucune variable posée
       record: null,
       automatic: false, // CONTENT_GENERATION_ARMED absente
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("empty");
     if (screen.kind !== "empty") return;
@@ -152,6 +160,8 @@ describe("⚠ CONFIGURATION 2 — migrations appliquées, aucune variable posée
       record: null,
       automatic: false,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("month");
   });
@@ -164,6 +174,8 @@ describe("⚠ CONFIGURATION 3 — tout est là, zéro post", () => {
       record: null,
       automatic: true,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("empty");
     if (screen.kind !== "empty") return;
@@ -176,6 +188,8 @@ describe("⚠ CONFIGURATION 3 — tout est là, zéro post", () => {
       record: { ...RECORD, status: "generating" },
       automatic: true,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("generating");
   });
@@ -186,6 +200,8 @@ describe("⚠ CONFIGURATION 3 — tout est là, zéro post", () => {
       record: { ...RECORD, status: "failed" },
       automatic: true,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("generation_failed");
   });
@@ -198,6 +214,8 @@ describe("⚠ CONFIGURATION 4 — tout est là, un mois généré", () => {
       record: RECORD,
       automatic: true,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("month");
   });
@@ -212,6 +230,8 @@ describe("⚠ CONFIGURATION 4 — tout est là, un mois généré", () => {
       record: { ...RECORD, status: "generating" },
       automatic: true,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("month");
   });
@@ -229,6 +249,8 @@ describe("⚠ UNE VRAIE PANNE RESTE UNE VRAIE PANNE", () => {
       record: null,
       automatic: true,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("failed");
     if (screen.kind !== "failed") return;
@@ -241,6 +263,8 @@ describe("⚠ UNE VRAIE PANNE RESTE UNE VRAIE PANNE", () => {
       record: null,
       automatic: true,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("failed");
   });

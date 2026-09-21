@@ -143,6 +143,8 @@ describe("⚠ A.2 — le mois est vide quand rien n'a été généré", () => {
       record: null,
       automatic: false,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("empty");
   });
@@ -153,6 +155,8 @@ describe("⚠ A.2 — le mois est vide quand rien n'a été généré", () => {
       record: null,
       automatic: false,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("empty");
   });
@@ -163,6 +167,8 @@ describe("⚠ A.2 — le mois est vide quand rien n'a été généré", () => {
       record: null,
       automatic: false,
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("month");
   });

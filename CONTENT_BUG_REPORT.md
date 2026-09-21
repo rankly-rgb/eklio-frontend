@@ -476,3 +476,103 @@ dépôt n'en fait pas. La preview reste le juge de ce dernier point.
 été posée.** Le correctif rend le code tolérant ; il ne remplace pas le
 déploiement. **`/app/content` fonctionne maintenant en preview, mais dans un
 état dégradé qui est visible et nommé plutôt que masqué.**
+
+---
+---
+
+# BUG SUIVANT — LA VUE CALENDRIER AFFICHAIT L'ÉTAT VIDE
+
+Diagnostiqué et corrigé le 2026-09-21, sur `abe7f12`.
+
+## LA CAUSE RACINE, EN UNE PHRASE
+
+**La condition « mois vide » était évaluée au-dessus du choix de vue, donc
+elle court-circuitait les deux : le bouton basculait l'état de vue sans que la
+grille du calendrier soit jamais atteinte.**
+
+`monthScreen()` ne recevait pas la vue du tout. La page branchait sur
+`view === "calendar"` **après** les états de flux, si bien que tout état qui
+répondait avant lui le rendait inatteignable.
+
+## CE QUI ÉTAIT RÉELLEMENT CASSÉ — quatre cases sur six, pas une
+
+**[chemin réel — matrice `lib/content/__tests__/month-screen-matrix.test.ts`]**
+
+| vue calendrier + … | sur `abe7f12` | attendu |
+|---|---|---|
+| activé, aucun post | l'état vide | **la grille** ❌ |
+| items manuels seuls *(le cas rapporté)* | l'état vide | **la grille** ❌ |
+| génération en échec | l'écran d'échec | **la grille** ❌ |
+| en cours d'écriture | l'écran d'attente | **la grille** ❌ |
+| mois généré | la grille | la grille ✓ |
+| non activé ici | « pas activé » | « pas activé » ✓ |
+
+⚠ **Le symptôme rapporté n'était donc qu'une case sur quatre.** Les trois
+autres se seraient manifestées plus tard, sur un compte où la génération est
+armée — c'est-à-dire au pire moment.
+
+## LE CORRECTIF
+
+`monthScreen()` prend la vue, et **la vue calendrier gagne sur tous les états
+de lecture réussie** :
+
+```
+refus de lecture  →  not_deployed | failed      (les DEUX vues)
+vue calendrier    →  la grille                  (toujours)
+sinon             →  empty | generating | generation_failed | month
+```
+
+⚠ **Les deux refus de lecture restent au-dessus.** On ne dessine pas une
+grille à partir de données qu'on n'a pas pu lire.
+
+⚠ **Et le texte de l'état vide disait « here » pour un écran qui n'est pas
+celui-là.** Il promettait « you can still plan and write your own posts
+**here** » alors que cet écran ne permet ni l'un ni l'autre. Il dit maintenant
+« on the calendar » — c'est ce que le bouton ouvre, et c'est là que ça se
+passe.
+
+## CE QUE NAIMA VERRA EN CLIQUANT SUR « OPEN THE CALENDAR »
+
+La grille du mois, avec :
+
+- **les jours du mois**, vides pour l'instant — aucun post n'a été généré ;
+- **une liste « Unscheduled »** sous la grille, qui contient **son brouillon de
+  janvier** ;
+- **les boutons « New item »**, sur un jour ou sans date, qui créent un post.
+
+## COMMENT ELLE RETROUVE SON BROUILLON DE JANVIER
+
+**Vue calendrier → la liste « Unscheduled », sous la grille. Sur n'importe quel
+mois.**
+
+⚠ **Et ce n'est pas une supposition** — mesuré sur une base rejouée aux 133
+migrations d'avant le chantier, donc la production
+**[chemin réel, base prod-like]** :
+
+```
+le brouillon de janvier, vu depuis SEPTEMBRE : items = 0, unscheduled = 1
+vu depuis MARS                               : unscheduled = 1
+```
+
+`get_content_month` **ne filtre pas `unscheduled` par mois** : la clause est
+`scheduled_for is null and status <> 'archived'`, sans borne de date. Un item
+sans date revient donc sur tous les mois, et le calendrier le rend dans sa
+liste. Le chemin ne dépend pas du mois affiché, ce qui est exactement ce qu'il
+faut pour un brouillon qui n'a pas de date.
+
+⚠ **L'affirmation du rapport précédent — « reachable from the calendar view » —
+était fausse au moment où elle a été écrite**, puisque le calendrier ne
+s'affichait pas. Elle n'était couverte par aucun test. Elle l'est maintenant,
+par les deux derniers cas de la matrice.
+
+## LE TROU DE VÉRIFICATION
+
+Le bug vient d'une combinaison jamais testée. Les cases ne sont plus choisies,
+elles sont **énumérées** : 6 états × 2 vues = 12, plus une assertion qui échoue
+si une case manque à la table. Un état retiré ne peut plus disparaître en
+silence.
+
+⚠ **La liste du brief en comptait cinq ; il y en a six.** « En cours
+d'écriture » est un état réel et il court-circuitait le calendrier comme les
+autres. Une matrice qui s'arrête à la liste qu'on lui donne n'est pas
+exhaustive — elle est complète par rapport à une liste.

@@ -215,6 +215,8 @@ describe("⚠ LE CHEMIN ENTIER — de la charge de production à l'écran choisi
       record: null,
       automatic: false, // aucune variable posée, comme en preview
       detail: null,
+    
+      view: "stream",
     });
     expect(screen.kind).toBe("empty");
   });
@@ -232,7 +234,9 @@ describe("⚠ LE CHEMIN ENTIER — de la charge de production à l'écran choisi
       "2026-09-01"
     );
     expect(result.ok).toBe(true);
-    const screen = monthScreen({ result, record: null, automatic: false, detail: null });
+    const screen = monthScreen({ result, record: null, automatic: false, detail: null ,
+      view: "stream",
+    });
     expect(screen.kind).toBe("month");
   });
 
@@ -243,7 +247,9 @@ describe("⚠ LE CHEMIN ENTIER — de la charge de production à l'écran choisi
       "2026-09-01"
     );
     expect(result.ok).toBe(true);
-    const screen = monthScreen({ result, record: null, automatic: false, detail: null });
+    const screen = monthScreen({ result, record: null, automatic: false, detail: null ,
+      view: "stream",
+    });
     expect(screen.kind).toBe("empty");
     if (screen.kind !== "empty") return;
     // Rien n'écrira le 1er dans cet environnement, et l'écran ne le promet pas.

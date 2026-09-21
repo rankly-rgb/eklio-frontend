@@ -65,12 +65,21 @@ export function MonthEmpty({
       <h2 className="font-display text-h2 font-medium leading-tight text-ink">
         Nothing here yet
       </h2>
+      {/*
+       * ⚠ LE TEXTE DIT OÙ, PARCE QUE LE BOUTON OUVRE UN AUTRE ÉCRAN. Il
+       * disait « you can still plan and write your own posts HERE » — et
+       * « ici » était cet écran-là, qui ne permet ni l'un ni l'autre. Ce qui
+       * le permet est le calendrier, que le bouton ouvre.
+       *
+       * ⚠ ET IL NE PROMET PAS CE QUE LE DRAPEAU NE TIENT PAS. Sans génération
+       * armée, « votre mois est écrit le 1er » serait faux : rien ne l'écrira.
+       */}
       <p className="text-body leading-prose text-ink-2">
         {automatic
           ? "Your month is written on the 1st, and it lands here as a set of drafts for you " +
             "to look through. Nothing is posted for you — Eklio writes, you decide."
-          : "Monthly writing is not switched on for your account yet. You can still plan and " +
-            "write your own posts here in the meantime, and they will sit alongside the " +
+          : "Monthly writing is not switched on for your account yet. In the meantime you can " +
+            "plan and write your own posts on the calendar, and they will sit alongside the " +
             "written ones when it is."}
       </p>
       <div className="flex flex-wrap gap-3">

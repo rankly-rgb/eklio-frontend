@@ -157,6 +157,12 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
      */
     automatic: contentGenerationArmed(),
     detail: detailVisible && !result.ok ? (result.detail ?? null) : null,
+    /*
+     * ⚠ LA VUE FAIT PARTIE DE LA DÉCISION. Elle ne l'était pas, et « mois
+     * vide » court-circuitait donc le calendrier : le bouton basculait,
+     * l'écran ne changeait pas.
+     */
+    view,
   });
 
   const monthLabel = new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -254,7 +260,13 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
       ) : screen.kind === "generation_failed" ? (
         <MonthFailed monthLabel={monthLabel} />
       ) : !result.ok ? null /* déjà traité au-dessus ; la garde satisfait le typage */
-      : view === "calendar" ? (
+      : screen.kind === "calendar" ? (
+        /*
+         * ⚠ LA GRILLE, DANS TOUS LES CAS OÙ LA LECTURE A RÉUSSI. C'est elle
+         * qui porte ses propres posts, ses brouillons sans date et le bouton
+         * « New item » — c'est-à-dire tout ce que le texte de l'état vide
+         * promet.
+         */
         <ContentCalendar brandKitId={brandKitId} month={month} model={result.data} />
       ) : (
         <>
