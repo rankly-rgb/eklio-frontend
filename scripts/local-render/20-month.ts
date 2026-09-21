@@ -1,65 +1,103 @@
 /*
- * ── LE MOIS RÉEL : 30 PUBLICATIONS, EN BATCH, AVEC CACHING ──────────────
+ * ── LE MOIS, VISÉ À TRENTE VISUELS SUR TRENTE ───────────────────────────
  *
- * ⚠ LE SECOND PILOTE QUI N'EXISTAIT PAS. `lib/content/generate/copy-batch.ts`
- * porte tout le lot sauf son envoi : `cachedPrefix`, `variablePart`,
- * `buildBatchRequests`, `validateCopy`, `collectCopy`, `batchCostUsd` — tous
- * exportés, tous testés, et `messages.batches.create` n'est appelé nulle part
- * dans les deux dépôts. Le seul endroit où le mot « batches » apparaît hors de
- * ce fichier est un commentaire de `write-one.ts` qui dit ne pas s'en servir.
- * Ce script est l'envoi manquant, et rien d'autre : chaque décision — le
- * préfixe, la partie variable, la validation, le coût — reste celle du dépôt.
+ * La version du matin rendait 16 posts sur 30, dont 11 arrivaient en visuel.
+ * Ce qui a changé, dans l'ordre où ça agit :
  *
- * ⚠ TRENTE, ET LE DÉPÔT EN DIT DOUZE. `credit_quotas` accorde 30
- * `post_generation` par mois et l'en-tête de `copy-batch.ts` dit « trente
- * publications par mois et par abonnée » ; `POSTS_PER_MONTH` de `plan.ts`
- * plafonne à 12, parce que `cadence_per_week` s'arrête à 3. Trois sources, et
- * la plus basse est celle qui décide aujourd'hui de ce qu'une praticienne
- * reçoit. Ce script produit les trente demandés et le rapport le dit.
+ *   1. LE PRÉFIXE DIT LES COMPTES ET MONTRE UN EXEMPLE conforme par
+ *      archétype, et demande une ligne de carte d'au plus 30 caractères —
+ *      mesuré : au-delà, le titre se pose sous 102px et tout libellé de
+ *      diagramme tombe sous 11px dans une vignette de 350.
+ *   2. UN CHAMP QUI DÉPASSE EST RÉÉCRIT SEUL (`repair.ts`), deux passes au
+ *      plus. Les dépassements mesurés étaient tous de 1 à 3 mots.
+ *   3. ON EN DEMANDE PLUS QUE TRENTE, et les sujets non retenus sont rendus
+ *      à la banque.
+ *   4. UNE CARTE QUI NE TIENT PAS SE REPLIE (`fallback.ts`) au lieu d'être
+ *      jetée : moins de libellés, puis carrousel, puis une phrase.
+ *   5. LE PREMIER MOIS D'UN COMPTE EST ÉCRIT EN SYNCHRONE. Le Batch met 25 à
+ *      30 minutes ; une nouvelle abonnée ne les attend pas.
+ *   6. CHAQUE APPEL PAYANT ENTRE AU LEDGER, abouti ou non.
  *
  *   ANTHROPIC_API_KEY="$EKLIO_ANTHROPIC_API_KEY" \
- *     npx tsx scripts/local-render/20-month.ts --confirm
+ *     npx tsx scripts/local-render/20-month.ts --confirm [--email <compte>]
  */
 import Anthropic from "@anthropic-ai/sdk";
 import {
+  cachedPrefix,
+  variablePart,
+  validateCopy,
   buildBatchRequests,
   collectCopy,
   batchCostUsd,
+  syncCostUsd,
   massCopyModel,
   type BrandContext,
   type TopicRequest,
 } from "../../lib/content/generate/copy-batch";
+import { repairPayload } from "../../lib/content/generate/repair";
 import { chooseArchetype, scheduleDates } from "../../lib/content/generate/plan";
-import { cachedPrefix, variablePart, validateCopy, syncCostUsd } from "../../lib/content/generate/copy-batch";
 import { anthropicContentModel } from "../../lib/content/generate/model";
 import { deriveThemes } from "../../lib/content/generate/themes";
+import { composeWithFallback } from "../../lib/compose/fallback";
+import { cardPalette } from "../../lib/compose/palette";
 import { checkEthics } from "../../lib/ethics/rules";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
-import { admin, anthropicKeyOrDie, testKit, MONTH, SESSION_CAP_USD } from "./lib";
+import { admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD } from "./lib";
 
 const WANTED = 30;
 
+const ZERO = (): { input: number; output: number; cacheRead: number; cacheWrite: number } =>
+  ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
 /*
- * ⚠ 34 CARACTÈRES CONTRE HUIT MOTS, ET PERSONNE NE LES AVAIT MIS FACE À FACE.
- * `content_items_title_check` borne le titre à 34 caractères ; la banque écrit
- * des titres « d'au plus huit mots », soit la moitié du temps davantage. Un
- * sujet tiré ne peut donc pas devenir le titre du post qu'il produit. Ramené
- * ici sur une frontière de mot, comme `clampDirection` le fait ailleurs — et
- * signalé, parce que la vraie réparation est que les deux bornes se parlent.
+ * ⚠ QUARANTE-QUATRE POUR TRENTE. Le quota est de trente crédits ; un essai
+ * refusé rend le sien tout de suite, donc la sur-génération n'est bornée que
+ * par la banque et par le plafond de dépense. Mesuré : il faut environ 1,2
+ * essai par post écrit.
  */
-function clampTitle(title: string): string {
-  if (title.length <= 34) return title;
-  const cut = title.slice(0, 34);
-  const boundary = cut.lastIndexOf(" ");
-  return (boundary > 12 ? cut.slice(0, boundary) : cut).trimEnd();
-}
+const CANDIDATES = 44;
 
-type Topic = {
-  id: string;
-  archetype_key: string;
-  intent: string;
-  title: string;
-  hook: string;
+/*
+ * ── LE MÉLANGE DU MOIS ──────────────────────────────────────────────────
+ *
+ * Un tiers de cartes à une phrase, un tiers de diagrammes simples, un tiers de
+ * carrousels et de formes larges. Mesuré le 2026-09-21 : à 350px — la largeur
+ * d'une vignette dans un fil — une phrase se lit et un diagramme à quatre
+ * cases ne se lit pas. Un mois composé à neuf dixièmes de diagrammes est un
+ * mois que personne ne lit sur un téléphone.
+ *
+ * ⚠ LES FAMILLES SONT DÉFINIES PAR LE NOMBRE DE LIBELLÉS QU'ELLES PORTENT,
+ * pas par leur nom. C'est le nombre de libellés qui décide de la taille du
+ * texte, et la taille du texte décide de la lisibilité.
+ */
+const FAMILIES: Record<string, string[]> = {
+  statement: ["single_statement", "practitioner_card"],
+  simple: ["surface_and_beneath", "comparison_pair", "numbered_strategies", "cycle", "concentric_control"],
+  varied: ["carousel", "quadrant_model", "annotated_curve", "lettered_technique"],
+};
+
+type Topic = { id: string; archetype_key: string; intent: string; title: string; hook: string };
+type Usage = { input: number; output: number; cacheRead: number; cacheWrite: number };
+
+type Candidate = {
+  topic: Topic;
+  family: string;
+  reservationId: string | null;
+  result: ReturnType<typeof validateCopy> | null;
+  /**
+   * Ce que CE candidat a coûté.
+   *
+   * ⚠ IL MANQUAIT, ET LE LIVRE MENTAIT EN GRAND. `validateCopy` ne rend pas
+   * d'`usage` ; le règlement retombait donc sur le cumul du mois, et chacun
+   * des vingt-neuf succès inscrivait au ledger la dépense de tout le mois.
+   * Un livre qui multiplie par trente est pire qu'un livre vide : le premier
+   * a l'air d'un chiffre.
+   */
+  usage: Usage;
+};
+
+const arg = (name: string): string | null => {
+  const i = process.argv.indexOf(`--${name}`);
+  return i === -1 ? null : (process.argv[i + 1] ?? null);
 };
 
 async function main() {
@@ -67,295 +105,469 @@ async function main() {
     console.error("\n✗ Refusing without --confirm. This spends money.\n");
     process.exit(1);
   }
+  const started = Date.now();
   const key = anthropicKeyOrDie();
   const db = admin();
   const client = new Anthropic({ apiKey: key });
-  const { kitId } = await testKit(db);
+  const { userId, kitId } = await accountFor(db, arg("email"));
 
-  /* ── Un mois, une fois ─────────────────────────────────────────────── */
   const { data: already } = await db
-    .from("content_months")
-    .select("id, status")
-    .eq("brand_kit_id", kitId)
-    .eq("month", MONTH)
-    .maybeSingle();
+    .from("content_months").select("id, status").eq("brand_kit_id", kitId).eq("month", MONTH).maybeSingle();
   if (already) {
     console.error(`\n✗ Kit ${kitId} already has a ${MONTH} month (${already.status}).\n`);
     process.exit(1);
   }
 
+  /*
+   * ⚠ LE PREMIER MOIS EST SYNCHRONE, ET C'EST UNE PROMESSE PRODUIT. Aucun
+   * `content_months` pour ce kit veut dire qu'elle vient de s'abonner et
+   * qu'elle regarde l'écran. La Batch API met 25 à 30 minutes, quelle que
+   * soit la taille du lot — mesuré quatre fois. Les mois suivants, eux,
+   * tombent dans la nuit et le lot est le bon outil.
+   */
+  const { count: priorMonths } = await db
+    .from("content_months").select("id", { count: "exact", head: true }).eq("brand_kit_id", kitId);
+  const firstMonth = (priorMonths ?? 0) === 0;
+  const useBatch = process.argv.includes("--batch") || (!firstMonth && !process.argv.includes("--sync"));
+
   /* ── Ce à partir de quoi le mois est écrit ─────────────────────────── */
   const { data: kit } = await db
-    .from("brand_kits")
-    .select("voice_guide, directions, selected_direction_id")
-    .eq("id", kitId)
-    .single();
+    .from("brand_kits").select("voice_guide, directions, selected_direction_id").eq("id", kitId).single();
   const { data: preferences } = await db
-    .from("content_preferences")
-    .select("cadence_per_week, accepted_registers, off_limits")
-    .eq("brand_kit_id", kitId)
-    .single();
+    .from("content_preferences").select("cadence_per_week, accepted_registers, off_limits")
+    .eq("brand_kit_id", kitId).single();
   const { data: checkinRow } = await db
-    .from("content_checkins")
-    .select("brand_kit_id, month, sessions_theme, taking_clients, happening")
-    .eq("brand_kit_id", kitId)
-    .eq("month", MONTH)
-    .maybeSingle();
+    .from("content_checkins").select("brand_kit_id, month, sessions_theme, taking_clients, happening")
+    .eq("brand_kit_id", kitId).eq("month", MONTH).maybeSingle();
   const { data: rules } = await db.from("ethics_rules").select("*");
   const { data: brief } = await db
-    .from("project_briefs")
-    .select("practice_name, positioning, usp_statement")
-    .limit(1)
-    .single();
-
+    .from("project_briefs").select("practice_name, positioning, usp_statement").limit(1).single();
   if (!preferences || !rules?.length || !brief) throw new Error("the account is not complete");
+
+  const directions = (kit?.directions ?? []) as Array<{ id: string; palette: never }>;
+  const direction = directions.find((d) => d.id === kit?.selected_direction_id) ?? directions[0];
+  const practiceName = brief.practice_name ?? "the practice";
 
   const voice = (() => {
     const guide = kit?.voice_guide as { tone?: string; sounds_like?: string[] } | null;
     return [guide?.tone, ...(guide?.sounds_like ?? [])].filter(Boolean).join(" · ") || "plain, warm, unhurried";
   })();
-
   const brand: BrandContext = {
-    practiceName: brief.practice_name ?? "the practice",
-    voice,
-    offLimits: preferences.off_limits ?? "",
-    ethicsRules: rules,
+    practiceName, voice, offLimits: preferences.off_limits ?? "", ethicsRules: rules,
   };
 
-  /* ── Les trois thèmes, dérivés de sa propre phrase ──────────────────── */
   const checkin = (checkinRow ?? null) as ContentCheckin | null;
-  const themeModel = anthropicContentModel(rules);
-  const themes = await deriveThemes(themeModel, {
+  const themes = await deriveThemes(anthropicContentModel(rules), {
     month: MONTH,
     checkin,
     briefContext: [brief.positioning, brief.usp_statement].filter(Boolean).join("\n"),
     offLimits: preferences.off_limits ?? null,
   });
   console.error(`▸ themes (${themes.source}): ${themes.themes.join(" · ")}`);
+  console.error(`▸ ${firstMonth ? "FIRST month → synchronous" : "a later month"} · ${useBatch ? "Batch API" : "sync calls"}`);
 
-  /* ── Trente sujets, tirés de la banque par la RPC du produit ───────── */
-  const drawn: Topic[] = [];
-  const exhausted: string[] = [];
-  for (let i = 0; i < WANTED; i += 1) {
-    /*
-     * ⚠ UN CAST, ET LA MÊME CAUSE QU'AILLEURS. `assign_topic_to_kit` est
-     * arrivée avec les migrations du 20 septembre ; `types/supabase.ts` est
-     * généré depuis un projet qui ne les a pas, donc la RPC n'y est pas.
-     * Le produit ne bute pas dessus : aucun écran ne l'appelle encore.
-     */
-    const { data: topicId, error } = await (db.rpc as unknown as (
-      name: string,
-      args: Record<string, unknown>
-    ) => Promise<{ data: string | null; error: { message: string } | null }>)(
-      "assign_topic_to_kit",
-      { p_brand_kit_id: kitId, p_month: MONTH }
-    );
-    if (error) throw new Error(`assign_topic_to_kit: ${error.message}`);
-    if (!topicId) {
-      exhausted.push(`draw ${i + 1}: the bank had nothing left to give`);
-      break;
+  /* ── Les candidats, tirés par famille ──────────────────────────────── */
+  const perFamily = Math.ceil(CANDIDATES / 3);
+  const candidates: Candidate[] = [];
+  const drawnIds: string[] = [];
+  const shortfall: string[] = [];
+
+  for (const [family, archetypes] of Object.entries(FAMILIES)) {
+    let taken = 0;
+    for (const archetype of archetypes) {
+      while (taken < perFamily) {
+        const { data: topicId, error } = await (db.rpc as unknown as (
+          n: string, a: Record<string, unknown>
+        ) => Promise<{ data: string | null; error: { message: string } | null }>)(
+          "assign_topic_to_kit", { p_brand_kit_id: kitId, p_month: MONTH, p_archetype: archetype }
+        );
+        if (error) throw new Error(`assign_topic_to_kit: ${error.message}`);
+        if (!topicId) break;
+        const { data: topic } = await db
+          .from("content_topics").select("id, archetype_key, intent, title, hook").eq("id", topicId).single();
+        if (!topic) break;
+        drawnIds.push(topic.id);
+        candidates.push({ topic: topic as Topic, family, reservationId: null, result: null, usage: ZERO() });
+        taken += 1;
+      }
+      if (taken >= perFamily) break;
     }
-    const { data: topic } = await db
-      .from("content_topics")
-      .select("id, archetype_key, intent, title, hook")
-      .eq("id", topicId)
-      .single();
-    if (topic) drawn.push(topic as Topic);
+    if (taken < perFamily) shortfall.push(`${family}: ${taken} of ${perFamily} (the bank had no more)`);
   }
-  console.error(`▸ ${drawn.length} topics drawn of ${WANTED} asked`);
-
-  /* ── Le lot ────────────────────────────────────────────────────────── */
-  const checkinLine = [checkin?.sessions_theme, checkin?.happening].filter(Boolean).join(" ");
-  const requests: TopicRequest[] = drawn.map((topic) => ({
-    topicId: topic.id,
-    archetypeKey: topic.archetype_key,
-    title: topic.title,
-    hook: topic.hook,
-    intent: topic.intent,
-    checkin: checkinLine,
-  }));
-
-  const batch = await client.messages.batches.create({
-    requests: buildBatchRequests(brand, requests),
-  });
-  console.error(`▸ batch ${batch.id} · ${massCopyModel()} · ${requests.length} posts`);
-
-  let status = batch;
-  while (status.processing_status !== "ended") {
-    await new Promise((resolve) => setTimeout(resolve, 15000));
-    status = await client.messages.batches.retrieve(batch.id);
-    console.error(`  … ${status.processing_status} ${JSON.stringify(status.request_counts)}`);
-  }
-
-  const entries: Array<{ custom_id: string; result: { type: string; message?: Anthropic.Message } }> = [];
-  for await (const entry of await client.messages.batches.results(batch.id)) {
-    entries.push(entry as never);
-  }
-  const archetypeByTopic = new Map(drawn.map((t) => [t.id, t.archetype_key]));
-  const results = collectCopy(entries, archetypeByTopic);
 
   /*
-   * ── UNE RELANCE QUI DIT CE QUI A ÉTÉ RATÉ ──────────────────────────────
+   * ── ⚠ CE QUI MANQUE DANS UNE FAMILLE EST PRIS AILLEURS ────────────────
    *
-   * ⚠ ET LE PRODUIT, LUI, RELANCE À L'IDENTIQUE. `write-one.ts` le dit et
-   * l'assume : « la relance ne dit pas au modèle ce qu'il a raté, et c'est
-   * délibéré ». Ce lot-ci mesure ce que cette décision coûte. Sur le premier
-   * mois réel, le lot seul a rendu 1 post valide sur 30 ; ce qui suit relance
-   * une fois chaque refus en citant le reproche exact, et le rapport publie
-   * les deux chiffres côte à côte.
+   * Mesuré le 2026-09-21 : le second compte de test n'a pu tirer que 28
+   * candidats sur 36, parce que l'anti-collision lui refuse tout ce que la
+   * première praticienne a pris dans les 90 jours — même État, même modalité,
+   * utilisatrice différente. C'est la fenêtre qui fait son travail, et c'est
+   * exactement le scénario que §10.8 du rapport d'implémentation décrit.
    *
-   * Rien n'est réparé à la main. Une seconde sortie refusée reste un échec.
+   * Un mélange visé n'est pas un mélange garanti : mieux vaut trente posts
+   * dont le mélange penche que vingt-deux posts bien répartis. Le rapport
+   * publie le mélange obtenu, jamais celui qui était visé.
    */
-  const retryUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-  let retried = 0;
-  let rescued = 0;
+  while (candidates.length < CANDIDATES) {
+    const { data: topicId, error } = await (db.rpc as unknown as (
+      n: string, a: Record<string, unknown>
+    ) => Promise<{ data: string | null; error: { message: string } | null }>)(
+      "assign_topic_to_kit", { p_brand_kit_id: kitId, p_month: MONTH }
+    );
+    if (error) throw new Error(`assign_topic_to_kit: ${error.message}`);
+    if (!topicId) break;
+    const { data: topic } = await db
+      .from("content_topics").select("id, archetype_key, intent, title, hook").eq("id", topicId).single();
+    if (!topic) break;
+    const family =
+      Object.entries(FAMILIES).find(([, keys]) => keys.includes(topic.archetype_key))?.[0] ?? "varied";
+    drawnIds.push(topic.id);
+    candidates.push({ topic: topic as Topic, family, reservationId: null, result: null, usage: ZERO() });
+  }
 
-  for (const [index, result] of results.entries()) {
-    if (result.ok) continue;
-    const topic = drawn.find((t) => t.id === result.topicId);
-    if (!topic) continue;
-    const entry = entries.find((e) => e.custom_id === result.topicId);
-    const raw = entry?.result.message?.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("") ?? "";
-    if (!raw) continue;
-
-    const reproach = result.budget?.length
-      ? result.budget.map((b) => `- ${b.path}: you wrote ${b.said} words, at most ${b.allowed} are allowed`).join("\n")
-      : `- the payload did not match the archetype's shape (${result.reason})`;
-
-    const second = await client.messages.create({
-      model: massCopyModel(),
-      max_tokens: 2000,
-      system: cachedPrefix(brand, topic.archetype_key),
-      messages: [
-        { role: "user", content: variablePart(requests[index] ?? requests[0]) },
-        { role: "assistant", content: raw },
-        { role: "user", content: `That was refused:\n${reproach}\n\nSend the WHOLE JSON object again, corrected. Change nothing that was accepted.` },
-      ],
-    });
-    retried += 1;
-    retryUsage.input += second.usage.input_tokens;
-    retryUsage.output += second.usage.output_tokens;
-    const secondText = second.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("");
-    const secondResult = validateCopy(topic.archetype_key, secondText);
-    if (secondResult.ok) {
-      results[index] = { ...secondResult, topicId: result.topicId, usage: result.usage };
-      rescued += 1;
+  /*
+   * ── ⚠ EN ALTERNANCE, PAS PAR PAQUETS ──────────────────────────────────
+   *
+   * Les candidats sont tirés famille par famille, ce qui est commode pour le
+   * tirage et catastrophique pour l'écriture : si la génération s'arrête tôt —
+   * quota atteint, plafond de dépense, panne — les premiers écrits sont tous
+   * de la même famille. Mesuré : un arrêt à 11 posts a rendu 11 cartes à une
+   * phrase et zéro diagramme.
+   *
+   * Alterner met le mélange à l'abri de l'arrêt : les onze premiers posts
+   * d'un mois interrompu ressemblent au mois entier.
+   */
+  const byFamily = new Map<string, Candidate[]>();
+  for (const candidate of candidates) {
+    const list = byFamily.get(candidate.family) ?? [];
+    list.push(candidate);
+    byFamily.set(candidate.family, list);
+  }
+  const interleaved: Candidate[] = [];
+  for (let round = 0; interleaved.length < candidates.length; round += 1) {
+    for (const family of Object.keys(FAMILIES)) {
+      const item = byFamily.get(family)?.[round];
+      if (item) interleaved.push(item);
     }
+    if (round > candidates.length) break;
+  }
+  candidates.length = 0;
+  candidates.push(...interleaved);
+
+  console.error(`▸ ${candidates.length} candidates drawn for ${WANTED} posts`);
+
+  /* ── L'écriture ────────────────────────────────────────────────────── */
+  const checkinLine = [checkin?.sessions_theme, checkin?.happening].filter(Boolean).join(" ");
+  const asRequest = (c: Candidate): TopicRequest => ({
+    topicId: c.topic.id, archetypeKey: c.topic.archetype_key,
+    title: c.topic.title, hook: c.topic.hook, intent: c.topic.intent, checkin: checkinLine,
+  });
+
+  const funnel = {
+    candidates: candidates.length,
+    generated: 0,
+    conformantFirstCall: 0,
+    repaired: 0,
+    refusedAfterRepair: 0,
+    quotaRefusals: 0,
+  };
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const repairUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const failures: Array<{ topic: string; kind: string; because: string }> = [];
+
+  /** Réserve un crédit, ou dit pourquoi elle ne peut pas. */
+  async function reserve(reason: string): Promise<string | null> {
+    const { data } = await db.rpc("reserve_credit", {
+      p_user: userId, p_kind: "post_generation", p_reason: reason,
+      p_provider: "anthropic", p_model: massCopyModel(), p_month: MONTH,
+    } as never);
+    const row = data as unknown as { ok?: boolean; reservation_id?: string; reason?: string } | null;
+    if (row?.ok !== true) { funnel.quotaRefusals += 1; return null; }
+    return row.reservation_id ?? null;
+  }
+
+  /** Règle : succès (le crédit est consommé) ou release AVEC son coût. */
+  async function settle(reservationId: string | null, costUsd: number, succeeded: boolean) {
+    if (!reservationId) return;
+    await db.rpc("settle_credit", {
+      p_reservation_id: reservationId,
+      p_actual_cost_usd: Number(costUsd.toFixed(6)),
+      p_succeeded: succeeded,
+    } as never);
+  }
+
+  /** Les candidats retenus, dans l'ordre où ils se sont avérés utilisables. */
+  const usable: Candidate[] = [];
+
+  if (useBatch) {
+    const requests = candidates.map(asRequest);
+    const batch = await client.messages.batches.create({ requests: buildBatchRequests(brand, requests) });
+    console.error(`▸ batch ${batch.id} · ${requests.length} candidates`);
+    let status = batch;
+    while (status.processing_status !== "ended") {
+      await new Promise((r) => setTimeout(r, 15000));
+      status = await client.messages.batches.retrieve(batch.id);
+      console.error(`  … ${status.processing_status} ${JSON.stringify(status.request_counts)}`);
+    }
+    const entries: Array<{ custom_id: string; result: { type: string; message?: Anthropic.Message } }> = [];
+    for await (const entry of await client.messages.batches.results(batch.id)) entries.push(entry as never);
+    const byTopic = new Map(candidates.map((c) => [c.topic.id, c.topic.archetype_key]));
+    for (const result of collectCopy(entries, byTopic)) {
+      const candidate = candidates.find((c) => c.topic.id === result.topicId);
+      if (candidate) candidate.result = result;
+    }
+    funnel.generated = candidates.filter((c) => c.result).length;
+    for (const candidate of candidates) {
+      if (candidate.result?.usage) candidate.usage = candidate.result.usage;
+      if (usable.length >= WANTED) break;
+      if (await settleCandidate(candidate)) {
+        usable.push(candidate);
+      } else {
+        await settle(candidate.reservationId, batchCostUsd([candidate.usage]), false);
+        candidate.reservationId = null;
+      }
+    }
+    for (const u of candidates.map((c) => c.result?.usage).filter(Boolean)) {
+      usage.input += u!.input; usage.output += u!.output;
+      usage.cacheRead += u!.cacheRead; usage.cacheWrite += u!.cacheWrite;
+    }
+  } else {
+    /*
+     * ⚠ SÉQUENTIEL, ET C'EST CE QUI REND LE CACHE UTILE. Le préfixe d'un
+     * archétype est identique d'un candidat au suivant ; les envoyer l'un
+     * après l'autre laisse le cache se remplir puis servir. En parallèle, les
+     * premiers partent tous avant que le premier soit revenu, et chacun paie
+     * l'écriture du cache.
+     */
+    for (const candidate of candidates) {
+      if (usable.length >= WANTED) break;
+
+      const reservationId = await reserve(`month ${MONTH}: ${candidate.topic.title.slice(0, 40)}`);
+      /*
+       * ⚠ UN REFUS DE QUOTA ARRÊTE LE MOIS, ET C'EST JUSTE. `credit_quotas`
+       * accorde 30 `post_generation` par mois et par personne ; passer outre
+       * serait écrire des posts qu'elle n'a pas achetés. Le rapport le compte
+       * plutôt que de le taire.
+       */
+      if (!reservationId) break;
+      candidate.reservationId = reservationId;
+
+      const request = asRequest(candidate);
+      const message = await client.messages.create({
+        model: massCopyModel(),
+        max_tokens: 2000,
+        system: cachedPrefix(brand, candidate.topic.archetype_key),
+        messages: [{ role: "user", content: variablePart(request) }],
+      });
+      funnel.generated += 1;
+      usage.input += message.usage.input_tokens;
+      usage.output += message.usage.output_tokens;
+      usage.cacheRead += message.usage.cache_read_input_tokens ?? 0;
+      usage.cacheWrite += message.usage.cache_creation_input_tokens ?? 0;
+
+      const text = message.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("");
+      candidate.result = { ...validateCopy(candidate.topic.archetype_key, text), topicId: candidate.topic.id };
+
+      /*
+       * ⚠ LE VERDICT TOMBE ICI, ET LE CRÉDIT AVEC. Un candidat refusé rend sa
+       * réservation tout de suite — avec son coût — et la place se libère
+       * pour l'essai suivant. C'est ce qui rend la sur-génération possible
+       * sous un quota de trente.
+       */
+      candidate.usage = {
+        input: message.usage.input_tokens, output: message.usage.output_tokens,
+        cacheRead: message.usage.cache_read_input_tokens ?? 0,
+        cacheWrite: message.usage.cache_creation_input_tokens ?? 0,
+      };
+      const cost = syncCostUsd(candidate.usage);
+      if (await settleCandidate(candidate)) {
+        usable.push(candidate);
+      } else {
+        await settle(candidate.reservationId, cost, false);
+        candidate.reservationId = null;
+      }
+    }
+  }
+
+  /* ── La réparation, champ par champ ────────────────────────────────── */
+
+  /**
+   * Rend `true` quand le candidat est utilisable après réparation.
+   *
+   * ⚠ APPELÉE DANS LA BOUCLE, PAS APRÈS. Tant que la réparation tournait en
+   * seconde passe, la réservation d'un candidat raté restait ouverte jusqu'à
+   * la fin ; trente essais suffisaient à remplir un quota de trente, échecs
+   * compris, et le trente-et-unième était refusé. Mesuré : 26 posts écrits,
+   * 4 crédits immobilisés par des essais qui avaient déjà échoué.
+   */
+  async function settleCandidate(candidate: Candidate): Promise<boolean> {
+    const result = candidate.result;
+    if (!result) return false;
+    if (result.ok) { funnel.conformantFirstCall += 1; return true; }
+
+    if (result.reason !== "over_budget" || !result.budget?.length || result.payload === undefined) {
+      failures.push({
+        topic: candidate.topic.title, kind: result.reason === "over_budget" ? "word budget" : "schema",
+        because: result.reason ?? "unknown",
+      });
+      return false;
+    }
+
+    const repair = await repairPayload(
+      (params) => client.messages.create(params),
+      candidate.topic.archetype_key,
+      result.payload
+    );
+    repairUsage.input += repair.usage.input; repairUsage.output += repair.usage.output;
+    repairUsage.cacheRead += repair.usage.cacheRead; repairUsage.cacheWrite += repair.usage.cacheWrite;
+
+    if (repair.ok) {
+      funnel.repaired += 1;
+      candidate.result = { ...result, ok: true, payload: repair.payload, reason: undefined, budget: undefined };
+      return true;
+    }
+    funnel.refusedAfterRepair += 1;
+    failures.push({
+      topic: candidate.topic.title, kind: "word budget",
+      because: repair.remaining.map((b) => `${b.path} said ${b.said}, allowed ${b.allowed}`).join("; "),
+    });
+    return false;
   }
 
   /* ── Le mois, puis les posts ───────────────────────────────────────── */
+  const succeeded = usable.slice(0, WANTED);
+  const discarded = candidates.filter((c) => !succeeded.includes(c));
+
   const { data: monthRow, error: monthError } = await db
-    .from("content_months")
-    .insert({
-      brand_kit_id: kitId,
-      month: MONTH,
-      themes: themes.themes,
-      status: "proposed",
-      theme_source: themes.source,
-      theme_source_text: themes.sourceText,
-    })
-    .select("id")
-    .single();
+    .from("content_months").insert({
+      brand_kit_id: kitId, month: MONTH, themes: themes.themes, status: "proposed",
+      theme_source: themes.source, theme_source_text: themes.sourceText,
+    }).select("id").single();
   if (monthError || !monthRow) throw new Error(`could not write the month: ${monthError?.message}`);
 
   const registers = preferences.accepted_registers as ContentRegister[];
   const dates = scheduleDates(MONTH.slice(0, 7), [1, 2, 3, 4, 5, 6, 7], WANTED);
-
-  const failures: Array<{ topic: string; kind: string; because: string }> = [];
+  const fallbacks: Array<{ topic: string; from: string; to: string; steps: string }> = [];
   const ethicsFlags: Array<{ topic: string; rule: string; excerpt: string }> = [];
   let written = 0;
   let previousArchetype: Parameters<typeof chooseArchetype>[1] = null;
 
-  for (const [index, result] of results.entries()) {
-    const topic = drawn.find((t) => t.id === result.topicId);
-    if (!topic) continue;
-
-    if (!result.ok) {
-      failures.push({
-        topic: topic.title,
-        kind: result.budget?.length ? "word budget" : result.reason === "schema" ? "schema" : "model",
-        because: result.budget?.length
-          ? result.budget.map((b) => `${b.path}: said ${b.said}, allowed ${b.allowed}`).join("; ")
-          : (result.reason ?? "unknown"),
-      });
-      continue;
-    }
-
+  for (const [index, candidate] of succeeded.entries()) {
+    const result = candidate.result!;
     const register = registers[index % registers.length];
     const layout = chooseArchetype(register, previousArchetype);
     previousArchetype = layout;
 
-    /*
-     * ⚠ LE GARDE DÉONTOLOGIQUE EST LU, PAS SEULEMENT SUBI. La base refuse
-     * déjà un item qui porte une phrase interdite ; on scanne en plus ici
-     * pour pouvoir DIRE ce qui a été attrapé, plutôt que de compter des
-     * insertions manquantes.
-     */
+    const cardLine = (result.cardLine ?? candidate.topic.title).slice(0, 34);
     const scanned = [result.caption, result.altText, JSON.stringify(result.payload)].join("\n");
     for (const violation of checkEthics(scanned).violations) {
-      ethicsFlags.push({ topic: topic.title, rule: violation.ruleId, excerpt: violation.excerpt.slice(0, 80) });
+      ethicsFlags.push({ topic: candidate.topic.title, rule: violation.ruleId, excerpt: violation.excerpt.slice(0, 80) });
+    }
+
+    /*
+     * ⚠ ON COMPOSE AVANT D'ÉCRIRE, et on enregistre la forme qui a vraiment
+     * tenu. Écrire l'archétype demandé sur un post que le moteur a replié
+     * donnerait une carte que l'écran de relecture ne saurait pas redessiner.
+     */
+    let composeArchetype = candidate.topic.archetype_key;
+    let payload = result.payload;
+    try {
+      const composed = composeWithFallback({
+        archetype: candidate.topic.archetype_key,
+        payload: result.payload,
+        palette: cardPalette(`${monthRow.id}-${index}`, direction.palette, false),
+        eyebrow: (themes.themes[index % themes.themes.length] ?? practiceName).toUpperCase(),
+        headline: cardLine,
+        footer: practiceName,
+      }, cardLine);
+      composeArchetype = composed.archetype;
+      payload = composed.payload;
+      if (composed.steps.length > 0) {
+        fallbacks.push({
+          topic: candidate.topic.title, from: candidate.topic.archetype_key,
+          to: composed.kind === "carousel" ? `carousel×${composed.slides.length}` : composed.archetype,
+          steps: composed.steps.join("; "),
+        });
+      }
+    } catch (error) {
+      failures.push({
+        topic: candidate.topic.title, kind: "engine",
+        because: error instanceof Error ? error.message.slice(0, 140) : String(error),
+      });
+      await settle(candidate.reservationId, 0, false);
+      continue;
     }
 
     const { error } = await db.from("content_items").insert({
-      brand_kit_id: kitId,
-      month_id: monthRow.id,
-      topic_id: topic.id,
+      brand_kit_id: kitId, month_id: monthRow.id, topic_id: candidate.topic.id,
       theme: themes.themes[index % themes.themes.length],
-      register,
-      archetype: layout,
-      compose_archetype: topic.archetype_key,
-      payload: result.payload as never,
-      status: "proposed",
-      title: clampTitle(topic.title),
-      on_image_text: topic.hook,
-      caption: result.caption ?? "",
-      alt_text: result.altText ?? "",
+      register, archetype: layout, compose_archetype: composeArchetype,
+      payload: payload as never, status: "proposed",
+      title: cardLine, on_image_text: candidate.topic.hook,
+      caption: result.caption ?? "", alt_text: result.altText ?? "",
       rationale: result.rationale ?? "",
       scheduled_for: dates[index] ?? dates[dates.length - 1],
     });
     if (error) {
-      failures.push({ topic: topic.title, kind: "database", because: error.message.slice(0, 160) });
+      failures.push({ topic: candidate.topic.title, kind: "database", because: error.message.slice(0, 160) });
+      await settle(candidate.reservationId, 0, false);
       continue;
     }
     written += 1;
+    await settle(candidate.reservationId, useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage), true);
   }
 
-  const usage = results.filter((r) => r.usage).map((r) => r.usage!);
-  const costUsd = batchCostUsd(usage) + syncCostUsd(retryUsage);
-  const totals = usage.reduce(
-    (acc, u) => ({
-      input: acc.input + u.input,
-      output: acc.output + u.output,
-      cacheRead: acc.cacheRead + u.cacheRead,
-      cacheWrite: acc.cacheWrite + u.cacheWrite,
-    }),
-    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
-  );
+  /*
+   * ── LES CANDIDATS NON RETENUS ─────────────────────────────────────────
+   *
+   * ⚠ LEUR SUJET RETOURNE À LA BANQUE. Un sujet tiré et non écrit n'a rien
+   * coûté à personne et ne doit pas être perdu pour elle : la règle « jamais
+   * deux fois » vaut sur ce qui a été PUBLIÉ, pas sur ce qui a été envisagé.
+   *
+   * ⚠ ET LEUR CRÉDIT REVIENT, AVEC LE COÛT ÉCRIT. Un appel refusé a dépensé
+   * des jetons chez le fournisseur et ne doit rien à la praticienne.
+   */
+  const keptTopicIds = new Set(succeeded.map((c) => c.topic.id));
+  const released = drawnIds.filter((id) => !keptTopicIds.has(id));
+  if (released.length > 0) {
+    await untypedTable(db, "topic_assignments").delete().eq("brand_kit_id", kitId).in("topic_id", released);
+  }
+  for (const candidate of discarded) {
+    await settle(candidate.reservationId, useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage), false);
+  }
+
+  const batchCost = useBatch ? batchCostUsd([usage]) : 0;
+  const syncCost = useBatch ? 0 : syncCostUsd(usage);
+  const costUsd = batchCost + syncCost + syncCostUsd(repairUsage);
+  const elapsedSeconds = Math.round((Date.now() - started) / 1000);
 
   console.log(JSON.stringify({
     step: "month",
-    batch: batch.id,
+    mode: useBatch ? "batch" : "sync",
+    firstMonth,
     monthId: monthRow.id,
-    asked: WANTED,
-    drawn: drawn.length,
-    written,
-    exhausted,
+    elapsedSeconds,
+    funnel: {
+      ...funnel,
+      keptForWriting: succeeded.length,
+      written,
+      fallbacks: fallbacks.length,
+      visualsOnThirty: written,
+    },
+    mix: Object.fromEntries(
+      Object.keys(FAMILIES).map((f) => [f, succeeded.filter((c) => c.family === f).length])
+    ),
+    shortfall,
+    fallbacks,
     failures,
     ethicsFlags,
+    releasedTopics: released.length,
     themes: { source: themes.source, themes: themes.themes },
-    usage: totals,
-    retried,
-    rescuedOnRetry: rescued,
-    retryUsage,
+    usage, repairUsage,
     costUsd: Number(costUsd.toFixed(5)),
     capUsd: SESSION_CAP_USD,
   }, null, 2));
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main().catch((error) => { console.error(error); process.exit(1); });

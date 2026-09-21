@@ -143,6 +143,18 @@ describe("validation rejects, and never repairs", () => {
    * ⚠ ET IL NE LE RÉPARE PAS. Un payload à deux nœuds rendu comme un cycle
    * valide produirait une carte que personne n'a écrite, et personne ne saurait
    * qu'elle a été fabriquée ici.
+   *
+   * ⚠ IL LE REND POURTANT, DEPUIS LE 2026-09-21, ET LES DEUX NE SE CONTREDISENT
+   * PAS. « Refuser » et « ne rien rendre » étaient la même ligne de code ;
+   * elles ne sont pas la même règle. Le payload est connu, il parse, il lui
+   * manque un mot — le jeter obligeait l'appelant à tout redemander, légende
+   * et texte alternatif compris, pour un `gloss` trop long. Il repart donc
+   * avec le refus, et `lib/content/generate/repair.ts` fait réécrire CE
+   * champ-là par le modèle.
+   *
+   * Ce qui ne bouge pas est la seule chose qui protégeait quoi que ce soit :
+   * `ok` reste faux. Rien ne peut être écrit en base sans repasser par une
+   * validation qui, elle, dira oui.
    */
   it("refuses one word over budget rather than trimming it", () => {
     const over = JSON.parse(good);
@@ -150,7 +162,16 @@ describe("validation rejects, and never repairs", () => {
     const result = validateCopy("cycle", JSON.stringify(over));
     expect(result.reason).toBe("over_budget");
     expect(result.ok).toBe(false);
-    expect(result.payload).toBeUndefined();
+    // Le budget dit QUEL champ déborde, et de combien.
+    expect(result.budget).toEqual([{ path: "nodes[0].gloss", said: 7, allowed: 6 }]);
+  });
+
+  it("⚠ le payload refusé repart INTACT — ni coupé, ni raccourci", () => {
+    const over = JSON.parse(good);
+    over.payload.nodes[0].gloss = "one two three four five six seven";
+    const result = validateCopy("cycle", JSON.stringify(over));
+    expect(result.ok).toBe(false);
+    expect(result.payload).toEqual(over.payload);
   });
 
   it("refuses a caption Instagram would refuse", () => {

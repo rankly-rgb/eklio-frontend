@@ -39,7 +39,38 @@ export function anthropicKeyOrDie(): string {
 
 /** Le compte de test, nommé une fois. */
 export const TEST_EMAIL = "rowan.mercier@eklio-test.invalid";
-export const MONTH = "2026-10-01";
+/**
+ * Le mois visé.
+ *
+ * ⚠ SURCHARGEABLE, PARCE QUE LE QUOTA EST MENSUEL. `credit_quotas` accorde 30
+ * `post_generation` par personne ET PAR MOIS, et `credit_ledger` est en ajout
+ * seul : une mesure refaite sur le même mois se heurte au quota déjà consommé
+ * par la précédente. Mesurer le mois suivant est plus honnête que de créer une
+ * praticienne de plus à chaque essai — et c'est aussi ce qu'une abonnée fait.
+ */
+export const MONTH = (() => {
+  const i = process.argv.indexOf("--month");
+  return i === -1 ? "2026-10-01" : (process.argv[i + 1] ?? "2026-10-01");
+})();
+
+/**
+ * Le compte de test, ou un autre, nommé par son email.
+ *
+ * ⚠ UN SECOND COMPTE PLUTÔT QU'UN SCRIPT QUI ÉCRASE. `20-month.ts` refuse
+ * d'écraser un mois — « un mois, une fois, jusqu'à ce qu'il soit lu » — et
+ * c'est un refus qu'on ne contourne pas pour se simplifier une mesure. Pour
+ * regénérer un mois, on crée une praticienne de plus.
+ */
+export async function accountFor(db: ReturnType<typeof admin>, email?: string | null) {
+  const wanted = email?.trim() || TEST_EMAIL;
+  const { data: user } = await db.from("profiles").select("id").eq("email", wanted).single();
+  if (!user) throw new Error(`No account for ${wanted}.`);
+  const { data: project } = await db.from("projects").select("id").eq("user_id", user.id).limit(1).single();
+  if (!project) throw new Error(`${wanted} has no project.`);
+  const { data: kit } = await db.from("brand_kits").select("id").eq("project_id", project.id).single();
+  if (!kit) throw new Error(`${wanted} has no brand kit.`);
+  return { userId: user.id, projectId: project.id, kitId: kit.id };
+}
 
 export async function testKit(db: ReturnType<typeof admin>) {
   const { data: user } = await db.from("profiles").select("id").eq("email", TEST_EMAIL).single();
@@ -79,6 +110,11 @@ export async function spentSoFarUsd(db: ReturnType<typeof admin>): Promise<numbe
  * est nommée ici plutôt que recopiée à quatre endroits, pour qu'elle disparaisse
  * d'un seul coup le jour où les types sont régénérés.
  */
+export type DeleteChain = {
+  eq: (column: string, value: unknown) => DeleteChain;
+  in: (column: string, values: unknown[]) => PromiseLike<{ error: unknown }>;
+};
+
 type EqChain<Row> = {
   eq: (column: string, value: unknown) => EqChain<Row>;
   maybeSingle: () => PromiseLike<{ data: Row | null; error: unknown }>;
@@ -90,6 +126,7 @@ export function untypedTable<Row>(db: ReturnType<typeof admin>, table: string) {
       select: (columns: string) => PromiseLike<{ data: Row[] | null; error: unknown }> & {
         eq: (column: string, value: unknown) => EqChain<Row>;
       };
+      delete: () => DeleteChain;
       insert: (row: Record<string, unknown>) => {
         select: (columns: string) => { single: () => PromiseLike<{ data: Row | null; error: unknown }> };
       };

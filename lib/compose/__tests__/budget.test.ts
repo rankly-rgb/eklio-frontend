@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readPath } from "@/lib/content/generate/repair";
 import { ARCHETYPE_KEYS } from "@/lib/compose/archetypes/index";
 import { BUDGET, BudgetExceededError, budgetErrors, words } from "@/lib/compose/budget";
 import { render } from "@/lib/compose/engine";
@@ -100,5 +101,40 @@ describe("words()", () => {
     expect(words("  three   little words ")).toBe(3);
     expect(words("")).toBe(0);
     expect(words("   ")).toBe(0);
+  });
+});
+
+/*
+ * ── UN CHEMIN D'ERREUR EST UNE ADRESSE ──────────────────────────────────
+ *
+ * `surface_and_beneath` rapportait ses erreurs sous `pair[0].label`, un chemin
+ * qui n'existe dans aucun payload : il était fabriqué pour réutiliser
+ * `checkItems`. Tant que personne ne s'en servait, il avait l'air juste. La
+ * réparation champ par champ s'en est servie, n'a rien trouvé à l'adresse
+ * donnée, et a compté huit échecs qu'elle savait corriger.
+ *
+ * ⚠ CE TEST VAUT POUR TOUS LES ARCHÉTYPES, pas seulement celui qui a cassé :
+ * chaque chemin rendu doit mener à une chaîne réellement présente.
+ */
+describe("chaque chemin d'erreur mène à une valeur du payload", () => {
+  const TOO_LONG = { label: "four words is too many", gloss: "and this gloss is far too long as well" };
+  const PAYLOADS: Array<[string, unknown]> = [
+    ["single_statement", { statement: "no" }],
+    ["surface_and_beneath", { surface: TOO_LONG, beneath: TOO_LONG }],
+    ["comparison_pair", { left: [TOO_LONG, TOO_LONG], right: [TOO_LONG, TOO_LONG] }],
+    ["numbered_strategies", { items: [TOO_LONG, TOO_LONG, TOO_LONG] }],
+    ["cycle", { nodes: [TOO_LONG, TOO_LONG, TOO_LONG] }],
+    ["concentric_control", { rings: [TOO_LONG, TOO_LONG] }],
+    ["annotated_curve", { axis_x: "a", axis_y: "b", points: [TOO_LONG, TOO_LONG] }],
+    ["quadrant_model", { axis_x: "a", axis_y: "b", items: [TOO_LONG, TOO_LONG, TOO_LONG, TOO_LONG] }],
+  ];
+
+  it.each(PAYLOADS)("%s", (archetype, payload) => {
+    const errors = budgetErrors(archetype as string, payload);
+    expect(errors.length).toBeGreaterThan(0);
+    for (const error of errors) {
+      // Le même vocabulaire de chemin que `repair.ts` sait suivre.
+      expect(readPath(payload, error.path), `${archetype}: ${error.path} ne mène nulle part`).toBeTypeOf("string");
+    }
   });
 });

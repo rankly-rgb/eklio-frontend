@@ -421,3 +421,138 @@ l'archétype est imposé, que sur une idée libre, qui part toujours en
 le même écran, mais visité après coup plutôt que photographié au moment où
 l'écriture arrive. `10`, `11` et `12` les remplacent. Deux captures du même
 écran, dont l'une seulement est une preuve, ne se valent pas.
+
+---
+
+## 8. Trente sur trente — 2026-09-21, seconde journée
+
+Le rendu du matin écrivait **16 posts sur 30** et en amenait **11 en visuel**.
+Le mois publié en amène **30 sur 30**, en **147 secondes**, en appels
+synchrones. Voici l'entonnoir complet, et ce qui l'a déplacé.
+
+### L'entonnoir mesuré
+
+| étape | avant | après |
+|---|---|---|
+| candidats tirés | 30 | **32** (44 demandés ; la banque n'a pas suivi) |
+| conformes au **premier appel** | **1 / 30 — 3 %** | **25 / 32 — 78 %** |
+| réparés champ par champ | — (n'existait pas) | **5** |
+| refusés après réparation | — | **1** |
+| autre refus de schéma | 4 | **1** (`alt_text_too_long`) |
+| écrits en base | 16 | **30** |
+| replis du moteur | — (n'existait pas) | **9** |
+| **visuels finaux sur 30** | **11** | **30** |
+| refus déontologiques | 0 | **0** |
+
+Les neuf replis, par type :
+
+| repli | nombre |
+|---|---|
+| `quadrant_model` → `surface_and_beneath` | 2 |
+| `annotated_curve` → `surface_and_beneath` | 3 |
+| `lettered_technique` → `surface_and_beneath` | 2 |
+| `lettered_technique` → carrousel de 3 | 2 |
+
+Le mois livré, par forme réellement composée : `single_statement` 9,
+`surface_and_beneath` 9, `carousel` 3, `cycle` 2, `numbered_strategies` 2,
+`practitioner_card` 2, `comparison_pair` 2, `concentric_control` 1.
+
+### Ce qui a déplacé le chiffre, dans l'ordre de l'effet
+
+**1 — La longueur du titre, et pas le nombre de libellés.** Le brief supposait
+qu'il fallait réduire les libellés ou relever les planchers. Le balayage dit
+autre chose, et il est net : **11 cas lisibles sur 64 avec un titre court,
+0 sur 64 avec un titre moyen ou long**, pendant que le nombre d'entrées ne
+bouge presque rien (2, 3, 4 ou 5 entrées : 2, 3, 4 et 2 cas sur 48).
+
+Le mécanisme est arithmétique. `secondaryMax = display / 3` : tout texte de
+diagramme est plafonné au tiers du titre. Pour qu'un libellé atteigne 34px —
+c'est-à-dire 11px dans une vignette de 350 — **il faut que le titre se pose à
+102px au moins**. Mesuré : à 30 caractères il se pose à 110, à 34 il tombe à
+96, et les libellés avec lui, de 36 à 32.
+
+Le préfixe demande donc une `card_line` **d'au plus 30 caractères**, et
+l'explique au modèle avec le chiffre. Quatre caractères séparent un diagramme
+lisible d'un diagramme illisible.
+
+**2 — Les comptes et un exemple conforme, par archétype.** « 1-3 words » ne
+suffisait pas ; chaque archétype montre maintenant un objet complet qui
+passerait la base tel quel. La conformité au premier appel passe de 3 % à
+78 %.
+
+**3 — La réparation champ par champ.** Tous les dépassements mesurés étaient
+de 1 à 3 mots. Un appel court réécrit **ce seul champ**, deux passes au plus.
+Mesurée isolément sur huit payloads hors budget copiés des refus réels :
+**8 réparés sur 8, six appels, 0,0017 $.**
+
+⚠ Elle a d'abord réparé **zéro sur huit**, et pour deux raisons qui n'avaient
+rien à voir avec le modèle :
+
+  * `budget.ts` rapportait les erreurs de `surface_and_beneath` sous
+    `pair[0].label` — **un chemin qui n'existe dans aucun payload**. Il avait
+    été fabriqué pour réutiliser `checkItems`, et il a tenu tant que personne
+    n'essayait de s'en servir. Un chemin d'erreur est une adresse ; une
+    adresse qui ne mène nulle part est pire qu'une erreur sans adresse. Un
+    test le fige désormais pour les onze archétypes.
+  * le modèle rendait la bonne phrase **puis son propre décompte** —
+    `"Looks fine outside\n\n(3 words)"` — parce qu'on lui avait demandé de
+    compter. Trois mots, recomptés à cinq, donc rejetés.
+
+**4 — Le repli du moteur au lieu du refus.** `does not fit … break to a
+carousel` : le moteur nommait le remède et personne ne l'appliquait. L'échelle
+est désormais moins de libellés → carrousel → une phrase, et **chaque marche
+repasse par les mêmes planchers, les mêmes dégagements et le même contrôle de
+vignette**. Neuf posts sur trente y passent ; aucun n'est perdu.
+
+**5 — Le contrôle de lisibilité à 350 px.** Une composition n'est acceptée que
+si son plus petit texte de CONTENU tient 11px une fois la carte ramenée à
+350 — soit 34px à 1080. Le bandeau et le pied en sont exclus : c'est du
+chrome, et personne ne le lit dans une vignette.
+
+⚠ **Et cette règle, appliquée à la lettre, retire les gloses des diagrammes.**
+Une glose se pose en `mono`, dont le maximum est 28px ; elle ne peut donc
+jamais atteindre 34. La passe « full » du résolveur est essayée, refusée pour
+cette raison, et la passe sans gloses gagne — toujours, sur un diagramme.
+C'est une décision de produit, réversible en un nombre : `THUMB.minPx`.
+L'alternative serait de relever `TYPE.mono.max`, ce qui forcerait le titre
+au-dessus de 102px partout par la règle du ratio, c'est-à-dire de changer la
+hiérarchie de toutes les cartes.
+
+**6 — Le règlement immédiat de chaque échec.** Le quota est de **30 crédits
+par personne et par mois**. Tant que les essais ratés gardaient leur
+réservation ouverte jusqu'à la fin, trente essais suffisaient à le remplir —
+échecs compris — et le trente-et-unième était refusé. Mesuré : 26 posts
+écrits, 4 crédits immobilisés par des essais déjà morts. Un échec rend
+maintenant sa réservation tout de suite, **avec son coût**, et la place se
+libère.
+
+### Le premier mois, et la promesse qui va avec
+
+| | ce que ça met | ce qu'on dit |
+|---|---|---|
+| **premier mois d'un compte** | **147 secondes**, en appels synchrones | *« Votre premier mois est prêt en quelques minutes. »* |
+| **mois suivants** | 25 à 30 minutes, en Batch, la nuit | *« Les mois suivants sont prêts à votre réveil. »* |
+
+Le préfixe est mis en cache dans les deux cas. Les appels synchrones sont
+envoyés **en séquence** et non en parallèle : le cache d'un archétype ne sert
+qu'aux appels qui partent après lui.
+
+### Ce qui reste, et qui n'est pas du code
+
+**La banque est le mur.** 44 candidats demandés, 32 tirés. Cinq praticiennes
+de test dans le même État et la même modalité se disputent le même stock, et
+l'anti-collision de 90 jours fait exactement ce pour quoi elle existe. La
+banque a dû passer de 26 à **60 sujets par segment** — §10.8 du rapport
+d'implémentation donne 65 à douze mois, ce qui est cohérent.
+
+**Le livre ne porte pas encore tout.** Sur le mois publié, `credit_ledger`
+enregistre 0,0846 $ pour 0,0958 $ réellement dépensés : les appels de
+réparation et la dérivation des thèmes ne sont attribués à aucun candidat.
+L'écart est nommé plutôt que corrigé — l'attribuer demande de décider à quel
+post appartient un appel qui sert au mois entier.
+
+⚠ **Et un défaut de reporting a été trouvé en écrivant ce rapport** : chaque
+succès inscrivait au livre l'usage **cumulé du mois** au lieu du sien, parce
+que `validateCopy` ne rend pas d'`usage` et que le repli retombait sur le
+total. Le livre multipliait par trente. Corrigé, et c'est pour ça que le mois
+publié a été régénéré sur un cinquième compte.

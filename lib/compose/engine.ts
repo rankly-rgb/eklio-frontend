@@ -1,6 +1,6 @@
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { BODY, EYEBROW, FOOTER } from "@/lib/compose/constants-bands";
-import { CLEARANCE, TYPE } from "@/lib/compose/constants";
+import { CLEARANCE, TYPE, CANVAS, CONTENT_MIN_AT_CANVAS, THUMB } from "@/lib/compose/constants";
 import { BudgetExceededError, budgetErrors } from "@/lib/compose/budget";
 import { fitText, linesFrom, splitBody } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
@@ -159,6 +159,35 @@ function bandText(
   };
 }
 
+
+/*
+ * ── LE PLUS PETIT TEXTE DU DIAGRAMME, ET SEULEMENT LUI ──────────────────
+ *
+ * ⚠ PAS `smallest()`. Celui-là prend toute la carte, bandeau et pied compris,
+ * et ces deux-là sont du chrome : personne ne lit « ROWAN MERCIER THERAPY »
+ * dans une vignette, et les exiger à 34px déformerait chaque carte pour rien.
+ * Ce qui doit rester lisible à 350, c'est ce que la carte DIT — la bande de
+ * contenu.
+ *
+ * Rend 0 quand la bande est vide, ce qui est le cas d'une carte à une phrase :
+ * sa phrase vit dans le bandeau de titre, et le bandeau de titre est le plus
+ * gros texte de la carte. Une règle de lisibilité n'a rien à lui dire.
+ */
+export function smallestInContent(placed: Placed[]): number {
+  let min = Infinity;
+  for (const p of placed) {
+    if (p.role !== "text" || p.band !== "content") continue;
+    for (const line of p.lines) min = Math.min(min, line.size);
+  }
+  return min === Infinity ? 0 : min;
+}
+
+/** Lisible dans une vignette de 350px ? Vide compte comme lisible. */
+export function legibleAtThumb(placed: Placed[]): boolean {
+  const px = smallestInContent(placed);
+  return px === 0 || px >= CONTENT_MIN_AT_CANVAS;
+}
+
 export type RenderResult = { svg: string; composition: Composition; smallestSize: number };
 
 export function render(input: RenderInput): RenderResult {
@@ -174,6 +203,8 @@ export function render(input: RenderInput): RenderResult {
 
   const display = archetype.displayText ? archetype.displayText(parsed) : input.headline;
   const resolution: string[] = [];
+  /** La meilleure taille de contenu vue, quand c'est la vignette qui a refusé. */
+  let illegible = 0;
 
   /*
    * ⚠ A THIRD OF THE BODY, NOT A HALF.
@@ -238,6 +269,18 @@ export function render(input: RenderInput): RenderResult {
       const placed = [eyebrow, displayBlock, ...content, footer];
       if (violations(placed).length > 0) continue;
 
+      /*
+       * ⚠ LA VIGNETTE EST UNE CONDITION D'ACCEPTATION, PAS UN AVERTISSEMENT.
+       * Placée ici, elle laisse le résolveur continuer : l'essai suivant
+       * réduit l'illustration, puis la passe sans glosses redonne aux
+       * libellés la place qu'elles prenaient. C'est l'échelle existante qui
+       * répare, et elle n'a jamais eu de raison de se déclencher pour ça.
+       */
+      if (!legibleAtThumb(placed)) {
+        illegible = smallestInContent(placed);
+        continue;
+      }
+
       if (figureScale < 1) resolution.push(`illustration shrunk to ${figureScale}`);
 
       const composition: Composition = {
@@ -259,6 +302,20 @@ export function render(input: RenderInput): RenderResult {
   // Nothing was set below a floor to get here, and nothing will be. The caller
   // is told to break to a carousel, which is the last step and the only one
   // left.
+  /*
+   * ⚠ DEUX REFUS DIFFÉRENTS, DEUX PHRASES DIFFÉRENTES. « Ça ne tient pas » et
+   * « ça tient mais personne ne le lira dans un fil » appellent des replis
+   * différents, et un appelant qui ne peut pas les distinguer les traite
+   * pareil. Le second cite la mesure.
+   */
+  if (illegible > 0) {
+    throw new CompositionError(
+      `${input.archetype}: sets at ${illegible}px, which is ` +
+        `${((illegible * THUMB.width) / CANVAS.width).toFixed(1)}px in a ${THUMB.width}px thumbnail ` +
+        `— under the ${THUMB.minPx}px floor`
+    );
+  }
+
   throw new CompositionError(
     `${input.archetype}: does not fit one card at the typographic floors — break to a carousel`
   );

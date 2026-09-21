@@ -26,19 +26,41 @@ import { budgetErrors } from "../../lib/compose/budget";
 import { checkEthics } from "../../lib/ethics/rules";
 import { admin, anthropicKeyOrDie, untypedTable, SESSION_CAP_USD } from "./lib";
 
-/** 26 par segment — le seuil mesuré en §10.8 du rapport d'implémentation. */
+/*
+ * ── 26 PAR SEGMENT, DANS LES PROPORTIONS QUE LE MOIS VEUT ───────────────
+ *
+ * Le seuil de 26 vient de §10.8 du rapport d'implémentation. La RÉPARTITION,
+ * elle, vient de la mesure du 2026-09-21 : à 350px — la largeur d'une vignette
+ * dans un fil — une carte à une phrase se lit et un diagramme à quatre cases
+ * ne se lit pas. Une banque remplie à neuf dixièmes de diagrammes ne peut
+ * produire qu'un mois de diagrammes ; le mélange se décide donc ici, au
+ * stock, et pas seulement au tirage.
+ *
+ * Un tiers de cartes à une phrase, un tiers de diagrammes simples, un tiers de
+ * formes larges — vingt chacun, soit 60 par segment.
+ *
+ * ⚠ 45 ET PAS 26. Le 26 de §10.8 est le seuil à 3 mois POUR UNE PRATICIENNE ;
+ * la même section donne 65 à 12 mois. Mesuré le 2026-09-21 avec deux comptes
+ * de test dans le même État et la même modalité : le second n'a pu tirer que
+ * 28 candidats sur 36, parce que l'anti-collision lui refusait tout ce que la
+ * première avait pris. La contention entre consœurs est réelle, elle est ce
+ * que la fenêtre de 90 jours existe pour produire, et elle se paie en stock.
+ */
 const PER_SEGMENT: Array<[string, number]> = [
-  ["single_statement", 4],
-  ["surface_and_beneath", 3],
-  ["comparison_pair", 3],
-  ["numbered_strategies", 3],
-  ["cycle", 2],
-  ["quadrant_model", 2],
-  ["lettered_technique", 2],
-  ["concentric_control", 2],
-  ["annotated_curve", 2],
-  ["carousel", 2],
-  ["practitioner_card", 1],
+  // une phrase : 15
+  ["single_statement", 16],
+  ["practitioner_card", 4],
+  // diagrammes simples : 15
+  ["surface_and_beneath", 4],
+  ["comparison_pair", 4],
+  ["numbered_strategies", 4],
+  ["cycle", 4],
+  ["concentric_control", 4],
+  // formes larges : 15
+  ["carousel", 5],
+  ["quadrant_model", 5],
+  ["annotated_curve", 5],
+  ["lettered_technique", 5],
 ];
 
 const INTENTS = ["normalise", "educate", "correct_a_myth", "invite", "behind_the_practice"];
@@ -187,15 +209,41 @@ async function main() {
   console.error(`▸ ${requests.length} ideas across ${segments.length} segments, ${PER_SEGMENT.length} archetypes`);
   console.error(`▸ model ${massCopyModel()} · Batch API · prompt caching on the archetype prefix`);
 
-  const batch = await client.messages.batches.create({ requests });
-  console.error(`▸ batch ${batch.id} submitted at ${batch.created_at}`);
+  /*
+   * ⚠ `--sync` EXISTE PARCE QUE LE LOT MET VINGT-CINQ MINUTES. Mesuré six
+   * fois : la Batch API rend en 25 à 30 minutes, quelle que soit la taille du
+   * lot — trois requêtes comme cinquante-deux. Pour un appoint de quelques
+   * sujets, c'est une demi-heure d'attente pour six centièmes de dollar
+   * d'économie. Le lot reste le bon outil pour remplir une banque vide.
+   */
+  const sync = process.argv.includes("--sync");
+  type Entry = { custom_id: string; result: { type: string; message?: Anthropic.Message } };
+  const entries: Entry[] = [];
+  let batchId = "sync";
 
-  /* ── Suivi, jamais bloquant : on relit l'état, on ne l'attend pas ───── */
-  let status = batch;
-  while (status.processing_status !== "ended") {
-    await new Promise((resolve) => setTimeout(resolve, 15000));
-    status = await client.messages.batches.retrieve(batch.id);
-    console.error(`  … ${status.processing_status} ${JSON.stringify(status.request_counts)}`);
+  if (sync) {
+    console.error(`▸ synchronous, ${requests.length} calls`);
+    for (const request of requests) {
+      const message = await client.messages.create(
+        request.params as Anthropic.Messages.MessageCreateParamsNonStreaming
+      );
+      entries.push({ custom_id: request.custom_id, result: { type: "succeeded", message } });
+    }
+  } else {
+    const batch = await client.messages.batches.create({ requests });
+    batchId = batch.id;
+    console.error(`▸ batch ${batch.id} submitted at ${batch.created_at}`);
+
+    /* ── Suivi, jamais bloquant : on relit l'état, on ne l'attend pas ─── */
+    let status = batch;
+    while (status.processing_status !== "ended") {
+      await new Promise((resolve) => setTimeout(resolve, 15000));
+      status = await client.messages.batches.retrieve(batch.id);
+      console.error(`  … ${status.processing_status} ${JSON.stringify(status.request_counts)}`);
+    }
+    for await (const entry of await client.messages.batches.results(batch.id)) {
+      entries.push(entry as unknown as Entry);
+    }
   }
 
   /* ── Ce que le lot a rendu ─────────────────────────────────────────── */
@@ -207,10 +255,10 @@ async function main() {
   let repaired = 0;
   const retryUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
-  for await (const entry of await client.messages.batches.results(batch.id)) {
+  for (const entry of entries) {
     const job = jobs.find((j) => j.customId === entry.custom_id);
     if (!job) continue;
-    if (entry.result.type !== "succeeded") {
+    if (entry.result.type !== "succeeded" || !entry.result.message) {
       failures.push({ id: entry.custom_id, because: `batch:${entry.result.type}` });
       continue;
     }
@@ -323,11 +371,11 @@ async function main() {
     if (clean) reviewed += 1;
   }
 
-  const costUsd = batchCostUsd([usage]) + syncCostUsd(retryUsage);
+  const costUsd = (sync ? syncCostUsd(usage) : batchCostUsd([usage])) + syncCostUsd(retryUsage);
 
   console.log(JSON.stringify({
     step: "topic-bank",
-    batch: batch.id,
+    batch: batchId,
     asked: requests.length,
     written,
     drawable: reviewed,

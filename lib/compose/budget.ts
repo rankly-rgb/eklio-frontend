@@ -47,6 +47,13 @@ function check(
   if (n < bound.min || n > bound.max) errors.push({ path, said: n, allowed: bound.max });
 }
 
+/** Un seul objet `{label, gloss}`, sous son VRAI chemin. */
+function checkItem(errors: BudgetError[], path: string, item: unknown): void {
+  const it = item as Record<string, unknown> | undefined;
+  check(errors, `${path}.label`, it?.label, BUDGET.label);
+  check(errors, `${path}.gloss`, it?.gloss, BUDGET.gloss);
+}
+
 function checkItems(errors: BudgetError[], path: string, items: unknown): void {
   if (!Array.isArray(items)) {
     errors.push({ path, said: -1, allowed: 0 });
@@ -83,7 +90,20 @@ export function budgetErrors(archetype: string, payload: unknown): BudgetError[]
       checkItems(errors, "nodes", p.nodes);
       break;
     case "surface_and_beneath":
-      checkItems(errors, "pair", [p.surface, p.beneath]);
+      /*
+       * ⚠ `surface` ET `beneath`, PAS `pair[0]` ET `pair[1]`. Ce chemin-là
+       * n'existe nulle part dans le payload : il était fabriqué pour réutiliser
+       * `checkItems`, et il a tenu tant que personne n'a essayé de S'EN SERVIR.
+       *
+       * Le 2026-09-21, la réparation champ par champ a essayé. Elle lit le
+       * texte à réécrire au chemin que l'erreur donne, n'a rien trouvé, n'a
+       * rien réécrit, et a compté huit échecs qu'elle aurait pu corriger. Un
+       * chemin d'erreur est une adresse ; une adresse qui ne mène nulle part
+       * est pire qu'une erreur sans adresse, parce qu'elle a l'air d'en être
+       * une.
+       */
+      checkItem(errors, "surface", p.surface);
+      checkItem(errors, "beneath", p.beneath);
       break;
     case "comparison_pair":
       checkItems(errors, "left", p.left);

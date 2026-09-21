@@ -1,3 +1,5 @@
+import { composeWithFallback } from "@/lib/compose/fallback";
+import type { RenderResult } from "@/lib/compose/engine";
 import { cardPalette, type DirectionPalette } from "@/lib/compose/palette";
 import type { Palette } from "@/lib/compose/types";
 
@@ -121,8 +123,43 @@ export function payloadFor(archetype: string, length: Length): unknown {
 
 export const LENGTHS: Length[] = ["short", "nominal", "ceiling"];
 
+/*
+ * ⚠ LE TITRE TIENT EN 30 CARACTÈRES, ET CE N'EST PAS UN DÉTAIL DE FIXTURE.
+ *
+ * « What holds when everything else moves » en faisait 37, et le 2026-09-21 la
+ * mesure a dit ce que ces sept caractères coûtent : le titre se pose alors à
+ * 96px au lieu de 110, `secondaryMax` tombe de 36 à 32, et tout libellé de
+ * diagramme arrive sous 11px dans une vignette de 350. La suite composait donc
+ * des cartes que le produit refuse désormais de livrer.
+ *
+ * La fixture suit la règle du produit. Elle ne l'assouplit pas : c'est
+ * `CONTENT_MIN_AT_CANVAS` qui décide, ici comme ailleurs.
+ */
 export const CARD = {
   eyebrow: "A CALMER WAY",
-  headline: "What holds when everything else moves",
+  headline: "What holds when things move",
   footer: "@apracticename",
 } as const;
+
+/*
+ * ── CE QUE LE PRODUIT LIVRE VRAIMENT, POUR LES SUITES QUI L'INSPECTENT ──
+ *
+ * ⚠ `render` SEUL N'EST PLUS CE QUI ARRIVE DANS UN FIL. Depuis que le moteur
+ * refuse une carte illisible en vignette, une fixture au plafond d'items peut
+ * légitimement ne pas tenir sur une seule carte — et le produit la replie
+ * (`lib/compose/fallback.ts`) au lieu de la jeter.
+ *
+ * Les suites de collision, de planchers et de déterminisme passent donc par le
+ * repli. Elles posent la même question qu'avant, et elles la posent sur la
+ * bonne chose : non pas « la première forme essayée est-elle propre » mais
+ * « ce qui sera publié est-il propre ». C'est strictement plus fort.
+ */
+export function composedFor(
+  archetype: string,
+  palette: (typeof PALETTES)[number],
+  length: Length
+): RenderResult[] {
+  const input = { ...CARD, archetype, palette, payload: payloadFor(archetype, length) };
+  const composed = composeWithFallback(input);
+  return composed.kind === "carousel" ? composed.slides : [composed.result];
+}

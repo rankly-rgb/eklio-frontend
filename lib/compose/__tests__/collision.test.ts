@@ -5,9 +5,8 @@ import {
   fieldToFieldFindings,
   glyphToStrokeFindings,
 } from "@/lib/compose/audit";
-import { render, renderCarousel } from "@/lib/compose/engine";
 import { gap, parseBoxes } from "@/lib/compose/svg";
-import { CARD, LENGTHS, PALETTES, payloadFor } from "@/lib/compose/__tests__/fixtures";
+import { composedFor, LENGTHS, PALETTES } from "@/lib/compose/__tests__/fixtures";
 
 /*
  * ── THE COLLISION SUITE ─────────────────────────────────────────────────
@@ -37,11 +36,14 @@ const MATRIX = ARCHETYPE_KEYS.flatMap((archetype) =>
   )
 );
 
+/*
+ * ⚠ CE QUE LE PRODUIT LIVRE, PAS LA PREMIÈRE FORME ESSAYÉE. Depuis le
+ * contrôle de lisibilité en vignette, une fixture au plafond d'items peut
+ * légitimement se replier ; c'est la carte repliée qui sera publiée, et c'est
+ * donc elle qui doit être propre.
+ */
 function svgsFor(archetype: string, palette: (typeof PALETTES)[number], length: (typeof LENGTHS)[number]) {
-  const input = { ...CARD, archetype, palette, payload: payloadFor(archetype, length) };
-  return archetype === "carousel"
-    ? renderCarousel(input).map((r) => r.svg)
-    : [render(input).svg];
+  return composedFor(archetype, palette, length).map((r) => r.svg);
 }
 
 describe("no glyph box comes within 40px of a drawn stroke", () => {

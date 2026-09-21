@@ -9,7 +9,7 @@ import {
 import { TYPE } from "@/lib/compose/constants";
 import { render, renderCarousel } from "@/lib/compose/engine";
 import { parseBoxes } from "@/lib/compose/svg";
-import { CARD, LENGTHS, PALETTES, payloadFor } from "@/lib/compose/__tests__/fixtures";
+import { CARD, LENGTHS, PALETTES, composedFor, payloadFor } from "@/lib/compose/__tests__/fixtures";
 
 /*
  * ── THE TYPOGRAPHIC FLOOR SUITE ─────────────────────────────────────────
@@ -34,8 +34,7 @@ const MATRIX = ARCHETYPE_KEYS.flatMap((archetype) =>
 );
 
 function resultsFor(archetype: string, palette: (typeof PALETTES)[number], length: (typeof LENGTHS)[number]) {
-  const input = { ...CARD, archetype, palette, payload: payloadFor(archetype, length) };
-  return archetype === "carousel" ? renderCarousel(input) : [render(input)];
+  return composedFor(archetype, palette, length);
 }
 
 describe("no glyph is set below the absolute floor", () => {

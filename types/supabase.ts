@@ -3281,7 +3281,7 @@ export type Database = {
         Returns: Json
       }
       release_on_demand_write: {
-        Args: { p_write_id: string }
+        Args: { p_write_id: string; p_cost_usd?: number }
         Returns: Json
       }
       swap_content_item: { Args: { p_id: string }; Returns: Json }

@@ -158,7 +158,14 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
        * journal garde la réservation ET sa libération — c'est un fait qui
        * s'est produit — mais le SOLDE est inchangé.
        */
-      await releaseWrite(supabase, begun.data.write_id);
+      /*
+       * ⚠ LA TENTATIVE REFUSÉE ENTRE AU LIVRE AVEC SON COÛT. Le crédit
+       * revient — `release` écrit `delta = -r.delta` — et l'argent dépensé
+       * reste écrit. C'était le défaut 2 de `FIRST_REAL_RENDER.md` : le
+       * livre comptait ce qui réussit et perdait ce qui rate, c'est-à-dire
+       * la majorité.
+       */
+      await releaseWrite(supabase, begun.data.write_id, syncCostUsd(written.usage));
       return Response.json(
         {
           error: refusalMessage(written.reason),
@@ -194,8 +201,11 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
        * la garde déontologique tourne sur le payload au moment de l'UPDATE.
        * Le crédit revient, et le message dit ce que la base a dit — c'est la
        * seule formulation qui ne soit pas une devinette.
+       *
+       * ⚠ ET LE COÛT AUSSI, ICI. L'appel a bien eu lieu et il a bien été
+       * facturé ; c'est l'écriture en base qui a refusé après coup.
        */
-      await releaseWrite(supabase, begun.data.write_id);
+      await releaseWrite(supabase, begun.data.write_id, syncCostUsd(written.usage));
       return contentResponse(applied);
     }
 

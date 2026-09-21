@@ -164,13 +164,27 @@ export async function applyWrite(
   return decodeRpc("apply_on_demand_write", appliedSchema, data, error);
 }
 
+/**
+ * Rend le crédit, et ENREGISTRE CE QUE LA TENTATIVE A COÛTÉ.
+ *
+ * ⚠ LES DEUX MOITIÉS SONT SÉPARÉES EN BASE, ET ELLES DOIVENT L'ÊTRE. Une
+ * sortie refusée a consommé des jetons chez le fournisseur ; elle ne doit
+ * rien à la praticienne. `settle_credit(…, succeeded => false)` écrit une
+ * ligne `release` qui rend le crédit ET porte `actual_cost_usd` — la
+ * plomberie existait, et `release_on_demand_write` y passait `null`.
+ *
+ * Mesuré : sur onze appels de « Write it », huit ont été refusés. Le livre
+ * portait le coût des trois qui ont abouti.
+ */
 export async function releaseWrite(
   supabase: Client,
-  writeId: string
+  writeId: string,
+  costUsd: number | null = null
 ): Promise<ContentResult<{ ok: true; reason: string }>> {
   const { data, error } = await supabase.rpc("release_on_demand_write", {
     p_write_id: writeId,
-  });
+    p_cost_usd: costUsd ?? undefined,
+  } as never);
   return decodeRpc(
     "release_on_demand_write",
     z.object({ ok: z.literal(true), reason: z.string() }),

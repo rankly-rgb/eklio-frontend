@@ -108,3 +108,29 @@ export const LINE_HEIGHT = 1.18;
  * Bump it whenever a change to this directory could move a pixel.
  */
 export const ENGINE_VERSION = "compose/1";
+
+/*
+ * ── LA VIGNETTE, QUI EST L'ENDROIT OÙ LA CARTE EST VRAIMENT LUE ─────────
+ *
+ * Une carte est composée à 1080 et regardée à 350 : c'est la largeur d'une
+ * vignette dans un fil Instagram. Un libellé posé à son plancher de 28px y
+ * arrive à 9,1px, ce que personne ne lit.
+ *
+ * ⚠ CE N'EST PAS UN PLANCHER DE PLUS, C'EST LE MÊME, LU À LA BONNE TAILLE.
+ * Rien ici n'abaisse quoi que ce soit : la règle ajoute une condition, elle
+ * n'en retire aucune. Une carte qui ne la tient pas n'est pas rapetissée, elle
+ * est repliée (`lib/compose/fallback.ts`).
+ *
+ * Mesuré le 2026-09-21 sur le premier mois réel : six cartes composées sur
+ * onze portaient du texte de contenu entre 6,5 et 10,4px à 350.
+ */
+export const THUMB = { width: 350, minPx: 11 } as const;
+
+/**
+ * Le plancher équivalent, à la taille où la carte est composée.
+ *
+ * ⚠ DÉRIVÉ, JAMAIS RECOPIÉ. `11 × 1080 / 350 = 33,9` → 34. Écrire « 34 » à la
+ * main ici serait une seconde définition de la règle, et la première à bouger
+ * gagnerait en silence.
+ */
+export const CONTENT_MIN_AT_CANVAS = Math.ceil((THUMB.minPx * CANVAS.width) / THUMB.width);

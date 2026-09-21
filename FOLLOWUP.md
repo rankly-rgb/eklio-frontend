@@ -371,6 +371,55 @@ un build cassé se voit — c'est-à-dire trop tard.
 
 ---
 
+## F12 — ⚠ AVANT TOUTE MISE EN PRODUCTION : vérifier `license_type_states.verified_at` en base de production
+
+**Rencontré le 2026-09-21**, en produisant le premier rendu réel sur une base
+locale fraîchement rejouée.
+
+`project_state_is_sellable` compte les lignes **vérifiées** de
+`license_type_states` pour l'État du brief. Sur le rejeu des 147 migrations,
+`verified_at` est **NULL sur les 240 lignes** de la matrice. Conséquence
+directe, mesurée en cliquant : `/api/briefs/[id]/generate` répond
+`409 We're not open in CA yet` — pour les onze titres d'exercice, dans les
+cinquante États. **Aucun brand kit ne peut être généré, nulle part.**
+
+Le refus est juste : il empêche d'imprimer sur une page publique un titre que
+personne n'a vérifié contre le site d'un board. Ce qui manque n'est pas du
+code, c'est **l'acte** — et rien dans le dépôt ne dit qu'il doit être fait
+avant la première vente.
+
+**À faire, et dans cet ordre :**
+
+```sql
+-- 1. Combien de lignes la production tient-elle pour vérifiées ?
+select count(*) filter (where verified_at is not null) as verified,
+       count(*)                                        as total
+  from public.license_type_states;
+
+-- 2. Et pour quels États la porte est-elle réellement ouverte ?
+select state_code,
+       count(*) filter (where verified_at is not null) as verified,
+       count(*)                                        as total
+  from public.license_type_states
+ group by state_code
+ having count(*) filter (where verified_at is not null) > 0
+ order by state_code;
+```
+
+⚠ **Si la première requête rend `verified = 0`, la production est dans l'état
+du rejeu et le produit ne peut vendre dans aucun État.** Ce n'est pas un bug à
+corriger en code : quelqu'un lit le site du board, puis pose la date et son
+nom dans `verified_by`. Tant que ce n'est pas fait pour au moins un État, la
+mise en production n'a pas d'objet.
+
+⚠ **Et ne jamais poser ces dates par script.** Une matrice vérifiée par une
+migration est une matrice que personne n'a lue ; c'est exactement le défaut
+que ce garde-fou existe pour empêcher. En local, le harnais ouvre la
+Californie avec `verified_by = 'LOCAL RENDER HARNESS — not a board check'`,
+précisément pour que la ligne dise ce qu'elle vaut.
+
+---
+
 ## F11 — ✅ RÉSOLU LE 2026-09-21 — le premier rendu réel a été produit
 
 **La clef était là cette fois**, sous le nom `EKLIO_ANTHROPIC_API_KEY`, passée

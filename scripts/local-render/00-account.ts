@@ -14,7 +14,22 @@
  */
 import { admin, untypedTable, TEST_EMAIL } from "./lib";
 
-const PRACTICE = "Rowan Mercier Therapy";
+/*
+ * ⚠ UN SECOND COMPTE, PARCE QU'UN MOIS NE S'ÉCRASE PAS. `20-month.ts` refuse
+ * d'écrire par-dessus un mois existant — « un mois, une fois, jusqu'à ce qu'il
+ * soit lu ». Pour mesurer une seconde fois, on crée une praticienne de plus
+ * plutôt que d'affaiblir ce refus.
+ */
+const EMAIL = (() => {
+  const i = process.argv.indexOf("--email");
+  return i === -1 ? TEST_EMAIL : (process.argv[i + 1] ?? TEST_EMAIL);
+})();
+const PRACTICE_NAME = (() => {
+  const i = process.argv.indexOf("--practice");
+  return i === -1 ? null : (process.argv[i + 1] ?? null);
+})();
+
+const PRACTICE = PRACTICE_NAME ?? "Rowan Mercier Therapy";
 
 async function main() {
   const db = admin();
@@ -23,12 +38,12 @@ async function main() {
   const { data: profile, error: profileError } = await db
     .from("profiles")
     .select("id")
-    .eq("email", TEST_EMAIL)
+    .eq("email", EMAIL)
     .maybeSingle();
   if (profileError) throw profileError;
   if (!profile) {
     throw new Error(
-      `No account for ${TEST_EMAIL}. Run scripts/local-render/00-account.sql first — ` +
+      `No account for ${EMAIL}. Run scripts/local-render/00-account.sql first — ` +
         "auth.users and comp_grants are the two rows the product does not write."
     );
   }

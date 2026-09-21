@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ARCHETYPE_KEYS } from "@/lib/compose/archetypes/index";
-import { render, renderCarousel } from "@/lib/compose/engine";
 import { contentHash, normalise } from "@/lib/compose/hash";
-import { CARD, LENGTHS, PALETTES, payloadFor } from "@/lib/compose/__tests__/fixtures";
+import { CARD, composedFor, LENGTHS, PALETTES, payloadFor } from "@/lib/compose/__tests__/fixtures";
 
 /*
  * ── DETERMINISM, WHICH IS A PREREQUISITE AND NOT A NICETY ───────────────
@@ -20,8 +19,7 @@ const MATRIX = ARCHETYPE_KEYS.flatMap((archetype) =>
 );
 
 function svgsFor(archetype: string, palette: (typeof PALETTES)[number], length: (typeof LENGTHS)[number]) {
-  const input = { ...CARD, archetype, palette, payload: payloadFor(archetype, length) };
-  return archetype === "carousel" ? renderCarousel(input).map((r) => r.svg) : [render(input).svg];
+  return composedFor(archetype, palette, length).map((r) => r.svg);
 }
 
 describe("two renders of the same payload are byte-for-byte identical", () => {

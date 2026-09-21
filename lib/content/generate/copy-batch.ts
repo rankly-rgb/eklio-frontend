@@ -104,61 +104,150 @@ export type TopicRequest = {
  * bornes, la consigne donnée au modèle change avec lui. Une consigne recopiée
  * serait une troisième source, après la base et le validateur.
  */
+/*
+ * ── LA FORME, LES COMPTES, ET UN EXEMPLE QUI PASSE ──────────────────────
+ *
+ * ⚠ TROIS CHOSES, PAS UNE. Dire « 1-3 words » ne suffit pas : mesuré le
+ * 2026-09-21, le lot rendait 1 post valide sur 30 et 29 refus, dont 13 sur le
+ * seul budget de mots, toujours par 1 à 3 mots de trop. Un modèle qui dépasse
+ * de deux mots n'a pas mal lu la borne, il ne l'a pas comptée.
+ *
+ * Chaque archétype porte donc : sa forme, le COMPTE de chaque champ écrit en
+ * toutes lettres, et un EXEMPLE conforme — un objet complet qui passerait la
+ * base tel quel. Un exemple est la seule façon de montrer à quoi ressemblent
+ * trois mots.
+ *
+ * ⚠ ET TROIS ENTRÉES, LÀ OÙ LA BASE EN ACCEPTE PLUS. `content_topic_payload_valid`
+ * autorise jusqu'à six nœuds ou cinq stratégies ; on en demande trois. La
+ * mesure dit pourquoi : à quatre entrées et plus, le libellé se pose à son
+ * plancher de 28px, ce qui fait 9,1px dans une vignette de 350. La borne de la
+ * base ne bouge pas — on lui demande moins que ce qu'elle tolère.
+ */
+type Shape = { shape: string; example: string };
+
+const SHAPES: Record<string, Shape> = {
+  single_statement: {
+    shape: `{"statement": "ONE sentence, between 3 and 24 words"}`,
+    example: `{"statement": "Rest is not a switch your body flips when the day ends."}  (11 words)`,
+  },
+  quadrant_model: {
+    shape:
+      `{"axis_x": "1 to 3 words", "axis_y": "1 to 3 words", ` +
+      `"items": [EXACTLY 4 x {"label": "1 to 3 words", "gloss": "1 to 6 words"}]}`,
+    example:
+      `{"axis_x": "effort", "axis_y": "rest", "items": [` +
+      `{"label": "Sunday dread", "gloss": "starts before the alarm"}, ` +
+      `{"label": "Rest fails", "gloss": "the body stays braced"}, ` +
+      `{"label": "Still bracing", "gloss": "nothing asked it to"}, ` +
+      `{"label": "Sleep breaks", "gloss": "waking at four"}]}`,
+  },
+  cycle: {
+    shape: `{"nodes": [3 x {"label": "1 to 3 words", "gloss": "1 to 6 words"}]}`,
+    example:
+      `{"nodes": [{"label": "Push harder", "gloss": "the list gets done"}, ` +
+      `{"label": "Run empty", "gloss": "nothing left by Friday"}, ` +
+      `{"label": "Brace again", "gloss": "Monday asks the same"}]}`,
+  },
+  surface_and_beneath: {
+    shape:
+      `{"surface": {"label": "1 to 3 words", "gloss": "1 to 6 words"}, ` +
+      `"beneath": {"label": "1 to 3 words", "gloss": "1 to 6 words"}}`,
+    example:
+      `{"surface": {"label": "Handling it", "gloss": "every deadline met"}, ` +
+      `"beneath": {"label": "Running empty", "gloss": "no memory of resting"}}`,
+  },
+  comparison_pair: {
+    shape:
+      `{"left": [2 x {"label": "1 to 3 words", "gloss": "1 to 6 words"}], ` +
+      `"right": [THE SAME NUMBER, same shape]}`,
+    example:
+      `{"left": [{"label": "Looks fine", "gloss": "shows up on time"}, ` +
+      `{"label": "Sounds steady", "gloss": "answers every message"}], ` +
+      `"right": [{"label": "Feels braced", "gloss": "shoulders never drop"}, ` +
+      `{"label": "Sleeps light", "gloss": "awake before the alarm"}]}`,
+  },
+  numbered_strategies: {
+    shape: `{"items": [3 x {"label": "1 to 3 words", "gloss": "1 to 6 words"}]}`,
+    example:
+      `{"items": [{"label": "Name it", "gloss": "say what today cost"}, ` +
+      `{"label": "Slow down", "gloss": "one thing at a time"}, ` +
+      `{"label": "Stop early", "gloss": "before the tank empties"}]}`,
+  },
+  lettered_technique: {
+    shape:
+      `{"acronym": "3 letters", "items": [ONE PER LETTER, IN ORDER, each ` +
+      `{"label": "1 to 3 words STARTING with that letter", "gloss": "1 to 6 words"}]}`,
+    example:
+      `{"acronym": "RSV", "items": [{"label": "Rest", "gloss": "before it is earned"}, ` +
+      `{"label": "Slow", "gloss": "one thing at a time"}, ` +
+      `{"label": "Voice", "gloss": "say what it costs"}]}`,
+  },
+  concentric_control: {
+    shape: `{"rings": [3 x {"label": "1 to 3 words", "gloss": "1 to 6 words"}], outermost first}`,
+    example:
+      `{"rings": [{"label": "The workload", "gloss": "not yours to set"}, ` +
+      `{"label": "The pace", "gloss": "partly yours to set"}, ` +
+      `{"label": "The stopping", "gloss": "entirely yours"}]}`,
+  },
+  annotated_curve: {
+    shape:
+      `{"axis_x": "1 to 3 words", "axis_y": "1 to 3 words", ` +
+      `"points": [3 x {"label": "1 to 3 words", "gloss": "1 to 6 words"}]}`,
+    example:
+      `{"axis_x": "weeks back", "axis_y": "load", "points": [` +
+      `{"label": "First day", "gloss": "running on relief"}, ` +
+      `{"label": "Week three", "gloss": "the relief runs out"}, ` +
+      `{"label": "Week six", "gloss": "the old pace returns"}]}`,
+  },
+  practitioner_card: {
+    shape: `{"lines": [2 to 4 strings, each 1 to 8 words]}`,
+    example: `{"lines": ["EMDR for burnout", "Oakland, California", "Taking new clients"]}`,
+  },
+  carousel: {
+    shape: `{"cards": [3 to 6 x {"archetype_key": "any archetype except carousel", "payload": {that archetype's shape}}]}`,
+    example:
+      `{"cards": [{"archetype_key": "single_statement", "payload": ` +
+      `{"statement": "Rest is not a switch your body flips."}}, ` +
+      `{"archetype_key": "surface_and_beneath", "payload": ` +
+      `{"surface": {"label": "Handling it", "gloss": "every deadline met"}, ` +
+      `"beneath": {"label": "Running empty", "gloss": "no memory of resting"}}}, ` +
+      `{"archetype_key": "single_statement", "payload": ` +
+      `{"statement": "Safety is learned, and learning it takes longer than a weekend."}}]}`,
+  },
+};
+
+/**
+ * Le schéma de l'archétype, en mots, pour le modèle.
+ *
+ * Dérivé du catalogue plutôt que recopié : un archétype absent du catalogue
+ * lève ici, avant l'appel.
+ */
 export function archetypeInstruction(archetypeKey: string): string {
   const entry = ARCHETYPES[archetypeKey];
   if (!entry) throw new Error(`copy-batch: unknown archetype ${archetypeKey}`);
-
-  const SHAPES: Record<string, string> = {
-    single_statement: `{"statement": "one sentence, 3 to 24 words"}`,
-    quadrant_model: `{"axis_x": "1-3 words", "axis_y": "1-3 words", "items": [4 x {"label": "1-3 words", "gloss": "1-6 words"}]}`,
-    cycle: `{"nodes": [3 to 6 x {"label": "1-3 words", "gloss": "1-6 words"}]}`,
-    surface_and_beneath: `{"surface": {"label": "1-3 words", "gloss": "1-6 words"}, "beneath": {same}}`,
-    /*
-     * ⚠ « [2-4 items] » NE DIT PAS CE QU'EST UN ITEM, et c'était la seule
-     * ligne de cette table à ne pas le dire. Les neuf autres écrivent
-     * `{"label": …, "gloss": …}` en toutes lettres ; celle-ci laissait le
-     * modèle inventer la forme, et `entry.parse` refusait ensuite le payload
-     * en bloc — `payload_shape`, sans dire quelle clef manquait. Le premier
-     * mois réel a rendu dix refus de cette famille sur trente.
-     */
-    comparison_pair:
-      `{"left": [2 to 4 x {"label": "1-3 words", "gloss": "1-6 words"}], ` +
-      `"right": [the SAME number, same shape]}`,
-    numbered_strategies: `{"items": [3 to 5 x {"label": "1-3 words", "gloss": "1-6 words"}]}`,
-    lettered_technique: `{"acronym": "3 to 5 letters", "items": [one per letter, each label STARTING with that letter, in order]}`,
-    concentric_control: `{"rings": [2 to 4 x {"label": "1-3 words", "gloss": "1-6 words"}], outermost first}`,
-    annotated_curve: `{"axis_x": "1-3 words", "axis_y": "1-3 words", "points": [2 to 4 x {"label": "1-3 words", "gloss": "1-6 words"}]}`,
-    practitioner_card: `{"lines": [2 to 4 strings, each 1 to 8 words]}`,
-    carousel: `{"cards": [3 to 8 x {"archetype_key": "any archetype except carousel", "payload": {that archetype's shape}}]}`,
-  };
+  const shape = SHAPES[archetypeKey];
+  if (!shape) throw new Error(`copy-batch: no shape written for ${archetypeKey}`);
 
   /*
    * ── ⚠ LE CARROUSEL EST LE SEUL À QUI ON NE DISAIT PAS LE BUDGET ───────
    *
-   * Dix archétypes recevaient leurs bornes en toutes lettres — « 1-3 words »,
-   * « 1-6 words ». Le onzième, celui qui EMPILE trois à huit payloads,
-   * recevait « that archetype's shape » et rien d'autre : ni les formes, ni
-   * les nombres. Le modèle devait deviner, sur chaque carte, et il suffisait
-   * d'un seul `gloss` trop long pour que `validateCopy` refuse le carrousel
-   * entier. Deux tentatives, puis « That came out too long for a card. »
-   *
-   * Trouvé par le premier rendu réel : le carrousel à la demande a échoué
-   * trois fois de suite sur `over_budget`, pendant que les cartes simples
-   * passaient.
-   *
-   * Les formes sont reprises de `SHAPES`, jamais recopiées — une seconde
-   * liste serait la façon exacte dont le budget d'un archétype changerait
-   * ici sans changer là.
+   * Dix archétypes recevaient leurs bornes en toutes lettres ; le onzième,
+   * celui qui EMPILE trois à huit payloads, recevait « that archetype's
+   * shape » et rien d'autre. Il suffisait d'un `gloss` trop long pour que
+   * `validateCopy` refuse le carrousel entier.
    */
   if (archetypeKey === "carousel") {
     const inner = Object.entries(SHAPES)
       .filter(([key]) => key !== "carousel")
-      .map(([key, shape]) => `  * "${key}": ${shape}`)
+      .map(([key, value]) => `  * "${key}": ${value.shape}`)
       .join("\n");
 
     return [
       `Archetype "carousel". The payload object must be exactly:`,
-      SHAPES.carousel,
+      shape.shape,
+      ``,
+      `A CONFORMING EXAMPLE — count the words in it before you write your own:`,
+      shape.example,
       ``,
       `Each card's "archetype_key" is one of these, and its "payload" must`,
       `match that archetype's shape EXACTLY — the same word limits apply to`,
@@ -167,7 +256,13 @@ export function archetypeInstruction(archetypeKey: string): string {
     ].join("\n");
   }
 
-  return `Archetype "${archetypeKey}". The payload object must be exactly:\n${SHAPES[archetypeKey]}`;
+  return [
+    `Archetype "${archetypeKey}". The payload object must be exactly:`,
+    shape.shape,
+    ``,
+    `A CONFORMING EXAMPLE — count the words in it before you write your own:`,
+    shape.example,
+  ].join("\n");
 }
 
 /**
@@ -203,15 +298,31 @@ export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthrop
     ``,
     `OUTPUT FORMAT. Reply with ONE JSON object and nothing else — no prose`,
     `before it, no code fence around it:`,
-    `{"payload": {...}, "caption": "...", "alt_text": "...", "rationale": "..."}`,
+    `{"payload": {...}, "card_line": "...", "caption": "...", "alt_text": "...", "rationale": "..."}`,
     ``,
     `- "payload" follows the archetype shape below, exactly.`,
+    `- "card_line" is the line printed across the top of the card: AT MOST 30`,
+    `  CHARACTERS, including spaces. Count them.`,
     `- "caption" is what she posts: at most 2200 characters.`,
     `- "alt_text" describes the card for a screen reader: at most 420 characters.`,
     `- "rationale" is one sentence, at most 20 words, completing "Why this one:".`,
     ``,
-    `⚠ WORD COUNTS ARE HARD LIMITS, not suggestions. A label of four words is`,
-    `rejected and the whole card is regenerated. Count before you answer.`,
+    `⚠ WHY "card_line" IS THIRTY CHARACTERS AND NOT A TITLE. The card sets that`,
+    `line as large as it fits, and every other size on the card is derived from`,
+    `it — a label may never exceed a third of it. Measured: at 30 characters the`,
+    `line sets at 110px and the labels at 36px, which is 11.7px in a 350px`,
+    `Instagram thumbnail. At 34 characters the line drops to 96px, the labels to`,
+    `32px, and the diagram stops being readable in a feed. Four characters.`,
+    ``,
+    `⚠ WORD COUNTS ARE HARD LIMITS, not suggestions, and this is where answers`,
+    `die. A database CHECK counts the words and refuses the whole card; nothing`,
+    `is repaired for you. Measured on the first real month: 29 cards of 30 were`,
+    `refused, 13 of them on the word budget alone, and EVERY overrun was by one`,
+    `to three words.`,
+    ``,
+    `Count articles, prepositions and hyphenated halves as words. Write the`,
+    `shortest true phrase, never a sentence. If a phrase runs long, cut it`,
+    `rather than rephrase it.`,
     ``,
     archetypeInstruction(archetypeKey),
   ].join("\n");
@@ -256,6 +367,15 @@ export type CopyResult = {
   topicId: string;
   ok: boolean;
   payload?: unknown;
+  /**
+   * La ligne imprimée en haut de la carte, au plus 30 caractères.
+   *
+   * ⚠ FACULTATIVE DANS LA VALIDATION, DEMANDÉE DANS LE PRÉFIXE. La rendre
+   * obligatoire ferait échouer tout ce qui a été écrit avant qu'elle existe —
+   * y compris les relances d'un lot déjà parti — pour un champ dont l'absence
+   * a un repli évident : le titre du sujet.
+   */
+  cardLine?: string;
   caption?: string;
   altText?: string;
   rationale?: string;
@@ -297,16 +417,51 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
   if (entry.parse(o.payload) === null) return { ...base, reason: "payload_shape" };
 
   const budget = budgetErrors(archetypeKey, o.payload);
-  if (budget.length > 0) return { ...base, reason: "over_budget", budget };
+  if (budget.length > 0) {
+    /*
+     * ⚠ LE PAYLOAD PART AVEC LE REFUS, et c'est ce qui rend une réparation
+     * possible. Il a été lu, il parse, il ne lui manque que quelques mots ;
+     * le jeter obligeait l'appelant à tout redemander — légende, texte
+     * alternatif et diagramme — pour un `gloss` trop long.
+     *
+     * ⚠ `ok` RESTE FAUX. Rendre le payload n'est pas l'accepter : personne
+     * ne doit pouvoir l'écrire en base sans être passé par une réparation
+     * qui le fait rentrer dans les bornes.
+     */
+    return { ...base, reason: "over_budget", budget, payload: o.payload,
+             caption: typeof o.caption === "string" ? o.caption : undefined,
+             altText: typeof o.alt_text === "string" ? o.alt_text : undefined,
+             rationale: typeof o.rationale === "string" ? o.rationale : undefined,
+             cardLine: typeof o.card_line === "string" ? clampCardLine(o.card_line) : undefined };
+  }
 
   return {
     topicId: "",
     ok: true,
     payload: o.payload,
+    /*
+     * ⚠ TRONQUÉE, JAMAIS REFUSÉE, ET SUR UNE FRONTIÈRE DE MOT. Trente
+     * caractères est une contrainte de rendu, pas une règle de fond : un
+     * modèle qui en écrit trente-deux a répondu à la question. `clampTitle`
+     * du mois faisait déjà ce geste plus bas dans la chaîne ; le faire ici
+     * évite qu'il y ait deux endroits où la même borne se décide.
+     */
+    cardLine: typeof o.card_line === "string" ? clampCardLine(o.card_line) : undefined,
     caption: o.caption,
     altText: o.alt_text,
     rationale: typeof o.rationale === "string" ? o.rationale : "",
   };
+}
+
+/** Au plus `CARD_LINE_MAX` caractères, coupée sur un espace. */
+export const CARD_LINE_MAX = 30;
+
+export function clampCardLine(line: string): string {
+  const trimmed = line.trim();
+  if (trimmed.length <= CARD_LINE_MAX) return trimmed;
+  const cut = trimmed.slice(0, CARD_LINE_MAX);
+  const boundary = cut.lastIndexOf(" ");
+  return (boundary > 12 ? cut.slice(0, boundary) : cut).trimEnd();
 }
 
 /**

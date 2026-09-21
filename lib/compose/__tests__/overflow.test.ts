@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { composeWithFallback } from "@/lib/compose/fallback";
 import { TYPE } from "@/lib/compose/constants";
-import { CompositionError, render, violations } from "@/lib/compose/engine";
+import { CompositionError, render, violations, legibleAtThumb } from "@/lib/compose/engine";
 import { parseBoxes } from "@/lib/compose/svg";
 import { CARD, PALETTES } from "@/lib/compose/__tests__/fixtures";
 
@@ -31,8 +32,26 @@ const item = (label: string) => ({ label, gloss: "a gloss of exactly six words" 
 const SHORT = { ...CARD, headline: "Where it lands" };
 const LONG = CARD;
 
+/*
+ * ── ⚠ CE QUE LE CONTRÔLE DE VIGNETTE A CHANGÉ ICI, ET POURQUOI ──────────
+ *
+ * L'ordre du résolveur est intact : toutes les échelles d'illustration sont
+ * essayées AVANT que les glosses tombent, et c'est toujours vrai. Ce qui a
+ * changé est le verdict, pas l'ordre.
+ *
+ * Une glose se pose en `mono`, dont le maximum est 28px. Le plancher de
+ * lisibilité en vignette est 34px (= 11px à 350). **Aucune glose ne peut donc
+ * jamais le franchir.** La passe « full » est essayée, refusée pour cette
+ * raison-là, et la passe sans glosses gagne — sur un diagramme, toujours.
+ *
+ * C'est une décision de produit, et elle est réversible en un nombre :
+ * `THUMB.minPx`. Tant qu'il vaut 11, un diagramme porte des libellés et pas
+ * de glosses. L'alternative serait de relever `TYPE.mono.max` au-dessus de
+ * 34, ce qui remonterait le titre au-dessus de 102px partout par la règle du
+ * ratio — c'est-à-dire de changer la hiérarchie de toutes les cartes.
+ */
 describe("step 1 — the illustration shrinks before anything else moves", () => {
-  it("three rings compose by shrinking the drawing, with every gloss intact", () => {
+  it("three rings compose by shrinking the drawing, and the glosses go with it", () => {
     const { composition, svg } = render({
       ...SHORT,
       archetype: "concentric_control",
@@ -40,24 +59,30 @@ describe("step 1 — the illustration shrinks before anything else moves", () =>
       payload: { rings: [item("Out there"), item("Nearer"), item("Right here")] },
     });
 
-    // The drawing gave way…
+    // Les deux marches ont joué, et dans cet ordre-là.
     expect(composition.resolution.some((r) => r.startsWith("illustration shrunk"))).toBe(true);
-    // …and the words did not.
-    expect(composition.resolution).not.toContain("cut words: glosses dropped");
+    expect(composition.resolution).toContain("cut words: glosses dropped");
 
-    // Anti-vacuity: three labels AND three glosses are on the card.
+    // Anti-vacuité : les trois libellés sont là, et ils sont lisibles à 350.
     const texts = parseBoxes(svg).filter((b) => b.role === "text");
-    expect(texts.length).toBeGreaterThanOrEqual(8);
+    expect(texts.length).toBeGreaterThanOrEqual(5);
+    expect(legibleAtThumb(composition.placed)).toBe(true);
   });
 
-  it("and with room to spare, nothing gives at all", () => {
+  /*
+   * ⚠ « RIEN NE CÈDE » N'EXISTE PLUS POUR UN DIAGRAMME GLOSÉ, et le dire est
+   * l'intérêt de ce cas. La seule forme où le résolveur ne touche à rien est
+   * celle qui n'a pas de glose à perdre.
+   */
+  it("a card with nothing to give up gives up nothing", () => {
     const { composition } = render({
       ...SHORT,
-      archetype: "cycle",
+      archetype: "practitioner_card",
       palette: PALETTES[0],
-      payload: { nodes: [item("Notice"), item("Name it"), item("Let go")] },
+      payload: { lines: ["EMDR for burnout", "Oakland, California", "Taking new clients"] },
     });
     expect(composition.resolution).toEqual([]);
+    expect(legibleAtThumb(composition.placed)).toBe(true);
   });
 });
 
@@ -117,9 +142,19 @@ describe("the engine enforces the clearances itself", () => {
    * somebody renders something the test did not think of — which is every
    * caption a model writes after today.
    */
+  /*
+   * ⚠ PAR LE REPLI, ET C'EST LE BON ENDROIT. `quadrant_model` porte QUATRE
+   * cases plus deux axes, par définition — il ne peut pas en porter moins, et
+   * mesuré le 2026-09-21 il se pose à 28px, soit 9,1px en vignette, quelle que
+   * soit la longueur du titre. Il se replie donc toujours.
+   *
+   * Ce que ce cas doit prouver n'a pas changé : ce qui SORT du moteur est
+   * propre. Le demander à la forme que le produit livre vraiment est plus
+   * fort que le demander à la première forme essayée.
+   */
   it("violations() is consulted on every render, so a violating layout is never emitted", () => {
-    const { composition } = render({
-      ...CARD,
+    const composed = composeWithFallback({
+      ...SHORT,
       archetype: "quadrant_model",
       palette: PALETTES[0],
       payload: {
@@ -128,7 +163,12 @@ describe("the engine enforces the clearances itself", () => {
         items: [item("Notice"), item("Name it"), item("Let go"), item("Ask once")],
       },
     });
-    expect(violations(composition.placed)).toEqual([]);
+    const placed =
+      composed.kind === "carousel"
+        ? composed.slides.flatMap((slide) => slide.composition.placed)
+        : composed.result.composition.placed;
+    expect(violations(placed)).toEqual([]);
+    expect(composed.steps.length).toBeGreaterThan(0);
   });
 
   it("violations() can actually report one", () => {
