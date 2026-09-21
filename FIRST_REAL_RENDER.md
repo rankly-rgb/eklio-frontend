@@ -2,7 +2,7 @@
 
 Branche `claude/great-brahmagupta-za7qmx`. La partie 1 est livrée en `824227b`
 et `11c979f` ; ce document dit ce que le premier mois réel a produit, ce qu'il
-a coûté, et les **six défauts qu'il a trouvés** — dont trois corrigés ici.
+a coûté, et les **neuf défauts qu’il a trouvés** — dont six corrigés ici.
 
 **Tout chiffre de ce document vient d'une exécution.** Les coûts viennent des
 objets `usage` renvoyés par l'API ou de `credit_ledger` ; les refus viennent
@@ -133,7 +133,7 @@ bon comportement, et c'est la seule raison pour laquelle on le sait.
 
 ---
 
-## 4. Les six défauts que ce rendu a trouvés
+## 4. Les six défauts que le mois lui-même a trouvés
 
 ### 1 — ⚠ Une base fraîche ne peut générer AUCUN kit, dans les cinquante États
 
@@ -306,3 +306,76 @@ septembre marche.
 une phrase se lisent et les diagrammes ne se lisent plus. Le produit tire vers
 les diagrammes — neuf archétypes sur onze en sont — et le fil Instagram est à
 350 px.
+
+---
+
+## 6. Trois défauts de plus, trouvés en s'en servant
+
+Le 2026-09-21, après le rendu : *« je ne peux pas cliquer sur le bouton Write
+it »*. Le bouton était désarmé, et c'était correct. Ce qu'il y avait derrière
+ne l'était pas.
+
+### 7 — ⚠ Le panneau n'avait qu'un verrou sur deux — **corrigé**
+
+`WriteAvailability` documente son état désarmé ainsi : *« Le drapeau est
+éteint, **ou la clef absente** »*. La page ne testait que le drapeau.
+
+Vérifié en cliquant, `ANTHROPIC_API_KEY` retirée de l'environnement et
+`CONTENT_GENERATION_ARMED="true"` : « Write it » s'allume, annonce **« Uses 1
+of your 7 left this month »**, et rend un **503 « Generation isn't available
+right now — that's on us »** au clic.
+
+Aucun crédit n'est perdu : la clef est vérifiée **avant** `reserve_credit`, et
+le `credit_ledger` est resté à 18 lignes de part et d'autre du clic. Mais on
+invitait à dépenser sur quelque chose qui ne pouvait pas tourner.
+
+La décision est remontée dans `lib/content/write-screen.ts` — `writeStateFor`
+et `writeOffReason` — où la matrice est éprouvée, plutôt que dans une cascade
+de ternaires de la page. Six cas de test nouveaux, dont celui qui manquait.
+
+### 8 — ⚠ Le message envoyait chercher du côté de la facturation — **corrigé**
+
+> Writing isn't switched on **for your account** yet.
+
+Ce n'est pas une propriété du compte. Aucun plan, aucun achat, aucun
+`comp_grant` n'ouvre cette porte : c'est une variable d'environnement du
+serveur. Une praticienne qui lit cette phrase va voir sa facturation ; une
+opératrice va voir le compte ; le levier n'est ni l'un ni l'autre. C'est la
+même famille de confusion que `content_pipeline_enabled`, qui a coûté trois
+briefs (F7, F11).
+
+La phrase dit maintenant « switched on **here** », et la cause exacte —
+`CONTENT_GENERATION_ARMED is not exactly "true"`, `ANTHROPIC_API_KEY is not
+set`, ou les deux — s'affiche sous elle **uniquement** là où
+`showsTechnicalDetail()` l'autorise, l'idiome que `lib/env/deploy.ts` porte
+déjà pour l'écran du mois. En production, la phrase seule.
+
+### 9 — ⚠ Taper un titre faisait disparaître le panneau — **corrigé**
+
+Le plus coûteux des trois, et le plus invisible.
+
+```ts
+const postKind = hasCaption || card !== null ? "generated" : …
+```
+
+`reviewCardFor` a une exception littérale et documentée : pour
+`single_statement`, la ligne affichée **EST** le titre. Et `statement` est
+l'archétype par défaut d'un post créé par « New post ».
+
+Donc : elle crée un post, le panneau lui propose d'écrire ; elle tape un titre
+— la première chose que le formulaire demande — et au rendu suivant **le
+panneau a disparu**, remplacé par « Download image » et une carte faite de ses
+quatre mots. Elle a perdu l'offre d'écrire en faisant ce qu'on lui demandait.
+
+Et `manual_partial` devenait **inatteignable** pour l'archétype par défaut :
+la colonne la plus soigneusement décrite de la matrice, la seule qui porte
+`warnsOverwrite`, ne pouvait pas se produire. `write-panel-matrix.test.ts`
+était vert du début à la fin — il teste la fonction, pas la façon dont la page
+y entre. C'est exactement le trou que `write-screen.ts` existe pour fermer, et
+il était resté ouvert d'une couche au-dessus.
+
+Le bon prédicat était déjà calculé dix lignes plus bas dans la même page :
+`eklioWroteThis` — le sujet de banque, le payload du diagramme, la ligne
+« Why this one », les trois marques qu'une écriture machine laisse et qu'une
+frappe au clavier ne laisse jamais. `postKindFor` s'en sert désormais, et sept
+cas de test figent la distinction.

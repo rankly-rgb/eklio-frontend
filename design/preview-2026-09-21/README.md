@@ -29,6 +29,7 @@ palette `clay_sand` / `olive_chalk` réelle, check-in d'octobre rempli.
 | `06-manual-post-incomplete.png` | Un post manuel incomplet — titre saisi, légende vide signalée en rouge — avec le panneau de génération au-dessus. | chemin réel, base locale, compte de test |
 | `07-visuals-12-1080x1350.png` | La planche des douze premiers visuels qui composent, chacun à sa taille native de 1080 × 1350. | chemin réel, base locale, compte de test |
 | `08-visuals-12-at-350.png` | La même planche, cartes ramenées à 350 px de large. | chemin réel, base locale, compte de test |
+| `09-write-panel-disarmed.png` | Le panneau **désarmé**, après correction : il dit « switched on **here** » et non « for your account », et il nomme le verrou — `ANTHROPIC_API_KEY is not set` — là où un détail technique a le droit d'être lu. | chemin réel, base locale, compte de test |
 
 ## Ce que les captures montrent et qu'on ne voyait pas avant
 
@@ -52,6 +53,14 @@ banque écrit des titres « d'au plus huit mots », et `cardBands` fait du titre
 le bandeau de titre de la carte. Les trois ne se sont jamais parlé. Le harnais
 ramène le titre sur une frontière de mot pour que la ligne entre en base ; le
 rapport dit pourquoi ce n'est pas la réparation.
+
+## Ce que `09` a coûté de trouver
+
+Naima a signalé un « Write it » sur lequel elle ne pouvait pas cliquer. Ce
+n'était pas un bug d'interface : le bouton était désarmé, et **trois défauts
+se cachaient derrière ce seul écran**. Ils sont dans `FIRST_REAL_RENDER.md`,
+défauts 7 à 9 — le plus coûteux étant que taper un titre faisait disparaître
+le panneau tout entier.
 
 ## Ce qui a servi à les produire
 

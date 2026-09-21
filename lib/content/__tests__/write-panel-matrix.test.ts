@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { writeScreen, type PostKind, type WriteState } from "@/lib/content/write-screen";
+import {
+  writeScreen,
+  postKindFor,
+  writeStateFor,
+  writeOffReason,
+  writeOffDetail,
+  type PostKind,
+  type WriteState,
+} from "@/lib/content/write-screen";
 
 /*
  * ── LA MATRICE type de post × état ──────────────────────────────────────
@@ -116,5 +124,100 @@ describe("⚠ LES CAS NÉGATIFS — ils échouent sur l'état d'avant", () => {
   it("⚠ SES MOTS NE SONT JAMAIS ÉCRASÉS SANS AVERTISSEMENT", () => {
     expect(writeScreen({ kind: "manual_partial", state: "armed" }).warnsOverwrite).toBe(true);
     expect(writeScreen({ kind: "manual_empty", state: "armed" }).warnsOverwrite).toBe(false);
+  });
+});
+
+/*
+ * ── LES DEUX VERROUS, ET LE FAIT QU'IL Y EN AVAIT UN SEUL ───────────────
+ *
+ * Trouvé en cliquant, le 2026-09-21 : avec `CONTENT_GENERATION_ARMED="true"`
+ * et aucune `ANTHROPIC_API_KEY`, « Write it » s'allumait, annonçait « Uses 1
+ * of your 7 left this month », et rendait un 503 au clic. Le type du panneau
+ * disait pourtant depuis toujours « le drapeau est éteint, OU la clef
+ * absente ». Ces cas-ci font échouer le retour en arrière.
+ */
+describe("ce qui désarme l'écriture", () => {
+  it("le drapeau seul suffit à désarmer", () => {
+    expect(writeStateFor({ armedFlag: false, keyPresent: true, creditsLeft: 7 })).toBe(
+      "not_switched_on"
+    );
+    expect(writeOffReason({ armedFlag: false, keyPresent: true })).toBe("flag");
+  });
+
+  it("⚠ LA CLEF ABSENTE DÉSARME AUSSI — c'est le cas qui manquait", () => {
+    expect(writeStateFor({ armedFlag: true, keyPresent: false, creditsLeft: 7 })).toBe(
+      "not_switched_on"
+    );
+    expect(writeOffReason({ armedFlag: true, keyPresent: false })).toBe("key");
+  });
+
+  it("les deux ensemble se disent ensemble", () => {
+    expect(writeOffReason({ armedFlag: false, keyPresent: false })).toBe("both");
+    expect(writeOffDetail("both")).toContain("CONTENT_GENERATION_ARMED");
+    expect(writeOffDetail("both")).toContain("ANTHROPIC_API_KEY");
+  });
+
+  it("armé et pourvu, le quota peut décider", () => {
+    expect(writeStateFor({ armedFlag: true, keyPresent: true, creditsLeft: 0 })).toBe(
+      "quota_exhausted"
+    );
+    expect(writeStateFor({ armedFlag: true, keyPresent: true, creditsLeft: 7 })).toBe("armed");
+    expect(writeStateFor({ armedFlag: true, keyPresent: true, creditsLeft: null })).toBe("armed");
+    expect(writeOffReason({ armedFlag: true, keyPresent: true })).toBeNull();
+  });
+
+  /*
+   * ⚠ L'ORDRE, ET CE QU'IL ÉVITE. Un quota à zéro sur un déploiement non armé
+   * dirait « ça revient le 1er » — et rien ne reviendrait. Le désarmement
+   * passe devant, et ce cas fige l'ordre.
+   */
+  it("désarmé bat épuisé", () => {
+    expect(writeStateFor({ armedFlag: false, keyPresent: false, creditsLeft: 0 })).toBe(
+      "not_switched_on"
+    );
+  });
+});
+
+/*
+ * ── LA CARTE N'EST PAS UNE SIGNATURE ────────────────────────────────────
+ *
+ * La page répondait « generated » dès qu'une carte composait. Un
+ * `single_statement` compose depuis le TITRE — et `statement` est l'archétype
+ * par défaut de « New post ». Taper quatre mots faisait donc disparaître le
+ * panneau, et `manual_partial` était inatteignable pour l'archétype par
+ * défaut. Ces cas-ci le rendent atteignable, et le gardent.
+ */
+describe("quel type de post", () => {
+  const nothing = { topicId: null, payload: null, rationale: null };
+
+  it("rien dedans : le post est vide", () => {
+    expect(postKindFor({ hasCaption: false, hasTitle: false, marks: nothing })).toBe(
+      "manual_empty"
+    );
+  });
+
+  it("⚠ UN TITRE À ELLE RESTE À ELLE — c'est le cas qui manquait", () => {
+    expect(postKindFor({ hasCaption: false, hasTitle: true, marks: nothing })).toBe(
+      "manual_partial"
+    );
+    // Et donc le panneau reste, avec l'avertissement d'écrasement.
+    expect(writeScreen({ kind: "manual_partial", state: "armed" })).toEqual({
+      panel: true,
+      writeEnabled: true,
+      notice: null,
+      warnsOverwrite: true,
+    });
+  });
+
+  it("une légende suffit à dire que c'est écrit", () => {
+    expect(postKindFor({ hasCaption: true, hasTitle: true, marks: nothing })).toBe("generated");
+  });
+
+  it.each([
+    ["un sujet de banque", { topicId: "t", payload: null, rationale: null }],
+    ["un payload de diagramme", { topicId: null, payload: { statement: "x" }, rationale: null }],
+    ["une ligne « Why this one »", { topicId: null, payload: null, rationale: "because" }],
+  ])("chacune des trois marques dit que c'est Eklio : %s", (_label, marks) => {
+    expect(postKindFor({ hasCaption: false, hasTitle: true, marks })).toBe("generated");
   });
 });

@@ -389,7 +389,7 @@ bas ont tous été faits, dans l'ordre, et le mois existe :
 ⚠ **Et `@playwright/test` a été installé en premier, comme cette fiche le
 demandait.** Huit captures à 1440 px dans `design/preview-2026-09-21/`.
 
-**Le rendu a trouvé six défauts, dont trois sont corrigés.** Ils ont leur
+**Le rendu a trouvé neuf défauts, dont six sont corrigés.** Ils ont leur
 propre document : **`FIRST_REAL_RENDER.md`**. Le plus lourd, pour qui ne lit
 qu'une ligne : *l'écran de relecture n'avait jamais montré une carte entière —
 il en rognait les deux tiers droits.*

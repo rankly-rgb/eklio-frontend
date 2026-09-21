@@ -14,7 +14,15 @@ import { suggestTopics } from "@/lib/data/on-demand";
 import { contentGenerationArmed } from "@/lib/content/generate/armed";
 import { getCreditMeter } from "@/lib/billing/credits";
 import { contentMonthKey } from "@/lib/data/content";
-import { writeScreen, eklioWroteThis, type PostKind } from "@/lib/content/write-screen";
+import {
+  writeScreen,
+  postKindFor,
+  writeStateFor,
+  writeOffReason,
+  writeOffDetail,
+  eklioWroteThis,
+  type PostKind,
+} from "@/lib/content/write-screen";
 import { carouselSlides } from "@/lib/content/slides";
 import { deployEnvName, showsTechnicalDetail } from "@/lib/env/deploy";
 import { reviewCardFor } from "@/lib/content/review";
@@ -141,8 +149,17 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
    */
   const hasCaption = (item.caption ?? "").trim() !== "";
   const hasTitle = (item.title ?? "").trim() !== "";
-  const postKind: PostKind =
-    hasCaption || card !== null ? "generated" : hasTitle ? "manual_partial" : "manual_empty";
+  /*
+   * ⚠ LES MARQUES, PAS LA CARTE. `card !== null` disait « généré » d'un post
+   * où elle avait seulement tapé un titre, parce qu'un `single_statement`
+   * compose depuis ce titre — voir `postKindFor`.
+   */
+  const marks = {
+    topicId: item.topic?.id ?? null,
+    payload: item.payload,
+    rationale: item.rationale,
+  };
+  const postKind: PostKind = postKindFor({ hasCaption, hasTitle, marks });
   const hasHerWords = hasCaption || hasTitle;
 
   /*
@@ -151,11 +168,7 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
    * montre — et un post où ELLE a tapé une légende répond oui à la première et
    * non à la seconde.
    */
-  const written = eklioWroteThis({
-    topicId: item.topic?.id ?? null,
-    payload: item.payload,
-    rationale: item.rationale,
-  });
+  const written = eklioWroteThis(marks);
   /*
    * ⚠ SA DATE, SINON CELLE DE SA CRÉATION — JAMAIS L'HORLOGE. `Date.now()`
    * pendant un rendu est impur (ESLint le refuse), et c'est un bon refus : un
@@ -191,18 +204,31 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
    * ternaires dans ce fichier ne le serait pas, faute de rendu React dans ce
    * dépôt.
    */
+  /*
+   * ⚠ DEUX VERROUS, PAS UN. Le drapeau ET la clef — voir `writeOffReason`.
+   * La clef est lue ICI, à la requête, jamais au chargement du module : la
+   * règle générale du dépôt depuis `CONTENT_BUG_REPORT.md` §2.2.
+   */
+  const armedFlag = contentGenerationArmed();
+  const keyPresent = Boolean(process.env.ANTHROPIC_API_KEY);
+  const offReason = writeOffReason({ armedFlag, keyPresent });
+
   const screen = writeScreen({
     kind: postKind,
-    state: !contentGenerationArmed()
-      ? "not_switched_on"
-      : creditsLeft !== null && creditsLeft <= 0
-        ? "quota_exhausted"
-        : "armed",
+    state: writeStateFor({ armedFlag, keyPresent, creditsLeft }),
   });
 
   const availability: WriteAvailability =
     screen.notice === "not_switched_on"
-      ? { kind: "not_switched_on" }
+      ? {
+          kind: "not_switched_on",
+          /*
+           * La cause, et seulement là où elle a le droit d'être lue. En
+           * production elle reste `null` : un nom de variable sur l'écran
+           * d'une thérapeute est une fuite, et la phrase seule lui suffit.
+           */
+          because: offReason && showsTechnicalDetail() ? writeOffDetail(offReason) : null,
+        }
       : screen.notice === "quota_exhausted"
         ? { kind: "quota_exhausted", renewsOn: nextRenewal(month) }
         : { kind: "ready" };

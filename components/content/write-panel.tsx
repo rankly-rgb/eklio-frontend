@@ -30,8 +30,12 @@ import type { SuggestedTopic } from "@/lib/data/on-demand";
 
 export type WriteAvailability =
   | { kind: "ready" }
-  /** Le drapeau est éteint, ou la clef absente. Le panneau reste, désarmé. */
-  | { kind: "not_switched_on" }
+  /*
+   * Le drapeau est éteint, ou la clef absente — et depuis le 2026-09-21 les
+   * DEUX sont réellement testés. `because` nomme lequel, et il n'est rempli
+   * que là où un détail technique a le droit d'être lu (`showsTechnicalDetail`).
+   */
+  | { kind: "not_switched_on"; because?: string | null }
   /** Le quota du mois est épuisé. `renewsOn` est une date lisible. */
   | { kind: "quota_exhausted"; renewsOn: string };
 
@@ -167,16 +171,24 @@ export function WritePanel({
         </p>
       </div>
 
-      {availability.kind === "not_switched_on" ? (
-        /*
-         * ⚠ LE PANNEAU RESTE, DÉSARMÉ. Le faire disparaître la renverrait au
-         * formulaire vide sans qu'elle apprenne jamais que cette fonction
-         * existe.
-         */
-        <p className="max-w-[560px] rounded-card border border-dashed border-line px-4 py-3 text-helper leading-prose text-ink-2">
-          Writing isn&rsquo;t switched on for your account yet. You can still write this one
-          yourself below, and everything here will work once it is.
-        </p>
+            {availability.kind === "not_switched_on" ? (
+        <div className="flex max-w-[560px] flex-col gap-2 rounded-card border border-dashed border-line px-4 py-3">
+          {/*
+            * ⚠ PLUS « FOR YOUR ACCOUNT ». Ce n'était pas une propriété du
+            * compte : aucun plan, aucun achat et aucun `comp_grant` n'ouvrent
+            * cette porte. La phrase envoyait chercher du côté de la
+            * facturation, où il n'y a rien à trouver.
+            */}
+          <p className="text-helper leading-prose text-ink-2">
+            Writing isn&rsquo;t switched on here yet. You can still write this one yourself
+            below, and everything here will work once it is.
+          </p>
+          {availability.because ? (
+            <p className="font-mono text-[11px] leading-prose text-ink-2">
+              {availability.because}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {availability.kind === "quota_exhausted" ? (
