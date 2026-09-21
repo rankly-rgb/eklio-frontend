@@ -210,23 +210,48 @@ async function main() {
     return true;
   };
 
+  /*
+   * ── ⚠ À TOUR DE RÔLE DANS LA FAMILLE, ET PAS « LE PREMIER JUSQU'À
+   *      ÉPUISEMENT DU QUOTA » ──────────────────────────────────────────
+   *
+   * La boucle interne était `while (taken < perFamily)` autour d'UN archétype :
+   * le premier de la famille absorbait le quota entier, et les autres
+   * n'étaient atteints que s'il manquait de stock. Le mélange d'un mois
+   * dépendait donc de la PÉNURIE — et quand la banque a été remplie, il s'est
+   * effondré : le mois de perrin.vale est sorti avec 5 archétypes sur 11, sans
+   * un seul cycle, numbered_strategies ni annotated_curve, alors que la banque
+   * en portait 23, 23 et 30. Six icebergs identiques et onze phrases seules.
+   *
+   * C'est l'inverse exact de ce qu'un lecteur doit voir, et c'est pour ça que
+   * le mois PRÉCÉDENT, à court de stock, était plus varié que celui-ci.
+   *
+   * Un tour de rôle prend un sujet de chaque archétype, puis recommence. Un
+   * archétype épuisé sort de la ronde ; les autres continuent.
+   */
   for (const [family, archetypes] of Object.entries(FAMILIES)) {
     let taken = 0;
-    for (const archetype of archetypes) {
-      while (taken < perFamily) {
+    const live = [...archetypes];
+    while (taken < perFamily && live.length > 0) {
+      for (let k = 0; k < live.length && taken < perFamily; ) {
         const { data: topicId, error } = await (db.rpc as unknown as (
           n: string, a: Record<string, unknown>
         ) => Promise<{ data: string | null; error: { message: string } | null }>)(
-          "assign_topic_to_kit", { p_brand_kit_id: kitId, p_month: MONTH, p_archetype: archetype }
+          "assign_topic_to_kit", { p_brand_kit_id: kitId, p_month: MONTH, p_archetype: live[k] }
         );
         if (error) throw new Error(`assign_topic_to_kit: ${error.message}`);
-        if (!topicId) break;
+        if (!topicId) {
+          live.splice(k, 1);
+          continue;
+        }
         const { data: topic } = await db
           .from("content_topics").select("id, archetype_key, intent, title, hook").eq("id", topicId).single();
-        if (!topic) break;
+        if (!topic) {
+          live.splice(k, 1);
+          continue;
+        }
         if (accept(topic as Topic, family)) taken += 1;
+        k += 1;
       }
-      if (taken >= perFamily) break;
     }
     if (taken < perFamily) shortfall.push(`${family}: ${taken} of ${perFamily} (the bank had no more)`);
   }
