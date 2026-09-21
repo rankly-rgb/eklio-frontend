@@ -4,8 +4,28 @@
 
 Tout ce qui porte cette mention est sorti de `GET /api/content-items/[id]/image`
 — la route que le bouton de téléchargement appelle — sur un mois généré de bout
-en bout pour un **sixième compte de test**, `thea.brannon@eklio-test.invalid`,
-créé pour cette preuve et jamais retouché à la main.
+en bout pour `isla.thornbury@eklio-test.invalid`, créé pour cette preuve et
+jamais retouché à la main.
+
+## ⚠ Il a fallu six mois réels, et cinq comptes de plus, pour arriver ici
+
+Chacun a été gardé, parce que ce que chacun a montré n'est lisible nulle part
+ailleurs :
+
+| compte | résultat | ce que ce mois-là a révélé |
+|---|---|---|
+| `thea.brannon` | 10/30 | le dédoublonnage refusait 106 sujets sur 116 : il mesurait la taille du lot, pas la redondance |
+| `wren.ashcombe` | 30/30 | l'entonnoir était vert ; la planche montrait des teintes de marque saturées, un titre tronqué, un nom d'axe sorti de sa bande |
+| `juno.calvert` | 23/30 | « nervous system » comptait pour deux mots distinctifs : 51 refus sur 76, banque à sec |
+| `perrin.vale` | 30/30 | **5 archétypes sur 11.** Le tirage vidait le premier archétype de chaque famille ; la variété des mois précédents était un artefact de la pénurie |
+| `marlow.quint` | 30/30 | deux cartes titrées pareil — deux titres distincts en banque se réduisent au même texte une fois coupés à trente caractères |
+| `isla.thornbury` | 30/30 | le mois de ce dossier |
+
+**Quatre de ces six mois affichaient un entonnoir parfait.** 30 écrits, 30
+visuels, zéro pénurie, zéro repli — pendant que la planche montrait six
+icebergs identiques, ou deux fois le même titre. C'est la raison d'être du
+contrôle indépendant décrit plus bas : aucune des mesures que ce pipeline
+produit ne regarde une image.
 
 Rien de ce dossier n'a touché la production : pas de `main`, aucune variable
 Vercel, aucune connexion à la base de production. La clef Anthropic est passée

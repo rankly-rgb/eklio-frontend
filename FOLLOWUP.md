@@ -420,6 +420,38 @@ précisément pour que la ligne dise ce qu'elle vaut.
 
 ---
 
+## F15 — ⚠ AUCUNE MESURE DE CE PIPELINE NE REGARDE UNE IMAGE
+
+**Six mois réels ont été générés le 2026-09-21 pour en obtenir un bon. Quatre
+des six affichaient un entonnoir PARFAIT** — 30 écrits, 30 visuels, zéro
+pénurie, zéro repli — et trois d'entre eux étaient mauvais :
+
+* `wren.ashcombe` : teintes de marque à pleine saturation sur dix-neuf cartes,
+  un titre arrêté sur « you get », un nom d'axe posé hors de sa bande ;
+* `perrin.vale` : **5 archétypes sur 11**, six icebergs identiques, onze
+  phrases seules ;
+* `marlow.quint` : deux cartes portant le même titre.
+
+Chacun de ces défauts a été trouvé en REGARDANT la planche. Aucun n'est
+visible dans `funnel.json`, aucun ne fait échouer une suite, et le pire des
+trois — l'effondrement du mélange d'archétypes — se lisait dans les mesures
+comme une AMÉLIORATION, puisque la pénurie avait disparu.
+
+**Ce qu'il faut décider :**
+
+1. un contrôle automatique du MÉLANGE : aucun archétype au-delà de N % d'un
+   mois, et au moins K archétypes distincts sur 30 posts. C'est le seul de ces
+   défauts qui se calcule sans regarder une image ;
+2. qui regarde les planches, et quand. Le contrôle indépendant décrit dans
+   `design/preview-2026-09-21c/README.md` a trouvé en une passe ce que quatre
+   entonnoirs verts avaient laissé passer — mais il n'est lancé à la main que
+   parce qu'un cahier des charges le demandait ce jour-là ;
+3. ⚠ **la variété d'un mois a longtemps été un effet de bord de la pénurie.**
+   Tant que la banque était maigre, le tirage tombait sur d'autres archétypes
+   faute de stock. Remplir la banque a révélé le défaut au lieu de le corriger.
+   Toute mesure de qualité qui s'améliore quand une ressource se raréfie est à
+   relire.
+
 ## F13 — ⚠ LA BANQUE DE SUJETS SE TARIT POUR LA SIXIÈME PRATICIENNE D'UN SEGMENT
 
 **Mesuré le 2026-09-21, pas déduit.** Au moment de générer un mois pour le
@@ -437,7 +469,11 @@ nombre d'abonnées d'un segment, et qu'il n'est dimensionné nulle part.
 
 1. combien de sujets par segment pour `N` abonnées à 30 posts/mois sur une
    fenêtre de 90 jours — l'ordre de grandeur est `N × 90` et personne ne l'a
-   posé par écrit ;
+   posé par écrit. ⚠ **Et il faut le multiplier par trois** : mesuré sur la
+   banque réelle, le dédoublonnage refuse environ 40 % des sujets tirés, parce
+   que la banque elle-même produit des titres qui se recouvrent — tous écrits
+   depuis les mêmes trois thèmes de segment. Un sujet refusé sort de la banque
+   pour 90 jours comme les autres ;
 2. qui remplit la banque, et quand. Aucun travail de fond ne la remplit
    aujourd'hui : `10-topic-bank.ts` est un script de harnais, pas un `cron` ;
 3. ce que le produit RÉPOND quand la banque est vide. Aujourd'hui le tirage

@@ -1,86 +1,66 @@
 {
   "step": "2026-09-21c",
-  "account": "wren.ashcombe@eklio-test.invalid (septième compte de test, créé pour cette preuve)",
+  "account": "isla.thornbury@eklio-test.invalid — onzième compte de test, créé pour cette preuve",
   "month": "2026-10-01",
-  "path": "chemin réel, base locale, compte de test",
+  "label": "chemin réel, base locale, compte de test",
   "firstMonthSynchronous": {
-    "promised": "le premier mois d un abonné est généré en synchrone",
-    "measuredSeconds": 161
+    "promesse": "le premier mois d un abonné est généré en synchrone",
+    "secondesMesurées": 136
   },
   "funnel": {
-    "candidates": 42,
-    "generated": 32,
-    "conformantFirstCall": 26,
-    "repaired": 4,
-    "refusedAfterRepair": 2,
+    "candidates": 33,
+    "generated": 30,
+    "conformantFirstCall": 25,
+    "repaired": 5,
+    "refusedAfterRepair": 0,
     "quotaRefusals": 0,
     "keptForWriting": 30,
     "written": 30,
-    "fallbacks": 3,
+    "fallbacks": 1,
     "visualsOnThirty": 30
   },
   "mix": {
-    "statement": 11,
-    "simple": 11,
-    "varied": 8
+    "statement": 12,
+    "simple": 9,
+    "varied": 9
   },
   "shortfall": [
-    "varied: 11 of 15 (the bank had no more)"
+    "simple: 9 of 15 (the bank had no more)",
+    "varied: 9 of 15 (the bank had no more)"
   ],
   "fallbacks": [
     {
-      "topic": "Why grief shows up as restlessness",
+      "topic": "What the nervous system does at unwanted crossroads",
       "from": "quadrant_model",
       "to": "numbered_strategies",
       "steps": "quadrant_model → numbered_strategies (fewer labels, still drawn)"
-    },
-    {
-      "topic": "EMDR and Grief: Not Just for Trauma",
-      "from": "quadrant_model",
-      "to": "numbered_strategies",
-      "steps": "quadrant_model → numbered_strategies (fewer labels, still drawn)"
-    },
-    {
-      "topic": "Why EMDR works when identity shifts",
-      "from": "annotated_curve",
-      "to": "numbered_strategies",
-      "steps": "annotated_curve → numbered_strategies (fewer labels, still drawn)"
     }
   ],
-  "failures": [
-    {
-      "topic": "EMDR and the Unplanned Pivot",
-      "kind": "word budget",
-      "because": "cards[4].items[2].label said 4, allowed 3"
-    },
-    {
-      "topic": "When your body knows before your mind does",
-      "kind": "word budget",
-      "because": "cards[1].beneath.label said 5, allowed 3; cards[3].beneath.gloss said 7, allowed 6"
-    }
-  ],
+  "failures": [],
   "ethicsFlags": [],
-  "rejectedAsRedundant": 64,
-  "releasedTopics": 76,
+  "rejectedAsRedundant": 78,
+  "releasedTopics": 81,
   "archetypesRendered": {
-    "single_statement": 11,
-    "surface_and_beneath": 3,
-    "carousel": 3,
-    "comparison_pair": 2,
-    "numbered_strategies": 5,
-    "quadrant_model": 1,
-    "cycle": 4,
-    "annotated_curve": 1
+    "single_statement": 9,
+    "cycle": 2,
+    "carousel": 2,
+    "practitioner_card": 3,
+    "concentric_control": 4,
+    "quadrant_model": 2,
+    "comparison_pair": 1,
+    "lettered_technique": 2,
+    "annotated_curve": 2,
+    "numbered_strategies": 3
   },
   "loneSentence": {
-    "count": 11,
-    "share": 0.367
+    "count": 9,
+    "share": 0.3
   },
   "visualsRendered": 30,
   "visualsRefused": [],
-  "costUsd": {
-    "month": 0.10217,
-    "topicBank": 0.34317,
-    "sessionTotal": null
+  "coutUsd": {
+    "moisFinal": 0.0857,
+    "banqueDeSujets": 0.71744,
+    "note": "la génération de kit n est inscrite dans aucun ledger — voir FOLLOWUP F14"
   }
 }
