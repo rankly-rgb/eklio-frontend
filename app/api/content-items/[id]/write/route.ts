@@ -103,7 +103,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
       return contentResponse(await getContentItem(supabase, id));
     }
 
-    const month = contentMonthKey(new Date(item.scheduled_for ?? Date.now()));
+    /*
+     * ⚠ SA DATE, SINON CELLE DE SA CRÉATION. Le crédit est réservé sur CE
+     * mois-là : un post de janvier rouvert en septembre ne doit pas piocher
+     * dans le quota de septembre, et l'écran qui affiche « 9 left » lit le
+     * même mois que la réservation.
+     */
+    const month = contentMonthKey(new Date(item.scheduled_for ?? item.created_at));
     const [preferences, checkin] = await Promise.all([
       getContentPreferences(supabase, item.brand_kit_id),
       getContentCheckin(supabase, item.brand_kit_id, month),

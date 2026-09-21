@@ -9,6 +9,12 @@ import { ItemEditor } from "@/components/content/item-editor";
 import { ReviewSurface, type LayoutChoice } from "@/components/content/review-surface";
 import { Breadcrumb } from "@/components/app/breadcrumb";
 import { MonthFailedToLoad, MonthNotDeployed } from "@/components/content/month-states";
+import { WritePanel, type WriteAvailability } from "@/components/content/write-panel";
+import { suggestTopics } from "@/lib/data/on-demand";
+import { contentGenerationArmed } from "@/lib/content/generate/armed";
+import { getCreditMeter } from "@/lib/billing/credits";
+import { contentMonthKey } from "@/lib/data/content";
+import { writeScreen, type PostKind } from "@/lib/content/write-screen";
 import { deployEnvName, showsTechnicalDetail } from "@/lib/env/deploy";
 import { reviewCardFor } from "@/lib/content/review";
 import { layoutAlternatives } from "@/lib/content/alternatives";
@@ -125,6 +131,69 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
     ]),
   ]);
 
+  /*
+   * ── CE POST A-T-IL BESOIN D'ÊTRE ÉCRIT ? ──────────────────────────────
+   *
+   * Pas de légende ET pas de carte composable. Un post avec l'une des deux
+   * est un post en cours, pas un post vide : le panneau ne s'impose pas
+   * dessus.
+   */
+  const hasCaption = (item.caption ?? "").trim() !== "";
+  const hasTitle = (item.title ?? "").trim() !== "";
+  const postKind: PostKind =
+    hasCaption || card !== null ? "generated" : hasTitle ? "manual_partial" : "manual_empty";
+  const hasHerWords = hasCaption || hasTitle;
+  /*
+   * ⚠ SA DATE, SINON CELLE DE SA CRÉATION — JAMAIS L'HORLOGE. `Date.now()`
+   * pendant un rendu est impur (ESLint le refuse), et c'est un bon refus : un
+   * post sans date appartient au mois où il a été créé, pas au mois où elle
+   * regarde l'écran. Sinon son quota de janvier se lirait sur septembre.
+   */
+  const month = contentMonthKey(new Date(item.scheduled_for ?? item.created_at));
+
+  /*
+   * ⚠ LES SUGGESTIONS SONT LUES ICI, PAS DANS LE COMPOSANT. `suggest_topics_for_kit`
+   * est scopée `auth.uid()` et demande le client de session ; un composant
+   * client ferait un second aller-retour pour ce que cette page a déjà le
+   * droit de lire. Elles sont gratuites : rien n'est assigné, rien n'est
+   * consommé.
+   */
+  const suggested = postKind !== "generated"
+    ? await suggestTopics(supabase, item.brand_kit_id, { month, limit: 3 })
+    : null;
+  const suggestions = suggested?.ok ? suggested.data : [];
+
+  /*
+   * ⚠ LE PANNEAU RESTE VISIBLE QUAND L'ÉCRITURE N'EST PAS ACTIVÉE. Il le dit
+   * au lieu de disparaître : sinon la seule chose qu'elle apprend est que ce
+   * produit lui demande d'écrire elle-même.
+   */
+  const meter = postKind !== "generated" ? await getCreditMeter(supabase, month) : null;
+  const regenerations = meter?.regeneration ?? null;
+  const creditsLeft = regenerations?.remaining ?? null;
+
+  /*
+   * ⚠ LA DÉCISION EST DANS `lib/content/write-screen.ts`, PAS ICI. Sa matrice
+   * (3 types de post × 3 états) est éprouvée cas par cas ; une cascade de
+   * ternaires dans ce fichier ne le serait pas, faute de rendu React dans ce
+   * dépôt.
+   */
+  const screen = writeScreen({
+    kind: postKind,
+    state: !contentGenerationArmed()
+      ? "not_switched_on"
+      : creditsLeft !== null && creditsLeft <= 0
+        ? "quota_exhausted"
+        : "armed",
+  });
+
+  const availability: WriteAvailability =
+    screen.notice === "not_switched_on"
+      ? { kind: "not_switched_on" }
+      : screen.notice === "quota_exhausted"
+        ? { kind: "quota_exhausted", renewsOn: nextRenewal(month) }
+        : { kind: "ready" };
+
   const layouts: LayoutChoice[] = card
     ? layoutAlternatives({
         archetypeKey: card.archetypeKey,
@@ -151,6 +220,29 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
       <h1 className="mt-4 font-display text-h1 font-medium leading-tight tracking-h1 text-ink">
         {item.title ?? "Untitled"}
       </h1>
+
+      {/*
+       * ⚠ LE PANNEAU D'ÉCRITURE PASSE AVANT LA RELECTURE QUAND IL N'Y A RIEN
+       * À RELIRE. C'est le cœur du correctif : un post inachevé ouvrait sur
+       * un formulaire vide, ce qui est exactement ce que ce produit promet de
+       * ne jamais lui montrer.
+       *
+       * Sur un post déjà écrit, le panneau n'apparaît pas : elle vient le
+       * relire, pas le refaire. « Regenerate » est ailleurs et porte son coût.
+       */}
+      {screen.panel ? (
+        <div className="mt-6">
+          <WritePanel
+            itemId={item.id}
+            brandKitId={item.brand_kit_id}
+            month={month}
+            initialTopics={suggestions}
+            availability={availability}
+            creditsLeft={creditsLeft}
+            hasHerWords={hasHerWords}
+          />
+        </div>
+      ) : null}
 
       <ReviewSurface
         itemId={item.id}
@@ -230,4 +322,17 @@ async function archetypeLabels(
     return {};
   }
   return Object.fromEntries((data ?? []).map((row) => [row.id, row.label]));
+}
+
+/**
+ * Le 1er du mois suivant, en toutes lettres.
+ *
+ * ⚠ UNE DATE, PAS « next month ». « Il revient le 1er octobre » se planifie ;
+ * « le mois prochain » demande de calculer, et c'est nous qui avons
+ * l'information.
+ */
+function nextRenewal(month: string): string {
+  const start = new Date(`${month}T00:00:00Z`);
+  const next = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+  return next.toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
 }

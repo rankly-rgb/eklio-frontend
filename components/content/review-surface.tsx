@@ -74,6 +74,13 @@ export function ReviewSurface({
 
   const current = layouts[selected] ?? null;
 
+  /*
+   * ⚠ CE QUE LA LIGNE DÉONTOLOGIQUE A RÉELLEMENT PU REGARDER. Une légende, une
+   * carte composée, ou rien. Le `ethics` reçu porte déjà le résultat du scan ;
+   * ce booléen dit s'il y avait une SURFACE à scanner.
+   */
+  const hasCheckableContent = Boolean(caption?.trim()) || layouts.length > 0;
+
   const keep = useCallback(
     async (index: number) => {
       const layout = layouts[index];
@@ -127,16 +134,22 @@ export function ReviewSurface({
 
   return (
     <section className="mt-6 flex flex-col gap-6">
-      {/* ── Les deux gestes dominants ─────────────────────────────────── */}
+      {/*
+       * ── LES GESTES DOMINANTS N'APPARAISSENT QUE QUAND ILS ONT UN OBJET ──
+       *
+       * ⚠ « Copy caption » ÉTAIT AFFICHÉ GRISÉ SUR UN POST VIDE, en action
+       * principale. Un bouton désactivé en tête d'écran dit « voici ce que
+       * vous devriez faire ici » et ne le permet pas : c'est un reproche, pas
+       * une action. Il n'y a rien à copier tant que rien n'est écrit, donc il
+       * n'y a pas de bouton.
+       */}
+      {caption || current ? (
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          onClick={() => void copyCaption()}
-          disabled={!caption}
-          aria-live="polite"
-        >
+        {caption ? (
+        <Button type="button" onClick={() => void copyCaption()} aria-live="polite">
           {copied ? "Copied" : "Copy caption"}
         </Button>
+        ) : null}
 
         {current ? (
           /*
@@ -156,13 +169,8 @@ export function ReviewSurface({
             {save.kind === "saving" ? "Saving the layout…" : "Download image"}
           </a>
         ) : null}
-
-        {!caption ? (
-          <p className="text-helper text-ink-2">
-            There is no caption on this one yet. Write one below.
-          </p>
-        ) : null}
       </div>
+      ) : null}
 
       {save.kind === "error" ? (
         <p role="alert" className="text-helper text-danger">
@@ -178,7 +186,16 @@ export function ReviewSurface({
         </p>
       ) : null}
 
-      <EthicsNote ethics={ethics} />
+      {/*
+       * ⚠ ELLE NE CERTIFIE PLUS UNE VÉRIFICATION QUI N'A PORTÉ SUR RIEN.
+       *
+       * « Checked for promised outcomes… Nothing to flag. » s'affichait sur un
+       * post entièrement vide. C'est faux au sens le plus simple : le scan a
+       * tourné sur une chaîne vide. Une ligne qui rassure à propos de rien est
+       * pire qu'absente, parce qu'elle s'use — et le jour où elle porte sur du
+       * vrai texte, on ne la lit plus.
+       */}
+      {hasCheckableContent ? <EthicsNote ethics={ethics} /> : null}
 
       {/* ── La carte, et les autres façons de la poser ──────────────────── */}
       {current ? (
@@ -230,12 +247,13 @@ export function ReviewSurface({
           ) : null}
         </div>
       ) : (
-        <div className="max-w-[560px] rounded-card border border-dashed border-line p-6">
-          <p className="text-helper leading-prose text-ink-2">
-            There is no card for this one yet. It came from you rather than from a topic, so there
-            is no diagram to set — the caption below is the post.
-          </p>
-        </div>
+        /*
+         * ⚠ PLUS DE « There is no card for this one yet ». C'était une phrase
+         * qui constatait un manque sans rien proposer — et sous elle, un
+         * formulaire vide. Le panneau d'écriture prend cette place : il est
+         * rendu par la page, au-dessus, et ce bloc n'a plus de raison d'être.
+         */
+        null
       )}
     </section>
   );
