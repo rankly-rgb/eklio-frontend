@@ -153,15 +153,29 @@ export function checkDuplicateTitles(titles: string[]): Finding[] {
  * en dernier mot il est démonstratif, et « After that » est fini.
  */
 const DANGLING_IN_FIELD = new Set([
-  // articles
+  // articles — toujours faux en dernier mot
   "a", "an", "the",
-  // prépositions
-  "of", "in", "on", "at", "to", "for", "with", "from", "by", "into", "onto",
-  "about", "over", "under", "between", "through", "during", "before", "after",
-  "against", "toward", "towards", "upon", "within", "without",
-  // conjonctions
-  "and", "or", "but", "nor", "so", "yet", "because", "although", "though",
-  "while", "whereas", "unless", "until",
+  /*
+   * prépositions qui ne servent PAS de particule verbale.
+   *
+   * ⚠ « on », « in », « up », « out », « off », « over », « by », « after »,
+   * « about » ont été RETIRÉS, chacun après un faux positif mesuré. Ce sont
+   * des particules autant que des prépositions : « Mind moved on » est fini,
+   * « the week after » est fini, « what it's about » est fini. Une liste plate
+   * ne sait pas distinguer l'emploi, donc elle ne garde que les mots dont
+   * AUCUN emploi ne termine une phrase.
+   */
+  "of", "at", "from", "with", "into", "onto", "during", "between", "among",
+  "against", "toward", "towards", "upon", "within", "without", "than", "to",
+  // conjonctions de subordination et de coordination sans emploi adverbial
+  "and", "or", "but", "nor", "because", "although", "though", "unless",
+  "until", "whereas",
+  /*
+   * ⚠ « so », « yet » et « while » ne sont PAS ici. Ils sont aussi adverbes
+   * ou noms : « not caught up to yet » est fini, « even so » est fini, « a
+   * while » est un nom. Mesuré sur un vrai mois : deux refus sur trois
+   * portaient sur « yet » et « on ».
+   */
   // relatifs
   "which", "who", "whom", "whose",
 ]);

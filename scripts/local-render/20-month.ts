@@ -760,6 +760,10 @@ function selectDeliverable<
   if (selection.remaining.length > 0) {
     console.log(JSON.stringify({
       step: "month", refused: true, monthId: monthRow.id,
+      // ⚠ La taille du banc est dans le rapport : sans elle, « aucun post
+      // échangé » et « aucun remplaçant disponible » se ressemblent, et on
+      // cherche le défaut dans le sélecteur au lieu de la sur-génération.
+      prepared: readyPosts.length, wanted: WANTED, bench: readyPosts.length - WANTED,
       findings: selection.remaining, dropped: selection.dropped,
     }, null, 2));
     throw new Error(

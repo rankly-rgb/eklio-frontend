@@ -106,6 +106,12 @@ describe("les défauts de la seconde notation sont rejetés", () => {
     "what happened and what didn't",
     "still braced for it",
     "After that",
+    // ⚠ Second tour de faux positifs, mesuré sur le mois suivant : « yet » est
+    // aussi un adverbe, « on » et « after » sont aussi des particules.
+    "Your body knows things your mind has not caught up to yet",
+    "Mind moved on",
+    "the week after",
+    "what it is about",
   ])("une glose finie passe : « %s »", (text) => {
     expect(checkDangling([{ where: "payload.x.gloss", text }], "field")).toEqual([]);
   });
