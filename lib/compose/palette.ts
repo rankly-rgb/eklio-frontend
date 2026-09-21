@@ -97,10 +97,18 @@ export const SOFTEN_TOWARD_PAPER = 0.62;
  * quatrième case reprend la teinte de la première, deux des quatre parties ne
  * se distinguent pas ».
  *
- * Une quatrième COULEUR serait une seconde marque. Une quatrième LUMINOSITÉ de
- * la troisième reste la même couleur, et deux parties voisines se distinguent.
+ * Une quatrième COULEUR serait une seconde marque. Une quatrième LUMINOSITÉ
+ * d'une teinte déjà présente ne l'est pas.
+ *
+ * ⚠ ET ELLE ÉTAIT PLUS PÂLE, CE QUI LA RAMENAIT SUR LA PREMIÈRE. Adoucir la
+ * troisième à 0.82 donnait un ton presque papier, voisin de `light` : un
+ * contrôle indépendant l'a relevé sur une carte à quatre parties, « la
+ * quatrième teinte est une reprise délavée de la première, deux champs se
+ * lisent comme une seule couleur ». Elle est donc une seconde LUMINOSITÉ, plus
+ * SOUTENUE, de la deuxième — encore un aplat doux, mais du côté opposé des
+ * trois autres.
  */
-const SOFTEN_FOURTH = 0.82;
+const SOFTEN_FOURTH = 0.42;
 
 /** Mélange linéaire de deux couleurs, `amount` étant la part de `towards`. */
 export function mix(colour: string, towards: string, amount: number): string {
@@ -161,7 +169,7 @@ export function cardPalette(
    */
   const tints = [
     ...brand.map((t) => soften(t, paper, SOFTEN_TOWARD_PAPER)),
-    soften(brand[2], paper, SOFTEN_FOURTH),
+    soften(brand[1], paper, SOFTEN_FOURTH),
   ];
 
   return {

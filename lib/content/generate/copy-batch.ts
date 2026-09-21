@@ -200,7 +200,9 @@ const SHAPES: Record<string, Shape> = {
       `{"label": "Week six", "gloss": "the old pace returns"}]}`,
   },
   practitioner_card: {
-    shape: `{"lines": [2 to 4 strings, each 1 to 8 words]}`,
+    // ⚠ DES FAITS, PAS UNE REFORMULATION DU TITRE. Voir la règle « card_line
+    // n'apparaît jamais dans payload » : c'est cet archétype qui l'enfreignait.
+    shape: `{"lines": [2 to 4 strings, each 1 to 8 words — plain facts about how she works: modality, place, availability. Never the card_line again]}`,
     example: `{"lines": ["EMDR for burnout", "Oakland, California", "Taking new clients"]}`,
   },
   carousel: {
@@ -309,10 +311,21 @@ export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthrop
     ``,
     `⚠ WHY "card_line" IS THIRTY CHARACTERS AND NOT A TITLE. The card sets that`,
     `line as large as it fits, and every other size on the card is derived from`,
-    `it — a label may never exceed a third of it. Measured: at 30 characters the`,
-    `line sets at 110px and the labels at 36px, which is 11.7px in a 350px`,
-    `Instagram thumbnail. At 34 characters the line drops to 96px, the labels to`,
-    `32px, and the diagram stops being readable in a feed. Four characters.`,
+    `it — a label may never exceed HALF of it. At 30 characters the line sets at`,
+    `110px and a label may reach 55px; at 34 it drops to 96px and the diagram`,
+    `loses a size class. Legibility is measured at 390px, a post at full phone`,
+    `width in a feed, where nothing may fall under 10.5px.`,
+    ``,
+    `⚠ "card_line" MUST BE A FINISHED PHRASE. Not a sentence cut short: "When`,
+    `life interrupts" is fine, "When life interrupts, you get" is not, and`,
+    `neither is anything ending on "what", "the", "your", "and", "doesn't".`,
+    `If it does not fit in thirty characters finished, write a shorter thought.`,
+    ``,
+    `⚠ "card_line" NEVER APPEARS INSIDE "payload". The card prints it once, at`,
+    `the top, at the largest size on the card; repeating it as a label or as a`,
+    `practitioner line prints the same words twice in two sizes and wastes the`,
+    `field it sits in. Measured: all three practitioner cards of one month had`,
+    `their first line identical to their card_line.`,
     ``,
     `⚠ WORD COUNTS ARE HARD LIMITS, not suggestions, and this is where answers`,
     `die. A database CHECK counts the words and refuses the whole card; nothing`,
@@ -494,9 +507,28 @@ const DANGLING = new Set([
   "hadn't", "it's", "that's", "there's", "you're", "they're", "we're",
 ]);
 
+/** Retire les mots outils traînants d'une ligne déjà coupée. */
+function withoutDangling(text: string): string {
+  let words = text.trim().split(/\s+/);
+  // ⚠ ON NE DESCEND JAMAIS SOUS DEUX MOTS. Un titre d'un seul mot est un
+  // sujet, pas un titre — mieux vaut alors la ligne telle quelle.
+  while (words.length > 2 && DANGLING.has(words[words.length - 1].toLowerCase().replace(/[^a-z']/g, ""))) {
+    words = words.slice(0, -1);
+  }
+  return words.join(" ").replace(/[,;:]$/, "");
+}
+
 export function clampCardLine(line: string): string {
   const trimmed = line.trim();
-  if (trimmed.length <= CARD_LINE_MAX) return trimmed;
+  /*
+   * ⚠ LE ROGNAGE S'APPLIQUE AUSSI À CE QUI N'A PAS ÉTÉ COUPÉ. Il ne valait que
+   * pour les lignes trop longues, sur l'idée qu'un mot outil traînant est un
+   * artefact de la coupe. Il ne l'est pas toujours : « Efficiency can mask
+   * what » fait vingt-cinq caractères, personne ne l'a coupée, et elle est
+   * sortie telle quelle sur une carte du mois de marlow.quint. Le modèle avait
+   * simplement écrit une phrase inachevée.
+   */
+  if (trimmed.length <= CARD_LINE_MAX) return withoutDangling(trimmed);
 
   const cut = trimmed.slice(0, CARD_LINE_MAX);
 
@@ -505,15 +537,7 @@ export function clampCardLine(line: string): string {
   if (clause > 12) return cut.slice(0, clause).trimEnd();
 
   const boundary = cut.lastIndexOf(" ");
-  let words = (boundary > 12 ? cut.slice(0, boundary) : cut).trimEnd().split(/\s+/);
-
-  // ⚠ ON NE DESCEND JAMAIS SOUS DEUX MOTS. Retirer les mots outils d'un titre
-  // qui n'en a que deux laisserait un seul mot, ce qui est un sujet et non un
-  // titre — mieux vaut alors la coupe telle quelle.
-  while (words.length > 2 && DANGLING.has(words[words.length - 1].toLowerCase().replace(/[^a-z']/g, ""))) {
-    words = words.slice(0, -1);
-  }
-  return words.join(" ").replace(/[,;:]$/, "");
+  return withoutDangling((boundary > 12 ? cut.slice(0, boundary) : cut).trimEnd());
 }
 
 /**

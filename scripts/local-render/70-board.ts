@@ -63,25 +63,49 @@ async function main() {
   const refused: Array<{ title: string; archetype: string | null; because: string }> = [];
 
   for (const item of items ?? []) {
-    const response = await page.request.get(`${BASE}/api/content-items/${item.id}/image`);
-    if (!response.ok()) {
-      refused.push({
-        title: item.title ?? "(untitled)", archetype: item.compose_archetype,
-        because: (await response.text()).slice(0, 160),
-      });
-      continue;
-    }
-    const png = Buffer.from(await response.body());
+    /*
+     * ⚠ UN CARROUSEL A PLUSIEURS VOLETS, ET LA PLANCHE N'EN DEMANDAIT QU'UN.
+     *
+     * `GET /api/content-items/[id]/image` sans paramètre rend le PREMIER volet.
+     * La planche montrait donc chaque carrousel comme une carte unique portant
+     * un badge « 1/6 » — indistinguable d'une phrase seule. Un contrôle
+     * indépendant les a notés 1 sur 5 en élaboration, « carrousel livré comme
+     * une seule diapositive de couverture », et il avait raison sur ce qu'il
+     * voyait : c'est la PREUVE qui était fausse, pas le produit. La route
+     * accepte `?slide=N` depuis toujours.
+     */
+    const wanted: Array<number | null> =
+      item.compose_archetype === "carousel"
+        ? Array.from({ length: 8 }, (_, i) => i + 1)
+        : [null];
+
+    for (const slide of wanted) {
+      const url = slide === null
+        ? `${BASE}/api/content-items/${item.id}/image`
+        : `${BASE}/api/content-items/${item.id}/image?slide=${slide}`;
+      const response = await page.request.get(url);
+      if (!response.ok()) {
+        // Au-delà du dernier volet, la route refuse : c'est la fin, pas un échec.
+        if (slide !== null && slide > 1) break;
+        refused.push({
+          title: item.title ?? "(untitled)", archetype: item.compose_archetype,
+          because: (await response.text()).slice(0, 160),
+        });
+        break;
+      }
+      const png = Buffer.from(await response.body());
     // Chaque visuel est aussi écrit seul, à sa taille de toile : une planche
     // se regarde, un fichier se rouvre — et c'est celui-là que l'agent de
     // contrôle indépendant reçoit.
-    const file = `${String(shots.length + 1).padStart(2, "0")}-${item.compose_archetype ?? "unknown"}.png`;
-    await writeFile(`${out}/visuals/${file}`, png);
-    shots.push({
-      src: `data:image/png;base64,${png.toString("base64")}`,
-      label: `${shots.length + 1} · ${item.compose_archetype}`,
-      archetype: item.compose_archetype ?? "unknown",
-    });
+      const suffix = slide === null ? "" : `-${slide}`;
+      const file = `${String(shots.length + 1).padStart(2, "0")}-${item.compose_archetype ?? "unknown"}${suffix}.png`;
+      await writeFile(`${out}/visuals/${file}`, png);
+      shots.push({
+        src: `data:image/png;base64,${png.toString("base64")}`,
+        label: `${shots.length + 1} · ${item.compose_archetype}${slide === null ? "" : ` · volet ${slide}`}`,
+        archetype: item.compose_archetype ?? "unknown",
+      });
+    }
   }
 
   const board = (cardWidth: number) => `<!doctype html><meta charset="utf-8">
@@ -165,13 +189,23 @@ async function main() {
     await pairPage.close();
   }
 
-  const lone = shots.filter((s) => s.archetype === "single_statement").length;
+  /*
+   * ⚠ LE DÉCOMPTE RESTE CELUI DES POSTS. Un carrousel de six volets est UN
+   * post ; compter ses volets ferait passer un mois de trente pour un mois de
+   * quarante, et la part de phrases seules s'en trouverait diluée.
+   */
+  const posts = items?.length ?? 0;
+  const lone = (items ?? []).filter((i) => i.compose_archetype === "single_statement").length;
   console.log(JSON.stringify({
     step: "board", out, month: MONTH, items: items?.length ?? 0,
     visuals: shots.length, refused,
-    loneSentence: { count: lone, share: shots.length ? Number((lone / shots.length).toFixed(3)) : 0 },
+    slides: shots.length,
+    loneSentence: { count: lone, share: posts ? Number((lone / posts).toFixed(3)) : 0 },
     archetypes: Object.fromEntries(
-      [...new Set(shots.map((s) => s.archetype))].map((a) => [a, shots.filter((s) => s.archetype === a).length])
+      [...new Set((items ?? []).map((i) => i.compose_archetype))].map((a) => [
+        a ?? "unknown",
+        (items ?? []).filter((i) => i.compose_archetype === a).length,
+      ])
     ),
     pairs,
   }, null, 2));
