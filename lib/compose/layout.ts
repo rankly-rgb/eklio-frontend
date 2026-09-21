@@ -117,7 +117,7 @@ export function cell(
   gloss: string,
   palette: Palette,
   tintIndex: number,
-  /** The display/3 ceiling. See `Ctx.secondaryMax`. */
+  /** Le plafond de hiérarchie, `display / 2`. Voir `Ctx.secondaryMax`. */
   secondaryMax: number
 ): Placed[] | null {
   const pad = CLEARANCE.glyphToFieldEdge;
@@ -137,7 +137,7 @@ export function cell(
    * had room: a 64px inner height gave the label 35px, one pixel under what a
    * 30px line needs, while 23px of the gloss's share sat unused.
    */
-  const glossFloorHeight = hasGloss ? TYPE.mono.floor * LINE_HEIGHT + 8 : 0;
+  const glossFloorHeight = hasGloss ? TYPE.gloss.floor * LINE_HEIGHT + 8 : 0;
   const labelRange = { ...TYPE.label, max: Math.min(TYPE.label.max, secondaryMax) };
   if (labelRange.max < labelRange.floor) return null;
   const labelFit = fitText(label, "sans", innerW, innerH - glossFloorHeight, labelRange);
@@ -148,10 +148,16 @@ export function cell(
   );
 
   if (hasGloss) {
+    /*
+     * ⚠ SA PROPRE GAMME, PAS CELLE DU MONO. La glose est composée dans la sans
+     * du kit depuis toujours ; elle empruntait seulement les TAILLES du mono,
+     * plafonnées à 28px. Sous un plancher de vignette à 30, aucune glose ne
+     * pouvait donc passer, et le résolveur les supprimait toutes.
+     */
     const glossRange = {
-      min: TYPE.mono.min,
-      max: Math.min(TYPE.mono.max, secondaryMax),
-      floor: TYPE.mono.floor,
+      min: TYPE.gloss.min,
+      max: Math.min(TYPE.gloss.max, secondaryMax),
+      floor: TYPE.gloss.floor,
     };
     if (glossRange.max < glossRange.floor) return null;
     const glossFit = fitText(gloss, "sans", innerW, innerH - labelFit.height - 8, glossRange);

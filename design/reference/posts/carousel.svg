@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3360 1350" width="3360" height="1350">
+  <title>référence reconstruite, pas un rendu produit</title>
+  <desc>carrousel — trois volets, même grille, même famille d'illustration ; reconstruit depuis la spécification écrite.</desc>
+  <rect width="3360" height="1350" fill="#E9E4DC"/>
+  <g transform="translate(0, 0)"><rect width="1080" height="1350" fill="#FAF6EE"/>
+  <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">REST</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">Rest is not a reward</text>
+  <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">you earn after</text>
+  <text x="72" y="484.96000000000004" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">everything else</text>
+  <path d="M 72 597.44 C 138 587.44 226 607.44 292 597.44" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="72" y="1272" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="26" font-weight="400" fill="#6E675C">@rowanmercier</text>
+</g>
+  <g transform="translate(1140, 0)"><rect width="1080" height="1350" fill="#FAF6EE"/>
+  <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">THE LOOP</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">The thought that</text>
+  <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">keeps coming back</text>
+  <path d="M 378.54 456.96000000000004 C 307.8 528.0640000000001 370.68 648.992 268.5 710.3 C 115.22999999999999 771.6080000000001 145.88400000000001 935.096 299.154 873.788 C 401.334 822.698 360.462 700.082 217.41 792.044 C 84.576 894.224 189.89999999999998 1096.8960000000002 150.60000000000002 1168" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="513" y="456.96000000000004" width="495" height="205.01333333333332" rx="18" fill="#F0E7D8"/>
+    <text x="545" y="528.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Push harder</text>
+    <text x="545" y="576.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">the list gets done</text>
+  <rect x="513" y="709.9733333333334" width="495" height="205.01333333333332" rx="18" fill="#E7D3AE"/>
+    <text x="545" y="781.9733333333334" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Run empty</text>
+    <text x="545" y="829.9733333333334" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">nothing left by Friday</text>
+  <rect x="513" y="962.9866666666667" width="495" height="205.01333333333332" rx="18" fill="#EBC8B8"/>
+    <text x="545" y="1034.9866666666667" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Brace again</text>
+    <text x="545" y="1082.9866666666667" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">Monday asks the same</text>
+  <text x="72" y="1272" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="26" font-weight="400" fill="#6E675C">@rowanmercier</text>
+</g>
+  <g transform="translate(2280, 0)"><rect width="1080" height="1350" fill="#FAF6EE"/>
+  <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">UNDERNEATH</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">What it looks like,</text>
+  <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">and what holds it</text>
+  <rect x="72" y="456.96000000000004" width="936" height="165.51999999999998" rx="18" fill="#F0E7D8"/>
+    <text x="104" y="528.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Handling it</text>
+    <text x="104" y="576.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">every deadline met</text>
+  <path d="M 72 789.76 L 468 789.76" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 612 789.76 L 1008 789.76" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 484 789.76 A 56 56 0 0 1 596 789.76" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 484 789.76 C 369 842.86 445.95 943.16 540 949.06 C 634.05 943.16 711 842.86 596 789.76" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="72" y="1002.48" width="936" height="165.51999999999998" rx="18" fill="#E7D3AE"/>
+    <text x="104" y="1074.48" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Running empty</text>
+    <text x="104" y="1122.48" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">no memory of rest</text>
+  <text x="72" y="1272" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="26" font-weight="400" fill="#6E675C">@rowanmercier</text>
+</g>
+</svg>

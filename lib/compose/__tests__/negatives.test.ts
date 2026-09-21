@@ -41,10 +41,10 @@ function clean(archetype: string) {
   }).svg;
 }
 
-describe("⚠ contrôle 1 — le ratio 3:1 : la régression exacte qui est passée", () => {
+describe("⚠ contrôle 1 — la hiérarchie titre/libellé : la régression exacte qui est passée", () => {
   /*
    * ⚠ CE TEST AURAIT ÉCHOUÉ AVANT LA CORRECTION, et c'est toute sa raison
-   * d'être. `secondaryMax = floor(display / minDisplayRatio)` borne les bandes
+   * d'être. `secondaryMax = floor(display / minTitleToLabelRatio)` borne les bandes
    * secondaires dans `engine.ts` ; sans cette ligne, l'eyebrow et le footer
    * pouvaient monter jusqu'à `TYPE.mono.max` indépendamment de la ligne
    * d'affichage, et une carte sortait à 2.89.
@@ -52,7 +52,7 @@ describe("⚠ contrôle 1 — le ratio 3:1 : la régression exacte qui est pass�
    * La valeur reproduite ici n'est pas choisie pour être jolie : c'est
    * exactement ce rapport-là.
    */
-  it("une carte à 2.89 est refusée, chiffre pour chiffre", () => {
+  it("une carte à 1.89 est refusée, chiffre pour chiffre", () => {
     const svg = clean("cycle");
     expect(ratioFindings(svg)).toEqual([]);
 
@@ -63,24 +63,24 @@ describe("⚠ contrôle 1 — le ratio 3:1 : la régression exacte qui est pass�
     );
 
     /*
-     * Le plus petit corps qui produit exactement 2.89 sous cette ligne-là,
+     * Le plus petit corps qui produit exactement 1.89 sous cette ligne-là,
      * posé sur TOUTES les bandes secondaires. N'en changer qu'une laisserait
      * une autre bande plus basse décider du minimum, et le document muté
      * garderait son ratio d'origine — un cas négatif vert qui ne mesure rien.
      */
-    const smallest = Math.round((display / 2.89) * 100) / 100;
+    const smallest = Math.round((display / 1.89) * 100) / 100;
     const broken = withSecondarySizes(svg, smallest);
 
     const findings = ratioFindings(broken);
     expect(findings).toHaveLength(1);
-    expect(findings[0]).toContain("2.89");
-    expect(findings[0]).toContain(`under ${TYPE.minDisplayRatio}`);
+    expect(findings[0]).toContain("1.89");
+    expect(findings[0]).toContain(`under ${TYPE.minTitleToLabelRatio}`);
   });
 
   it("un cheveu sous le seuil est refusé aussi, pas seulement l'évident", () => {
     /*
      * Une borne qui ne refuse que le franchement mauvais est une borne dont on
-     * ne peut rien conclure. 2.99 doit échouer.
+     * ne peut rien conclure. 1.99 doit échouer.
      */
     const svg = clean("cycle");
     const display = Math.max(
@@ -88,7 +88,7 @@ describe("⚠ contrôle 1 — le ratio 3:1 : la régression exacte qui est pass�
         .filter((b) => b.role === "text" && b.band === "headline")
         .map((b) => b.size ?? 0)
     );
-    const broken = withSecondarySizes(svg, Math.round((display / 2.99) * 100) / 100);
+    const broken = withSecondarySizes(svg, Math.round((display / 1.99) * 100) / 100);
     expect(ratioFindings(broken).length).toBeGreaterThan(0);
   });
 
@@ -102,7 +102,7 @@ describe("⚠ contrôle 1 — le ratio 3:1 : la régression exacte qui est pass�
     const texts = parseBoxes(svg).filter((b) => b.role === "text");
     const display = Math.max(...texts.filter((t) => t.band === "headline").map((t) => t.size ?? 0));
     const smallest = Math.min(...texts.map((t) => t.size ?? 0));
-    expect(display / smallest).toBeGreaterThanOrEqual(TYPE.minDisplayRatio);
+    expect(display / smallest).toBeGreaterThanOrEqual(TYPE.minTitleToLabelRatio);
   });
 });
 
@@ -223,8 +223,12 @@ describe("⚠ anti-vacuité des mutateurs", () => {
 
   it("un rôle absent fait échouer la mutation plutôt que de ne rien faire", () => {
     const svg = clean("single_statement");
-    // `single_statement` ne dessine rien : il n'a pas de groupe `figure`.
-    expect(() => shiftBoxes(svg, "figure", 10)).toThrow(/no-op/);
+    /*
+     * ⚠ `single_statement` PORTE DÉSORMAIS UNE MARQUE, donc un groupe
+     * `figure`. Ce qu'il n'a toujours pas, c'est un APLAT : sa phrase est
+     * posée sur le papier. C'est ce rôle-là qui sert de rôle absent.
+     */
+    expect(() => shiftBoxes(svg, "field", 10)).toThrow(/no-op/);
     expect(() => withGlyphSize(svg, "nosuchband", 20)).toThrow(/no-op/);
   });
 });

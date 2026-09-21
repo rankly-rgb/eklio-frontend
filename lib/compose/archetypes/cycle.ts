@@ -1,10 +1,14 @@
-import { CLEARANCE, FIGURE_COVERAGE } from "@/lib/compose/constants";
-import { cell, circle, polyline, rows } from "@/lib/compose/layout";
+import { CLEARANCE, figureShare } from "@/lib/compose/constants";
+import { cell, rows } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
+import { knot } from "@/lib/compose/illustrations";
 import type { Placed } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
 
 export type Cycle = { nodes: Item[] };
+
+/** Toute épaisseur de trait sur cette carte, pour que le calcul de dégagement ait un seul nombre à lire. */
+const STROKE = 4;
 
 /**
  * Three to six steps that come back round.
@@ -27,40 +31,60 @@ export const cycle: ArchetypeModule<Cycle> = {
 
   compose({ payload, palette, content, figureScale, secondaryMax }) {
     const placed: Placed[] = [];
-    const stripH = round2(content.h * FIGURE_COVERAGE.min * figureScale);
-    if (stripH < 56) return null;
 
-    const strip = { x: content.x, y: content.y, w: content.w, h: stripH };
-    const cx = round2(strip.x + strip.w / 2);
-    const cy = round2(strip.y + strip.h / 2);
-    const r = round2(Math.min(strip.h, strip.w) * 0.38);
+    /*
+     * ⚠ EN GOUTTIÈRE, PAS EN BANDEAU — ET C'EST UNE MESURE QUI L'A DÉCIDÉ.
+     *
+     * Posé au-dessus de la liste, le dessin lui disputait la HAUTEUR, qui est
+     * la seule chose dont cette carte manque. Trois nœuds glosés coûtent
+     * 555px ; la bande en offre 637 ; une illustration au plancher de 25 %
+     * en prend 159 plus 48 de dégagement. Il manquait 125px, et le résolveur
+     * payait la différence de la seule façon qu'il connaît : en supprimant
+     * les gloses des trois nœuds — exactement ce que le mois rendu montrait.
+     *
+     * Une gouttière coûte de la LARGEUR, que cette carte a. Le fil y descend
+     * sur toute la hauteur — `knot` court sur le grand côté de sa boîte — et
+     * les trois nœuds gardent leurs gloses.
+     */
+    const gutterW = round2(content.w * figureShare(figureScale));
+    if (gutterW < 150) return null;
+
+    /*
+     * ⚠ RENTRÉ D'UNE DEMI-ÉPAISSEUR EN HAUT ET EN BAS. La boîte d'un tracé est
+     * gonflée d'une demi-épaisseur de chaque côté — c'est ce qu'un lecteur
+     * voit — donc un fil tracé jusqu'aux bords exacts de la bande a une boîte
+     * qui les dépasse de 2px, et ces 2px tombent dans le dégagement de 64px du
+     * pied de carte. La carte était refusée pour `aboveFooter@61.99`, une
+     * mesure qui accuse le pied et vise le fil.
+     */
+    const half = STROKE / 2;
+    const gutter = {
+      x: content.x,
+      y: round2(content.y + half),
+      w: gutterW,
+      h: round2(content.h - STROKE),
+    };
 
     placed.push({
       role: "figure",
       band: "content",
-      box: strip,
-      strokes: [
-        circle(cx, cy, r, palette.ink, 4),
-        // The arrowhead that makes it a cycle rather than a circle.
-        polyline(
-          [
-            [round2(cx + r - 10), round2(cy - 12)],
-            [round2(cx + r), round2(cy)],
-            [round2(cx + r - 10), round2(cy + 12)],
-          ],
-          palette.ink,
-          4
-        ),
-      ],
+      box: gutter,
+      /*
+       * ⚠ UN CERCLE FLÉCHÉ N'EST PAS UNE ILLUSTRATION DE LA RUMINATION.
+       * C'en est le schéma : il dit « ça tourne » et rien d'autre. Le fil qui
+       * revient sur lui-même et se serre dit ce que la carte raconte — une
+       * pensée qui repasse au même endroit et ne se dénoue pas.
+       */
+      strokes: knot(gutter, palette.ink, STROKE),
     });
 
     const listBox = {
-      x: content.x,
-      y: round2(strip.y + strip.h + CLEARANCE.fieldToField),
-      w: content.w,
-      h: round2(content.h - strip.h - CLEARANCE.fieldToField),
+      x: round2(content.x + gutterW + CLEARANCE.fieldToField),
+      y: content.y,
+      w: round2(content.w - gutterW - CLEARANCE.fieldToField),
+      h: content.h,
     };
-    if (listBox.h <= 0) return null;
+    if (listBox.w < 340) return null;
 
     const boxes = rows(listBox, payload.nodes.length);
     for (let i = 0; i < payload.nodes.length; i += 1) {

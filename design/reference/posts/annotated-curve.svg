@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <title>référence reconstruite, pas un rendu produit</title>
+  <desc>courbe annotée, trois moments nommés en colonnes, trois teintes — reconstruite depuis la spécification écrite du système validé, sans passer par lib/compose.</desc>
+  <rect width="1080" height="1350" fill="#FAF6EE"/>
+  <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">GOING BACK</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">The weeks after</text>
+  <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">going back to work</text>
+  <path d="M 72 456.96000000000004 L 72 755.96" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 72 755.96 L 1008 755.96" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 72 496 L 95 507 L 119 519 L 142 530 L 166 541 L 189 552 L 212 563 L 236 574 L 259 585 L 283 597 L 306 608 L 329 619 L 353 630 L 376 641 L 400 652 L 423 663 L 446 675 L 470 686 L 493 697 L 517 692 L 540 686 L 563 681 L 587 675 L 610 670 L 634 665 L 657 659 L 680 654 L 704 648 L 727 643 L 751 638 L 774 632 L 797 627 L 821 622 L 844 616 L 868 611 L 891 605 L 914 600 L 938 595 L 961 589 L 985 584 L 1008 579" fill="none" stroke="#2B2A27" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="72" y="416.96000000000004" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">load</text>
+  <text x="888" y="819.96" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">weeks back</text>
+  <rect x="72" y="873.96" width="280" height="294.03999999999996" rx="18" fill="#F0E7D8"/>
+    <text x="104" y="945.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">First day</text>
+    <text x="104" y="993.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">running on relief</text>
+  <rect x="400" y="873.96" width="280" height="294.03999999999996" rx="18" fill="#E7D3AE"/>
+    <text x="432" y="945.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Week three</text>
+    <text x="432" y="993.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">the relief runs out</text>
+  <rect x="728" y="873.96" width="280" height="294.03999999999996" rx="18" fill="#EBC8B8"/>
+    <text x="760" y="945.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Week six</text>
+    <text x="760" y="993.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">the old pace returns</text>
+  <text x="72" y="1272" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="26" font-weight="400" fill="#6E675C">@rowanmercier</text>
+</svg>

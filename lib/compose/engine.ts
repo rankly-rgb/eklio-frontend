@@ -1,6 +1,6 @@
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { BODY, EYEBROW, FOOTER } from "@/lib/compose/constants-bands";
-import { CLEARANCE, TYPE, CANVAS, CONTENT_MIN_AT_CANVAS, THUMB } from "@/lib/compose/constants";
+import { CLEARANCE, TYPE, CANVAS, CONTENT_MIN_AT_CANVAS, FIGURE_SCALES, THUMB } from "@/lib/compose/constants";
 import { BudgetExceededError, budgetErrors } from "@/lib/compose/budget";
 import { fitText, linesFrom, splitBody } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
@@ -134,7 +134,6 @@ function withoutGlosses(payload: unknown): unknown {
   return payload;
 }
 
-const FIGURE_SCALES = [1, 0.9, 0.8, 0.7, 0.6, 0.5] as const;
 
 function bandText(
   band: "eyebrow" | "footer",
@@ -225,12 +224,15 @@ export function render(input: RenderInput): RenderResult {
   }
 
   /*
-   * ⚠ THE DISPLAY IS SET FIRST, AND EVERYTHING ELSE IS CAPPED AT A THIRD OF
-   * IT. That order is the rule "display ≥ 3 × the smallest thing on the card",
-   * and it is the only order in which the rule is enforceable rather than
-   * merely checkable afterwards.
+   * ⚠ LE TITRE EST POSÉ D'ABORD, ET LA HIÉRARCHIE EN DÉCOULE. La règle est
+   * « le titre fait au moins deux fois le libellé », et c'est le seul ordre
+   * dans lequel elle s'impose au lieu de se vérifier après coup.
+   *
+   * ⚠ DEUX, PAS TROIS, et le plancher absolu passe devant. À 3, un titre posé
+   * à 64px plafonnait les libellés à 21px — sous leur propre plancher — et la
+   * carte était refusée. Le moteur a répondu en ne portant plus rien.
    */
-  const secondaryMax = Math.floor(displayFit.size / TYPE.minDisplayRatio);
+  const secondaryMax = Math.floor(displayFit.size / TYPE.minTitleToLabelRatio);
 
   const eyebrow = bandText("eyebrow", EYEBROW, input.eyebrow, input.palette, secondaryMax);
   const footer = bandText("footer", FOOTER, input.footer, input.palette, secondaryMax);

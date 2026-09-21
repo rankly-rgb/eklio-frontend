@@ -1,5 +1,5 @@
-import { CLEARANCE, FIGURE_COVERAGE, TYPE } from "@/lib/compose/constants";
-import { cell, fitText, line, linesFrom, polyline, rows } from "@/lib/compose/layout";
+import { CLEARANCE, figureShare, TYPE } from "@/lib/compose/constants";
+import { cell, columns, fitText, line, linesFrom, polyline } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
 import type { Placed, Stroke } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
@@ -31,15 +31,19 @@ export const annotatedCurve: ArchetypeModule<AnnotatedCurve> = {
 
   compose({ payload, palette, content, figureScale, secondaryMax }) {
     const placed: Placed[] = [];
-    // ⚠ `min` AND NOT `max` COVERAGE. The plot is not the only thing in this
-    // band: the two axis names each cost a `glyphToStroke` plus a line of
-    // mono, and the named points cost a cell each. At 45% the band had 202px
-    // left for two cells that need 131 apiece, and the archetype could not
-    // compose at any scale. Coverage is a range, and this archetype lives at
-    // the bottom of it — which the clearance rule says is the right way round
-    // when the two disagree.
-    const plotH = round2(content.h * FIGURE_COVERAGE.min * figureScale);
-    if (plotH < 90) return null;
+    /*
+     * ⚠ LA FOURCHETTE ENTIÈRE, ET C'EST L'ÉCHELLE QUI ARBITRE. Cette ligne
+     * était figée sur `FIGURE_COVERAGE.min` avec, en commentaire, une mesure
+     * exacte : à 45 % il ne restait que 202px pour deux cellules qui en
+     * demandent 131 chacune. La mesure était juste, la conclusion trop large
+     * — elle valait pour QUATRE points nommés, pas pour deux.
+     *
+     * `figureShare` part du haut et redescend cran par cran : une courbe à
+     * deux points obtient ses 45 %, une courbe à quatre points retombe d'elle
+     * -même vers 25 % au lieu d'y être clouée d'avance.
+     */
+    const plotH = round2(content.h * figureShare(figureScale));
+    if (plotH < 150) return null;
 
     const plot = { x: content.x, y: content.y, w: content.w, h: plotH };
     const baseY = round2(plot.y + plot.h);
@@ -48,18 +52,52 @@ export const annotatedCurve: ArchetypeModule<AnnotatedCurve> = {
     // The curve: one vertex per named point, so the drawing and the list are
     // the same length by construction rather than by agreement.
     const n = payload.points.length;
-    const step = round2(plot.w / (n - 1 || 1));
-    const vertices: Array<[number, number]> = payload.points.map((_, i) => {
-      // A shape, deterministic from the count alone: down, then up.
-      const t = n === 1 ? 0 : i / (n - 1);
-      const dip = Math.sin(Math.PI * t);
-      return [round2(leftX + i * step), round2(baseY - plot.h * (0.25 + 0.55 * (1 - dip)))];
-    });
+    /*
+     * ⚠ `sin(πt)` DONNAIT UNE DROITE HORIZONTALE À DEUX POINTS. Avec n = 2 les
+     * abscisses valent t = 0 et t = 1, où le sinus vaut zéro des deux côtés :
+     * les deux sommets se posaient exactement à la même hauteur. La carte
+     * « la charge retombe puis se stabilise » sortait avec une courbe plate,
+     * et une courbe plate est un démenti, pas une illustration.
+     *
+     * Le profil est maintenant explicite — haut, creux au premier tiers,
+     * remontée partielle — et interpolé linéairement, donc chaque nombre de
+     * points en prélève un échantillon qui garde la forme.
+     */
+    const levelAt = (t: number) =>
+      t <= 0.45 ? 0.94 - (0.78 * t) / 0.45 : 0.16 + (0.46 * (t - 0.45)) / 0.55;
+    const at = (t: number): [number, number] => [
+      round2(leftX + plot.w * t),
+      round2(baseY - plot.h * (0.06 + 0.86 * levelAt(t))),
+    ];
+
+    /*
+     * ⚠ LA COURBE EST ÉCHANTILLONNÉE, PAS JOINTE POINT À POINT. Un sommet par
+     * point nommé, reliés au segment : avec deux points nommés — le cas
+     * courant — cela donne DEUX sommets, donc une droite. La carte « la charge
+     * retombe puis se stabilise » sortait avec un trait qui penche, et un
+     * trait qui penche dément son propre titre.
+     *
+     * Le tracé prend 40 échantillons du profil ; les points nommés gardent
+     * leur abscisse, et leur colonne se lit dessous. Ce que la carte dessine
+     * et ce qu'elle nomme restent la même chose, sans que l'un impose à
+     * l'autre sa résolution.
+     */
+    const SAMPLES = 40;
+    const vertices: Array<[number, number]> = Array.from({ length: SAMPLES + 1 }, (_, i) =>
+      at(i / SAMPLES)
+    );
 
     const strokes: Stroke[] = [
       line(leftX, plot.y, leftX, baseY, palette.ink, STROKE),
       line(leftX, baseY, round2(plot.x + plot.w), baseY, palette.ink, STROKE),
-      polyline(vertices, palette.tints[0], CURVE),
+      /*
+       * ⚠ À L'ENCRE, PAS À LA TEINTE. Les teintes sont des aplats adoucis,
+       * faits pour porter du texte derrière lui ; la courbe passait dessus en
+       * `tints[0]` et disparaissait sur le papier. Elle est le sujet de la
+       * carte : elle se trace comme tous les autres objets de la
+       * bibliothèque.
+       */
+      polyline(vertices, palette.ink, CURVE),
     ];
 
     placed.push({ role: "figure", band: "content", box: plot, strokes });
@@ -106,7 +144,18 @@ export const annotatedCurve: ArchetypeModule<AnnotatedCurve> = {
     };
     if (listBox.h <= 0) return null;
 
-    const boxes = rows(listBox, n);
+    /*
+     * ⚠ EN COLONNES, PAS EN LIGNES. Chaque point nommé a une abscisse sur la
+     * courbe ; empilé en lignes il perdait ce lien, et surtout il coûtait
+     * `n × 153px` de hauteur — ce qui clouait le tracé au dernier cran de
+     * l'échelle, 159px pour 936 de large. Une courbe de 159px de haut est un
+     * trait qui penche, pas une courbe.
+     *
+     * En colonnes la liste coûte UNE hauteur de cellule quel que soit `n`, le
+     * tracé reprend sa part de la fourchette, et le point i se lit sous le
+     * sommet i.
+     */
+    const boxes = columns(listBox, n);
     for (let i = 0; i < n; i += 1) {
       const built = cell("content", boxes[i], payload.points[i].label, payload.points[i].gloss, palette, i, secondaryMax);
       if (!built) return null;

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <title>référence reconstruite, pas un rendu produit</title>
+  <desc>surface et profondeur, une forme qui traverse la ligne d'eau, deux teintes — reconstruite depuis la spécification écrite du système validé, sans passer par lib/compose.</desc>
+  <rect width="1080" height="1350" fill="#FAF6EE"/>
+  <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">UNDERNEATH</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">What it looks like,</text>
+  <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">and what holds it</text>
+  <rect x="72" y="456.96000000000004" width="936" height="165.51999999999998" rx="18" fill="#F0E7D8"/>
+    <text x="104" y="528.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Handling it</text>
+    <text x="104" y="576.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">every deadline met</text>
+  <path d="M 72 789.76 L 468 789.76" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 612 789.76 L 1008 789.76" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 484 789.76 A 56 56 0 0 1 596 789.76" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 484 789.76 C 369 842.86 445.95 943.16 540 949.06 C 634.05 943.16 711 842.86 596 789.76" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="72" y="1002.48" width="936" height="165.51999999999998" rx="18" fill="#E7D3AE"/>
+    <text x="104" y="1074.48" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Running empty</text>
+    <text x="104" y="1122.48" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">no memory of rest</text>
+  <text x="72" y="1272" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="26" font-weight="400" fill="#6E675C">@rowanmercier</text>
+</svg>

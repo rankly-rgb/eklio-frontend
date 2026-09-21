@@ -1,5 +1,6 @@
-import { CLEARANCE, FIGURE_COVERAGE, TYPE } from "@/lib/compose/constants";
-import { cell, columns, fitText, line, linesFrom, rows } from "@/lib/compose/layout";
+import { CLEARANCE, figureShare, TYPE } from "@/lib/compose/constants";
+import { cell, columns, fitText, linesFrom, rows } from "@/lib/compose/layout";
+import { profile } from "@/lib/compose/illustrations";
 import { round2 } from "@/lib/compose/measure";
 import type { Placed } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
@@ -34,34 +35,37 @@ export const quadrantModel: ArchetypeModule<QuadrantModel> = {
 
     // The axis strip at the top of the content band: the cross, and the two
     // names. Its height is the illustration's share, scaled by the resolver.
-    const stripH = round2(content.h * FIGURE_COVERAGE.max * figureScale);
-    if (stripH < 60) return null;
+    const stripH = round2(content.h * figureShare(figureScale));
+    if (stripH < 150) return null;
 
     const strip = { x: content.x, y: content.y, w: content.w, h: stripH };
     const cx = round2(strip.x + strip.w / 2);
     const cy = round2(strip.y + strip.h / 2);
-        // ⚠ 0.32 AND NOT 0.42. The axis names sit a full `glyphToStroke` beyond
-    // the arms they label, so the strip has to hold 2×arm + 40 + a line of
-    // mono. At 0.42 it did not, and the y name landed 38px from the vertical —
-    // two pixels inside the clearance, which is exactly the kind of miss that
-    // reads as fine and measures as wrong.
-    const arm = round2(Math.min(strip.w, strip.h) * 0.32);
 
-    // ⚠ THE CLEARANCE IS FROM THE STROKE'S BOX, WHICH IS WIDER THAN ITS PATH.
-    // A 4px line's box is inflated by 2px on each side (that is what a reader
-    // sees), so a name placed 40px beyond the arm END measures 38px from the
-    // box. Two pixels, invisible to anyone reading the code, and the suite
-    // caught it on three archetypes at once.
+    /*
+     * ⚠ LA CROIX N'ÉTAIT PAS UNE ILLUSTRATION, ET LES QUATRE CASES DISAIENT
+     * DÉJÀ CE QU'ELLE DISAIT. Deux segments perpendiculaires au-dessus d'une
+     * grille 2×2 répètent la grille : c'est de l'échafaudage, et la
+     * spécification le nomme — « un cercle vide n'est pas une illustration ».
+     *
+     * Un modèle en quatre cases décrit ce qui se passe dans une tête. La tête
+     * de profil, ouverte à l'arrière, est ce sujet dessiné ; les deux axes
+     * restent NOMMÉS, à gauche et au-dessus, puisque ce sont eux qui disent
+     * comment lire la grille.
+     */
     const half = STROKE / 2;
-
+    const headW = round2(Math.min(strip.w * 0.42, strip.h * 0.92));
+    const head = {
+      x: round2(cx - headW / 2),
+      y: round2(cy - headW / 2),
+      w: headW,
+      h: headW,
+    };
     placed.push({
       role: "figure",
       band: "content",
-      box: strip,
-      strokes: [
-        line(cx - arm, cy, cx + arm, cy, palette.ink, STROKE),
-        line(cx, cy - arm, cx, cy + arm, palette.ink, STROKE),
-      ],
+      box: head,
+      strokes: profile(head, palette.ink, STROKE),
     });
 
     // The names, kept a full `glyphToStroke` clear of the arms they label.
@@ -76,20 +80,19 @@ export const quadrantModel: ArchetypeModule<QuadrantModel> = {
       band: "content",
       box: strip,
       lines: [
+        // Le nom de l'axe horizontal, à droite du profil, à hauteur d'yeux.
         ...linesFrom(
           xFit,
-          round2(cx + arm + half + CLEARANCE.glyphToStroke),
+          round2(head.x + head.w + half + CLEARANCE.glyphToStroke),
           round2(cy - xFit.size * 0.6),
           strip.w * 0.3, "mono", 500, palette.ink, "start"
         ),
-        // ⚠ ABOVE THE VERTICAL, NOT BESIDE IT. Beside it, the only separation
-        // available is horizontal, and the name would have to start 40px to
-        // the right of a line that runs through the middle of the card —
-        // which reads as belonging to the quadrant it lands in.
+        // Celui de l'axe vertical en haut à gauche, du même côté que la
+        // grille qu'il ordonne, et dégagé du tracé du profil.
         ...linesFrom(
           yFit,
-          round2(cx + 12),
-          round2(cy - arm - half - CLEARANCE.glyphToStroke - yFit.height),
+          strip.x,
+          strip.y,
           strip.w * 0.3, "mono", 500, palette.ink, "start"
         ),
       ],

@@ -71,11 +71,20 @@ describe("anti-vacuity", () => {
   it("the floors are the ones the constants declare, not softer ones", () => {
     // If somebody lowers a floor to make a card fit, this is the line that
     // turns that into a failing test rather than a quiet regression.
-    expect(TYPE.label.floor).toBe(28);
-    expect(TYPE.mono.floor).toBe(20);
+    /*
+     * ⚠ LES CHIFFRES ONT MONTÉ LE 2026-09-21, ET C'EST UN DURCISSEMENT.
+     * Le plancher du libellé passe de 28 à 30 parce que la lisibilité se
+     * mesure maintenant à 390px de large — `10,5 × 1080 / 390 = 29,08`. Le
+     * mono passe de 20 à 22 sur demande. Rien n'a été abaissé.
+     */
+    expect(TYPE.label.floor).toBe(30);
+    expect(TYPE.gloss.floor).toBe(30);
+    expect(TYPE.mono.floor).toBe(22);
     expect(TYPE.display.min).toBe(64);
-    expect(TYPE.minDisplayRatio).toBe(3);
-    expect(ABSOLUTE_FLOOR).toBe(20);
+    // ⚠ DEUX depuis le 2026-09-21 : à trois, un titre un peu long écrasait
+    // les libellés sous leur propre plancher et la carte était refusée.
+    expect(TYPE.minTitleToLabelRatio).toBe(2);
+    expect(ABSOLUTE_FLOOR).toBe(22);
   });
 
   it("the parser actually reads sizes back", () => {

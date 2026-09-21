@@ -1,8 +1,9 @@
 import { CLEARANCE, TYPE } from "@/lib/compose/constants";
 import { fitText, linesFrom, FIELD_RADIUS } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
+import { door } from "@/lib/compose/illustrations";
 import { tintFor } from "@/lib/compose/palette";
-import type { Line } from "@/lib/compose/types";
+import type { Line, Placed } from "@/lib/compose/types";
 import type { ArchetypeModule } from "@/lib/compose/archetypes/types";
 
 export type PractitionerCard = { lines: string[] };
@@ -54,9 +55,29 @@ export const practitionerCard: ArchetypeModule<PractitionerCard> = {
       y = round2(y + fits[i]!.height + gapBetween);
     }
 
-    return [
+    /*
+     * ⚠ UN BLOC DE TROIS LIGNES N'EST PAS UNE CARTE, C'EST UNE ADRESSE. La
+     * porte entrouverte est ce que cette carte propose : entrer. Elle est
+     * posée SOUS le bloc, dans la place qui reste, et seulement s'il en reste
+     * assez — une porte écrasée serait pire que pas de porte.
+     */
+    const placed: Placed[] = [
       { role: "field", band: "content", box, fill: tintFor(palette, 0), radius: FIELD_RADIUS },
       { role: "text", band: "content", box, lines },
     ];
+
+    const left = round2(content.h - fieldH - CLEARANCE.fieldToField);
+    if (left >= 150) {
+      const size = round2(Math.min(left, content.w * 0.3));
+      const draw = {
+        x: round2(content.x + (content.w - size) / 2),
+        y: round2(box.y + fieldH + CLEARANCE.fieldToField),
+        w: size,
+        h: size,
+      };
+      placed.push({ role: "figure", band: "content", box: draw, strokes: door(draw, palette.ink) });
+    }
+
+    return placed;
   },
 };

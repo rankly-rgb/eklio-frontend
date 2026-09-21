@@ -64,15 +64,50 @@ export const CLEARANCE = {
  */
 export const TYPE = {
   display: { min: 64, max: 110 },
-  /** Diagram labels. `floor` is absolute: 30–44 is the range, 28 is the wall. */
-  label: { min: 30, max: 44, floor: 28 },
-  mono: { min: 22, max: 28, floor: 20 },
-  /**
-   * The display must be at least three times the smallest thing on the card.
-   * Without it, "everything got a bit smaller" reads as a card with no
-   * hierarchy rather than a card that did not fit.
+  /*
+   * ⚠ LE PLANCHER EST MONTÉ DE 28 À 30, ET CE N'EST PAS UN ARRONDI.
+   *
+   * La lisibilité se mesure désormais à 390px — un post affiché sur toute la
+   * largeur d'un téléphone dans le fil — et le seuil y est 10,5px effectifs.
+   * `10,5 × 1080 / 390 = 29,08`, donc 30. Le plancher absolu du libellé EST
+   * cette règle, exprimée à la taille où la carte est composée.
+   *
+   * Le maximum monte de 44 à 48 : avec le plafond de 3:1 retiré, un libellé
+   * sous un grand titre a de nouveau la place de respirer.
    */
-  minDisplayRatio: 3,
+  label: { min: 32, max: 48, floor: 30 },
+  /*
+   * ⚠ LA GLOSE A SA PROPRE ÉCHELLE, ET ELLE N'EST PLUS DU MONO.
+   *
+   * Elle empruntait la gamme du mono — 22 à 28px — alors qu'elle est déjà
+   * composée dans la sans du kit. Plafonnée à 28, elle ne pouvait pas franchir
+   * les 30px du plancher de vignette : la règle de lisibilité, appliquée à la
+   * lettre, RETIRAIT les gloses de tous les diagrammes. Le mois du
+   * 2026-09-21b n'en portait aucune.
+   *
+   * Sa gamme est maintenant la sienne, au-dessus du plancher.
+   */
+  gloss: { min: 30, max: 40, floor: 30 },
+  /*
+   * Le mono ne sert plus qu'au surtitre et au pied de carte — du chrome, que
+   * personne ne lit dans un fil. Son plancher est 22px, comme demandé.
+   */
+  mono: { min: 22, max: 30, floor: 22 },
+  /*
+   * ── ⚠ DEUX, ET PLUS TROIS, ET CE N'EST PAS LE MÊME OBJET ──────────────
+   *
+   * L'ancien `minDisplayRatio: 3` était un PLAFOND : tout texte secondaire
+   * était écrasé au tiers du titre. Sur un titre posé à 64px — c'est-à-dire
+   * un titre un peu long — le plafond tombait à 21px, sous le plancher du
+   * libellé, et la carte était refusée. Le moteur a donc appris à ne plus
+   * rien porter : ni glose, ni diagramme à plus de deux cases.
+   *
+   * Ce qui reste est une règle de HIÉRARCHIE, pas un écrasement : le titre
+   * doit faire au moins deux fois le libellé. À 110px le libellé peut aller
+   * jusqu'à 48 ; à 64px il tient encore ses 32. La carte respire des deux
+   * côtés.
+   */
+  minTitleToLabelRatio: 2,
 } as const;
 
 /**
@@ -84,6 +119,43 @@ export const TYPE = {
  * label is a mistake that happens to satisfy a percentage.
  */
 export const FIGURE_COVERAGE = { min: 0.25, max: 0.45 } as const;
+
+/**
+ * Les crans de l'échelle de résolution, du plus généreux au plus serré.
+ *
+ * ⚠ ELLE VIT ICI ET PLUS DANS LE MOTEUR, PARCE QUE `figureShare` DOIT LA LIRE.
+ * Tant que l'échelle était privée à `engine.ts`, « le dernier cran » était une
+ * valeur que personne ne pouvait citer : `figureShare` normalisait sur [0, 1]
+ * alors que l'échelle s'arrête à 0.5, et la part ne descendait jamais sous
+ * 35 %. Le cycle, qui a besoin de 25 % pour loger ses trois nœuds, n'avait
+ * donc plus aucun cran où tenir — il se repliait sur `surface_and_beneath`,
+ * dont le mois rendu était déjà saturé.
+ */
+export const FIGURE_SCALES = [1, 0.9, 0.8, 0.7, 0.6, 0.5] as const;
+
+/**
+ * La part de la bande de contenu que prend une illustration, à un cran donné
+ * de l'échelle de résolution.
+ *
+ * ⚠ LE HAUT DE LA FOURCHETTE D'ABORD, ET LE BAS SEULEMENT SI LA PLACE MANQUE.
+ * Cinq archétypes calculaient leur boîte de dessin à partir de
+ * `FIGURE_COVERAGE.min` DIRECTEMENT, puis la multipliaient encore par
+ * `figureScale`. Un dessin partait donc à 25 % au mieux, et tombait à 12 % au
+ * premier cran — sous le plancher de la spécification avant même qu'un label
+ * ait été posé. C'est la raison mécanique pour laquelle le mois rendu ne
+ * portait que des « marques » : les objets étaient dessinés correctement, dans
+ * des boîtes trop petites pour qu'on les voie.
+ *
+ * `figureScale` vaut 1 au premier essai : la part vaut alors `max`. Chaque
+ * cran descend vers `min`, jamais en dessous — l'échec, s'il faut échouer, est
+ * un repli vers un autre archétype, pas une illustration invisible.
+ */
+export function figureShare(figureScale: number): number {
+  const lo = FIGURE_SCALES[FIGURE_SCALES.length - 1];
+  const hi = FIGURE_SCALES[0];
+  const t = Math.min(1, Math.max(0, (figureScale - lo) / (hi - lo)));
+  return FIGURE_COVERAGE.min + (FIGURE_COVERAGE.max - FIGURE_COVERAGE.min) * t;
+}
 
 /**
  * At most three dark-ground cards in twelve.
@@ -112,9 +184,10 @@ export const ENGINE_VERSION = "compose/1";
 /*
  * ── LA VIGNETTE, QUI EST L'ENDROIT OÙ LA CARTE EST VRAIMENT LUE ─────────
  *
- * Une carte est composée à 1080 et regardée à 350 : c'est la largeur d'une
- * vignette dans un fil Instagram. Un libellé posé à son plancher de 28px y
- * arrive à 9,1px, ce que personne ne lit.
+ * Une carte est composée à 1080 et regardée à 390 : c'est la largeur d'un
+ * post affiché sur toute la largeur d'un téléphone dans le fil. 350 était la
+ * largeur d'une vignette de grille — plus petite, donc plus punitive, et ce
+ * n'est pas là que le post est lu.
  *
  * ⚠ CE N'EST PAS UN PLANCHER DE PLUS, C'EST LE MÊME, LU À LA BONNE TAILLE.
  * Rien ici n'abaisse quoi que ce soit : la règle ajoute une condition, elle
@@ -124,12 +197,13 @@ export const ENGINE_VERSION = "compose/1";
  * Mesuré le 2026-09-21 sur le premier mois réel : six cartes composées sur
  * onze portaient du texte de contenu entre 6,5 et 10,4px à 350.
  */
-export const THUMB = { width: 350, minPx: 11 } as const;
+export const THUMB = { width: 390, minPx: 10.5 } as const;
 
 /**
  * Le plancher équivalent, à la taille où la carte est composée.
  *
- * ⚠ DÉRIVÉ, JAMAIS RECOPIÉ. `11 × 1080 / 350 = 33,9` → 34. Écrire « 34 » à la
+ * ⚠ DÉRIVÉ, JAMAIS RECOPIÉ. `10,5 × 1080 / 390 = 29,08` → 30, qui est aussi
+ * le plancher absolu de `TYPE.label` et de `TYPE.gloss`. Écrire « 30 » à la
  * main ici serait une seconde définition de la règle, et la première à bouger
  * gagnerait en silence.
  */

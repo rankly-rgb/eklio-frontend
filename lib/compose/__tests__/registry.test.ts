@@ -100,8 +100,15 @@ describe("the zone system's numbers", () => {
 
   it("the type floors are the specified ones", () => {
     expect(TYPE.display).toEqual({ min: 64, max: 110 });
-    expect(TYPE.label).toEqual({ min: 30, max: 44, floor: 28 });
-    expect(TYPE.mono).toEqual({ min: 22, max: 28, floor: 20 });
+    /*
+     * ⚠ RÉÉCRITS LE 2026-09-21, ET DANS LE SENS DU DURCISSEMENT. Le plancher
+     * du libellé et celui de la glose valent 30, qui est `10,5 × 1080 / 390` —
+     * la lisibilité mesurée sur un post pleine largeur de téléphone. Le mono,
+     * qui ne porte plus que le surtitre et le pied, a un plancher de 22.
+     */
+    expect(TYPE.label).toEqual({ min: 32, max: 48, floor: 30 });
+    expect(TYPE.gloss).toEqual({ min: 30, max: 40, floor: 30 });
+    expect(TYPE.mono).toEqual({ min: 22, max: 30, floor: 22 });
   });
 
   it("the engine version is part of the contract", () => {

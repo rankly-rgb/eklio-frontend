@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <title>référence reconstruite, pas un rendu produit</title>
+  <desc>technique en étapes autour d'une ancre, trois teintes — reconstruite depuis la spécification écrite du système validé, sans passer par lib/compose.</desc>
+  <rect width="1080" height="1350" fill="#FAF6EE"/>
+  <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">AFTER EMDR</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">Three steps back</text>
+  <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">into the room</text>
+  <text x="72" y="490.96000000000004" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="30" font-weight="500" fill="#2B2A27">RAI</text>
+  <path d="M 259 719.48 m -37 0 a 37 37 0 1 0 74 0 a 37 37 0 1 0 -74 0" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 259 756.48 L 259 970" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 185.51999999999998 796.04 L 332.48 796.04" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 145.44 903.2 C 145.44 970 225.6 970 259 970 C 292.4 970 372.56 970 372.56 903.2" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="494" y="530.96" width="514" height="180.34666666666666" rx="18" fill="#F0E7D8"/>
+    <text x="526" y="602.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Recognise</text>
+    <text x="526" y="650.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">name what is here</text>
+  <rect x="494" y="759.3066666666667" width="514" height="180.34666666666666" rx="18" fill="#E7D3AE"/>
+    <text x="526" y="831.3066666666667" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Allow</text>
+    <text x="526" y="879.3066666666667" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">stop pushing it away</text>
+  <rect x="494" y="987.6533333333334" width="514" height="180.34666666666666" rx="18" fill="#EBC8B8"/>
+    <text x="526" y="1059.6533333333334" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">Investigate</text>
+    <text x="526" y="1107.6533333333334" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">ask where it sits</text>
+  <text x="72" y="1272" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="26" font-weight="400" fill="#6E675C">@rowanmercier</text>
+</svg>

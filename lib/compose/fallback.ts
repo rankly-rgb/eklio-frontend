@@ -103,23 +103,58 @@ function tryRender(input: RenderInput, archetype: string, payload: unknown): Ren
 }
 
 /**
- * Le voisin le plus proche qui porte moins de libellés.
+ * Les formes vers lesquelles un repli a le droit de descendre.
  *
- * ⚠ DEUX, PAS TROIS. `surface_and_beneath` est le seul archétype du catalogue
- * à porter exactement deux libellés, et deux est le plus petit diagramme qui
- * reste un diagramme. Descendre à un, ce n'est plus une forme, c'est une
- * phrase — et c'est la marche 3.
+ * ── ⚠ IL N'Y EN AVAIT QU'UNE, ET C'EST CE QUI A VIDÉ LE MOIS ────────────
+ *
+ * La marche 1 envoyait TOUT sur `surface_and_beneath`. À l'époque cet
+ * archétype ne portait qu'un trait horizontal entre deux aplats, et le repli
+ * s'en servait comme d'un fourre-tout : neuf cartes sur trente du mois rendu
+ * ont fini là, c'est-à-dire en « deux boîtes séparées par un trait ». Le
+ * défaut n'était pas le repli — une carte repliée vaut mieux qu'un post
+ * perdu — c'était qu'il n'avait qu'une destination, et qu'elle était nue.
+ *
+ * Chaque destination ici porte une illustration de la bibliothèque, et elles
+ * sont essayées de la plus riche à la plus pauvre : on garde le plus de
+ * libellés possible, et on n'arrive à deux que si rien au-dessus ne tient.
+ *
+ * ⚠ AUCUNE NE FABRIQUE DE MOTS. Chaque adaptateur ne fait que RANGER
+ * autrement des libellés et des glosses déjà écrits pour ce post.
  */
-function narrower(payload: unknown): unknown | null {
-  const entries = entriesOf(payload);
-  if (entries.length < 2) return null;
-  const [surface, beneath] = entries;
-  if (!surface?.label || !beneath?.label) return null;
-  return {
-    surface: { label: surface.label, gloss: surface.gloss ?? surface.label },
-    beneath: { label: beneath.label, gloss: beneath.gloss ?? beneath.label },
-  };
-}
+type Narrowing = { archetype: string; adapt: (entries: Item[]) => unknown | null };
+
+const item = (e: Item): Item => ({ label: e.label, gloss: e.gloss ?? e.label });
+
+const NARROWINGS: Narrowing[] = [
+  // Trois à cinq entrées, sur une épine, avec la plante : la forme la plus
+  // proche d'une liste, et celle qui en garde le plus.
+  {
+    archetype: "numbered_strategies",
+    adapt: (e) => (e.length >= 3 ? { items: e.slice(0, 5).map(item) } : null),
+  },
+  // Trois à six : le fil noué.
+  {
+    archetype: "cycle",
+    adapt: (e) => (e.length >= 3 ? { nodes: e.slice(0, 6).map(item) } : null),
+  },
+  // Deux à quatre : les anneaux, la silhouette assise au centre.
+  {
+    archetype: "concentric_control",
+    adapt: (e) => (e.length >= 2 ? { rings: e.slice(0, 4).map(item) } : null),
+  },
+  /*
+   * Deux, la ligne d'eau. ⚠ C'EST LE PLUS PETIT DIAGRAMME QUI RESTE UN
+   * DIAGRAMME. Descendre à un libellé, ce n'est plus une forme, c'est une
+   * phrase — et c'est la marche 3.
+   */
+  {
+    archetype: "surface_and_beneath",
+    adapt: (e) =>
+      e.length >= 2 && e[0]?.label && e[1]?.label
+        ? { surface: item(e[0]), beneath: item(e[1]) }
+        : null,
+  },
+];
 
 export function composeWithFallback(
   input: RenderInput,
@@ -132,21 +167,22 @@ export function composeWithFallback(
   const asked = tryRender(input, input.archetype, input.payload);
   if (asked) return { kind: "card", archetype: input.archetype, payload: input.payload, result: asked, steps };
 
-  /* ── 1. Moins de libellés ─────────────────────────────────────────── */
-  if (input.archetype !== "surface_and_beneath") {
-    const narrow = narrower(input.payload);
-    if (narrow) {
-      const result = tryRender(input, "surface_and_beneath", narrow);
-      if (result) {
-        steps.push(`${input.archetype} → surface_and_beneath (fewer labels)`);
-        return { kind: "card", archetype: "surface_and_beneath", payload: narrow, result, steps };
-      }
-      steps.push(`surface_and_beneath refused too`);
+  /* ── 1. Moins de libellés, mais toujours une illustration ─────────── */
+  const entries = entriesOf(input.payload);
+  for (const { archetype, adapt } of NARROWINGS) {
+    if (archetype === input.archetype) continue;
+    const narrow = adapt(entries);
+    if (!narrow) continue;
+    const result = tryRender(input, archetype, narrow);
+    if (result) {
+      steps.push(`${input.archetype} → ${archetype} (fewer labels, still drawn)`);
+      return { kind: "card", archetype, payload: narrow, result, steps };
     }
+    steps.push(`${archetype} refused too`);
   }
 
   /* ── 2. Un carrousel, une idée par carte ──────────────────────────── */
-  const statements = entriesOf(input.payload)
+  const statements = entries
     .map(statementFrom)
     .filter((s): s is string => s !== null);
   if (statements.length >= 3) {

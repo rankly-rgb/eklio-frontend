@@ -1,5 +1,6 @@
-import { CLEARANCE, FIGURE_COVERAGE } from "@/lib/compose/constants";
+import { CLEARANCE, figureShare } from "@/lib/compose/constants";
 import { cell, line, rows } from "@/lib/compose/layout";
+import { plant } from "@/lib/compose/illustrations";
 import { round2 } from "@/lib/compose/measure";
 import type { Placed, Stroke } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
@@ -29,14 +30,25 @@ export const numberedStrategies: ArchetypeModule<NumberedStrategies> = {
 
   compose({ payload, palette, content, figureScale, secondaryMax }) {
     const placed: Placed[] = [];
-    const spineW = round2(content.w * FIGURE_COVERAGE.min * figureScale * 0.4);
-    if (spineW < 24) return null;
+    /*
+     * ⚠ L'ÉPINE SEULE N'ÉTAIT PAS UNE ILLUSTRATION. Un trait vertical et des
+     * encoches disent « il y en a trois, dans cet ordre » — c'est le dispositif
+     * de numérotation, et il reste, parce qu'il fait un vrai travail. Mais il
+     * ne dit rien de ce que ces stratégies FONT.
+     *
+     * La gouttière prend sa part de la largeur ; la plante en pot l'occupe en
+     * haut, l'épine court le long de son bord droit. Ce qui pousse parce qu'on
+     * s'en occupe : c'est le sujet d'une carte de stratégies.
+     */
+    const gutterW = round2(content.w * figureShare(figureScale));
+    if (gutterW < 150) return null;
 
-    const spineX = round2(content.x + spineW / 2);
+    const spineW = 24;
+    const spineX = round2(content.x + gutterW - spineW / 2);
     const cellsBox = {
-      x: round2(content.x + spineW + CLEARANCE.fieldToField),
+      x: round2(content.x + gutterW + CLEARANCE.fieldToField),
       y: content.y,
-      w: round2(content.w - spineW - CLEARANCE.fieldToField),
+      w: round2(content.w - gutterW - CLEARANCE.fieldToField),
       h: content.h,
     };
     if (cellsBox.w < 300) return null;
@@ -55,10 +67,21 @@ export const numberedStrategies: ArchetypeModule<NumberedStrategies> = {
       );
     }
 
+    // La plante, dans le carré du haut de la gouttière, dégagée de l'épine.
+    const plantBox = {
+      x: content.x,
+      y: content.y,
+      w: round2(gutterW - spineW - CLEARANCE.glyphToStroke),
+      h: round2(Math.min(content.h * 0.5, gutterW)),
+    };
+    if (plantBox.w >= 110 && plantBox.h >= 110) {
+      strokes.push(...plant(plantBox, palette.ink, STROKE));
+    }
+
     placed.push({
       role: "figure",
       band: "content",
-      box: { x: content.x, y: content.y, w: spineW, h: content.h },
+      box: { x: content.x, y: content.y, w: gutterW, h: content.h },
       strokes,
     });
 

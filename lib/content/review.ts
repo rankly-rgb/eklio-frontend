@@ -3,6 +3,7 @@ import { cardPalette, type DirectionPalette } from "@/lib/compose/palette";
 import type { Palette } from "@/lib/compose/types";
 import type { ContentItem } from "@/lib/data/content";
 import type { Database } from "@/types/supabase";
+import { capitaliseTitle, eyebrowFor } from "@/lib/content/bands";
 
 /*
  * ── CE QU'IL FAUT POUR COMPOSER UN POST, RASSEMBLÉ UNE FOIS ─────────────
@@ -40,12 +41,21 @@ export function cardBands(
   const fallback = practiceName?.trim() || "Eklio";
   return {
     /*
-     * Le thème du mois d'abord : c'est le groupe auquel ce post appartient, et
-     * c'est ce qui fait qu'une série de trente se lit comme trois suites. Le
-     * libellé d'angle ensuite, qui dit au moins pourquoi cette carte existe.
+     * ⚠ LE THÈME PASSAIT EN PREMIER, ET IL PASSE MAINTENANT EN DERNIER.
+     *
+     * Un thème dérivé est une phrase, pas une étiquette : les dix posts d'un
+     * même thème portaient donc le même surtitre de quatorze mots. Ce qui est
+     * propre à CETTE carte — le libellé d'angle de son sujet, puis son titre —
+     * vient d'abord, et `eyebrowFor` ramène le tout à une à quatre mots.
      */
-    eyebrow: (item.theme?.trim() || item.topic?.angle_label?.trim() || fallback).toUpperCase(),
-    headline: item.title?.trim() || fallback,
+    eyebrow: eyebrowFor(
+      { angleLabel: item.topic?.angle_label, title: item.title, theme: item.theme },
+      practiceName
+    ),
+    // ⚠ La casse est corrigée ICI, sur le chemin que l'écran de relecture et
+    // la route d'image partagent — pas à l'écriture. Un mois déjà en base
+    // s'affiche donc corrigé, sans migration de données.
+    headline: capitaliseTitle(item.title?.trim() || fallback),
     footer: fallback,
   };
 }

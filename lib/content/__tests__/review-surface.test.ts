@@ -132,12 +132,49 @@ describe("layoutAlternatives", () => {
 });
 
 describe("cardBands", () => {
-  it("le thème du mois passe devant tout le reste", () => {
-    const bands = cardBands(item({ theme: "Rest", topic: null }), "Elm & Ember Therapy");
-    expect(bands.eyebrow).toBe("REST");
+  /*
+   * ⚠ CE CAS EXIGEAIT QUE LE THÈME PASSE EN PREMIER, ET C'ÉTAIT LE DÉFAUT.
+   *
+   * Il était écrit avec un thème d'un seul mot — « Rest » — où la règle et son
+   * contraire donnent le même résultat. En production un thème dérivé est une
+   * PHRASE, et le mois du 2026-09-21b l'a montré : dix cartes portaient le même
+   * surtitre de quatorze mots. Le cas ne pouvait pas l'attraper, parce que sa
+   * fixture ne ressemblait pas à ses données.
+   *
+   * Il vérifie donc maintenant l'ordre réel — ce qui est propre à la carte
+   * d'abord — avec un thème qui a la forme d'un vrai thème.
+   */
+  it("un thème-phrase ne devient pas un surtitre de quatorze mots", () => {
+    const bands = cardBands(
+      item({
+        theme: "returning to work when the body has not agreed to it",
+        topic: null,
+        title: "Rest is not a reward",
+      }),
+      "Elm & Ember Therapy"
+    );
+    expect(bands.eyebrow.split(" ").length).toBeLessThanOrEqual(4);
+    expect(bands.eyebrow).toBe("REST REWARD");
   });
 
-  it("à défaut de thème, le libellé d'angle", () => {
+  it("deux cartes d'un même thème ne portent pas le même surtitre", () => {
+    const theme = "returning to work when the body has not agreed to it";
+    const a = cardBands(item({ theme, topic: null, title: "Rest is not a reward" }), "Elm & Ember");
+    const b = cardBands(item({ theme, topic: null, title: "The Sunday dread starts early" }), "Elm & Ember");
+    expect(a.eyebrow).not.toBe(b.eyebrow);
+  });
+
+  it("le titre reçoit sa majuscule, et un nom propre garde la sienne", () => {
+    expect(cardBands(item({ title: "rest is not a reward" }), "X").headline).toBe(
+      "Rest is not a reward"
+    );
+    // ⚠ Un mot qui porte DÉJÀ une capitale est un choix, pas un oubli.
+    expect(cardBands(item({ title: "eMDR is not hypnosis" }), "X").headline).toBe(
+      "eMDR is not hypnosis"
+    );
+  });
+
+  it("le libellé d'angle passe devant le titre", () => {
     const bands = cardBands(
       item({
         theme: null,
@@ -148,8 +185,8 @@ describe("cardBands", () => {
     expect(bands.eyebrow).toBe("A SOFT INVITATION");
   });
 
-  it("à défaut des deux, le nom du cabinet — jamais une formule générique", () => {
-    const bands = cardBands(item(), "Elm & Ember Therapy");
+  it("à défaut de tout, le nom du cabinet — jamais une formule générique", () => {
+    const bands = cardBands(item({ theme: null, topic: null, title: null }), "Elm & Ember Therapy");
     expect(bands.eyebrow).toBe("ELM & EMBER THERAPY");
     expect(bands.footer).toBe("Elm & Ember Therapy");
   });

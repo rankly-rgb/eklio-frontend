@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <title>référence reconstruite, pas un rendu produit</title>
+  <desc>carte praticienne, une porte entrouverte, une teinte — reconstruite depuis la spécification écrite du système validé, sans passer par lib/compose.</desc>
+  <rect width="1080" height="1350" fill="#FAF6EE"/>
+  <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">HOW I WORK</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">Where to start,</text>
+  <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">if you want to</text>
+  <rect x="72" y="456.96000000000004" width="936" height="250" rx="18" fill="#F0E7D8"/>
+  <text x="104" y="532.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">EMDR for burnout</text>
+  <text x="104" y="594.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="400" fill="#2B2A27">Oakland, California</text>
+  <text x="104" y="656.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="400" fill="#2B2A27">Taking new clients</text>
+  <path d="M 428 755 L 428 1036 L 574 1036 L 574 755 Z" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 574 772 L 664 800 L 664 1008 L 574 1036" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 596 912 L 596 929" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="72" y="1272" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="26" font-weight="400" fill="#6E675C">@rowanmercier</text>
+</svg>

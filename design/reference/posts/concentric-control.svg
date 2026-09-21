@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <title>référence reconstruite, pas un rendu produit</title>
+  <desc>anneaux de contrôle, une silhouette assise au centre, trois teintes — reconstruite depuis la spécification écrite du système validé, sans passer par lib/compose.</desc>
+  <rect width="1080" height="1350" fill="#FAF6EE"/>
+  <text x="72" y="118" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="24" font-weight="500" fill="#2B2A27">CONTROL</text>
+  <text x="72" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">What is yours</text>
+  <text x="72" y="368.48" font-family="Georgia, 'Times New Roman', serif" font-size="104" font-weight="400" fill="#2B2A27">to put down</text>
+  <path d="M 390 606.46 a 150 150 0 1 0 300 0 a 150 150 0 1 0 -300 0" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 426 606.46 a 114 114 0 1 0 228 0 a 114 114 0 1 0 -228 0" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 462 606.46 a 78 78 0 1 0 156 0 a 78 78 0 1 0 -156 0" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 525 560 a 12 12 0 1 0 0 24 a 12 12 0 1 0 0 -24" fill="none" stroke="#2B2A27" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 525 584 C 516 597 518 612 528 619 L 567 619 L 569 642" fill="none" stroke="#2B2A27" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 503 648 L 579 648" fill="none" stroke="#2B2A27" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="72" y="803.96" width="280" height="364.03999999999996" rx="18" fill="#F0E7D8"/>
+    <text x="104" y="875.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">The workload</text>
+    <text x="104" y="923.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">not yours to set</text>
+  <rect x="400" y="803.96" width="280" height="364.03999999999996" rx="18" fill="#E7D3AE"/>
+    <text x="432" y="875.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">The pace</text>
+    <text x="432" y="923.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">partly yours</text>
+  <rect x="728" y="803.96" width="280" height="364.03999999999996" rx="18" fill="#EBC8B8"/>
+    <text x="760" y="875.96" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="600" fill="#2B2A27">The stopping</text>
+    <text x="760" y="923.96" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="400" fill="#2B2A27">entirely yours</text>
+  <text x="72" y="1272" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="26" font-weight="400" fill="#6E675C">@rowanmercier</text>
+</svg>

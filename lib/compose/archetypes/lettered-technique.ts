@@ -1,6 +1,7 @@
-import { CLEARANCE, FIGURE_COVERAGE, TYPE } from "@/lib/compose/constants";
-import { cell, fitText, linesFrom, polyline, rows } from "@/lib/compose/layout";
+import { CLEARANCE, figureShare, TYPE } from "@/lib/compose/constants";
+import { cell, fitText, linesFrom, rows } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
+import { anchor } from "@/lib/compose/illustrations";
 import type { Placed } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
 
@@ -62,8 +63,20 @@ export const letteredTechnique: ArchetypeModule<LetteredTechnique> = {
       lines: linesFrom(acroFit, content.x, content.y, content.w, "mono", 500, palette.ink, "start"),
     });
 
-    const braceW = round2(content.w * FIGURE_COVERAGE.min * figureScale * 0.18);
-    if (braceW < 16) return null;
+    /*
+     * ⚠ 0.18 D'UN QUART DE LARGEUR : 4 % DE LA BANDE. Cette ligne datait de
+     * l'accolade, qui était un signe de ponctuation dans une gouttière de
+     * 40px — et quand l'ancre a remplacé l'accolade, elle a hérité de la
+     * gouttière. Un objet de 40px de large dans une bande de 900 : la
+     * planche-contact la montrait comme une poussière dans le coin gauche.
+     *
+     * La colonne prend maintenant sa part de la LARGEUR de la bande — c'est
+     * l'axe que cet archétype partage entre dessin et texte, la hauteur étant
+     * prise entière des deux côtés. `figureShare` la fait descendre cran par
+     * cran quand les cellules manquent de place.
+     */
+    const braceW = round2(content.w * figureShare(figureScale));
+    if (braceW < 150) return null;
 
     const cellsBox = {
       x: round2(content.x + braceW + CLEARANCE.fieldToField),
@@ -81,23 +94,21 @@ export const letteredTechnique: ArchetypeModule<LetteredTechnique> = {
     const braceBottom = round2(cellsBox.y + cellsBox.h - half);
     if (braceTop - (content.y + acroFit.height) < CLEARANCE.glyphToStroke) return null;
 
-    const bx = round2(content.x + braceW);
     placed.push({
       role: "figure",
       band: "content",
       box: { x: content.x, y: braceTop, w: braceW, h: round2(braceBottom - braceTop) },
-      strokes: [
-        polyline(
-          [
-            [bx, braceTop],
-            [content.x, braceTop],
-            [content.x, braceBottom],
-            [bx, braceBottom],
-          ],
-          palette.ink,
-          STROKE
-        ),
-      ],
+      /*
+       * ⚠ UNE ACCOLADE EST UN SIGNE DE PONCTUATION, PAS UN DESSIN. Elle
+       * disait « ces lignes vont ensemble », ce que l'alignement dit déjà.
+       * Une technique en étapes tourne autour d'un point d'appui : l'ancre
+       * est ce point, et elle dit ce que la technique fait.
+       */
+      strokes: anchor(
+        { x: content.x, y: braceTop, w: braceW, h: round2(braceBottom - braceTop) },
+        palette.ink,
+        STROKE
+      ),
     });
 
     const boxes = rows(cellsBox, payload.items.length);

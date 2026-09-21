@@ -29,7 +29,7 @@ import { gap, parseBoxes } from "@/lib/compose/svg";
 export type Finding = string;
 
 /** Le plancher absolu : rien, dans aucune bande, en dessous de ça. */
-export const ABSOLUTE_FLOOR = Math.min(TYPE.label.floor, TYPE.mono.floor);
+export const ABSOLUTE_FLOOR = Math.min(TYPE.label.floor, TYPE.gloss.floor, TYPE.mono.floor);
 
 /**
  * Les planchers typographiques, et les bornes de la ligne d'affichage.
@@ -71,7 +71,7 @@ export function floorFindings(svg: string): Finding[] {
  * Le ratio 3:1 entre la ligne d'affichage et le plus petit corps de la carte.
  *
  * ⚠ C'EST LA RÈGLE QUI ÉTAIT VÉRIFIABLE SANS ÊTRE APPLIQUÉE. Le moteur la
- * respecte depuis que `secondaryMax = floor(display / minDisplayRatio)` borne
+ * respecte depuis que `secondaryMax = floor(display / minTitleToLabelRatio)` borne
  * les bandes secondaires ; avant, une carte pouvait sortir à 2.89 et la suite
  * ne l'avait pas vue. `negatives.test.ts` prouve maintenant que cette
  * fonction-ci l'aurait vue.
@@ -88,11 +88,11 @@ export function ratioFindings(svg: string): Finding[] {
   if (smallest <= 0) return ["a glyph box carries no size"];
 
   const ratio = biggest / smallest;
-  return ratio >= TYPE.minDisplayRatio
+  return ratio >= TYPE.minTitleToLabelRatio
     ? []
     : [
         `the display is ${biggest}px against a smallest of ${smallest}px — ` +
-          `a ratio of ${ratio.toFixed(2)}, under ${TYPE.minDisplayRatio}`,
+          `a ratio of ${ratio.toFixed(2)}, under ${TYPE.minTitleToLabelRatio}`,
       ];
 }
 

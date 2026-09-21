@@ -33,25 +33,42 @@ const SHORT = { ...CARD, headline: "Where it lands" };
 const LONG = CARD;
 
 /*
- * ── ⚠ CE QUE LE CONTRÔLE DE VIGNETTE A CHANGÉ ICI, ET POURQUOI ──────────
+ * ── ⚠ CE BLOC DISAIT L'INVERSE DE CE QUE LE MOTEUR FAIT, ET IL LE DISAIT
+ *      AVEC UN CHIFFRE, CE QUI EST LA FAÇON LA PLUS CONVAINCANTE DE SE
+ *      TROMPER ─────────────────────────────────────────────────────────────
  *
- * L'ordre du résolveur est intact : toutes les échelles d'illustration sont
- * essayées AVANT que les glosses tombent, et c'est toujours vrai. Ce qui a
- * changé est le verdict, pas l'ordre.
+ * Il concluait : « Tant que `THUMB.minPx` vaut 11, un diagramme porte des
+ * libellés et pas de glosses. » Le raisonnement était juste et sa prémisse
+ * fausse — il supposait qu'une glose se pose en `mono`, plafonné à 28px, donc
+ * toujours sous le plancher de vignette.
  *
- * Une glose se pose en `mono`, dont le maximum est 28px. Le plancher de
- * lisibilité en vignette est 34px (= 11px à 350). **Aucune glose ne peut donc
- * jamais le franchir.** La passe « full » est essayée, refusée pour cette
- * raison-là, et la passe sans glosses gagne — sur un diagramme, toujours.
+ * La glose est composée dans la sans du kit depuis toujours ; elle empruntait
+ * seulement les TAILLES du mono. Elle a maintenant sa propre gamme,
+ * `TYPE.gloss` (30 à 40, plancher 30), et le plancher de vignette se mesure à
+ * 390px de large — d'où `CONTENT_MIN_AT_CANVAS = 30`. Une glose le franchit
+ * donc exactement, par construction.
  *
- * C'est une décision de produit, et elle est réversible en un nombre :
- * `THUMB.minPx`. Tant qu'il vaut 11, un diagramme porte des libellés et pas
- * de glosses. L'alternative serait de relever `TYPE.mono.max` au-dessus de
- * 34, ce qui remonterait le titre au-dessus de 102px partout par la règle du
- * ratio — c'est-à-dire de changer la hiérarchie de toutes les cartes.
+ * Ce que ce fichier vérifie n'a pas changé : l'ordre du résolveur — rétrécir
+ * le dessin, puis couper des mots, puis rompre en carrousel — et le fait que
+ * rien ne passe jamais sous un plancher. Ce qui a changé est le verdict : sur
+ * un diagramme qui a la place, les gloses RESTENT.
  */
 describe("step 1 — the illustration shrinks before anything else moves", () => {
-  it("three rings compose by shrinking the drawing, and the glosses go with it", () => {
+  /*
+   * ⚠ CE CAS EXIGEAIT QUE LE DESSIN AIT RÉTRÉCI, ET IL N'A PLUS À LE FAIRE.
+   *
+   * Les trois anneaux nommés se lisaient en LIGNES : ils coûtaient trois
+   * hauteurs de cellule, et les cercles ne tenaient qu'en descendant d'un cran
+   * — d'où l'assertion. Nommés en COLONNES, ils en coûtent une seule, et la
+   * carte compose au HAUT de la fourchette de couverture avec toutes ses
+   * gloses.
+   *
+   * Exiger encore le rétrécissement reviendrait à exiger le symptôme après
+   * avoir soigné la cause. Ce que ce cas doit tenir est le RÉSULTAT — les mots
+   * survivent, rien n'est sous le plancher — et l'ORDRE du résolveur est
+   * vérifié juste en dessous, sur une carte qui a vraiment besoin de céder.
+   */
+  it("three rings compose with every gloss intact, and nothing under a floor", () => {
     const { composition, svg } = render({
       ...SHORT,
       archetype: "concentric_control",
@@ -59,14 +76,34 @@ describe("step 1 — the illustration shrinks before anything else moves", () =>
       payload: { rings: [item("Out there"), item("Nearer"), item("Right here")] },
     });
 
-    // Les deux marches ont joué, et dans cet ordre-là.
-    expect(composition.resolution.some((r) => r.startsWith("illustration shrunk"))).toBe(true);
-    expect(composition.resolution).toContain("cut words: glosses dropped");
+    // Les mots n'ont pas cédé.
+    expect(composition.resolution).not.toContain("cut words: glosses dropped");
 
-    // Anti-vacuité : les trois libellés sont là, et ils sont lisibles à 350.
+    // Anti-vacuité : trois libellés ET trois gloses sont sur la carte, et
+    // tout est lisible sur un post pleine largeur de téléphone.
     const texts = parseBoxes(svg).filter((b) => b.role === "text");
-    expect(texts.length).toBeGreaterThanOrEqual(5);
+    expect(texts.length).toBeGreaterThanOrEqual(8);
     expect(legibleAtThumb(composition.placed)).toBe(true);
+  });
+
+  it("le dessin cède avant les mots, là où quelque chose doit céder", () => {
+    /*
+     * Quatre cases glosées sous un profil : c'est la carte qui manque
+     * vraiment de hauteur. Le résolveur descend l'illustration et s'arrête là
+     * — il ne touche pas aux gloses tant qu'un cran reste à essayer.
+     */
+    const { composition } = render({
+      ...SHORT,
+      archetype: "quadrant_model",
+      palette: PALETTES[0],
+      payload: {
+        axis_x: "Effort here",
+        axis_y: "Relief here",
+        items: [item("Out there"), item("Nearer"), item("Right here"), item("Inside")],
+      },
+    });
+    expect(composition.resolution.some((r) => r.startsWith("illustration shrunk"))).toBe(true);
+    expect(composition.resolution).not.toContain("cut words: glosses dropped");
   });
 
   /*
@@ -143,14 +180,11 @@ describe("the engine enforces the clearances itself", () => {
    * caption a model writes after today.
    */
   /*
-   * ⚠ PAR LE REPLI, ET C'EST LE BON ENDROIT. `quadrant_model` porte QUATRE
-   * cases plus deux axes, par définition — il ne peut pas en porter moins, et
-   * mesuré le 2026-09-21 il se pose à 28px, soit 9,1px en vignette, quelle que
-   * soit la longueur du titre. Il se replie donc toujours.
-   *
-   * Ce que ce cas doit prouver n'a pas changé : ce qui SORT du moteur est
-   * propre. Le demander à la forme que le produit livre vraiment est plus
-   * fort que le demander à la première forme essayée.
+   * ⚠ PAR LE REPLI, PARCE QUE C'EST CE QUI SORT. `quadrant_model` porte quatre
+   * cases plus deux axes ; selon la longueur du titre il compose ou il se
+   * replie. Ce que ce cas doit prouver ne dépend pas de la branche prise :
+   * ce qui SORT du moteur est propre. Le demander à la forme réellement
+   * livrée est plus fort que le demander à la première essayée.
    */
   it("violations() is consulted on every render, so a violating layout is never emitted", () => {
     const composed = composeWithFallback({
@@ -168,7 +202,6 @@ describe("the engine enforces the clearances itself", () => {
         ? composed.slides.flatMap((slide) => slide.composition.placed)
         : composed.result.composition.placed;
     expect(violations(placed)).toEqual([]);
-    expect(composed.steps.length).toBeGreaterThan(0);
   });
 
   it("violations() can actually report one", () => {
