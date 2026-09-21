@@ -28,7 +28,7 @@ const PUBLISHED_TITLES = [
 ];
 
 describe("défaut 1 — deux titres de même sens dans un mois", () => {
-  it("les six paires du mois rendu sont vues", () => {
+  it("les reformulations du mois rendu sont vues", () => {
     const found = collisionsIn(PUBLISHED_TITLES);
     const pairs = found.map((c) => [PUBLISHED_TITLES[c.a], PUBLISHED_TITLES[c.b]] as const);
 
@@ -36,10 +36,30 @@ describe("défaut 1 — deux titres de même sens dans un mois", () => {
       pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
 
     expect(contains("Life rewrote itself", "When life rewrites itself")).toBe(true);
-    expect(contains("When the map stops matching", "When the map no longer fits")).toBe(true);
     expect(contains("How competence masks exhaustion", "When competence masks the cost")).toBe(true);
     expect(contains("How competence masks exhaustion", "The competence mask slips")).toBe(true);
     expect(contains("When competence masks the cost", "The competence mask slips")).toBe(true);
+  });
+
+  /*
+   * ⚠ CETTE PAIRE PASSE, ET LE CAS EXISTE POUR QUE PERSONNE NE CROIE LE
+   * CONTRAIRE.
+   *
+   * « When the map stops matching » et « When the map no longer fits » sont la
+   * sixième paire du mois rendu, et une comparaison lexicale ne peut pas les
+   * attraper sans attraper aussi deux titres qui partagent « life » ou
+   * « emdr » par coïncidence — la signature est identique : un mot porteur en
+   * commun. La règle qui les attrapait a refusé 106 sujets sur 116 au tirage
+   * réel et rendu un mois de 10 posts ; voir le bloc qui l'explique dans
+   * `dedup.ts`.
+   *
+   * Le cas est écrit à l'endroit, comme une limite connue, plutôt que retiré
+   * du fichier — un trou qu'aucun test ne nomme se referme tout seul dans la
+   * tête du prochain lecteur.
+   */
+  it("deux titres qui ne partagent qu'un mot passent — limite assumée", () => {
+    const pair = ["When the map stops matching", "When the map no longer fits"];
+    expect(collisionsIn(pair)).toEqual([]);
   });
 
   it("et les titres qui ne redisent rien sont laissés tranquilles", () => {
@@ -54,6 +74,64 @@ describe("défaut 1 — deux titres de même sens dans un mois", () => {
     const accepted = ["Life rewrote itself", "Rest is not a reward"];
     expect(redundantAgainst("When life rewrites itself", accepted)).toContain("Life rewrote itself");
     expect(redundantAgainst("The Sunday dread starts early", accepted)).toBeNull();
+  });
+
+  /*
+   * ── ⚠ LE CAS QUI AURAIT ÉVITÉ LE MOIS À DIX POSTS ────────────────────
+   *
+   * Tous les autres cas de ce fichier partent de paires choisies à la main,
+   * et une paire choisie à la main ne dit rien du TAUX de faux positifs. La
+   * règle retirée refusait 106 sujets sur 116 au tirage réel, et la suite
+   * était verte.
+   *
+   * Ce cas mesure donc ce qui compte : ce qu'un vrai lot PERD. Le seuil est
+   * un sur dix, pas zéro, parce qu'il en reste un et qu'il est nommé ci-
+   * dessous — un faux positif à 10 % est absorbé par la sur-génération (44
+   * candidats pour 30 posts) ; à 91 %, il ne l'est pas.
+   */
+  it("un vrai lot de dix titres distincts n'en perd pas plus d'un", () => {
+    const drawn = [
+      "When your nervous system grieves the life you lost",
+      "When your life script suddenly rewrites itself",
+      "EMDR and the myth of moving on",
+      "What EMDR does when plans end",
+      "The body keeping its own timeline about going back",
+      "Reading a hard first week back as personal failure",
+      "What switching off actually asks of a nervous system",
+      "Three small returns after a long leave",
+      "The Sunday dread starts before the alarm",
+      "Rest is not a reward",
+    ];
+    const kept: string[] = [];
+    const refused: string[] = [];
+    for (const title of drawn) {
+      if (redundantAgainst(title, kept)) refused.push(title);
+      else kept.push(title);
+    }
+    expect(refused.length, `refusés : ${refused.join(" | ")}`).toBeLessThanOrEqual(1);
+  });
+
+  /*
+   * ⚠ LE FAUX POSITIF QUI RESTE, NOMMÉ PLUTÔT QUE SUBI.
+   *
+   * « nervous system » est un terme composé : deux mots qui n'en désignent
+   * qu'un. La règle des deux mots distinctifs partagés le compte pour deux et
+   * rapproche donc deux titres qui n'ont en commun qu'une partie du corps.
+   *
+   * Le fusionner — compter un bigramme partagé comme un seul concept — casse
+   * un VRAI positif du même mois : « competence masks exhaustion » et « when
+   * competence masks the cost » ne partagent, eux aussi, qu'un bigramme, et
+   * c'est précisément la répétition à attraper. Les deux cas ont la même
+   * signature lexicale ; les séparer demanderait de savoir lequel est le
+   * propos du titre.
+   *
+   * Il est donc gardé, au prix mesuré d'un sujet sur dix reposé en banque.
+   */
+  it("« nervous system » rapproche deux titres qui n'ont rien en commun", () => {
+    const hit = redundantAgainst("What switching off actually asks of a nervous system", [
+      "When your nervous system grieves the life you lost",
+    ]);
+    expect(hit).toContain("nerv");
   });
 
   it("le premier sujet d'un mois n'a rien à redire", () => {

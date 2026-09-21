@@ -22,10 +22,12 @@
  *
  * Elle attrape les reformulations, qui sont le cas réel : même noyau de mots,
  * flexion ou tournure différente. Elle ne prétend pas attraper deux phrases
- * qui disent la même chose sans partager un seul mot — « la carte ne colle
- * plus » et « le territoire a changé » passeraient. C'est la limite du
- * procédé, elle est assumée, et la parade est ailleurs : élargir la dérivation
- * des thèmes quand trois thèmes ne couvrent pas trente posts.
+ * qui disent la même chose sans partager assez de mots — « la carte ne colle
+ * plus » et « le territoire a changé » passeraient, et « the map stops
+ * matching » / « the map no longer fits » aussi, faute de partager plus que
+ * « map ». C'est la limite du procédé, elle est mesurée (voir le bloc sur la
+ * règle retirée), et la parade est ailleurs : élargir la dérivation des thèmes
+ * quand trois thèmes ne couvrent pas trente posts.
  */
 
 /**
@@ -97,14 +99,44 @@ function documentFrequency(corpus: string[][]): Map<string, number> {
  *
  * ⚠ C'EST LA FRÉQUENCE QUI DÉCIDE, PAS UNE LISTE. Dans un mois sur
  * l'épuisement, « burnout » revient dans huit titres : ce n'est pas un doublon,
- * c'est le sujet du mois. « map » qui revient dans exactement deux, c'est la
- * même idée écrite deux fois. Le seuil se lit tout seul et ne demande aucune
+ * c'est le sujet du mois. Le seuil se lit tout seul et ne demande aucune
  * connaissance du domaine.
  */
 const DISTINCTIVE_AT_MOST = 2;
 
 /** Assez proche pour qu'une lectrice y voie deux fois la même idée. */
 const SAME_SENSE_OVERLAP = 0.5;
+
+/*
+ * ── ⚠ IL Y AVAIT UNE TROISIÈME RÈGLE, ET ELLE A COÛTÉ VINGT POSTS ───────
+ *
+ * Elle disait : deux titres qui partagent UN SEUL mot distinctif — un mot que
+ * nul autre titre du lot ne porte — redisent la même chose. Elle attrapait la
+ * sixième paire du mois du 2026-09-21b, « When the map stops matching » et
+ * « When the map no longer fits », que les deux règles ci-dessus laissent
+ * passer puisqu'elles ne partagent que « map ».
+ *
+ * Mesuré sur la banque réelle, au tirage du mois de thea.brannon : **106
+ * sujets refusés sur 116, et un mois de 10 posts au lieu de 30.** Les motifs
+ * étaient « un mot que nul autre titre ne porte : life », puis « : emdr ».
+ * Dans un mois écrit pour une praticienne EMDR dont le thème est le retour au
+ * travail, « life » dans deux titres sur dix n'est pas une répétition — et un
+ * mot présent dans deux titres sur dix a mécaniquement une fréquence de 2,
+ * donc il est « distinctif » au sens de la règle. Elle ne mesurait pas la
+ * redondance, elle mesurait la taille du lot.
+ *
+ * La règle est retirée plutôt qu'ajustée, parce qu'aucun réglage ne la sauve :
+ * « map / map » et « life / life » ont exactement la même signature lexicale
+ * — un mot porteur en commun. Les distinguer demande de savoir lequel des deux
+ * est le SUJET du titre, ce qu'une comparaison lexicale ne sait pas et ce que
+ * des plongements sauraient. Le cahier des charges les interdit, et il a
+ * raison : le prix d'un doublon manqué est un post redondant dans le mois, le
+ * prix de cette règle était vingt posts manquants.
+ *
+ * Ce qui reste attrape donc les REFORMULATIONS — même noyau de mots, tournure
+ * différente — soit cinq des six paires du mois rendu. La sixième passe, et
+ * c'est écrit ici plutôt que caché derrière un seuil.
+ */
 
 export type Collision = { a: number; b: number; why: string };
 
@@ -130,8 +162,6 @@ export function collisionsIn(titles: string[]): Collision[] {
         out.push({ a: i, b: j, why: `${Math.round(overlap * 100)} % de mots en commun` });
       } else if (rare.length >= 2) {
         out.push({ a: i, b: j, why: `deux mots distinctifs partagés : ${rare.join(", ")}` });
-      } else if (rare.length === 1) {
-        out.push({ a: i, b: j, why: `un mot que nul autre titre ne porte : ${rare[0]}` });
       }
     }
   }
