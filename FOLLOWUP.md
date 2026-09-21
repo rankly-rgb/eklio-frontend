@@ -368,3 +368,50 @@ vient de builder et rouge partout ailleurs.
 `npm run verify` sur un CI, pour que la discipline ne repose pas sur la mémoire
 de qui pousse. Tant que ce n'est pas fait, Vercel reste le premier endroit où
 un build cassé se voit — c'est-à-dire trop tard.
+
+---
+
+## F11 — Le premier rendu réel d'un mois n'a pas pu être produit : pas de clef Anthropic
+
+**Rencontré en** PHASE B du chantier « état dégradé et premier rendu réel »,
+2026-09-21. **Arrêt demandé par le brief, et respecté : aucune fixture n'a été
+substituée.**
+
+```
+$ env | grep ANTHROPIC
+ANTHROPIC_BASE_URL=<posée — le proxy de Claude Code, pas une clef>
+# ANTHROPIC_API_KEY : absente de l'environnement ET de tout .env
+# (.env.example la porte vide, c'est un gabarit)
+```
+
+Rien de la partie B n'a été tenté : ni compte de test, ni banque de sujets, ni
+mois généré, ni captures. Un rendu fabriqué depuis des doubles aurait
+ressemblé exactement au vrai, et c'est le seul résultat qu'il fallait éviter
+ici.
+
+**Ce qu'il faut pour le produire, une fois la clef disponible** — et dans cet
+ordre, parce que chaque étape dépend de la précédente :
+
+1. `ANTHROPIC_API_KEY` dans l'environnement de la session. **Sans elle, rien
+   de ce qui suit n'a de sens.**
+2. Rejouer les 146 migrations sur la stack Postgres locale
+   (`bash scripts/local-verify.sh` côté backend).
+3. Créer le compte de test — thérapeute fictive, EMDR, burnout au retour au
+   travail, brand kit complet avec une palette réelle — et répondre au
+   check-in mensuel.
+4. Remplir la banque par le **vrai pipeline de génération de sujets**, au
+   moins **26 sujets par segment** — le seuil mesuré en §10.8 du rapport
+   d'implémentation. En dessous, le tirage épuise la banque au troisième mois.
+5. Lancer la génération mensuelle réelle (Batch + prompt caching), **sans
+   visuels custom** : ce chemin n'est câblé à aucun écran (F6) et demanderait
+   en plus une `OPENAI_API_KEY`.
+6. Lire le coût réel dans `credit_ledger`, jamais le recalculer.
+
+⚠ **`content_pipeline_enabled` n'existe pas** — voir F7. Ce qui arme la
+génération est `CONTENT_GENERATION_ARMED="true"` **plus** l'entrée
+`vercel.json`, et en local seul le premier compte.
+
+⚠ **Et il faudra un navigateur headless pour les captures.** Chromium est
+présent dans l'environnement d'exécution (`PLAYWRIGHT_BROWSERS_PATH`), mais
+`@playwright/test` n'est pas une dépendance de ce dépôt — l'ajouter est une
+décision à prendre, pas un détail d'outillage.
