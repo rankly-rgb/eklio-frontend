@@ -371,7 +371,37 @@ un build cassé se voit — c'est-à-dire trop tard.
 
 ---
 
-## F11 — Le premier rendu réel d'un mois n'a pas pu être produit : pas de clef Anthropic
+## F11 — ✅ RÉSOLU LE 2026-09-21 — le premier rendu réel a été produit
+
+**La clef était là cette fois**, sous le nom `EKLIO_ANTHROPIC_API_KEY`, passée
+à chaque commande et écrite dans aucun fichier. Les six prérequis listés plus
+bas ont tous été faits, dans l'ordre, et le mois existe :
+
+| prérequis | ce qui s'est passé |
+|---|---|
+| 1. la clef | présente ; appel minimal HTTP 200 avant toute dépense |
+| 2. les 147 migrations | rejouées, 96 fichiers de test SQL, **0 échec** |
+| 3. le compte de test | Rowan Mercier, LMFT, EMDR, burnout au retour au travail, Oakland CA — kit complet, direction choisie, check-in rempli |
+| 4. la banque, ≥ 26 par segment | **49 sujets** : 26 pour `high_functioning`, 23 pour `crossroads` |
+| 5. le mois réel, sans visuels custom | **16 posts sur 30**, en Batch, aucun appel OpenAI |
+| 6. le coût lu, jamais recalculé | lu dans `usage` et dans `credit_ledger` — **0,381 $ mesuré**, plafond 2 $ |
+
+⚠ **Et `@playwright/test` a été installé en premier, comme cette fiche le
+demandait.** Huit captures à 1440 px dans `design/preview-2026-09-21/`.
+
+**Le rendu a trouvé six défauts, dont trois sont corrigés.** Ils ont leur
+propre document : **`FIRST_REAL_RENDER.md`**. Le plus lourd, pour qui ne lit
+qu'une ligne : *l'écran de relecture n'avait jamais montré une carte entière —
+il en rognait les deux tiers droits.*
+
+⚠ **Ce qui reste bloquant pour une VRAIE mise en service**, et qui n'est pas
+dans le code : `license_type_states.verified_at` est NULL sur les 254 lignes
+d'une base fraîche, donc **aucun kit ne peut être généré dans aucun État**.
+Quelqu'un doit lire les sites des boards. Voir défaut 1 du rapport.
+
+---
+
+## F11 (archive) — Le premier rendu réel d'un mois n'a pas pu être produit : pas de clef Anthropic
 
 **Rencontré en** PHASE B du chantier « état dégradé et premier rendu réel »,
 2026-09-21. **Arrêt demandé par le brief, et respecté : aucune fixture n'a été

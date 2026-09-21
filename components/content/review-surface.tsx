@@ -54,6 +54,28 @@ type SaveState =
   | { kind: "saving" }
   | { kind: "error"; message: string };
 
+/*
+ * ── ⚠ LE SVG NE S'ÉCHELONNE PAS TOUT SEUL, ET ON LE ROGNAIT ─────────────
+ *
+ * `lib/compose/svg.ts` écrit `<svg width="1080" height="1350">` en attributs
+ * absolus, parce que le rendu PNG (resvg) les lit pour décider de la taille
+ * du bitmap. Inliné dans une page, ce même SVG garde donc 1080 pixels de
+ * large, quoi que dise son conteneur : un `max-w-[420px] overflow-hidden`
+ * n'en réduit pas la carte, il en COUPE les deux tiers droits.
+ *
+ * C'est ce que le premier rendu réel a montré, et c'était sur toutes les
+ * cartes : « Your nervou… / vigilant afte… / that's what … », chaque ligne
+ * tranchée en plein mot, sur l'écran dont le produit dit « then you read it
+ * over ». Les vignettes de carrousel, à 200 px, montraient une colonne de la
+ * largeur d'un doigt.
+ *
+ * Le correctif tient dans cette classe, et il va sur le CONTENEUR plutôt que
+ * dans `svg.ts` : le PNG a besoin de ces attributs, la page a besoin de les
+ * ignorer. `w-full` + `h-auto` laissent le `viewBox` faire ce pour quoi il
+ * existe, et le rapport 4:5 revient tout seul.
+ */
+const SCALES_TO_ITS_BOX = "[&>svg]:block [&>svg]:h-auto [&>svg]:w-full";
+
 export function ReviewSurface({
   itemId,
   caption,
@@ -248,7 +270,7 @@ export function ReviewSurface({
             {slides.map((slide) => (
               <li key={slide.number} className="flex w-[200px] flex-col gap-2">
                 <div
-                  className="overflow-hidden rounded-card border border-line"
+                  className={`overflow-hidden rounded-card border border-line ${SCALES_TO_ITS_BOX}`}
                   // Même échappement que la grande carte : voir l'en-tête.
                   dangerouslySetInnerHTML={{ __html: slide.svg }}
                 />
@@ -266,7 +288,7 @@ export function ReviewSurface({
       {slides.length === 0 && current ? (
         <div className="flex flex-col gap-4">
           <div className="max-w-[420px] overflow-hidden rounded-card border border-line">
-            <div dangerouslySetInnerHTML={{ __html: current.svg }} />
+            <div className={SCALES_TO_ITS_BOX} dangerouslySetInnerHTML={{ __html: current.svg }} />
           </div>
 
           {current.resolution.length > 0 ? (
@@ -299,7 +321,7 @@ export function ReviewSurface({
                       }`}
                     >
                       <span
-                        className="overflow-hidden rounded-[4px]"
+                        className={`block overflow-hidden rounded-[4px] ${SCALES_TO_ITS_BOX}`}
                         // Même échappement que la grande carte : voir l'en-tête.
                         dangerouslySetInnerHTML={{ __html: layout.svg }}
                       />

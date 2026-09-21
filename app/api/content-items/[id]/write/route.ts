@@ -12,6 +12,7 @@ import {
 } from "@/lib/data/content";
 import { applyWrite, beginWrite, releaseWrite, suggestedTopicSchema } from "@/lib/data/on-demand";
 import { runOnDemandWrite, toTopicRequest, writeAction } from "@/lib/content/generate/on-demand";
+import { syncCostUsd } from "@/lib/content/generate/copy-batch";
 import { ethicsRulesFor } from "@/lib/content/generate/ethics-rules";
 
 /*
@@ -177,7 +178,15 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
       payload: written.payload,
       rationale: written.rationale ?? null,
       topicId: body.data.topic?.id ?? null,
-      costUsd: null,
+      /*
+       * ⚠ CE QUE L'APPEL A COÛTÉ, ET IL VALAIT `null` JUSQU'ICI. `written`
+       * porte son `usage` — même quand la sortie a été rejetée et relancée —
+       * et `apply_on_demand_write` accepte `p_cost_usd` depuis le premier
+       * jour. Entre les deux, cette ligne jetait le chiffre : le ledger
+       * comptait le crédit et perdait l'argent, et le premier rendu réel
+       * l'a découvert en essayant d'y lire une dépense.
+       */
+      costUsd: syncCostUsd(written.usage),
     });
     if (!applied.ok) {
       /*

@@ -113,7 +113,17 @@ export function archetypeInstruction(archetypeKey: string): string {
     quadrant_model: `{"axis_x": "1-3 words", "axis_y": "1-3 words", "items": [4 x {"label": "1-3 words", "gloss": "1-6 words"}]}`,
     cycle: `{"nodes": [3 to 6 x {"label": "1-3 words", "gloss": "1-6 words"}]}`,
     surface_and_beneath: `{"surface": {"label": "1-3 words", "gloss": "1-6 words"}, "beneath": {same}}`,
-    comparison_pair: `{"left": [2-4 items], "right": [the SAME number of items]}`,
+    /*
+     * ⚠ « [2-4 items] » NE DIT PAS CE QU'EST UN ITEM, et c'était la seule
+     * ligne de cette table à ne pas le dire. Les neuf autres écrivent
+     * `{"label": …, "gloss": …}` en toutes lettres ; celle-ci laissait le
+     * modèle inventer la forme, et `entry.parse` refusait ensuite le payload
+     * en bloc — `payload_shape`, sans dire quelle clef manquait. Le premier
+     * mois réel a rendu dix refus de cette famille sur trente.
+     */
+    comparison_pair:
+      `{"left": [2 to 4 x {"label": "1-3 words", "gloss": "1-6 words"}], ` +
+      `"right": [the SAME number, same shape]}`,
     numbered_strategies: `{"items": [3 to 5 x {"label": "1-3 words", "gloss": "1-6 words"}]}`,
     lettered_technique: `{"acronym": "3 to 5 letters", "items": [one per letter, each label STARTING with that letter, in order]}`,
     concentric_control: `{"rings": [2 to 4 x {"label": "1-3 words", "gloss": "1-6 words"}], outermost first}`,
@@ -121,6 +131,41 @@ export function archetypeInstruction(archetypeKey: string): string {
     practitioner_card: `{"lines": [2 to 4 strings, each 1 to 8 words]}`,
     carousel: `{"cards": [3 to 8 x {"archetype_key": "any archetype except carousel", "payload": {that archetype's shape}}]}`,
   };
+
+  /*
+   * ── ⚠ LE CARROUSEL EST LE SEUL À QUI ON NE DISAIT PAS LE BUDGET ───────
+   *
+   * Dix archétypes recevaient leurs bornes en toutes lettres — « 1-3 words »,
+   * « 1-6 words ». Le onzième, celui qui EMPILE trois à huit payloads,
+   * recevait « that archetype's shape » et rien d'autre : ni les formes, ni
+   * les nombres. Le modèle devait deviner, sur chaque carte, et il suffisait
+   * d'un seul `gloss` trop long pour que `validateCopy` refuse le carrousel
+   * entier. Deux tentatives, puis « That came out too long for a card. »
+   *
+   * Trouvé par le premier rendu réel : le carrousel à la demande a échoué
+   * trois fois de suite sur `over_budget`, pendant que les cartes simples
+   * passaient.
+   *
+   * Les formes sont reprises de `SHAPES`, jamais recopiées — une seconde
+   * liste serait la façon exacte dont le budget d'un archétype changerait
+   * ici sans changer là.
+   */
+  if (archetypeKey === "carousel") {
+    const inner = Object.entries(SHAPES)
+      .filter(([key]) => key !== "carousel")
+      .map(([key, shape]) => `  * "${key}": ${shape}`)
+      .join("\n");
+
+    return [
+      `Archetype "carousel". The payload object must be exactly:`,
+      SHAPES.carousel,
+      ``,
+      `Each card's "archetype_key" is one of these, and its "payload" must`,
+      `match that archetype's shape EXACTLY — the same word limits apply to`,
+      `every card, and one label of four words throws the whole carousel away:`,
+      inner,
+    ].join("\n");
+  }
 
   return `Archetype "${archetypeKey}". The payload object must be exactly:\n${SHAPES[archetypeKey]}`;
 }
@@ -285,6 +330,30 @@ export function batchCostUsd(
       (u.cacheWrite / 1e6) * HAIKU_PRICE.inputPerMTok * HAIKU_PRICE.cacheWriteMultiplier * m;
   }
   return total;
+}
+
+/**
+ * Le même calcul, pour un appel qui n'est PAS dans un lot.
+ *
+ * ⚠ IL EXISTE PARCE QUE LE LEDGER ÉTAIT VIDE D'ARGENT. `batchCostUsd` était
+ * le seul chemin vers un coût, et la moitié synchrone du produit — « Write
+ * it » — n'avait donc rien à écrire dans `credit_ledger.actual_cost_usd` :
+ * elle passait `null`. Le crédit était compté, la dépense ne l'était pas, et
+ * un plafond lu dans le ledger lisait zéro quoi qu'il arrive.
+ *
+ * La remise de 50 % du lot ne s'applique pas ici, et c'est la seule
+ * différence : les prix, les multiplicateurs de cache et la table sont ceux
+ * d'à côté, pour qu'un changement de tarif n'ait qu'un endroit à corriger.
+ */
+export function syncCostUsd(
+  usage: { input: number; output: number; cacheRead: number; cacheWrite: number }
+): number {
+  return (
+    (usage.input / 1e6) * HAIKU_PRICE.inputPerMTok +
+    (usage.output / 1e6) * HAIKU_PRICE.outputPerMTok +
+    (usage.cacheRead / 1e6) * HAIKU_PRICE.inputPerMTok * HAIKU_PRICE.cacheReadMultiplier +
+    (usage.cacheWrite / 1e6) * HAIKU_PRICE.inputPerMTok * HAIKU_PRICE.cacheWriteMultiplier
+  );
 }
 
 /**
