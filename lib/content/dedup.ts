@@ -138,6 +138,54 @@ const SAME_SENSE_OVERLAP = 0.5;
  * c'est écrit ici plutôt que caché derrière un seuil.
  */
 
+/**
+ * Les clefs partagées, les termes composés comptant pour un.
+ *
+ * ── ⚠ « NERVOUS SYSTEM » A COÛTÉ SEPT POSTS ────────────────────────────
+ *
+ * Mesuré au tirage du mois de juno.calvert : **51 sujets refusés sur 76**, et
+ * un mois de 23 posts au lieu de 30 faute de stock. Quinze de ces refus
+ * portaient le même motif — « deux mots distinctifs partagés : nerv, syst ».
+ *
+ * « nervous system » est UN terme, écrit en deux mots. La règle des deux clefs
+ * partagées le comptait pour deux et rapprochait donc n'importe quels titres
+ * mentionnant le système nerveux — dans un mois écrit par une praticienne
+ * EMDR, c'est-à-dire la moitié d'entre eux.
+ *
+ * ⚠ ET J'AVAIS ÉCARTÉ CE CORRECTIF POUR UNE RAISON FAUSSE. Le commentaire
+ * précédent disait que fusionner un bigramme partagé casserait un vrai positif
+ * du même mois, « competence masks exhaustion » / « when competence masks the
+ * cost ». Vérification faite, non : ces deux titres ont un recouvrement de
+ * Jaccard de 0.50, donc la PREMIÈRE règle les attrape, et elle les attrape
+ * que le bigramme soit fusionné ou pas. La paire « nervous system », elle, est
+ * à 0.29. Les deux cas se séparent tout seuls ; il suffisait de mesurer au
+ * lieu de raisonner.
+ *
+ * Deux clefs adjacentes DANS LES DEUX titres sont donc un seul concept. Deux
+ * clefs partagées mais séparées dans l'un des deux restent deux.
+ */
+function sharedConcepts(a: string[], b: string[]): string[] {
+  const inB = new Set(b);
+  const shared = a.filter((k) => inB.has(k));
+  const adjacentIn = (keys: string[], x: string, y: string) => {
+    const i = keys.indexOf(x);
+    return i !== -1 && keys[i + 1] === y;
+  };
+
+  const merged: string[] = [];
+  for (let i = 0; i < shared.length; i += 1) {
+    const x = shared[i];
+    const y = shared[i + 1];
+    const compound =
+      y !== undefined &&
+      (adjacentIn(a, x, y) || adjacentIn(a, y, x)) &&
+      (adjacentIn(b, x, y) || adjacentIn(b, y, x));
+    merged.push(compound ? `${x} ${y}` : x);
+    if (compound) i += 1;
+  }
+  return merged;
+}
+
 export type Collision = { a: number; b: number; why: string };
 
 /**
@@ -154,9 +202,12 @@ export function collisionsIn(titles: string[]): Collision[] {
 
   for (let i = 0; i < titles.length; i += 1) {
     for (let j = i + 1; j < titles.length; j += 1) {
-      const shared = keys[i].filter((k) => keys[j].includes(k));
+      const concepts = sharedConcepts(keys[i], keys[j]);
       const overlap = jaccard(keys[i], keys[j]);
-      const rare = shared.filter((k) => (df.get(k) ?? 0) <= DISTINCTIVE_AT_MOST);
+      // Un concept composé est distinctif si l'une de ses deux clefs l'est.
+      const rare = concepts.filter((c) =>
+        c.split(" ").some((k) => (df.get(k) ?? 0) <= DISTINCTIVE_AT_MOST)
+      );
 
       if (overlap >= SAME_SENSE_OVERLAP) {
         out.push({ a: i, b: j, why: `${Math.round(overlap * 100)} % de mots en commun` });

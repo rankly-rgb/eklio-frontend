@@ -84,12 +84,13 @@ describe("défaut 1 — deux titres de même sens dans un mois", () => {
    * règle retirée refusait 106 sujets sur 116 au tirage réel, et la suite
    * était verte.
    *
-   * Ce cas mesure donc ce qui compte : ce qu'un vrai lot PERD. Le seuil est
-   * un sur dix, pas zéro, parce qu'il en reste un et qu'il est nommé ci-
-   * dessous — un faux positif à 10 % est absorbé par la sur-génération (44
-   * candidats pour 30 posts) ; à 91 %, il ne l'est pas.
+   * Ce cas mesure donc ce qui compte : ce qu'un vrai lot PERD. Il a d'abord
+   * toléré un refus sur dix — le faux positif « nervous system » — puis zéro,
+   * une fois ce terme composé compté pour un. Un faux positif absorbé par la
+   * sur-génération reste un sujet retiré de la banque pour 90 jours, et c'est
+   * la banque qui a fini par manquer.
    */
-  it("un vrai lot de dix titres distincts n'en perd pas plus d'un", () => {
+  it("un vrai lot de dix titres distincts n'en perd aucun", () => {
     const drawn = [
       "When your nervous system grieves the life you lost",
       "When your life script suddenly rewrites itself",
@@ -108,30 +109,51 @@ describe("défaut 1 — deux titres de même sens dans un mois", () => {
       if (redundantAgainst(title, kept)) refused.push(title);
       else kept.push(title);
     }
-    expect(refused.length, `refusés : ${refused.join(" | ")}`).toBeLessThanOrEqual(1);
+    expect(refused, `refusés : ${refused.join(" | ")}`).toEqual([]);
   });
 
   /*
-   * ⚠ LE FAUX POSITIF QUI RESTE, NOMMÉ PLUTÔT QUE SUBI.
+   * ── ⚠ LE FAUX POSITIF QUI A COÛTÉ SEPT POSTS ────────────────────────
    *
-   * « nervous system » est un terme composé : deux mots qui n'en désignent
-   * qu'un. La règle des deux mots distinctifs partagés le compte pour deux et
-   * rapproche donc deux titres qui n'ont en commun qu'une partie du corps.
+   * Ce cas affirmait le CONTRAIRE, et il documentait le faux positif comme
+   * une limite acceptée : « nervous system » est un terme composé compté pour
+   * deux mots, gardé au prix d'un sujet sur dix.
    *
-   * Le fusionner — compter un bigramme partagé comme un seul concept — casse
-   * un VRAI positif du même mois : « competence masks exhaustion » et « when
-   * competence masks the cost » ne partagent, eux aussi, qu'un bigramme, et
-   * c'est précisément la répétition à attraper. Les deux cas ont la même
-   * signature lexicale ; les séparer demanderait de savoir lequel est le
-   * propos du titre.
+   * Le prix réel, mesuré au tirage du mois de juno.calvert, était de 51 sujets
+   * refusés sur 76 et un mois de 23 posts. Quinze refus portaient exactement
+   * ce motif : dans un mois écrit par une praticienne EMDR, la moitié des
+   * titres parlent du système nerveux.
    *
-   * Il est donc gardé, au prix mesuré d'un sujet sur dix reposé en banque.
+   * Le raisonnement qui l'avait fait garder était faux, et vérifiable : il
+   * disait que fusionner le bigramme casserait « competence masks ». Ces deux
+   * titres-là sont à 0.50 de recouvrement, donc la première règle les attrape
+   * indépendamment ; la paire « nervous system » est à 0.29.
    */
-  it("« nervous system » rapproche deux titres qui n'ont rien en commun", () => {
-    const hit = redundantAgainst("What switching off actually asks of a nervous system", [
-      "When your nervous system grieves the life you lost",
-    ]);
-    expect(hit).toContain("nerv");
+  it("un terme composé compte pour un, et ne rapproche plus rien", () => {
+    expect(
+      redundantAgainst("What switching off actually asks of a nervous system", [
+        "When your nervous system grieves the life you lost",
+      ])
+    ).toBeNull();
+  });
+
+  it("mais « competence masks » reste attrapé, par le recouvrement", () => {
+    expect(
+      redundantAgainst("When competence masks the cost", ["How competence masks exhaustion"])
+    ).toContain("competence masks exhaustion");
+  });
+
+  /*
+   * ⚠ DEUX CLEFS PARTAGÉES MAIS SÉPARÉES RESTENT DEUX. La fusion ne vaut que
+   * pour des clefs ADJACENTES dans les deux titres — sinon elle pardonnerait
+   * deux vrais mots en commun sous prétexte qu'ils se touchent quelque part.
+   */
+  it("deux mots partagés mais non adjacents comptent toujours pour deux", () => {
+    expect(
+      redundantAgainst("Rest after work, and the body that refuses", [
+        "The body learns to rest long after work ends",
+      ])
+    ).not.toBeNull();
   });
 
   it("le premier sujet d'un mois n'a rien à redire", () => {
