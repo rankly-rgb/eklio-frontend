@@ -453,15 +453,58 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
   };
 }
 
-/** Au plus `CARD_LINE_MAX` caractères, coupée sur un espace. */
+/** Au plus `CARD_LINE_MAX` caractères. */
 export const CARD_LINE_MAX = 30;
+
+/*
+ * ── ⚠ « WHEN LIFE INTERRUPTS, YOU GET » ────────────────────────────────
+ *
+ * C'est le titre qu'une carte du mois de wren.ashcombe a porté, et le contrôle
+ * indépendant l'a nommé le défaut le plus visible du lot : « titre tronqué en
+ * plein milieu d'une phrase — ne se termine jamais ».
+ *
+ * La coupe était pourtant correcte au sens où elle était écrite : trente
+ * caractères, sur une frontière de mot. Le défaut n'est pas le point de coupe,
+ * c'est de s'arrêter sur un MOT OUTIL. « you get » n'a de sens qu'en attendant
+ * la suite ; « When life interrupts » se tient tout seul.
+ *
+ * La coupe préfère donc, dans l'ordre : une frontière de proposition — une
+ * virgule, un tiret, deux points, qui sont des endroits où une phrase a le
+ * droit de s'arrêter — puis une frontière de mot dont on retire les mots
+ * outils traînants.
+ */
+
+/** Les mots sur lesquels un titre ne peut pas se terminer. */
+const DANGLING = new Set([
+  "a", "an", "the", "and", "or", "but", "if", "when", "while", "that", "this",
+  "of", "in", "on", "at", "to", "for", "with", "from", "by", "as", "into",
+  "is", "are", "was", "were", "be", "been", "am", "do", "does", "did",
+  "have", "has", "had", "get", "gets", "got", "your", "you", "its", "it",
+  "their", "they", "we", "our", "my", "his", "her", "not", "no", "so", "than",
+  "can", "could", "will", "would", "shall", "should", "may", "might", "must",
+  "what", "which", "who", "how", "why", "still", "even", "just", "about",
+]);
 
 export function clampCardLine(line: string): string {
   const trimmed = line.trim();
   if (trimmed.length <= CARD_LINE_MAX) return trimmed;
+
   const cut = trimmed.slice(0, CARD_LINE_MAX);
+
+  // Une frontière de proposition : un endroit où la phrase s'arrêtait déjà.
+  const clause = Math.max(cut.lastIndexOf(","), cut.lastIndexOf(";"), cut.lastIndexOf(":"), cut.lastIndexOf(" — "));
+  if (clause > 12) return cut.slice(0, clause).trimEnd();
+
   const boundary = cut.lastIndexOf(" ");
-  return (boundary > 12 ? cut.slice(0, boundary) : cut).trimEnd();
+  let words = (boundary > 12 ? cut.slice(0, boundary) : cut).trimEnd().split(/\s+/);
+
+  // ⚠ ON NE DESCEND JAMAIS SOUS DEUX MOTS. Retirer les mots outils d'un titre
+  // qui n'en a que deux laisserait un seul mot, ce qui est un sujet et non un
+  // titre — mieux vaut alors la coupe telle quelle.
+  while (words.length > 2 && DANGLING.has(words[words.length - 1].toLowerCase().replace(/[^a-z']/g, ""))) {
+    words = words.slice(0, -1);
+  }
+  return words.join(" ").replace(/[,;:]$/, "");
 }
 
 /**

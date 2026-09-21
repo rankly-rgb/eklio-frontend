@@ -29,6 +29,7 @@ import {
   buildBatchRequests,
   collectCopy,
   batchCostUsd,
+  clampCardLine,
   syncCostUsd,
   massCopyModel,
   type BrandContext,
@@ -497,7 +498,10 @@ async function main() {
     // ⚠ La majuscule est posée ici comme elle l'est sur l'écran de relecture :
     // par `capitaliseTitle`, qui ne touche pas à un mot portant déjà une
     // capitale. Les titres du mois précédent sortaient tout en minuscules.
-    const cardLine = capitaliseTitle((result.cardLine ?? candidate.topic.title).slice(0, 34));
+    // ⚠ `clampCardLine`, PAS UN `slice(0, 34)`. Une seconde borne, à un autre
+    // nombre, dans un autre fichier : celle-ci coupait en plein mot ce que
+    // l'autre avait déjà coupé proprement.
+    const cardLine = capitaliseTitle(clampCardLine(result.cardLine ?? candidate.topic.title));
     const scanned = [result.caption, result.altText, JSON.stringify(result.payload)].join("\n");
     for (const violation of checkEthics(scanned).violations) {
       ethicsFlags.push({ topic: candidate.topic.title, rule: violation.ruleId, excerpt: violation.excerpt.slice(0, 80) });

@@ -26,7 +26,14 @@ export type FontRole = "display" | "sans" | "mono";
  */
 export type Placed =
   | { role: "text"; band: Band; box: Box; lines: Line[] }
-  | { role: "field"; band: Band; box: Box; fill: string; radius: number }
+  /*
+   * ⚠ `tail` NE CHANGE PAS LA BOÎTE, ET C'EST LA CONDITION POUR QU'IL EXISTE.
+   * Tout le contrôle de dégagement lit `box` ; une queue qui agrandirait la
+   * boîte déplacerait des champs voisins, une queue qui sortirait de la boîte
+   * sans le dire toucherait un glyphe. Elle est donc tracée À L'INTÉRIEUR,
+   * dans la marge basse du champ que le texte n'occupe pas.
+   */
+  | { role: "field"; band: Band; box: Box; fill: string; radius: number; tail?: "left" | "right" }
   | { role: "figure"; band: Band; box: Box; strokes: Stroke[] };
 
 /**

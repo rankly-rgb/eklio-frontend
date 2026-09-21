@@ -42,10 +42,29 @@ export const annotatedCurve: ArchetypeModule<AnnotatedCurve> = {
      * deux points obtient ses 45 %, une courbe à quatre points retombe d'elle
      * -même vers 25 % au lieu d'y être clouée d'avance.
      */
-    const plotH = round2(content.h * figureShare(figureScale));
+    /*
+     * ── ⚠ LE NOM DE L'AXE VERTICAL SORTAIT DE LA BANDE DE CONTENU ────────
+     *
+     * Il était posé à `plot.y - glyphToStroke - sa hauteur`, et `plot.y` vaut
+     * `content.y` : il se retrouvait donc AU-DESSUS du haut de la bande, dans
+     * l'écart de 48px qui la sépare du titre. Le contrôle indépendant l'a vu
+     * sur la carte 25 — « what you carry » heurtant la jambe du « p » de
+     * « break » — et aucun contrôle de dégagement ne pouvait l'attraper : ils
+     * mesurent les distances À L'INTÉRIEUR d'une bande, pas le fait qu'un
+     * élément en soit sorti.
+     *
+     * La bande réserve maintenant sa ligne de mono en haut, et le tracé
+     * commence dessous. La carte y perd la hauteur d'une ligne de mono, ce qui
+     * est le prix exact de ce que le nom occupe.
+     */
+    const nameHeight = round2(TYPE.mono.max * 1.4);
+    const yTop = content.y;
+    const plotTop = round2(content.y + nameHeight + CLEARANCE.glyphToStroke);
+
+    const plotH = round2((content.h - nameHeight - CLEARANCE.glyphToStroke) * figureShare(figureScale));
     if (plotH < 150) return null;
 
-    const plot = { x: content.x, y: content.y, w: content.w, h: plotH };
+    const plot = { x: content.x, y: plotTop, w: content.w, h: plotH };
     const baseY = round2(plot.y + plot.h);
     const leftX = plot.x;
 
@@ -108,20 +127,15 @@ export const annotatedCurve: ArchetypeModule<AnnotatedCurve> = {
     const yFit = fitText(payload.axis_y, "mono", plot.w * 0.4, 40, nameRange);
     if (!xFit || !yFit) return null;
 
-    // Both names sit a full `glyphToStroke` clear of the axis they belong to:
-    // x below the baseline, y above the top of the vertical.
-    // Clear of the stroke's BOX, which is inflated by half the stroke width —
-    // see the note on the same arithmetic in quadrant-model.ts.
     const half = STROKE / 2;
     const xY = round2(baseY + half + CLEARANCE.glyphToStroke);
-    const yY = round2(plot.y - half - CLEARANCE.glyphToStroke - yFit.height);
     placed.push({
       role: "text",
       band: "content",
-      box: { x: plot.x, y: yY, w: plot.w, h: round2(xY + xFit.height - yY) },
+      box: { x: plot.x, y: yTop, w: plot.w, h: round2(xY + xFit.height - yTop) },
       lines: [
         ...linesFrom(xFit, round2(plot.x + plot.w - xFit.width), xY, plot.w, "mono", 500, palette.ink, "start"),
-        ...linesFrom(yFit, plot.x, yY, plot.w, "mono", 500, palette.ink, "start"),
+        ...linesFrom(yFit, plot.x, yTop, plot.w, "mono", 500, palette.ink, "start"),
       ],
     });
 

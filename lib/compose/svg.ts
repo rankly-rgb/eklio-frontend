@@ -43,13 +43,40 @@ function renderPlaced(p: Placed): string {
   const head = `<g data-role="${p.role}" data-band="${p.band}" data-box="${boxAttr(p.box)}">`;
 
   if (p.role === "field") {
-    return (
-      head +
-      `<rect x="${round2(p.box.x)}" y="${round2(p.box.y)}" ` +
-      `width="${round2(p.box.w)}" height="${round2(p.box.h)}" ` +
-      `rx="${round2(p.radius)}" fill="${p.fill}"/>` +
-      `</g>`
-    );
+    if (!p.tail) {
+      return (
+        head +
+        `<rect x="${round2(p.box.x)}" y="${round2(p.box.y)}" ` +
+        `width="${round2(p.box.w)}" height="${round2(p.box.h)}" ` +
+        `rx="${round2(p.radius)}" fill="${p.fill}"/>` +
+        `</g>`
+      );
+    }
+
+    /*
+     * Un champ à queue : une bulle. Le corps s'arrête au-dessus du bas de la
+     * boîte et la queue occupe ce qui reste — la boîte déclarée ne bouge pas,
+     * donc aucun dégagement ne change.
+     */
+    const { x, y, w, h } = p.box;
+    const drop = Math.min(28, h * 0.12);
+    const bodyH = round2(h - drop);
+    const r = round2(p.radius);
+    const tx = round2(p.tail === "left" ? x + w * 0.16 : x + w * 0.84);
+    const dir = p.tail === "left" ? -1 : 1;
+    const d =
+      `M ${round2(x + r)} ${round2(y)} H ${round2(x + w - r)} ` +
+      `A ${r} ${r} 0 0 1 ${round2(x + w)} ${round2(y + r)} ` +
+      `V ${round2(y + bodyH - r)} ` +
+      `A ${r} ${r} 0 0 1 ${round2(x + w - r)} ${round2(y + bodyH)} ` +
+      `L ${round2(tx + dir * w * 0.09)} ${round2(y + bodyH)} ` +
+      `L ${round2(tx)} ${round2(y + h)} ` +
+      `L ${round2(tx + dir * w * 0.02)} ${round2(y + bodyH)} ` +
+      `H ${round2(x + r)} ` +
+      `A ${r} ${r} 0 0 1 ${round2(x)} ${round2(y + bodyH - r)} ` +
+      `V ${round2(y + r)} ` +
+      `A ${r} ${r} 0 0 1 ${round2(x + r)} ${round2(y)} Z`;
+    return head + `<path d="${d}" fill="${p.fill}"/>` + `</g>`;
   }
 
   if (p.role === "figure") {

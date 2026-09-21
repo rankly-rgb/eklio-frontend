@@ -56,46 +56,54 @@ export type Drawing = (box: Box, colour: string, width?: number) => Stroke[];
  */
 export const surfacing: Drawing = (box, colour, width = STROKE_WIDTH) => {
   const { x, y, w, h } = box;
-  const waterY = r2(y + h * 0.42);
+  const waterY = r2(y + h * 0.4);
   const cx = r2(x + w / 2);
   /*
-   * ⚠ LES RAYONS REMPLISSENT LA BOÎTE, ILS NE S'Y LOGENT PAS. `topR` valait
-   * `min(w, h) * 0.17` : dans une boîte large et basse — la forme que prend
-   * toujours une bande de contenu — le `min` est la hauteur, et la forme
-   * occupait 37 % de la hauteur pour 22 % de la largeur. Elle se lisait comme
-   * une tache posée sur un trait, ce qu'elle était.
+   * ── ⚠ TROIS FOIS LA MÊME REMARQUE : « UNE TACHE POSÉE SUR UN TRAIT » ──
    *
-   * La masse immergée est la contrainte : elle descend de `deepR * 1.35` sous
-   * la ligne d'eau, qui est à 42 % — il lui reste 56 % de hauteur — et elle
-   * s'étend sur `deepR * 2` de large.
+   * Deux corrections avaient déjà visé la TAILLE — les rayons se calaient sur
+   * `min(w, h)`, puis la masse s'étalait trop. Le contrôle indépendant du mois
+   * rendu a nommé ce qui restait, sur trois cartes à la fois : « blob ».
+   *
+   * Le défaut n'était pas la taille, c'était la JONCTION. Un petit dôme et une
+   * grande masse ronde qui se rejoignent tangentiellement font un œuf, et un
+   * œuf traversé d'une ligne se lit comme un nuage — pas comme une forme dont
+   * l'eau cache les quatre cinquièmes.
+   *
+   * Ce qui fait lire « émergé / immergé », c'est le CONTRASTE entre les deux
+   * moitiés : au-dessus une pointe, en dessous des flancs qui s'évasent d'un
+   * coup et un fond plat. La ligne d'eau tombe alors sur une discontinuité au
+   * lieu de couper un ovale en deux.
    */
-  const deepR = r2(Math.min(h * 0.415, w * 0.4));
-  const topR = r2(deepR / 2.1);
+  const deepR = r2(Math.min(h * 0.44, w * 0.3));
+  const topR = r2(Math.min(deepR * 0.72, h * 0.36));
+  const deepW = r2(deepR * 1.6);
+  const floorY = r2(waterY + deepR * 1.3);
   /*
-   * ⚠ UN PEU PLUS LARGE QUE PROFONDE, ET PAS DAVANTAGE. Ronde, la masse se
-   * lisait comme un œuf posé sur un trait ; lâchée sur la largeur disponible
-   * (`deepR * 2.6`), elle s'étalait sur 496px pour 132 de haut et devenait une
-   * soucoupe. Le rapport 1.45 est celui qui se lit encore comme un volume.
+   * ⚠ LA COUPURE SE FAIT OÙ LA FORME TRAVERSE, PAS OÙ ELLE EST LA PLUS LARGE.
+   * Interrompue sur la largeur de la masse IMMERGÉE, la ligne d'eau ne gardait
+   * que deux moignons contre les bords : plus rien ne se lisait comme une
+   * surface. La forme croise l'eau à ±`topR` ; c'est là qu'on l'ouvre.
    */
-  const deepW = r2(Math.min(w * 0.42, deepR * 1.45));
+  const cut = r2(topR + 18);
   return [
     // La ligne d'eau, interrompue là où la forme la traverse.
-    stroke(`M ${r2(x)} ${waterY} L ${r2(cx - topR - 14)} ${waterY}`,
-      pad({ x, y: waterY, w: r2(cx - topR - 14 - x), h: 0 }, width), colour, width),
-    stroke(`M ${r2(cx + topR + 14)} ${waterY} L ${r2(x + w)} ${waterY}`,
-      pad({ x: r2(cx + topR + 14), y: waterY, w: r2(x + w - cx - topR - 14), h: 0 }, width), colour, width),
-    // Ce qui dépasse : un arc.
+    stroke(`M ${r2(x)} ${waterY} L ${r2(cx - cut)} ${waterY}`,
+      pad({ x, y: waterY, w: r2(cx - cut - x), h: 0 }, width), colour, width),
+    stroke(`M ${r2(cx + cut)} ${waterY} L ${r2(x + w)} ${waterY}`,
+      pad({ x: r2(cx + cut), y: waterY, w: r2(x + w - cx - cut), h: 0 }, width), colour, width),
+    // Ce qui dépasse : une pointe, pas un dôme.
     stroke(
-      `M ${r2(cx - topR)} ${waterY} A ${topR} ${topR} 0 0 1 ${r2(cx + topR)} ${waterY}`,
+      `M ${r2(cx - topR)} ${waterY} L ${r2(cx - topR * 0.2)} ${r2(waterY - topR)} ` +
+        `L ${r2(cx + topR * 0.45)} ${r2(waterY - topR * 0.55)} L ${r2(cx + topR)} ${waterY}`,
       pad({ x: r2(cx - topR), y: r2(waterY - topR), w: r2(topR * 2), h: topR }, width), colour, width
     ),
-    // Ce qui porte : la masse sous l'eau, plus large et plus profonde.
+    // Ce qui porte : des flancs qui s'évasent et un fond plat.
     stroke(
-      `M ${r2(cx - topR)} ${waterY} C ${r2(cx - deepW)} ${r2(waterY + deepR * 0.45)} ` +
-        `${r2(cx - deepW * 0.55)} ${r2(waterY + deepR * 1.3)} ${cx} ${r2(waterY + deepR * 1.35)} ` +
-        `C ${r2(cx + deepW * 0.55)} ${r2(waterY + deepR * 1.3)} ${r2(cx + deepW)} ${r2(waterY + deepR * 0.45)} ` +
-        `${r2(cx + topR)} ${waterY}`,
-      pad({ x: r2(cx - deepW), y: waterY, w: r2(deepW * 2), h: r2(deepR * 1.35) }, width), colour, width
+      `M ${r2(cx - topR)} ${waterY} L ${r2(cx - deepW)} ${r2(waterY + deepR * 0.55)} ` +
+        `L ${r2(cx - deepW * 0.72)} ${floorY} L ${r2(cx + deepW * 0.72)} ${floorY} ` +
+        `L ${r2(cx + deepW)} ${r2(waterY + deepR * 0.55)} L ${r2(cx + topR)} ${waterY}`,
+      pad({ x: r2(cx - deepW), y: waterY, w: r2(deepW * 2), h: r2(floorY - waterY) }, width), colour, width
     ),
   ];
 };

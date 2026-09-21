@@ -83,7 +83,32 @@ describe("anti-vacuity", () => {
    * names the archetypes that legitimately draw nothing, so adding a twelfth
    * that silently drew nothing would fail here rather than pass everywhere.
    */
-  const DRAWS_NOTHING = new Set(["single_statement", "practitioner_card", "carousel"]);
+  /*
+   * ⚠ `comparison_pair` A REJOINT CETTE LISTE, ET C'EST UNE DÉVIATION ASSUMÉE
+   * DE LA SPÉCIFICATION, PAS UN OUBLI.
+   *
+   * La règle générale demande sur chaque carte-diagramme « un objet en trait
+   * continu, sans remplissage ». Mais la même spécification nomme la forme de
+   * CET archétype-là : « paire de comparaison en bulles ». Les deux versions
+   * qui respectaient la lettre de la règle générale ont échoué sur le fond —
+   * une règle verticale, puis deux bulles dessinées À CÔTÉ des colonnes, que
+   * le contrôle indépendant a notées 2 sur 5 comme « de la décoration », ce
+   * que la spécification interdit par ailleurs (« un cercle vide n'est pas une
+   * illustration »).
+   *
+   * La bulle est donc la SILHOUETTE DU CHAMP : elle porte le texte au lieu de
+   * l'accompagner. Elle est remplie, comme tous les champs teintés de ce
+   * moteur, donc elle n'émet pas de trait — d'où sa place ici.
+   *
+   * Ce que cette liste garantit reste entier : ajouter un douzième archétype
+   * qui ne dessine rien en silence échoue ici.
+   */
+  const DRAWS_NOTHING = new Set([
+    "single_statement",
+    "practitioner_card",
+    "carousel",
+    "comparison_pair",
+  ]);
 
   for (const archetype of ARCHETYPE_KEYS) {
     it(`${archetype} emits the boxes the suite measures`, () => {

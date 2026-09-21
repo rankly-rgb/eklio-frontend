@@ -118,11 +118,21 @@ export function cell(
   palette: Palette,
   tintIndex: number,
   /** Le plafond de hiérarchie, `display / 2`. Voir `Ctx.secondaryMax`. */
-  secondaryMax: number
+  secondaryMax: number,
+  /** Quand ce champ est une bulle, le côté vers lequel sa queue pointe. */
+  tail?: "left" | "right"
 ): Placed[] | null {
   const pad = CLEARANCE.glyphToFieldEdge;
   const innerW = box.w - pad * 2;
-  const innerH = box.h - pad * 2;
+  /*
+   * ⚠ LA QUEUE MANGE LE BAS DU CHAMP, DONC ELLE MANGE DE LA HAUTEUR UTILE.
+   * Elle est tracée à l'intérieur de la boîte (voir `Placed`), ce qui garde
+   * tous les dégagements justes — à condition que le texte ne descende pas
+   * dedans. C'est le même nombre des deux côtés : `svg.ts` retient
+   * `min(28, h × 0.12)` pour la queue, et `cell` le retire ici.
+   */
+  const tailDrop = tail ? Math.min(28, box.h * 0.12) : 0;
+  const innerH = box.h - pad * 2 - tailDrop;
   if (innerW <= 0 || innerH <= 0) return null;
 
   // ⚠ AN EMPTY GLOSS IS A VALID CELL, NOT A BROKEN ONE. That is how the
@@ -171,7 +181,7 @@ export function cell(
   }
 
   return [
-    { role: "field", band, box, fill: tintFor(palette, tintIndex), radius: FIELD_RADIUS },
+    { role: "field", band, box, fill: tintFor(palette, tintIndex), radius: FIELD_RADIUS, ...(tail ? { tail } : {}) },
     { role: "text", band, box, lines },
   ];
 }
