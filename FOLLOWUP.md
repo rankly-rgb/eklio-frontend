@@ -420,6 +420,40 @@ précisément pour que la ligne dise ce qu'elle vaut.
 
 ---
 
+## F16 — ⚠ UNE CARTE A INVENTÉ UN CABINET ET UNE ADRESSE E-MAIL
+
+Trouvé par l'évaluateur indépendant, le 2026-09-21, sur une carte publiable.
+Dans un carrousel du mois d'**Isla Thornbury**, une carte praticienne porte :
+
+```
+"Rowan Mercier Therapy"
+"Evening slots open in October"
+"rowan@rowanmercier.com"
+```
+
+Le pied de la même carte — et des trente-neuf fichiers du mois — dit « Isla
+Thornbury Therapy ». **Le nom et l'adresse sont inventés** : il n'existe aucun
+chemin de données entre deux comptes, et cette adresse n'a jamais été saisie
+nulle part. Le modèle a fabriqué une identité professionnelle complète parce
+que la forme de l'archétype lui demandait « des faits sur sa façon de
+travailler ».
+
+**Deux mois sur douze en portaient une.** Aucune suite, aucun budget de mots,
+aucun contrôle déontologique ne les a vus — et le mois concerné avait été
+validé à l'œil.
+
+Ce n'est pas un défaut de mise en page : une adresse fabriquée sur un post
+publié envoie des clientes vers une boîte qui n'appartient à personne, et un
+nom de cabinet fabriqué est une usurpation d'identité professionnelle.
+
+`checkInventedIdentity` refuse désormais toute adresse, URL ou téléphone dans
+un payload — ces informations vivent dans le profil, pas dans le contenu — et
+tout nom de cabinet qui n'est pas celui du compte.
+
+⚠ **À vérifier avant production** : que le nom du cabinet affiché sur une
+carte vienne d'UNE source, le profil, et jamais du texte généré. Le contrôle
+attrape l'invention ; il ne remplace pas une liaison de données.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
@@ -444,7 +478,7 @@ facturation.
 | 7 | **Repointer Vercel** sur `main`, vérifier que les quatre `crons` de `vercel.json` (`anon-briefs` 05:00, `nudges` 14:00, `purge-deleted-kits` 06:00, `purge-events` 04:00) sont enregistrés et que `CRON_SECRET` les protège. | agent (jeton Vercel) |
 | 8 | **Générer la banque de production.** Voir F13 pour le dimensionnement : `N × 90 × 3` par segment, 0,00290 $ le sujet. ⚠ **Après** les migrations et **après** F12, sinon les segments n'existent pas. Un mois généré sur une banque à sec sort court sans que rien le signale. | agent (clé passée par commande) |
 | 9 | **Stripe.** ⚠ **Le test de bout en bout n'a jamais été confirmé** — ni en test, ni en production. Avant d'ouvrir : un paiement réel de bout en bout, un webhook reçu et vérifié, un remboursement, une annulation d'abonnement. | **humain** |
-| 10 | **Premier mois réel sur un compte témoin**, planche regardée par une personne avant d'ouvrir aux autres. | agent génère, **humain** regarde |
+| 10 | **Premier mois réel sur un compte témoin**, planche regardée par une personne avant d'ouvrir aux autres. ⚠ Le regard ne remplace pas la barrière et la barrière ne remplace pas le regard : le mois validé à l'œil le 2026-09-21 portait trois recopies de titre, un titre coupé et une identité inventée (F16) — tous invisibles à l'œil, tous refusés par `checkMonth`. | agent génère, **humain** regarde |
 
 ### Les variables, et leur portée exacte
 

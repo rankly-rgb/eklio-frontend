@@ -245,7 +245,62 @@ export function checkEcho(cardLine: string, title: string, payload: unknown): Fi
   return out;
 }
 
-/* ── 5. La saturation des teintes ────────────────────────────────────── */
+/* ── 5. L'identité inventée ──────────────────────────────────────────── */
+
+const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
+const URL = /https?:\/\/|\bwww\.[a-z0-9-]+\.[a-z]{2,}/i;
+const PHONE = /\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/;
+
+/**
+ * Une carte n'invente ni coordonnée, ni nom de cabinet.
+ *
+ * ── ⚠ LE DÉFAUT LE PLUS GRAVE DE LA SÉRIE, ET AUCUN CONTRÔLE NE LE VOYAIT ─
+ *
+ * Une carte praticienne, à l'intérieur d'un carrousel du mois d'Isla
+ * Thornbury, portait :
+ *
+ *     "Rowan Mercier Therapy", "Evening slots open in October",
+ *     "rowan@rowanmercier.com"
+ *
+ * Le pied de la même carte — et des trente-neuf fichiers du mois — dit « Isla
+ * Thornbury Therapy ». Le nom et l'adresse sont INVENTÉS : il n'existe aucun
+ * chemin de données entre deux comptes, et « rowan@rowanmercier.com » n'a
+ * jamais été saisi nulle part.
+ *
+ * Ce n'est pas un défaut de mise en page. Une adresse fabriquée sur une carte
+ * publiable envoie des clientes vers une boîte qui n'appartient à personne, et
+ * un nom de cabinet fabriqué est une usurpation. Deux mois sur douze en
+ * portaient une ; aucune suite, aucun budget de mots, aucun contrôle éthique
+ * ne les a vus.
+ *
+ * Aucune carte n'a de raison légitime de porter une adresse, une URL ou un
+ * téléphone : ces informations vivent dans le profil, pas dans le contenu.
+ * Le nom du cabinet, lui, n'est autorisé que s'il EST celui du compte.
+ */
+export function checkInventedIdentity(payload: unknown, practiceName: string): Finding[] {
+  const out: Finding[] = [];
+  for (const { where, text } of stringsIn(payload)) {
+    if (EMAIL.test(text)) out.push({ check: "identity.contact", detail: `${where} porte une adresse e-mail : « ${text} »` });
+    if (URL.test(text)) out.push({ check: "identity.contact", detail: `${where} porte une URL : « ${text} »` });
+    if (PHONE.test(text)) out.push({ check: "identity.contact", detail: `${where} porte un numéro : « ${text} »` });
+
+    /*
+     * Un nom de cabinet est repéré par son suffixe de métier. Comparé au nom
+     * du compte insensiblement à la casse : « Therapy » seul ne déclenche
+     * rien, « Rowan Mercier Therapy » sur le compte d'Isla, si.
+     */
+    const practice = /\b([A-Z][\w'-]+(?:\s+[A-Z][\w'-]+)*)\s+(Therapy|Counselling|Counseling|Psychotherapy|Practice)\b/.exec(text);
+    if (practice && practice[0].toLowerCase() !== practiceName.trim().toLowerCase()) {
+      out.push({
+        check: "identity.practice",
+        detail: `${where} nomme « ${practice[0]} » alors que le cabinet est « ${practiceName} »`,
+      });
+    }
+  }
+  return out;
+}
+
+/* ── 6. La saturation des teintes ────────────────────────────────────── */
 
 const rgbOf = (hex: string): [number, number, number] | null => {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -323,6 +378,8 @@ export type PostUnderCheck = {
 export type MonthUnderCheck = {
   posts: PostUnderCheck[];
   direction: DirectionPalette;
+  /** Le nom du cabinet, seul nom qu'une carte a le droit de porter. */
+  practiceName?: string;
 };
 
 /**
@@ -348,6 +405,7 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
       )
     );
     out.push(...checkEcho(post.cardLine, post.title, post.payload));
+    if (month.practiceName) out.push(...checkInventedIdentity(post.payload, month.practiceName));
     if (post.svg) out.push(...checkTints(post.svg, month.direction));
   }
   return out;

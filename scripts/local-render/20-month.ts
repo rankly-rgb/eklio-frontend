@@ -554,7 +554,7 @@ type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ titl
 function selectDeliverable<
   T extends { cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
               candidate: { topic: { title: string } } }
->(prepared: T[], direction: DirectionPalette, wanted: number): Deliverable<T> {
+>(prepared: T[], direction: DirectionPalette, wanted: number, practiceName: string): Deliverable<T> {
   const asPost = (p: T) => ({
     archetype: p.composeArchetype,
     title: p.candidate.topic.title,
@@ -568,7 +568,7 @@ function selectDeliverable<
   const dropped: Array<{ title: string; why: string }> = [];
 
   for (;;) {
-    const findings = checkMonth({ posts: chosen.map(asPost), direction });
+    const findings = checkMonth({ posts: chosen.map(asPost), direction, practiceName });
     if (findings.length === 0) return { chosen, remaining: [], dropped };
     if (bench.length === 0) return { chosen, remaining: findings, dropped };
 
@@ -722,7 +722,7 @@ function selectDeliverable<
   }
 
   /* ── Les contrôles de mois, et la correction ───────────────────────── */
-  const selection = selectDeliverable(readyPosts, direction.palette as DirectionPalette, WANTED);
+  const selection = selectDeliverable(readyPosts, direction.palette as DirectionPalette, WANTED, practiceName);
   const succeeded = selection.chosen.map((p: Prepared) => p.candidate);
 
   for (const [index, post] of selection.chosen.entries()) {

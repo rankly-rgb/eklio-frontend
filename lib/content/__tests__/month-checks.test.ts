@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   checkMonth, checkMix, checkDangling, checkEcho, checkTints, checkDuplicateTitles,
-  colourDistance, MONTH_LIMITS,
+  checkInventedIdentity, colourDistance, MONTH_LIMITS,
 } from "@/lib/content/month-checks";
 import { cardPalette, type DirectionPalette } from "@/lib/compose/palette";
 import { composeWithFallback } from "@/lib/compose/fallback";
@@ -69,6 +69,48 @@ describe("les mois de F15 sont rejetés quand on les rejoue", () => {
     const posts = monthFixture("isla");
     expect(checkMix(posts.map((p) => p.archetype))).toEqual([]);
     expect(checkDuplicateTitles(posts.map((p) => p.cardLine))).toEqual([]);
+  });
+
+  /*
+   * ── ⚠ ET IL SERAIT REFUSÉ QUAND MÊME, POUR AUTRE CHOSE ────────────────
+   *
+   * Le mois que Naima a validé à l'œil ne passe PAS la barrière complète. Ses
+   * constats sont textuels, pas visuels :
+   *
+   *   — ses trois cartes praticiennes reprennent leur titre en première ligne
+   *     (l'évaluateur indépendant les a trouvées de son côté) ;
+   *   — un titre s'arrête sur « what » ;
+   *   — et un carrousel porte « Rowan Mercier Therapy » et
+   *     « rowan@rowanmercier.com » sur le compte d'Isla Thornbury.
+   *
+   * Ce n'est pas une contradiction de sa validation : un œil qui juge une
+   * planche de trente visuels regarde des compositions, pas des chaînes de
+   * caractères. C'est l'argument même de ces contrôles — ils voient ce qu'un
+   * regard ne voit pas, et l'inverse reste vrai.
+   */
+  it("et il serait refusé tout de même, sur des défauts que l'œil ne voit pas", () => {
+    const findings = checkMonth({
+      posts: monthFixture("isla"),
+      direction: DIRECTION,
+      practiceName: "Isla Thornbury Therapy",
+    });
+    expect(names(findings)).toContain("text.echo");
+    expect(names(findings)).toContain("identity.practice");
+    expect(names(findings)).toContain("identity.contact");
+  });
+
+  it("les quatre mois enregistrés sont refusés, chacun pour ses raisons", () => {
+    for (const [name, practice] of [
+      ["isla", "Isla Thornbury Therapy"],
+      ["perrin", "Perrin Vale Therapy"],
+      ["marlow", "Marlow Quint Therapy"],
+      ["wren", "Wren Ashcombe Therapy"],
+    ] as const) {
+      const findings = checkMonth({
+        posts: monthFixture(name), direction: DIRECTION, practiceName: practice,
+      });
+      expect(findings.length, `${name} devrait être refusé`).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -189,6 +231,47 @@ describe("les défauts de la seconde notation sont rejetés", () => {
       const svg = palette.tints.map((t) => `<rect fill="${t}"/>`).join("");
       expect(checkTints(svg, DIRECTION), dark ? "fond sombre" : "fond clair").toEqual([]);
     }
+  });
+});
+
+describe("l'identité inventée — le défaut le plus grave de la série", () => {
+  /*
+   * ⚠ TROUVÉ PAR L'ÉVALUATEUR INDÉPENDANT, SUR UNE CARTE PUBLIABLE, DANS DEUX
+   * MOIS SUR DOUZE. Aucune suite, aucun budget de mots, aucun contrôle éthique
+   * ne le voyait. Les trois chaînes sont celles qui sont réellement sorties.
+   */
+  const REAL = { lines: ["Rowan Mercier Therapy", "Evening slots open in October", "rowan@rowanmercier.com"] };
+
+  it("un nom de cabinet qui n'est pas celui du compte est rejeté", () => {
+    const findings = checkInventedIdentity(REAL, "Isla Thornbury Therapy");
+    expect(findings.some((f) => f.check === "identity.practice")).toBe(true);
+    expect(findings.find((f) => f.check === "identity.practice")!.detail).toContain("Rowan Mercier Therapy");
+  });
+
+  it("une adresse e-mail fabriquée est rejetée", () => {
+    const findings = checkInventedIdentity(REAL, "Isla Thornbury Therapy");
+    expect(findings.some((f) => f.check === "identity.contact")).toBe(true);
+  });
+
+  it.each([
+    { lines: ["Book at https://example.com"] },
+    { lines: ["Call (510) 555-0134"] },
+    { lines: ["www.someclinic.com"] },
+  ])("aucune coordonnée n'a sa place sur une carte : %j", (payload) => {
+    expect(checkInventedIdentity(payload, "Isla Thornbury Therapy").length).toBeGreaterThan(0);
+  });
+
+  /*
+   * ⚠ ET UNE VRAIE CARTE PRATICIENNE PASSE. Sans ce cas, le contrôle pourrait
+   * refuser l'archétype entier et personne ne s'en apercevrait.
+   */
+  it("la carte praticienne légitime passe", () => {
+    const ok = { lines: ["EMDR for burnout", "Oakland, California", "Taking new clients"] };
+    expect(checkInventedIdentity(ok, "Isla Thornbury Therapy")).toEqual([]);
+  });
+
+  it("le nom du cabinet lui-même est autorisé", () => {
+    expect(checkInventedIdentity({ lines: ["Isla Thornbury Therapy"] }, "Isla Thornbury Therapy")).toEqual([]);
   });
 });
 

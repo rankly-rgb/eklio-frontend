@@ -517,7 +517,13 @@ export const DANGLING = new Set([
   "of", "in", "on", "at", "to", "for", "with", "from", "by", "as", "into",
   "is", "are", "was", "were", "be", "been", "am", "do", "does", "did",
   "have", "has", "had", "get", "gets", "got", "your", "you", "its", "it",
-  "their", "they", "we", "our", "my", "his", "her", "not", "no", "so", "than",
+  /*
+   * ⚠ « no » ET « yes » NE SONT PAS ICI. Ce sont des COMPLÉMENTS, pas des
+   * mots en attente : « When the body says no » est un titre fini, et il a
+   * été refusé à tort par cette liste. Quatrième faux positif de la même
+   * famille — un mot outil dans un rôle plein.
+   */
+  "their", "they", "we", "our", "my", "his", "her", "not", "so", "than",
   "can", "could", "will", "would", "shall", "should", "may", "might", "must",
   "what", "which", "who", "how", "why", "still", "even", "just", "about",
   /*
