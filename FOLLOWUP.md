@@ -377,6 +377,22 @@ un build cassé se voit — c'est-à-dire trop tard.
 2026-09-21. **Arrêt demandé par le brief, et respecté : aucune fixture n'a été
 substituée.**
 
+⚠ **RENCONTRÉ UNE TROISIÈME FOIS le 2026-09-21**, sur un brief qui annonçait la
+clef sous le nom `EKLIO_ANTHROPIC_API_KEY` — choisi pour qu'elle ne se
+substitue pas à l'authentification de la session Claude Code elle-même. Ce nom
+n'était pas davantage posé que l'autre :
+
+```
+$ env | cut -d= -f1 | grep -iE 'anthropic|eklio|api_key'
+ANTHROPIC_BASE_URL     # le proxy de Claude Code, pas une clef
+# EKLIO_ANTHROPIC_API_KEY : absente
+# ANTHROPIC_API_KEY       : absente
+# aucun .env, aucun /run/secrets, aucun ~/.eklio
+```
+
+La partie 2 n'a donc, pour la troisième fois, pas été tentée. Le blocage n'est
+pas dans les dépôts : tout ce qui suit est prêt et vert.
+
 ```
 $ env | grep ANTHROPIC
 ANTHROPIC_BASE_URL=<posée — le proxy de Claude Code, pas une clef>
@@ -394,8 +410,9 @@ ordre, parce que chaque étape dépend de la précédente :
 
 1. `ANTHROPIC_API_KEY` dans l'environnement de la session. **Sans elle, rien
    de ce qui suit n'a de sens.**
-2. Rejouer les 146 migrations sur la stack Postgres locale
-   (`bash scripts/local-verify.sh` côté backend).
+2. Rejouer les **147** migrations sur la stack Postgres locale
+   (`bash scripts/local-verify.sh` côté backend). ⚠ 146 jusqu'au
+   2026-09-21 ; `20260921120000_a_post_can_be_asked_for` est la 147e.
 3. Créer le compte de test — thérapeute fictive, EMDR, burnout au retour au
    travail, brand kit complet avec une palette réelle — et répondre au
    check-in mensuel.
@@ -411,7 +428,23 @@ ordre, parce que chaque étape dépend de la précédente :
 génération est `CONTENT_GENERATION_ARMED="true"` **plus** l'entrée
 `vercel.json`, et en local seul le premier compte.
 
+⚠ **ET CE NOM CIRCULE ENCORE DANS LES BRIEFS.** Le brief du 2026-09-21
+demandait d'activer « les drapeaux (`content_pipeline_enabled`,
+`CONTENT_GENERATION_ARMED`) » en local. Vérifié une fois de plus ce jour-là :
+
+```
+$ grep -rn content_pipeline_enabled --include='*.ts' --include='*.tsx' \
+      --include='*.json' --include='*.sql' eklio-frontend eklio-backend
+# aucun résultat
+```
+
+Il n'existe ni en TypeScript, ni en JSON, ni en SQL, dans aucun des deux
+dépôts. Il n'y a qu'UN drapeau à poser, et c'est le second.
+
 ⚠ **Et il faudra un navigateur headless pour les captures.** Chromium est
 présent dans l'environnement d'exécution (`PLAYWRIGHT_BROWSERS_PATH`), mais
 `@playwright/test` n'est pas une dépendance de ce dépôt — l'ajouter est une
-décision à prendre, pas un détail d'outillage.
+décision à prendre, pas un détail d'outillage. Le brief du 2026-09-21
+l'accorde ; il n'a PAS été installé, parce qu'une dépendance ajoutée pour des
+captures qui ne peuvent pas être prises n'est qu'un diff de plus à relire.
+C'est la première commande à lancer le jour où la clef est là.
