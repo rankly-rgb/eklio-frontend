@@ -82,6 +82,14 @@ const DB_REFUSED = [
      partout, parce qu'un 402 à une inconnue confirmerait que cet identifiant
      existe. La route ne décide rien : elle rend le refus. */
   /\bswapContentItem\s*\(/,
+  /* Les suggestions de sujets : `suggest_topics_for_kit` appelle
+     `content_kit_access` en base, `not_found` avant `payment_required`.
+     Gratuites ne veut pas dire publiques — la banque est le stock du produit,
+     et un kit impayé n'en reçoit rien. La route ne décide rien. */
+  /\bsuggestTopics\s*\(/,
+  /* « Write it » : `begin_on_demand_write` résout le kit du post puis appelle
+     `content_kit_access`, avant toute réservation de crédit. */
+  /\bbeginWrite\s*\(/,
   /* Prendre le mois : `approve_content_month` résout le kit du mois puis
      appelle `content_kit_access`, qui répond `not_found` avant
      `payment_required` — un 402 à un inconnu confirmerait que le mois existe.

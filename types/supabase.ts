@@ -735,6 +735,7 @@ export type Database = {
           image_slot: string | null
           month_id: string | null
           on_image_text: string | null
+          payload: Json | null
           register: string | null
           scheduled_for: string | null
           rationale: string | null
@@ -757,6 +758,7 @@ export type Database = {
           image_slot?: string | null
           month_id?: string | null
           on_image_text?: string | null
+          payload?: Json | null
           register?: string | null
           scheduled_for?: string | null
           rationale?: string | null
@@ -779,6 +781,7 @@ export type Database = {
           image_slot?: string | null
           month_id?: string | null
           on_image_text?: string | null
+          payload?: Json | null
           register?: string | null
           scheduled_for?: string | null
           rationale?: string | null
@@ -3249,6 +3252,38 @@ export type Database = {
       monthly_presence_entitled: { Args: never; Returns: boolean }
       monthly_presence_past_due_grace: { Args: never; Returns: string }
       release_stale_credit_reservations: { Args: { p_older_than?: string }; Returns: number }
+      suggest_topics_for_kit: {
+        Args: {
+          p_brand_kit_id: string
+          p_month?: string
+          p_limit?: number
+          p_exclude?: string[]
+        }
+        Returns: Json
+      }
+      begin_on_demand_write: {
+        Args: { p_item_id: string; p_idempotency_key: string }
+        Returns: Json
+      }
+      apply_on_demand_write: {
+        Args: {
+          p_write_id: string
+          p_title?: string
+          p_caption?: string
+          p_on_image_text?: string
+          p_alt_text?: string
+          p_compose_archetype?: string
+          p_payload?: Json
+          p_rationale?: string
+          p_topic_id?: string
+          p_cost_usd?: number
+        }
+        Returns: Json
+      }
+      release_on_demand_write: {
+        Args: { p_write_id: string }
+        Returns: Json
+      }
       swap_content_item: { Args: { p_id: string }; Returns: Json }
       set_content_item_topic: {
         Args: { p_id: string; p_rationale: string; p_topic_id: string }
