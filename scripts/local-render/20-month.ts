@@ -199,6 +199,26 @@ async function main() {
   const releasedEarly: string[] = [];
 
   const accept = (topic: Topic, family: string): boolean => {
+    /*
+     * ⚠ SUR LE TITRE COMPLET **ET** SUR CE QUI SERA IMPRIMÉ.
+     *
+     * Le dédoublonnage lisait `topic.title`, la forme longue en banque. Mais
+     * la carte porte `clampCardLine(title)` — trente caractères — et deux
+     * titres distincts en banque peuvent s'y réduire au MÊME texte. Le mois de
+     * marlow.quint est sorti avec deux cartes titrées « When the body
+     * disagrees », l'une en quadrant, l'autre en courbe : aucune des deux
+     * règles lexicales n'avait de raison de les rapprocher, puisqu'en banque
+     * elles ne se ressemblaient pas.
+     *
+     * La ligne de carte est donc comparée telle qu'elle sera lue.
+     */
+    const line = clampCardLine(topic.title).toLowerCase();
+    if (candidates.some((c) => clampCardLine(c.topic.title).toLowerCase() === line)) {
+      rejected.push({ title: topic.title, because: `même ligne de carte une fois coupée : « ${line} »` });
+      releasedEarly.push(topic.id);
+      return false;
+    }
+
     const clash = redundantAgainst(topic.title, candidates.map((c) => c.topic.title));
     if (clash) {
       rejected.push({ title: topic.title, because: clash });

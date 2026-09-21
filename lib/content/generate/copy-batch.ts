@@ -483,6 +483,15 @@ const DANGLING = new Set([
   "their", "they", "we", "our", "my", "his", "her", "not", "no", "so", "than",
   "can", "could", "will", "would", "shall", "should", "may", "might", "must",
   "what", "which", "who", "how", "why", "still", "even", "just", "about",
+  /*
+   * ⚠ LES CONTRACTIONS NÉGATIVES AUSSI. « Your nervous system doesn't » est
+   * sorti tel quel sur une carte du mois de marlow.quint : la liste tenait
+   * « does » et « not » séparément, et « doesn't » n'est ni l'un ni l'autre.
+   * Une négation sans son verbe attend la suite exactement comme « you get ».
+   */
+  "doesn't", "don't", "didn't", "isn't", "aren't", "wasn't", "weren't",
+  "won't", "can't", "couldn't", "wouldn't", "shouldn't", "hasn't", "haven't",
+  "hadn't", "it's", "that's", "there's", "you're", "they're", "we're",
 ]);
 
 export function clampCardLine(line: string): string {
