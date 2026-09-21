@@ -194,18 +194,45 @@ describe("⚠ LE CHEMIN ENTIER — de la charge de production à l'écran choisi
     } as unknown as Parameters<typeof getContentMonth>[0];
   }
 
-  it("la preview affiche SES CARTES, là où elle affichait « Something went wrong »", async () => {
+  it("la charge de production se décode, là où elle rendait « Something went wrong »", async () => {
     const result = await getContentMonth(clientReturning(PRODUCTION_MONTH), "k1", "2026-09-01");
     expect(result.ok, result.ok ? "" : `${result.code}: ${result.detail ?? result.message}`).toBe(
       true
     );
 
+    /*
+     * ⚠ ET L'ÉCRAN CHOISI EST L'ÉTAT VIDE, PAS LE FLUX — ce qui est le bon
+     * écran et demandait une seconde correction.
+     *
+     * Ce test attendait d'abord « month ». C'était l'erreur que la preview
+     * montrait ensuite : l'item de cette charge porte `month_id: null`, donc
+     * c'est un post qu'ELLE a créé, pas un post du mois. L'afficher en grande
+     * carte avec Swap et Approve était le symptôme suivant. Voir
+     * `lib/content/partition.ts`.
+     */
     const screen = monthScreen({
       result,
       record: null,
       automatic: false, // aucune variable posée, comme en preview
       detail: null,
     });
+    expect(screen.kind).toBe("empty");
+  });
+
+  it("et un VRAI post du mois, sur la même base ancienne, affiche le flux", async () => {
+    /*
+     * La tolérance de schéma et la partition sont deux choses distinctes : un
+     * post généré se décode sans ses trois clefs ET s'affiche comme un post du
+     * mois.
+     */
+    const generated = { ...PRODUCTION_MONTH.items[0], id: "g1", month_id: "m1" };
+    const result = await getContentMonth(
+      clientReturning({ ...PRODUCTION_MONTH, items: [generated] }),
+      "k1",
+      "2026-09-01"
+    );
+    expect(result.ok).toBe(true);
+    const screen = monthScreen({ result, record: null, automatic: false, detail: null });
     expect(screen.kind).toBe("month");
   });
 

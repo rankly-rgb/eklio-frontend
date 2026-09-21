@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Button } from "@/components/ui/button";
 import type { ContentItem, ContentMonth } from "@/lib/data/content";
+import { isFailedGeneration, partitionMonth } from "@/lib/content/partition";
 
 /*
  * ── LE FLUX, ET POURQUOI CE N'EST PLUS UN CALENDRIER ────────────────────
@@ -183,7 +184,12 @@ export function ContentStream({
   const [swappingId, setSwappingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const items = [...model.items, ...model.unscheduled];
+  /*
+   * ⚠ LE FLUX NE MONTRE QUE LE MOIS ÉCRIT PAR EKLIO. Ses propres posts vont
+   * dans leur section, et ses brouillons vides ne vont nulle part — ils
+   * restent en base. Voir `lib/content/partition.ts`.
+   */
+  const { generated, hers } = partitionMonth(model);
 
   async function swap(id: string) {
     setSwappingId(id);
@@ -221,13 +227,12 @@ export function ContentStream({
     }
   }
 
-  if (items.length === 0) {
-    return (
-      <p className="max-w-[520px] text-body leading-prose text-ink-2">
-        Nothing for this month yet.
-      </p>
-    );
-  }
+  /*
+   * ⚠ PLUS DE REPLI « Nothing for this month yet » ICI. Un mois sans post
+   * généré n'arrive plus jusqu'à ce composant : la page rend `MonthEmpty`,
+   * qui dit ce qui va se passer et quand. Deux écrans vides concurrents, dont
+   * un moins bon, c'est celui qu'on finit par voir.
+   */
 
   return (
     <div className="flex flex-col gap-6">
@@ -244,17 +249,123 @@ export function ContentStream({
         </p>
       ) : null}
       <div className="grid grid-cols-3 gap-x-8 gap-y-10 max-lg:grid-cols-2 max-md:grid-cols-1">
-        {items.map((item) => (
-          <Card
-            key={item.id}
-            item={item}
-            tokens={tokens}
-            onSwap={swap}
-            swapping={swappingId === item.id || pending}
-          />
-        ))}
+        {generated.map((item) =>
+          isFailedGeneration(item) ? (
+            /*
+             * ⚠ PAS UNE GRANDE CARTE BLANCHE. La génération a échoué : elle
+             * n'a rien à y faire, et un cadre vide de la taille d'un post lui
+             * dit le contraire. Swap reste dominant — le sujet vient de la
+             * banque, il y en a un autre.
+             */
+            <FailedCard
+              key={item.id}
+              item={item}
+              onSwap={swap}
+              swapping={swappingId === item.id || pending}
+            />
+          ) : (
+            <Card
+              key={item.id}
+              item={item}
+              tokens={tokens}
+              onSwap={swap}
+              swapping={swappingId === item.id || pending}
+            />
+          )
+        )}
       </div>
+
+      {hers.length > 0 ? <HerOwnPosts items={hers} /> : null}
     </div>
+  );
+}
+
+/**
+ * Un post généré qui n'a pas abouti.
+ *
+ * ⚠ IL OCCUPE UNE CELLULE DE LA GRILLE, PAS UNE CARTE. Le mois garde son
+ * compte — elle voit qu'il manque quelque chose à cet endroit-là — sans qu'un
+ * rectangle vide de 4:5 lui suggère qu'il y a du travail dedans.
+ */
+function FailedCard({
+  item,
+  onSwap,
+  swapping,
+}: {
+  item: ContentItem;
+  onSwap: (id: string) => void;
+  swapping: boolean;
+}) {
+  return (
+    <article className="flex flex-col justify-between gap-4 rounded-card border border-dashed border-line p-5">
+      <div className="flex flex-col gap-2">
+        <MonoLabel tracking="16">{dayLabel(item.scheduled_for)}</MonoLabel>
+        <p className="text-body leading-prose text-ink-2">
+          This one didn&rsquo;t come together. Swap for another.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          onClick={() => onSwap(item.id)}
+          disabled={swapping}
+          className="px-4 py-1.5 text-helper"
+        >
+          {swapping ? "Swapping…" : "Swap"}
+        </Button>
+        <Link
+          href={`/app/content/${item.id}`}
+          className="rounded-card border border-line px-3 py-1.5 text-helper text-ink-2 hover:text-ink"
+        >
+          Edit
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * Ses propres posts, sous le mois.
+ *
+ * ⚠ EDIT SEULEMENT. Swap tirerait un sujet de la banque par-dessus ses mots à
+ * elle ; Approve accepterait une proposition qu'Eklio n'a pas faite. Les deux
+ * boutons étaient là, sur la carte vide que la preview montrait, et aucun des
+ * deux n'avait de sens.
+ *
+ * ⚠ ET SOUS LE FLUX, PAS DEDANS. Mélangés, ses posts et ceux du mois se
+ * lisent comme une seule série — alors que l'un est à relire et l'autre est
+ * déjà le sien.
+ */
+export function HerOwnPosts({ items }: { items: ContentItem[] }) {
+  return (
+    <section className="mt-6 flex flex-col gap-4 border-t border-line pt-8">
+      <div className="flex flex-col gap-1">
+        <MonoLabel tracking="16">Your own posts</MonoLabel>
+        <p className="max-w-[520px] text-helper leading-prose text-ink-2">
+          Written by you, not by Eklio. They stay exactly as you left them.
+        </p>
+      </div>
+      <ul className="flex flex-col gap-3">
+        {items.map((item) => (
+          <li
+            key={item.id}
+            className="flex flex-wrap items-baseline justify-between gap-3 rounded-card border border-line px-4 py-3"
+          >
+            <span className="flex flex-wrap items-baseline gap-3">
+              <MonoLabel tracking="16">{dayLabel(item.scheduled_for)}</MonoLabel>
+              <span className="text-body text-ink">
+                {item.title?.trim() || firstLines(item.caption) || "Untitled"}
+              </span>
+            </span>
+            <Link
+              href={`/app/content/${item.id}`}
+              className="text-helper text-ink-2 underline underline-offset-2 hover:text-ink"
+            >
+              Edit
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -266,17 +377,27 @@ export function ContentStream({
  * compteur apparaît quand il a quelque chose à compter.
  */
 export function MonthProgress({ model }: { model: ContentMonth }) {
-  const total = model.items.length + model.unscheduled.length;
-  const { ready, posted } = model.counts;
   /*
-   * ⚠ `proposed` EST OPTIONNEL DANS LE SCHÉMA, et pour une bonne raison : une
-   * réponse d'avant que ce compte existe doit encore se parser plutôt que de
-   * vider l'écran. `?? 0` le lit comme « rien en attente », ce qui est aussi
-   * ce qu'une réponse muette veut dire.
+   * ⚠ ON NE COMPTE QUE CE QU'EKLIO A ÉCRIT. Le total additionnait tous les
+   * items, donc un brouillon qu'elle avait créé elle-même en janvier donnait
+   * « 0 of 1 ready » sur un mois où rien n'avait été généré. Le compteur
+   * répond à « où en est le mois qu'on m'a écrit », et ses propres posts n'en
+   * font pas partie.
    */
-  const proposed = model.counts.proposed ?? 0;
+  const { generated } = partitionMonth(model);
+  const total = generated.length;
 
+  // ⚠ MASQUÉ À ZÉRO, pas affiché « 0 of 0 ». Il n'y a rien à suivre.
   if (total === 0) return null;
+
+  /*
+   * ⚠ `ready` ET `posted` VIENNENT DE LA BASE, mais ils comptent TOUS les
+   * items, y compris les siens. Ils sont donc bornés au total généré : dire
+   * « 3 of 2 ready » serait pire que de ne rien dire.
+   */
+  const ready = Math.min(model.counts.ready, total);
+  const posted = Math.min(model.counts.posted, total);
+  const proposed = Math.min(model.counts.proposed ?? 0, total);
 
   const parts: string[] = [`${ready} of ${total} ready`];
   if (posted > 0) parts.push(`${posted} posted`);

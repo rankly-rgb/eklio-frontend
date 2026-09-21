@@ -1,3 +1,4 @@
+import { hasNoGeneratedPosts } from "@/lib/content/partition";
 import type { ContentMonth, ContentMonthRecord, ContentResult } from "@/lib/data/content";
 
 /*
@@ -62,7 +63,18 @@ export function monthScreen(input: {
     return { kind: "failed", message: result.message, detail };
   }
 
-  const empty = result.data.items.length === 0 && result.data.unscheduled.length === 0;
+  /*
+   * ⚠ « VIDE » VEUT DIRE « AUCUN POST GÉNÉRÉ », PAS « AUCUN ITEM ».
+   *
+   * Le compte portait sur tous les items, donc un brouillon qu'elle avait créé
+   * elle-même suffisait à faire croire à l'écran que le mois existait. La
+   * preview montrait exactement ça : une carte vide de janvier à la place de
+   * l'état vide, sur un mois où rien n'avait jamais été généré.
+   *
+   * La question à laquelle l'état vide répond est « Eklio a-t-il écrit mon
+   * mois ? ». Trois brouillons à elle n'y répondent pas oui.
+   */
+  const empty = hasNoGeneratedPosts(result.data);
 
   /*
    * ⚠ L'ÉTAT DU MOIS NE COMPTE QUE S'IL N'Y A RIEN À MONTRER. Un mois marqué

@@ -16,7 +16,14 @@ import { contentMonthSchema, type ContentMonth, type ContentMonthRecord } from "
  * c'est noté dans `CONTENT_BUG_REPORT.md` §3.
  */
 
-/** La charge d'une base À JOUR : les trois clefs du chantier sont là. */
+/**
+ * La charge d'une base À JOUR : les trois clefs du chantier sont là.
+ *
+ * ⚠ `month_id` EST POSÉ, ET C'EST CE QUI EN FAIT UN POST DU MOIS. Ces
+ * fixtures le laissaient à `null`, donc elles décrivaient en réalité des
+ * brouillons à elle — et depuis que l'écran distingue les deux
+ * (`lib/content/partition.ts`), un mois qui n'en contient que ça est vide.
+ */
 function currentItem(overrides: Record<string, unknown> = {}) {
   return {
     id: "i1",
@@ -31,7 +38,7 @@ function currentItem(overrides: Record<string, unknown> = {}) {
     category: null,
     image_slot: null,
     register: null,
-    month_id: null,
+    month_id: "m1",
     theme: null,
     scheduled_for: "2026-09-02",
     created_at: "2026-09-01T00:00:00Z",

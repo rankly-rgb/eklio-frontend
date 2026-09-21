@@ -13,7 +13,8 @@ import {
 } from "@/lib/data/content";
 import { getCreditMeter } from "@/lib/billing/credits";
 import { ContentCalendar } from "@/components/content/content-calendar";
-import { ContentStream, MonthProgress } from "@/components/content/content-stream";
+import { ContentStream, HerOwnPosts, MonthProgress } from "@/components/content/content-stream";
+import { partitionMonth } from "@/lib/content/partition";
 import { CheckInLine } from "@/components/content/check-in-line";
 import { MonthFailed, MonthGenerating } from "@/components/content/month-generating";
 import {
@@ -139,6 +140,13 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
    */
   const detailVisible = showsTechnicalDetail();
   const envName = detailVisible ? deployEnvName() : null;
+  /*
+   * Ses propres posts — non vides. Ils s'affichent sous le flux, et aussi
+   * sous l'état vide, parce qu'ils existent indépendamment de ce qu'Eklio a
+   * écrit ou pas.
+   */
+  const ownPosts = result.ok ? partitionMonth(result.data).hers : [];
+
   const screen = monthScreen({
     result,
     record,
@@ -216,21 +224,31 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
       ) : screen.kind === "failed" ? (
         <MonthFailedToLoad message={screen.message} detail={screen.detail} env={envName} />
       ) : screen.kind === "empty" ? (
-        <MonthEmpty
-          monthLabel={monthLabel}
-          automatic={screen.automatic}
-          /*
-           * ⚠ LE LIEN MÈNE À L'AUTRE VUE, PAS À CELLE QU'ELLE REGARDE. Un
-           * « Open the calendar » qui recharge le calendrier est un bouton qui
-           * ne fait rien, et un bouton qui ne fait rien se lit comme cassé.
-           */
-          calendarHref={
-            view === "calendar"
-              ? `/app/content?month=${month}`
-              : `/app/content?month=${month}&view=calendar`
-          }
-          calendarLabel={view === "calendar" ? "Back to the cards" : "Open the calendar"}
-        />
+        <>
+          <MonthEmpty
+            monthLabel={monthLabel}
+            automatic={screen.automatic}
+            /*
+             * ⚠ LE LIEN MÈNE À L'AUTRE VUE, PAS À CELLE QU'ELLE REGARDE. Un
+             * « Open the calendar » qui recharge le calendrier est un bouton
+             * qui ne fait rien, et un bouton qui ne fait rien se lit comme
+             * cassé.
+             */
+            calendarHref={
+              view === "calendar"
+                ? `/app/content?month=${month}`
+                : `/app/content?month=${month}&view=calendar`
+            }
+            calendarLabel={view === "calendar" ? "Back to the cards" : "Open the calendar"}
+          />
+          {/*
+           * ⚠ SES PROPRES POSTS SURVIVENT À UN MOIS VIDE. Le mois est vide
+           * parce qu'Eklio n'a rien écrit ; ce qu'ELLE a écrit est toujours
+           * là, et le faire disparaître avec l'état vide reviendrait à lui
+           * cacher son propre travail au motif que le nôtre manque.
+           */}
+          {ownPosts.length > 0 ? <HerOwnPosts items={ownPosts} /> : null}
+        </>
       ) : screen.kind === "generating" ? (
         <MonthGenerating monthLabel={monthLabel} />
       ) : screen.kind === "generation_failed" ? (
