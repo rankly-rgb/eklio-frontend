@@ -420,6 +420,56 @@ précisément pour que la ligne dise ce qu'elle vaut.
 
 ---
 
+## MISE EN PRODUCTION — la liste, dans l'ordre
+
+⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
+n'est posée, aucune connexion à une base de production n'a eu lieu. Cette
+entrée est la seule liste ordonnée ; toute autre note de mise en production
+ailleurs dans ce fichier lui est subordonnée.
+
+La colonne « qui » dit ce qu'un agent peut faire seul avec un jeton, et ce qui
+demande un geste humain. **La part humaine est réduite à six lignes**, et
+chacune l'est pour une raison nommée : un secret qu'un agent ne doit pas
+détenir, un acte de responsabilité professionnelle, ou une décision de
+facturation.
+
+| # | étape | qui |
+|---|---|---|
+| 1 | **Vérifications bloquantes avant toute migration.** `npm run verify` vert sur la branche source ; `scripts/local-verify.sh` rejoue les 149 migrations sur une base neuve ; le rapport de dérive est lu, pas seulement lancé. | agent |
+| 2 | **Sauvegarde de la base de production**, et vérification qu'elle se restaure — une sauvegarde non restaurée n'est pas une sauvegarde. | agent (jeton Supabase) |
+| 3 | **Appliquer les 149 migrations** dans l'ordre, transaction par transaction, en s'arrêtant à la première erreur. | agent (jeton Supabase) |
+| 4 | **F12 — `license_type_states.verified_at`.** Sur une base neuve, les 240 lignes de la matrice sont à NULL et `project_state_is_sellable` refuse TOUT : `/api/briefs/[id]/generate` répond `409 We're not open in CA yet` dans les cinquante États. ⚠ **Ce n'est pas du code, c'est un acte** : quelqu'un lit le site du board de chaque État et pose la date. Un agent qui remplirait `verified_by` fabriquerait l'apparence d'une vérification professionnelle qui n'a pas eu lieu. | **humain** |
+| 5 | **Variables d'environnement.** Voir le tableau ci-dessous. | agent pour les non-secrètes, **humain** pour les secrets |
+| 6 | **Créer `main`** depuis la branche validée. ⚠ Aujourd'hui `main` **n'existe pas** : les seules branches distantes sont `claude/gallant-lamport-mt20i0` et `claude/great-brahmagupta-za7qmx`. La branche source est celle que Naima a validée, nommée explicitement dans la demande — jamais « la dernière ». | **humain** décide laquelle ; agent exécute |
+| 7 | **Repointer Vercel** sur `main`, vérifier que les quatre `crons` de `vercel.json` (`anon-briefs` 05:00, `nudges` 14:00, `purge-deleted-kits` 06:00, `purge-events` 04:00) sont enregistrés et que `CRON_SECRET` les protège. | agent (jeton Vercel) |
+| 8 | **Générer la banque de production.** Voir F13 pour le dimensionnement : `N × 90 × 3` par segment, 0,00287 $ le sujet. ⚠ **Après** les migrations et **après** F12, sinon les segments n'existent pas. Un mois généré sur une banque à sec sort court sans que rien le signale. | agent (clé passée par commande) |
+| 9 | **Stripe.** ⚠ **Le test de bout en bout n'a jamais été confirmé** — ni en test, ni en production. Avant d'ouvrir : un paiement réel de bout en bout, un webhook reçu et vérifié, un remboursement, une annulation d'abonnement. | **humain** |
+| 10 | **Premier mois réel sur un compte témoin**, planche regardée par une personne avant d'ouvrir aux autres. | agent génère, **humain** regarde |
+
+### Les variables, et leur portée exacte
+
+| variable | portée | qui la pose |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | build + navigateur | agent |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | build + navigateur — publique par construction, protégée par la RLS | agent |
+| `NEXT_PUBLIC_SITE_URL` | build + navigateur | agent |
+| `SUPABASE_SERVICE_ROLE_KEY` | **serveur uniquement** — contourne la RLS | **humain** |
+| `ANTHROPIC_API_KEY` | **serveur uniquement** ⚠ lue par la ROUTE, pas par le client : une clé posée dans le shell d'un script ne sert à rien à `/api/briefs/[id]/generate`, qui tourne dans le processus Next. C'est ce qui a fait échouer trois générations de kit en silence le 2026-09-21. | **humain** |
+| `CRON_SECRET` | serveur uniquement — sans elle les quatre `crons` répondent 404 | **humain** |
+| `RESEND_API_KEY`, `EMAIL_FROM` | serveur uniquement | **humain** (clé), agent (adresse) |
+| `CONTENT_COPY_MODEL` | serveur — défaut si absente | agent |
+| `CONTENT_IMAGE_MODEL`, `CONTENT_IMAGE_QUALITY`, `CONTENT_IMAGE_QUALITY_CEILING`, `OPENAI_API_KEY` | ⚠ **à NE PAS poser.** Le chemin des visuels custom n'est câblé à aucun écran (F6). Les poser armerait une dépense qu'aucune interface ne déclenche. | personne |
+| `CONTENT_GENERATION_ARMED` | serveur — **c'est le seul drapeau d'armement.** `content_pipeline_enabled` n'existe pas, dans aucun des deux dépôts (F7) | **humain** décide du moment |
+
+### Ce qui reste vrai quoi qu'il arrive
+
+* aucun appel OpenAI, aucun visuel custom, tant que F6 n'est pas tranché ;
+* la clé Anthropic ne s'écrit dans aucun fichier — ni `.env.local`, ni script
+  commité, ni log, ni capture ;
+* un mois qui ne passe pas `checkMonth` n'est jamais livré (voir
+  `lib/content/month-checks.ts`), et le pipeline sort en erreur plutôt que de
+  publier un mois dégradé.
+
 ## F15 — ⚠ AUCUNE MESURE DE CE PIPELINE NE REGARDE UNE IMAGE
 
 **Six mois réels ont été générés le 2026-09-21 pour en obtenir un bon. Quatre
@@ -476,6 +526,48 @@ nombre d'abonnées d'un segment, et qu'il n'est dimensionné nulle part.
    pour 90 jours comme les autres ;
 2. qui remplit la banque, et quand. Aucun travail de fond ne la remplit
    aujourd'hui : `10-topic-bank.ts` est un script de harnais, pas un `cron` ;
+
+### Le dimensionnement, chiffré
+
+`stock = N × 90 × 3` — `N` praticiennes du segment, 90 jours de fenêtre
+anti-collision, ×3 pour les ~40 % de sujets que le dédoublonnage refuse au
+tirage (la banque produit des titres qui se recouvrent : ils sortent tous des
+mêmes trois thèmes de segment).
+
+**Coût par sujet, mesuré aujourd'hui** sur deux remplissages réels —
+122 sujets pour 0,343 $ et 128 pour 0,374 $ — soit **0,00287 $ le sujet**,
+en Haiku 4.5, appels synchrones. En Batch API le prix tombe de moitié : ces
+chiffres sont donc un plafond, pas une estimation basse.
+
+| praticiennes du segment | stock nécessaire | coût de génération |
+|---|---|---|
+| 5 | 1 350 sujets | **3,87 $** |
+| 20 | 5 400 sujets | **15,50 $** |
+| 40 | 10 800 sujets | **30,99 $** |
+
+Pour mémoire, la banque du bac à sable tient **environ 500 sujets** pour deux
+segments après cinq remplissages, et elle s'est vidée à chaque mois généré.
+
+**Seuil d'alerte** : quand le stock TIRABLE d'un segment — les sujets ni
+assignés, ni bloqués par la fenêtre — descend sous `N × 90`, soit le tiers de
+la cible, il reste de quoi servir un mois par praticienne et plus aucune marge
+pour les refus. C'est là qu'un remplissage doit partir, pas quand la banque
+est vide : un mois généré sur une banque à sec sort court, et **rien dans le
+produit ne le signale aujourd'hui** à l'abonnée.
+
+La requête qui le mesure :
+
+```sql
+select s.id, s.modality_id, s.persona_id, count(t.id) as tirables
+  from public.content_segments s
+  join public.content_topics t on t.segment_id = s.id
+ where t.ethics_reviewed_at is not null
+   and (t.expires_at is null or t.expires_at > now())
+   and not exists (select 1 from public.topic_assignments a where a.topic_id = t.id)
+ group by 1, 2, 3;
+```
+
+
 3. ce que le produit RÉPOND quand la banque est vide. Aujourd'hui le tirage
    rend moins de candidats que demandé, le mois sort plus court, et rien ne le
    signale à l'abonnée.

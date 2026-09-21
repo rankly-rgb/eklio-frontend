@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { budgetErrors, type BudgetError } from "@/lib/compose/budget";
+import { CANVAS, CONTENT_MIN_AT_CANVAS, THUMB, TYPE } from "@/lib/compose/constants";
 
 /*
  * ── LA RÉDACTION DE MASSE : BATCH + PROMPT CACHING ──────────────────────
@@ -303,23 +304,38 @@ export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthrop
     `{"payload": {...}, "card_line": "...", "caption": "...", "alt_text": "...", "rationale": "..."}`,
     ``,
     `- "payload" follows the archetype shape below, exactly.`,
-    `- "card_line" is the line printed across the top of the card: AT MOST 30`,
+    `- "card_line" is the line printed across the top of the card: AT MOST ${CARD_LINE_MAX}`,
     `  CHARACTERS, including spaces. Count them.`,
-    `- "caption" is what she posts: at most 2200 characters.`,
-    `- "alt_text" describes the card for a screen reader: at most 420 characters.`,
-    `- "rationale" is one sentence, at most 20 words, completing "Why this one:".`,
+    `- "caption" is what she posts: at most ${CAPTION_MAX} characters.`,
+    `- "alt_text" describes the card for a screen reader: at most ${ALT_TEXT_MAX} characters.`,
+    `- "rationale" is one sentence, at most ${RATIONALE_MAX_WORDS} words, completing "Why this one:".`,
     ``,
-    `⚠ WHY "card_line" IS THIRTY CHARACTERS AND NOT A TITLE. The card sets that`,
-    `line as large as it fits, and every other size on the card is derived from`,
-    `it — a label may never exceed HALF of it. At 30 characters the line sets at`,
-    `110px and a label may reach 55px; at 34 it drops to 96px and the diagram`,
-    `loses a size class. Legibility is measured at 390px, a post at full phone`,
-    `width in a feed, where nothing may fall under 10.5px.`,
+    /*
+     * ⚠ CHAQUE CHIFFRE DE CE BLOC EST INTERPOLÉ, ET AUCUN N'EST ÉCRIT EN DUR.
+     *
+     * Il enseignait encore, trois corrections après le changement de règle,
+     * qu'« un libellé ne dépasse jamais LE TIERS » et que la lisibilité se
+     * mesure « dans une vignette de 350px » à « 11,7px ». Les deux étaient
+     * faux : c'est la moitié, et 390px. Le modèle recevait donc une consigne
+     * qui contredisait le moteur qui allait juger sa réponse.
+     *
+     * Une consigne périmée ne se contente pas d'être inutile — celle-ci
+     * poussait à écrire des lignes plus courtes que nécessaire. Le texte vient
+     * maintenant des constantes ; il ne peut plus diverger sans qu'un test le
+     * voie (voir `prompt-constants.test.ts`).
+     */
+    `⚠ WHY "card_line" IS ${CARD_LINE_MAX} CHARACTERS AND NOT A TITLE. The card sets`,
+    `that line as large as it fits, and every other size on the card is derived`,
+    `from it — a label may never exceed 1/${TYPE.minTitleToLabelRatio} of it. At ${CARD_LINE_MAX} characters`,
+    `the line sets at ${TYPE.display.max}px and a label may reach ${Math.floor(TYPE.display.max / TYPE.minTitleToLabelRatio)}px.`,
+    `Legibility is measured at ${THUMB.width}px, a post at full phone width in a`,
+    `feed, where nothing may fall under ${THUMB.minPx}px — which is why no label or`,
+    `gloss is ever set under ${CONTENT_MIN_AT_CANVAS}px on the ${CANVAS.width}px canvas.`,
     ``,
     `⚠ "card_line" MUST BE A FINISHED PHRASE. Not a sentence cut short: "When`,
     `life interrupts" is fine, "When life interrupts, you get" is not, and`,
-    `neither is anything ending on "what", "the", "your", "and", "doesn't".`,
-    `If it does not fit in thirty characters finished, write a shorter thought.`,
+    `neither is anything ending on a function word such as: ${DANGLING_SAMPLE_WORDS.map((w) => `"${w}"`).join(", ")}.`,
+    `If it does not fit in ${CARD_LINE_MAX} characters finished, write a shorter thought.`,
     ``,
     `⚠ "card_line" NEVER APPEARS INSIDE "payload". The card prints it once, at`,
     `the top, at the largest size on the card; repeating it as a label or as a`,
@@ -466,8 +482,16 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
   };
 }
 
+/** Quelques mots outils cités en exemple dans la consigne, pris de la liste. */
+const DANGLING_SAMPLE_WORDS = ["what", "the", "your", "and", "doesn't"] as const;
+
 /** Au plus `CARD_LINE_MAX` caractères. */
 export const CARD_LINE_MAX = 30;
+
+/** Les autres bornes que la consigne cite, nommées ici et nulle part ailleurs. */
+export const CAPTION_MAX = 2200;
+export const ALT_TEXT_MAX = 420;
+export const RATIONALE_MAX_WORDS = 20;
 
 /*
  * ── ⚠ « WHEN LIFE INTERRUPTS, YOU GET » ────────────────────────────────
@@ -488,7 +512,7 @@ export const CARD_LINE_MAX = 30;
  */
 
 /** Les mots sur lesquels un titre ne peut pas se terminer. */
-const DANGLING = new Set([
+export const DANGLING = new Set([
   "a", "an", "the", "and", "or", "but", "if", "when", "while", "that", "this",
   "of", "in", "on", "at", "to", "for", "with", "from", "by", "as", "into",
   "is", "are", "was", "were", "be", "been", "am", "do", "does", "did",

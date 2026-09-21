@@ -1,0 +1,306 @@
+import { DANGLING } from "@/lib/content/generate/copy-batch";
+import type { DirectionPalette } from "@/lib/compose/palette";
+
+/*
+ * ── CE QU'UN MOIS DOIT PASSER AVANT D'ÊTRE LIVRÉ ────────────────────────
+ *
+ * ⚠ AUCUN DE CES CONTRÔLES NE LIT UNE IMAGE, ET C'EST LEUR RAISON D'ÊTRE.
+ *
+ * Six mois réels ont été générés le 2026-09-21. **Quatre affichaient un
+ * entonnoir parfait** — 30 écrits, 30 visuels, zéro pénurie, zéro repli — et
+ * trois de ces quatre étaient mauvais. Chaque défaut a été trouvé en REGARDANT
+ * la planche, par une personne ou par un évaluateur indépendant ; aucun ne
+ * faisait échouer quoi que ce soit.
+ *
+ * Le pire se lisait même dans les mesures comme une amélioration : le mélange
+ * d'archétypes s'est effondré à cinq sur onze au moment où la pénurie de
+ * banque a disparu — parce que la variété des mois précédents était un effet
+ * de bord de cette pénurie.
+ *
+ * Chacun des défauts ci-dessous est donc devenu un CALCUL. Les seuils sortent
+ * des mois déjà produits, pas d'une intuition, et chacun est justifié à
+ * l'endroit où il est écrit.
+ */
+
+export type Finding = {
+  /** Le nom du contrôle, pour qu'un journal dise lequel a parlé. */
+  check: string;
+  detail: string;
+};
+
+/* ── 1. Le mélange ───────────────────────────────────────────────────── */
+
+/**
+ * Les bornes du mélange, mesurées sur les mois réellement produits.
+ *
+ *   compte           archétypes distincts   archétype dominant   phrases seules
+ *   wren.ashcombe            8                   36,7 %              36,7 %
+ *   perrin.vale              5                   36,7 %              36,7 %
+ *   marlow.quint            11                   23,3 %              23,3 %
+ *   isla.thornbury          10                   30,0 %              30,0 %
+ *
+ * ⚠ `perrin.vale` EST LE MOIS QUE CES SEUILS EXISTENT POUR REFUSER : cinq
+ * archétypes, six icebergs identiques, onze phrases seules — et un entonnoir
+ * parfait. `isla.thornbury`, validé à l'œil, tombe exactement sur 30,0 % : le
+ * seuil est donc un dépassement STRICT, sinon le seul mois validé échouerait.
+ */
+export const MONTH_LIMITS = {
+  /** Aucun archétype au-delà de 30 % du mois. */
+  maxArchetypeShare: 0.3,
+  /** Au moins 7 archétypes distincts sur 30 posts. */
+  minDistinctArchetypes: 7,
+  /** Les phrases seules sous 40 %. */
+  maxLoneSentenceShare: 0.4,
+  /**
+   * La distance RGB minimale entre deux aplats d'une même carte.
+   *
+   * ⚠ MESURÉE, PAS CHOISIE. L'or et la terracotta d'un vrai kit sont à 39 de
+   * distance ; adoucis du même taux vers le papier, l'écart tombait à 15 et
+   * les deux champs se lisaient comme un seul — ce qu'une notation
+   * indépendante a décrit comme « deux teintes quasi identiques ». Adoucis de
+   * taux différents, l'écart minimal remonte à 25 sur fond sombre et 38 sur
+   * fond clair. Le seuil est posé sous le pire des deux.
+   */
+  minTintDistance: 24,
+} as const;
+
+/** Le nombre de posts sous lequel les proportions ne veulent plus rien dire. */
+const MIX_APPLIES_FROM = 10;
+
+export const LONE_SENTENCE = "single_statement";
+
+export function checkMix(archetypes: string[]): Finding[] {
+  const out: Finding[] = [];
+  const n = archetypes.length;
+  if (n < MIX_APPLIES_FROM) return out;
+
+  const counts = new Map<string, number>();
+  for (const a of archetypes) counts.set(a, (counts.get(a) ?? 0) + 1);
+
+  if (counts.size < MONTH_LIMITS.minDistinctArchetypes) {
+    out.push({
+      check: "mix.distinct",
+      detail: `${counts.size} archétypes distincts sur ${n} posts, minimum ${MONTH_LIMITS.minDistinctArchetypes}`,
+    });
+  }
+
+  for (const [archetype, count] of counts) {
+    const share = count / n;
+    if (share > MONTH_LIMITS.maxArchetypeShare) {
+      out.push({
+        check: "mix.dominant",
+        detail: `${archetype} occupe ${(share * 100).toFixed(1)} % du mois (${count}/${n}), plafond ${MONTH_LIMITS.maxArchetypeShare * 100} %`,
+      });
+    }
+  }
+
+  const lone = (counts.get(LONE_SENTENCE) ?? 0) / n;
+  if (lone >= MONTH_LIMITS.maxLoneSentenceShare) {
+    out.push({
+      check: "mix.loneSentence",
+      detail: `phrases seules à ${(lone * 100).toFixed(1)} %, plafond ${MONTH_LIMITS.maxLoneSentenceShare * 100} %`,
+    });
+  }
+  return out;
+}
+
+/* ── 2. Les titres en double ─────────────────────────────────────────── */
+
+const normaliseTitle = (t: string) => t.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,;:!?]+$/, "");
+
+/**
+ * Deux fois le même titre sur le mois ASSEMBLÉ.
+ *
+ * ⚠ EN PLUS DU DÉDOUBLONNAGE AU TIRAGE, PAS À SA PLACE. Celui-là compare les
+ * titres de banque ; la carte porte la ligne coupée à trente caractères, et
+ * deux titres distincts peuvent s'y réduire au même texte APRÈS la comparaison.
+ * Le mois de marlow.quint est sorti avec deux cartes « When the body
+ * disagrees ». Ce contrôle regarde ce qui sera imprimé.
+ */
+export function checkDuplicateTitles(titles: string[]): Finding[] {
+  const seen = new Map<string, number>();
+  const out: Finding[] = [];
+  for (const title of titles) {
+    const key = normaliseTitle(title);
+    if (!key) continue;
+    const before = seen.get(key) ?? 0;
+    if (before === 1) out.push({ check: "titles.duplicate", detail: `« ${title} » apparaît plus d'une fois` });
+    seen.set(key, before + 1);
+  }
+  return out;
+}
+
+/* ── 3. Le mot suspendu ──────────────────────────────────────────────── */
+
+const lastWord = (text: string) => {
+  const words = text.trim().split(/\s+/);
+  return (words[words.length - 1] ?? "").toLowerCase().replace(/[^a-z']/g, "");
+};
+
+/**
+ * Une ligne qui se termine sur un mot outil.
+ *
+ * ⚠ SUR TOUTE LIGNE, COUPÉE OU NON. Le rognage ne s'appliquait qu'aux lignes
+ * trop longues, sur l'idée qu'un mot traînant est un artefact de la coupe.
+ * « Efficiency can mask what » fait vingt-cinq caractères : personne ne l'a
+ * coupée, le modèle avait écrit une phrase inachevée, et elle est sortie telle
+ * quelle.
+ */
+export function checkDangling(lines: Array<{ where: string; text: string }>): Finding[] {
+  const out: Finding[] = [];
+  for (const { where, text } of lines) {
+    const word = lastWord(text);
+    // Un seul mot n'est pas une phrase suspendue : c'est une étiquette.
+    if (text.trim().split(/\s+/).length < 2) continue;
+    if (DANGLING.has(word)) {
+      out.push({ check: "text.dangling", detail: `${where} se termine sur « ${word} » : « ${text} »` });
+    }
+  }
+  return out;
+}
+
+/* ── 4. La recopie ───────────────────────────────────────────────────── */
+
+/** Toutes les chaînes d'un payload, où qu'elles soient rangées. */
+export function stringsIn(payload: unknown, path = "payload"): Array<{ where: string; text: string }> {
+  if (typeof payload === "string") return [{ where: path, text: payload }];
+  if (Array.isArray(payload)) return payload.flatMap((v, i) => stringsIn(v, `${path}[${i}]`));
+  if (payload && typeof payload === "object") {
+    return Object.entries(payload as Record<string, unknown>).flatMap(([k, v]) => stringsIn(v, `${path}.${k}`));
+  }
+  return [];
+}
+
+/**
+ * Un champ du payload qui reprend la ligne de carte ou le titre.
+ *
+ * ⚠ TOUS LES ARCHÉTYPES, PAS SEULEMENT LA CARTE PRATICIENNE. C'est elle qui
+ * l'a révélé — les trois du mois de marlow.quint avaient leur première ligne
+ * identique à leur titre, mot pour mot — mais rien n'empêchait un libellé de
+ * diagramme de faire pareil, et deux cartes `surface_and_beneath` d'un mois
+ * antérieur le faisaient déjà.
+ *
+ * La carte imprime la ligne une fois, en haut, à la plus grande taille de la
+ * carte. La réécrire dans un champ imprime les mêmes mots deux fois en deux
+ * tailles et gâche le champ où ils se posent.
+ */
+export function checkEcho(cardLine: string, title: string, payload: unknown): Finding[] {
+  const targets = [cardLine, title].map(normaliseTitle).filter((t) => t.length >= 8);
+  if (targets.length === 0) return [];
+  const out: Finding[] = [];
+  for (const { where, text } of stringsIn(payload)) {
+    const value = normaliseTitle(text);
+    if (value.length < 8) continue;
+    if (targets.includes(value)) {
+      out.push({ check: "text.echo", detail: `${where} reprend la ligne de carte : « ${text} »` });
+    }
+  }
+  return out;
+}
+
+/* ── 5. La saturation des teintes ────────────────────────────────────── */
+
+const rgbOf = (hex: string): [number, number, number] | null => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+
+export function colourDistance(a: string, b: string): number {
+  const x = rgbOf(a);
+  const y = rgbOf(b);
+  if (!x || !y) return Number.POSITIVE_INFINITY;
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+}
+
+/** Les remplissages écrits dans un SVG, dédoublonnés, sans `none`. */
+export function fillsIn(svg: string): string[] {
+  const out = new Set<string>();
+  for (const m of svg.matchAll(/fill="(#[0-9a-fA-F]{6})"/g)) out.add(m[1].toUpperCase());
+  return [...out];
+}
+
+/**
+ * Les aplats d'une carte : adoucis, et distincts les uns des autres.
+ *
+ * ⚠ MESURÉ SUR LES COULEURS ÉCRITES DANS LE SVG, pas sur la palette qui a
+ * servi à le produire. Un contrôle qui relit la palette vérifie que le
+ * générateur est d'accord avec lui-même ; celui-ci vérifie ce qui part chez
+ * l'abonnée.
+ */
+export function checkTints(svg: string, direction: DirectionPalette): Finding[] {
+  const out: Finding[] = [];
+  const raw = [direction.primary, direction.secondary]
+    .filter(Boolean)
+    .map((c) => c.toUpperCase());
+
+  const fills = fillsIn(svg).filter((f) => f !== direction.paper.toUpperCase());
+
+  for (const fill of fills) {
+    if (raw.includes(fill)) {
+      out.push({
+        check: "tints.raw",
+        detail: `${fill} est une couleur de marque brute, pas un aplat adouci`,
+      });
+    }
+  }
+
+  // Les teintes d'une même carte ne se répètent pas de près.
+  const tints = fills.filter((f) => !raw.includes(f) && f !== direction.dark.toUpperCase());
+  for (let i = 0; i < tints.length; i += 1) {
+    for (let j = i + 1; j < tints.length; j += 1) {
+      const d = colourDistance(tints[i], tints[j]);
+      if (d < MONTH_LIMITS.minTintDistance) {
+        out.push({
+          check: "tints.tooClose",
+          detail: `${tints[i]} et ${tints[j]} sont à ${d.toFixed(0)} de distance, minimum ${MONTH_LIMITS.minTintDistance}`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/* ── Le mois entier ──────────────────────────────────────────────────── */
+
+export type PostUnderCheck = {
+  archetype: string;
+  title: string;
+  cardLine: string;
+  payload: unknown;
+  /** Le SVG livré, quand il a déjà été composé. */
+  svg?: string;
+};
+
+export type MonthUnderCheck = {
+  posts: PostUnderCheck[];
+  direction: DirectionPalette;
+};
+
+/**
+ * Tout ce qu'un mois doit passer. Une liste vide veut dire « livrable ».
+ *
+ * ⚠ UN MOIS QUI ÉCHOUE N'EST JAMAIS LIVRÉ. C'est l'appelant qui corrige —
+ * retirage, changement d'archétype, réécriture d'un champ — puis repose la
+ * question. Ce module ne corrige rien : il dit ce qui ne va pas, avec de quoi
+ * le retrouver.
+ */
+export function checkMonth(month: MonthUnderCheck): Finding[] {
+  const out: Finding[] = [];
+  out.push(...checkMix(month.posts.map((p) => p.archetype)));
+  out.push(...checkDuplicateTitles(month.posts.map((p) => p.cardLine || p.title)));
+
+  for (const post of month.posts) {
+    const where = `« ${post.cardLine || post.title} »`;
+    out.push(
+      ...checkDangling([
+        { where: `${where} — ligne de carte`, text: post.cardLine || post.title },
+        ...stringsIn(post.payload).map((s) => ({ where: `${where} — ${s.where}`, text: s.text })),
+      ])
+    );
+    out.push(...checkEcho(post.cardLine, post.title, post.payload));
+    if (post.svg) out.push(...checkTints(post.svg, month.direction));
+  }
+  return out;
+}

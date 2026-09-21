@@ -89,6 +89,33 @@ export function inkFor(ground: string, dark: string, light: string): string {
 export const SOFTEN_TOWARD_PAPER = 0.62;
 
 /**
+ * De combien chaque emplacement est adouci, séparément.
+ *
+ * ── ⚠ UN TAUX UNIQUE ÉCRASE LA MARQUE SUR ELLE-MÊME ────────────────────
+ *
+ * Mesuré sur un vrai kit : l'or `#C08A3E` et la terracotta `#B4674A` sont à 39
+ * de distance RGB. Ramenés tous deux de 62 % vers le papier, l'écart est
+ * multiplié par (1 − 0.62) : **il tombe à 15**. Les deux aplats deviennent
+ * indistinguables — c'est très exactement ce que la première notation
+ * indépendante décrivait comme « deux teintes quasi identiques », et la
+ * correction qui a suivi n'a rien changé à ce point-là parce qu'elle a gardé
+ * un taux unique.
+ *
+ * Adoucir de quantités DIFFÉRENTES conserve l'écart : la luminosité fait le
+ * travail que la teinte ne peut plus faire une fois les couleurs rapprochées
+ * du papier. Les quatre emplacements restent des versions adoucies de deux
+ * couleurs de marque, et aucun n'est la couleur brute.
+ *
+ * ⚠ LE PREMIER EMPLACEMENT N'EST PAS À ZÉRO, ET IL L'A ÉTÉ. Sur une carte
+ * CLAIRE il porte `light`, déjà un aplat doux que le garde-fou `ALREADY_SOFT`
+ * laisse intact quel que soit le taux. Sur une carte SOMBRE il porte le
+ * primaire de marque — et un taux de zéro le livrait donc brut, ce que le
+ * contrôle de saturation rejette à juste titre. C'est le garde-fou qui décide
+ * « déjà doux », jamais un zéro écrit en dur.
+ */
+const SOFTEN_BY_SLOT = [0.55, 0.5, 0.68, 0.3] as const;
+
+/**
  * Une seconde adoucissure, pour la quatrième partie d'un diagramme.
  *
  * ⚠ QUATRE PARTIES EXISTENT — `quadrant_model` en a exactement quatre — ET IL
@@ -167,10 +194,13 @@ export function cardPalette(
    * n'est posée que sur un diagramme qui a vraiment quatre parties ; ailleurs
    * `tintFor` ne l'atteint jamais.
    */
-  const tints = [
-    ...brand.map((t) => soften(t, paper, SOFTEN_TOWARD_PAPER)),
-    soften(brand[1], paper, SOFTEN_FOURTH),
-  ];
+  /*
+   * Le quatrième emplacement est une seconde luminosité de la DEUXIÈME
+   * couleur, plus soutenue — une quatrième couleur serait une seconde marque.
+   */
+  const tints = [brand[0], brand[1], brand[2], brand[1]].map((t, i) =>
+    soften(t, paper, SOFTEN_BY_SLOT[i])
+  );
 
   return {
     key: dark ? `${key}_dark` : key,

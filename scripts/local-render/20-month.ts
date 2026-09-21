@@ -46,6 +46,8 @@ import { checkinLeaks } from "../../lib/content/leakage";
 import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
+import { checkMonth, type Finding } from "../../lib/content/month-checks";
+import type { DirectionPalette } from "../../lib/compose/palette";
 import { admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD } from "./lib";
 
 const WANTED = 30;
@@ -377,6 +379,16 @@ async function main() {
   }
 
   /** Les candidats retenus, dans l'ordre où ils se sont avérés utilisables. */
+/*
+ * ⚠ ON EN GÉNÈRE PLUS QUE TRENTE, ET C'EST CE QUI REND LA CORRECTION
+ * POSSIBLE. Les contrôles de mois peuvent refuser un post — titre en double,
+ * archétype trop représenté, champ qui recopie le titre — et un pipeline sans
+ * remplaçant n'a alors que deux réponses : livrer quand même, ou livrer
+ * vingt-neuf posts. Six de rab coûtent un cinquième du mois et donnent au
+ * sélecteur de quoi échanger.
+ */
+const SPARE_POOL = 6;
+
   const usable: Candidate[] = [];
 
   if (useBatch) {
@@ -399,7 +411,7 @@ async function main() {
     funnel.generated = candidates.filter((c) => c.result).length;
     for (const candidate of candidates) {
       if (candidate.result?.usage) candidate.usage = candidate.result.usage;
-      if (usable.length >= WANTED) break;
+      if (usable.length >= WANTED + SPARE_POOL) break;
       if (await settleCandidate(candidate)) {
         usable.push(candidate);
       } else {
@@ -420,7 +432,7 @@ async function main() {
      * l'écriture du cache.
      */
     for (const candidate of candidates) {
-      if (usable.length >= WANTED) break;
+      if (usable.length >= WANTED + SPARE_POOL) break;
 
       const reservationId = await reserve(`month ${MONTH}: ${candidate.topic.title.slice(0, 40)}`);
       /*
@@ -515,9 +527,70 @@ async function main() {
     return false;
   }
 
-  /* ── Le mois, puis les posts ───────────────────────────────────────── */
-  const succeeded = usable.slice(0, WANTED);
-  const discarded = candidates.filter((c) => !succeeded.includes(c));
+  
+/*
+ * ── LA CORRECTION : ÉCHANGER, PAS RELÂCHER ──────────────────────────────
+ *
+ * Quand un contrôle refuse un post — titre en double, champ qui recopie le
+ * titre, ligne suspendue, archétype trop représenté — la réponse n'est jamais
+ * d'abaisser le seuil. C'est de prendre un REMPLAÇANT dans la réserve
+ * sur-générée, et de reposer la question.
+ *
+ * ⚠ LA BOUCLE EST BORNÉE PAR LA RÉSERVE, PAS PAR UN COMPTEUR ARBITRAIRE.
+ * Chaque tour retire exactement un post et en essaie un autre ; s'il n'y a
+ * plus de remplaçant, la boucle s'arrête et le mois est refusé. Un « au bout
+ * de N essais, on livre quand même » remettrait sur la table ce que ces
+ * contrôles existent pour empêcher.
+ */
+type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ title: string; why: string }> };
+
+function selectDeliverable<
+  T extends { cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
+              candidate: { topic: { title: string } } }
+>(prepared: T[], direction: DirectionPalette, wanted: number): Deliverable<T> {
+  const asPost = (p: T) => ({
+    archetype: p.composeArchetype,
+    title: p.candidate.topic.title,
+    cardLine: p.cardLine,
+    payload: p.payload,
+    svg: p.svg ?? undefined,
+  });
+
+  let chosen = prepared.slice(0, wanted);
+  const bench = prepared.slice(wanted);
+  const dropped: Array<{ title: string; why: string }> = [];
+
+  for (;;) {
+    const findings = checkMonth({ posts: chosen.map(asPost), direction });
+    if (findings.length === 0) return { chosen, remaining: [], dropped };
+    if (bench.length === 0) return { chosen, remaining: findings, dropped };
+
+    /*
+     * Quel post retirer : celui que le constat désigne. Un constat de mélange
+     * ne nomme pas un post mais un ARCHÉTYPE — on retire alors l'un des siens,
+     * le dernier, pour que l'échange change vraiment les proportions.
+     */
+    const finding = findings[0];
+    let victim = -1;
+    if (finding.check.startsWith("mix.")) {
+      const counts = new Map<string, number>();
+      for (const p of chosen) counts.set(p.composeArchetype, (counts.get(p.composeArchetype) ?? 0) + 1);
+      const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      victim = chosen.map((p) => p.composeArchetype).lastIndexOf(dominant ?? "");
+    } else {
+      victim = chosen.findIndex((p) => finding.detail.includes(p.cardLine));
+      if (victim === -1) victim = chosen.length - 1;
+    }
+    if (victim === -1) return { chosen, remaining: findings, dropped };
+
+    dropped.push({ title: chosen[victim].cardLine, why: `${finding.check} — ${finding.detail}` });
+    const replacement = bench.shift()!;
+    chosen = [...chosen.slice(0, victim), ...chosen.slice(victim + 1), replacement];
+  }
+}
+
+/* ── Le mois, puis les posts ───────────────────────────────────────── */
+  const prepared = usable;
 
   const { data: monthRow, error: monthError } = await db
     .from("content_months").insert({
@@ -534,7 +607,27 @@ async function main() {
   let written = 0;
   let previousArchetype: Parameters<typeof chooseArchetype>[1] = null;
 
-  for (const [index, candidate] of succeeded.entries()) {
+  /*
+   * ── ON PRÉPARE TOUT, ON CONTRÔLE, PUIS ON ÉCRIT ──────────────────────
+   *
+   * ⚠ L'ORDRE COMPTE. Écrire au fil de la boucle rendait les contrôles de mois
+   * inapplicables : quand le trentième post révèle que l'archétype dominant
+   * dépasse 30 %, les vingt-neuf premiers sont déjà en base. Rien n'est inséré
+   * avant que `checkMonth` se taise.
+   */
+  type Prepared = {
+    candidate: Candidate;
+    cardLine: string;
+    composeArchetype: string;
+    payload: unknown;
+    svg: string | null;
+    register: ContentRegister;
+    layout: Parameters<typeof chooseArchetype>[1];
+    theme: string;
+  };
+  const readyPosts: Prepared[] = [];
+
+  for (const [index, candidate] of prepared.entries()) {
     const result = candidate.result!;
     const register = registers[index % registers.length];
     const layout = chooseArchetype(register, previousArchetype);
@@ -575,6 +668,7 @@ async function main() {
      */
     let composeArchetype = candidate.topic.archetype_key;
     let payload = result.payload;
+    let composedSvg: string | null = null;
     try {
       const composed = composeWithFallback({
         archetype: candidate.topic.archetype_key,
@@ -597,6 +691,7 @@ async function main() {
       }, cardLine);
       composeArchetype = composed.archetype;
       payload = composed.payload;
+      composedSvg = composed.kind === "carousel" ? composed.slides[0].svg : composed.result.svg;
       if (composed.steps.length > 0) {
         fallbacks.push({
           topic: candidate.topic.title, from: candidate.topic.archetype_key,
@@ -613,14 +708,26 @@ async function main() {
       continue;
     }
 
+    readyPosts.push({
+      candidate, cardLine, composeArchetype, payload, svg: composedSvg,
+      register, layout, theme: themes.themes[index % themes.themes.length],
+    });
+  }
+
+  /* ── Les contrôles de mois, et la correction ───────────────────────── */
+  const selection = selectDeliverable(readyPosts, direction.palette as DirectionPalette, WANTED);
+  const succeeded = selection.chosen.map((p: Prepared) => p.candidate);
+
+  for (const [index, post] of selection.chosen.entries()) {
+    const { candidate } = post;
     const { error } = await db.from("content_items").insert({
       brand_kit_id: kitId, month_id: monthRow.id, topic_id: candidate.topic.id,
-      theme: themes.themes[index % themes.themes.length],
-      register, archetype: layout, compose_archetype: composeArchetype,
-      payload: payload as never, status: "proposed",
-      title: cardLine, on_image_text: candidate.topic.hook,
-      caption: result.caption ?? "", alt_text: result.altText ?? "",
-      rationale: result.rationale ?? "",
+      theme: post.theme,
+      register: post.register, archetype: post.layout ?? "statement", compose_archetype: post.composeArchetype,
+      payload: post.payload as never, status: "proposed",
+      title: post.cardLine, on_image_text: candidate.topic.hook,
+      caption: candidate.result!.caption ?? "", alt_text: candidate.result!.altText ?? "",
+      rationale: candidate.result!.rationale ?? "",
       scheduled_for: dates[index] ?? dates[dates.length - 1],
     });
     if (error) {
@@ -630,6 +737,27 @@ async function main() {
     }
     written += 1;
     await settle(candidate.reservationId, useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage), true);
+  }
+
+  // Les préparés non retenus n'ont rien publié : leur réservation se solde.
+  for (const post of readyPosts) {
+    if (!selection.chosen.includes(post)) await settle(post.candidate.reservationId, 0, false);
+  }
+
+  /*
+   * ⚠ UN MOIS QUI ÉCHOUE N'EST JAMAIS LIVRÉ. S'il reste un constat après la
+   * correction, le mois reste en `proposed` et le script SORT EN ERREUR : la
+   * preuve doit s'arrêter là plutôt que de produire une planche qu'on
+   * commenterait comme si elle était bonne.
+   */
+  if (selection.remaining.length > 0) {
+    console.log(JSON.stringify({
+      step: "month", refused: true, monthId: monthRow.id,
+      findings: selection.remaining, dropped: selection.dropped,
+    }, null, 2));
+    throw new Error(
+      `le mois ne passe pas ses contrôles : ${selection.remaining.map((f: Finding) => f.check).join(", ")}`
+    );
   }
 
   /*
@@ -642,7 +770,8 @@ async function main() {
    * ⚠ ET LEUR CRÉDIT REVIENT, AVEC LE COÛT ÉCRIT. Un appel refusé a dépensé
    * des jetons chez le fournisseur et ne doit rien à la praticienne.
    */
-  const keptTopicIds = new Set(succeeded.map((c) => c.topic.id));
+  const keptTopicIds = new Set(succeeded.map((c: Candidate) => c.topic.id));
+  const discarded = candidates.filter((c) => !succeeded.includes(c));
   /*
    * ⚠ LES DOUBLONS ÉCARTÉS AU TIRAGE SONT RELÂCHÉS AVEC LE RESTE. Ils ne sont
    * jamais entrés dans `drawnIds` — `accept` les refuse avant — mais
