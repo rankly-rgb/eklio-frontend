@@ -420,6 +420,52 @@ précisément pour que la ligne dise ce qu'elle vaut.
 
 ---
 
+## F13 — ⚠ LA BANQUE DE SUJETS SE TARIT POUR LA SIXIÈME PRATICIENNE D'UN SEGMENT
+
+**Mesuré le 2026-09-21, pas déduit.** Au moment de générer un mois pour le
+sixième compte de test — même modalité (EMDR), même État (CA) que les cinq
+précédents — la banque contenait **118 sujets dont 2 tirables**.
+
+Ce n'est pas un artefact du bac à sable. `next_topic_for_kit` bloque tout sujet
+assigné dans les 90 jours à une AUTRE utilisatrice du même État et de la même
+modalité. C'est exactement ce que la fenêtre existe pour faire : deux
+thérapeutes EMDR de Californie ne doivent pas publier le même post le même
+mois. La conséquence arithmétique est que le stock nécessaire croît avec le
+nombre d'abonnées d'un segment, et qu'il n'est dimensionné nulle part.
+
+**Ce qu'il faut décider avant d'ouvrir un segment à plus de cinq abonnées :**
+
+1. combien de sujets par segment pour `N` abonnées à 30 posts/mois sur une
+   fenêtre de 90 jours — l'ordre de grandeur est `N × 90` et personne ne l'a
+   posé par écrit ;
+2. qui remplit la banque, et quand. Aucun travail de fond ne la remplit
+   aujourd'hui : `10-topic-bank.ts` est un script de harnais, pas un `cron` ;
+3. ce que le produit RÉPOND quand la banque est vide. Aujourd'hui le tirage
+   rend moins de candidats que demandé, le mois sort plus court, et rien ne le
+   signale à l'abonnée.
+
+⚠ **Et le symptôme était masqué.** `10-topic-bank.ts` comparait ses cibles au
+nombre de sujets EXISTANTS, pas disponibles : il répondait « the bank is
+already at target » sur une banque intégralement bloquée. Corrigé par
+`--scale`, mais le fond reste : *exister* et *être tirable* sont deux choses,
+et c'est la seconde qui fait un mois.
+
+## F14 — ⚠ LA GÉNÉRATION DE KIT N'EST INSCRITE DANS AUCUN LEDGER
+
+`credit_ledger` enregistre `post_generation` et `regeneration` avec leur coût
+réel. La génération d'un kit de marque — `/api/briefs/[id]/generate`, qui est
+un appel payant et pas le moins cher — n'y figure pas, et aucune autre table ne
+la porte (`generation_runs`, `ai_usage`, `model_calls` n'existent pas).
+
+Conséquence directe, constatée ce jour : le coût d'une session ne peut pas être
+lu en base. Le total rapporté pour le 2026-09-21c additionne le ledger
+(0,11 $) et ce que les scripts IMPRIMENT (banque de sujets, 0,34 $) — les cinq
+générations de kit de la journée ne sont chiffrées nulle part.
+
+Le cahier des charges du 2026-09-21 demandait que « `credit_ledger` enregistre
+chaque appel payant avec son coût réel, qu'il aboutisse ou non ». C'est fait
+pour le pipeline de contenu. Ça ne l'est pas pour le kit.
+
 ## F11 — ✅ RÉSOLU LE 2026-09-21 — le premier rendu réel a été produit
 
 **La clef était là cette fois**, sous le nom `EKLIO_ANTHROPIC_API_KEY`, passée

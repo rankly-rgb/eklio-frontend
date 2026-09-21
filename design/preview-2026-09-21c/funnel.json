@@ -1,0 +1,86 @@
+{
+  "step": "2026-09-21c",
+  "account": "wren.ashcombe@eklio-test.invalid (septième compte de test, créé pour cette preuve)",
+  "month": "2026-10-01",
+  "path": "chemin réel, base locale, compte de test",
+  "firstMonthSynchronous": {
+    "promised": "le premier mois d un abonné est généré en synchrone",
+    "measuredSeconds": 161
+  },
+  "funnel": {
+    "candidates": 42,
+    "generated": 32,
+    "conformantFirstCall": 26,
+    "repaired": 4,
+    "refusedAfterRepair": 2,
+    "quotaRefusals": 0,
+    "keptForWriting": 30,
+    "written": 30,
+    "fallbacks": 3,
+    "visualsOnThirty": 30
+  },
+  "mix": {
+    "statement": 11,
+    "simple": 11,
+    "varied": 8
+  },
+  "shortfall": [
+    "varied: 11 of 15 (the bank had no more)"
+  ],
+  "fallbacks": [
+    {
+      "topic": "Why grief shows up as restlessness",
+      "from": "quadrant_model",
+      "to": "numbered_strategies",
+      "steps": "quadrant_model → numbered_strategies (fewer labels, still drawn)"
+    },
+    {
+      "topic": "EMDR and Grief: Not Just for Trauma",
+      "from": "quadrant_model",
+      "to": "numbered_strategies",
+      "steps": "quadrant_model → numbered_strategies (fewer labels, still drawn)"
+    },
+    {
+      "topic": "Why EMDR works when identity shifts",
+      "from": "annotated_curve",
+      "to": "numbered_strategies",
+      "steps": "annotated_curve → numbered_strategies (fewer labels, still drawn)"
+    }
+  ],
+  "failures": [
+    {
+      "topic": "EMDR and the Unplanned Pivot",
+      "kind": "word budget",
+      "because": "cards[4].items[2].label said 4, allowed 3"
+    },
+    {
+      "topic": "When your body knows before your mind does",
+      "kind": "word budget",
+      "because": "cards[1].beneath.label said 5, allowed 3; cards[3].beneath.gloss said 7, allowed 6"
+    }
+  ],
+  "ethicsFlags": [],
+  "rejectedAsRedundant": 64,
+  "releasedTopics": 76,
+  "archetypesRendered": {
+    "single_statement": 11,
+    "surface_and_beneath": 3,
+    "carousel": 3,
+    "comparison_pair": 2,
+    "numbered_strategies": 5,
+    "quadrant_model": 1,
+    "cycle": 4,
+    "annotated_curve": 1
+  },
+  "loneSentence": {
+    "count": 11,
+    "share": 0.367
+  },
+  "visualsRendered": 30,
+  "visualsRefused": [],
+  "costUsd": {
+    "month": 0.10217,
+    "topicBank": 0.34317,
+    "sessionTotal": null
+  }
+}
