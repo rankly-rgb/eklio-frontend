@@ -637,6 +637,22 @@ const SPARE_POOL = 6;
   const resumed = Object.keys(journal.entries).length;
   if (resumed > 0) console.error(`▸ journal : ${resumed} résultats déjà payés repris`);
 
+  /*
+   * ── ⚠ LA PHASE DE CANDIDATURE EST RÉSERVÉE AVANT, SOLDÉE APRÈS ────────
+   *
+   * Un lot Batch est facturé À LA SOUMISSION : la réservation doit précéder
+   * `batches.create`, sinon elle réserve pour une dépense déjà faite. Elle est
+   * prise pour la PHASE entière plutôt que par appel — un lot est un acte
+   * payant, pas soixante-douze — et soldée au coût réel quand les réponses
+   * sont là.
+   *
+   * En `overhead` : ces appels coûtent et ne prennent aucun crédit. Le quota
+   * se tient plus bas, un crédit par post ÉCRIT.
+   */
+  const phaseReservation = await credits.reserve({
+    userId, kind: "overhead", reason: `month ${MONTH}: candidate generation`,
+  });
+
   if (useBatch) {
     /*
      * ⚠ UN LOT DÉJÀ SOUMIS SE RATTACHE, IL NE SE RE-SOUMET PAS. Le lot est
@@ -652,40 +668,34 @@ const SPARE_POOL = 6;
     const asked = candidates.filter(writtenByModel);
     for (const candidate of candidates) {
       if (writtenByModel(candidate)) continue;
-      candidate.reservationId = await reserve(`month ${MONTH}: ${candidate.topic.title.slice(0, 40)}`);
-      if (!candidate.reservationId) { funnel.quotaRefusals += 1; continue; }
+      // ⚠ Elle n'appelle aucun modèle : rien à réserver, rien à facturer tant
+      // qu'elle n'est pas livrée. Son crédit se prend plus bas, à l'écriture.
+      candidate.reservationId = null;
       candidate.result = fromBrief(candidate);
       funnel.generated += 1;
       if (await settleCandidate(candidate)) usable.push(candidate);
     }
 
     /*
-     * ── ⚠ LE CHEMIN BATCH NE RÉSERVAIT AUCUN CRÉDIT ──────────────────────
+     * ── ⚠ LA SUR-GÉNÉRATION EST UN FRAIS GÉNÉRAL, PAS UN POST ACHETÉ ────
      *
-     * Mesuré le 2026-09-23 : après dix mois générés dans la session,
-     * `credit_ledger` n'avait pas gagné UNE ligne. `reserve` n'était appelé
-     * que dans la branche synchrone. `quotaRefusals` valait 0 partout, non
-     * parce que le quota tenait, mais parce que personne ne le consultait.
+     * Elle réservait un crédit `post_generation` par candidat. Mesuré : sur
+     * soixante-douze candidats, le lot n'en portait que VINGT-NEUF — le quota
+     * accorde trente posts par mois, donc quarante-deux réservations étaient
+     * refusées d'entrée, et le banc ne pouvait pas exister.
      *
-     * ⚠ ET C'EST LE CHEMIN DE PRODUCTION. Le synchrone ne sert qu'au PREMIER
-     * mois d'un compte — « une nouvelle abonnée n'attend pas trente minutes ».
-     * Tous les mois suivants passent par le lot. Le quota de trente crédits
-     * `post_generation` n'était donc appliqué qu'une fois par praticienne,
-     * jamais ensuite.
+     * Le raisonnement était faux, pas le quota. La praticienne a acheté
+     * TRENTE POSTS ; qu'il en faille soixante-douze pour en obtenir trente
+     * conformes est le coût de la qualité, et c'est le nôtre. Les appels de
+     * candidature entrent donc en `overhead` : ils coûtent, ils ne prennent
+     * aucun crédit.
      *
-     * La réservation se fait ICI, avant `batches.create` : le lot est facturé
-     * à la soumission, donc réserver après serait réserver pour une dépense
-     * déjà faite. Un refus de quota retire le candidat du lot plutôt que
-     * d'arrêter le mois — le lot part avec ce qui est payé.
+     * Le quota reste tenu, et au bon endroit — sur ce qui est LIVRÉ, plus bas,
+     * une réservation par post écrit.
      */
-    const withinQuota: Candidate[] = [];
     for (const candidate of asked) {
-      candidate.reservationId = await reserve(`month ${MONTH}: ${candidate.topic.title.slice(0, 40)}`);
-      if (!candidate.reservationId) { funnel.quotaRefusals += 1; continue; }
-      withinQuota.push(candidate);
+      candidate.reservationId = null;
     }
-    asked.length = 0;
-    asked.push(...withinQuota);
 
     const requests = asked.map(asRequest);
     const built = buildBatchRequests(brand, requests);
@@ -794,15 +804,20 @@ const SPARE_POOL = 6;
     for (const candidate of candidates) {
       if (usable.length >= WANTED + SPARE_POOL) break;
 
-      const reservationId = await reserve(`month ${MONTH}: ${candidate.topic.title.slice(0, 40)}`);
       /*
-       * ⚠ UN REFUS DE QUOTA ARRÊTE LE MOIS, ET C'EST JUSTE. `credit_quotas`
-       * accorde 30 `post_generation` par mois et par personne ; passer outre
-       * serait écrire des posts qu'elle n'a pas achetés. Le rapport le compte
-       * plutôt que de le taire.
+       * ── ⚠ LE QUOTA SE TIENT SUR CE QUI EST LIVRÉ, PAS SUR CE QU'ON TENTE ─
+       *
+       * Il était réservé ici, un crédit par candidat. Mesuré sur le chemin
+       * Batch, où la règle est la même : sur soixante-douze candidats, vingt-
+       * neuf seulement passaient — trente crédits par mois, donc quarante-deux
+       * refus d'entrée, et aucun banc possible.
+       *
+       * La praticienne a acheté TRENTE POSTS ; qu'il en faille soixante-douze
+       * pour en obtenir trente conformes est le coût de la qualité, et c'est
+       * le nôtre. Les candidatures sont donc des frais généraux, et le crédit
+       * se prend à l'écriture.
        */
-      if (!reservationId) break;
-      candidate.reservationId = reservationId;
+      candidate.reservationId = null;
 
       /*
        * ── ⚠ LA CARTE PRATICIENNE NE PASSE PAS PAR LE MODÈLE ──────────────
@@ -1219,6 +1234,19 @@ function selectDeliverable<
     });
   }
 
+  /*
+   * ⚠ LA PHASE EST SOLDÉE ICI, AU COÛT RÉEL, QU'ELLE AIT ABOUTI OU NON. Les
+   * jetons ont été dépensés chez le fournisseur : ils doivent apparaître même
+   * si le mois est refusé plus bas.
+   */
+  if (phaseReservation) {
+    await credits.settle(
+      phaseReservation,
+      useBatch ? batchCostUsd([usage]) : syncCostUsd(usage),
+      true
+    );
+  }
+
   /* ── Les contrôles de mois, et la correction ───────────────────────── */
 
   /*
@@ -1275,7 +1303,23 @@ function selectDeliverable<
     }
     written += 1;
     /*
-     * ── ⚠ LE CRÉDIT SE CONSOMME À LA LIVRAISON, PAS À L'INSERTION ───────
+     * ── ⚠ LE CRÉDIT SE PREND ICI, UN PAR POST ÉCRIT ────────────────────
+     *
+     * C'est le seul endroit où le quota a un sens : la praticienne a acheté
+     * trente POSTS, pas soixante-douze tentatives. Un refus de quota ici
+     * arrête l'écriture — elle n'en a pas acheté plus — et le mois sortira
+     * court, ce que `checkCount` refusera.
+     */
+    const reservationId = await reserve(`month ${MONTH}: ${candidate.topic.title.slice(0, 40)}`);
+    if (!reservationId) {
+      funnel.quotaRefusals += 1;
+      failures.push({ topic: candidate.topic.title, kind: "quota", because: "quota_exhausted" });
+      break;
+    }
+    candidate.reservationId = reservationId;
+
+    /*
+     * ── ⚠ ET IL SE CONSOMME À LA LIVRAISON, PAS À L'INSERTION ──────────
      *
      * Il était soldé à `true` ICI, dans la boucle d'écriture, donc AVANT le
      * verdict. Un mois refusé consommait ainsi ses trente crédits pour des

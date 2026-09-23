@@ -2,32 +2,33 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 /*
- * ── ⚠ LE CHEMIN BATCH NE RÉSERVAIT AUCUN CRÉDIT ────────────────────────
+ * ── ⚠ LE QUOTA SE TIENT SUR CE QUI EST LIVRÉ, PAS SUR CE QU'ON TENTE ────
  *
- * Mesuré le 2026-09-23 : dix mois générés dans la session, et `credit_ledger`
- * n'avait pas gagné UNE ligne. `reserve` n'était appelé que dans la branche
- * synchrone. `quotaRefusals` valait 0 partout — pas parce que le quota tenait,
- * mais parce que personne ne le consultait.
+ * Ce fichier a d'abord exigé l'inverse, et il avait tort.
  *
- * ⚠ ET C'EST LE CHEMIN DE PRODUCTION. Le synchrone ne sert qu'au PREMIER mois
- * d'un compte — « une nouvelle abonnée n'attend pas trente minutes ». Tous les
- * mois suivants passent par le lot. Le quota de trente crédits
- * `post_generation` n'était donc appliqué qu'une seule fois par praticienne,
- * et jamais ensuite.
+ * Premier constat, juste : le chemin Batch ne réservait AUCUN crédit. Dix
+ * mois, trois cents posts, `credit_ledger` inchangé (F25). `reserve` n'était
+ * appelé que dans la branche synchrone — et Batch est le chemin de
+ * production, le synchrone ne servant qu'au premier mois d'un compte.
  *
- * Même famille que F18, F19 et F21 : une grandeur existait, elle était juste,
- * et elle n'était branchée que d'un côté.
+ * Première correction, fausse : réserver un crédit `post_generation` PAR
+ * CANDIDAT, sur les deux chemins. ⚠ Mesuré dès l'essai suivant : sur
+ * soixante-douze candidats, le lot n'en portait que VINGT-NEUF. Le quota
+ * accorde trente posts par mois ; quarante-deux réservations étaient donc
+ * refusées d'entrée, et le banc — ce qui permet d'échanger un post refusé —
+ * ne pouvait pas exister.
+ *
+ * Le quota n'avait pas tort, le raisonnement si. **La praticienne a acheté
+ * trente POSTS, pas soixante-douze tentatives.** Qu'il en faille soixante-
+ * douze pour en obtenir trente conformes est le coût de la qualité, et c'est
+ * le nôtre : les candidatures sont des frais généraux, et le crédit se prend
+ * à l'écriture.
  */
 const SOURCE = readFileSync("scripts/local-render/20-month.ts", "utf8");
 
-/*
- * ⚠ LES BORNES SONT DES MARQUEURS DISTINCTIFS, PAS DES ACCOLADES. Découper sur
- * « } else { » attrapait le `else` INTERNE de la reprise de lot — quatre
- * espaces au lieu de deux, mais l'un contient l'autre — et la branche Batch
- * s'arrêtait donc avant la moitié de son code.
- */
 const SYNC_MARKER = "⚠ SÉQUENTIEL, ET C'EST CE QUI REND LE CACHE UTILE";
-const branch = (from: string, to: string) => {
+
+const slice = (from: string, to: string) => {
   const a = SOURCE.indexOf(from);
   const b = SOURCE.indexOf(to);
   expect(a, `borne introuvable : ${from}`).toBeGreaterThan(-1);
@@ -35,32 +36,71 @@ const branch = (from: string, to: string) => {
   return SOURCE.slice(a, b);
 };
 
-describe("le quota tient sur les deux chemins", () => {
-  const batch = branch("  if (useBatch) {", SYNC_MARKER);
-
-  it("le chemin Batch réserve avant de soumettre", () => {
-    const reserveAt = batch.indexOf("await reserve(`month ${MONTH}");
-    expect(reserveAt, "aucune réservation dans la branche Batch").toBeGreaterThan(-1);
-    // ⚠ Avant `batches.create` : le lot est facturé à la soumission, donc
-    // réserver après serait réserver pour une dépense déjà faite.
-    expect(reserveAt).toBeLessThan(batch.indexOf("client.messages.batches.create"));
+describe("la phase de candidature est un frais général", () => {
+  /*
+   * ⚠ RÉSERVÉE AVANT `batches.create`. Un lot est facturé à la soumission :
+   * réserver après, c'est réserver pour une dépense déjà faite, et un quota
+   * épuisé découvert à ce moment-là ne peut plus rien empêcher.
+   */
+  it("elle est réservée avant la soumission du lot", () => {
+    const reserveAt = SOURCE.indexOf('reason: `month ${MONTH}: candidate generation`');
+    expect(reserveAt, "la phase n'est pas réservée").toBeGreaterThan(-1);
+    expect(reserveAt).toBeLessThan(SOURCE.indexOf("client.messages.batches.create"));
   });
 
-  it("un refus de quota est compté, pas avalé", () => {
-    expect(batch).toContain("funnel.quotaRefusals += 1;");
+  it("elle est prise en `overhead`, donc sans prendre de crédit", () => {
+    const at = SOURCE.indexOf("const phaseReservation = await credits.reserve({");
+    expect(SOURCE.slice(at, at + 200)).toContain('kind: "overhead"');
   });
 
-  it("le chemin synchrone réserve toujours", () => {
-    expect(branch(SYNC_MARKER, "/* ── Les contrôles de mois")).toContain("await reserve(`month ${MONTH}");
+  /* ⚠ Et soldée au coût réel, que le mois aboutisse ou non. */
+  it("elle est soldée au coût réel avant le verdict", () => {
+    const settleAt = SOURCE.indexOf("if (phaseReservation) {");
+    expect(settleAt).toBeGreaterThan(-1);
+    expect(settleAt).toBeLessThan(SOURCE.indexOf("const selection = selectDeliverable("));
+    expect(SOURCE.slice(settleAt, settleAt + 300)).toContain("batchCostUsd([usage])");
   });
 
   /*
-   * Le lot ne part qu'avec ce qui est payé : un candidat refusé au quota en
-   * sort, sinon on paierait un appel pour un post qu'on ne peut pas livrer.
+   * ⚠ AUCUN DES DEUX CHEMINS NE PREND UN CRÉDIT PAR CANDIDAT. C'est ce qui
+   * rendait le banc impossible, et c'est la ligne qu'il ne faut pas
+   * réintroduire.
    */
-  it("le lot ne porte que les candidats réservés", () => {
-    expect(batch).toContain("const withinQuota: Candidate[] = [];");
-    expect(batch.indexOf("asked.push(...withinQuota);"))
-      .toBeLessThan(batch.indexOf("const requests = asked.map(asRequest);"));
+  it("ni le lot ni le synchrone ne réservent par candidat", () => {
+    const batch = slice("  if (useBatch) {", SYNC_MARKER);
+    const sync = slice(SYNC_MARKER, "/* ── Les contrôles de mois");
+    for (const [name, block] of [["batch", batch], ["sync", sync]] as const) {
+      expect(block, `${name} réserve encore par candidat`)
+        .not.toContain("await reserve(`month ${MONTH}");
+    }
+  });
+});
+
+describe("le crédit se prend à l'écriture du post", () => {
+  const writeLoop = slice(
+    "for (const [index, post] of selection.chosen.entries())",
+    "clearJournal(journal);"
+  );
+
+  it("un crédit est réservé par post écrit", () => {
+    expect(writeLoop).toContain("const reservationId = await reserve(`month ${MONTH}");
+  });
+
+  it("un refus de quota arrête l'écriture et se compte", () => {
+    expect(writeLoop).toContain("funnel.quotaRefusals += 1;");
+    expect(writeLoop).toContain('kind: "quota"');
+  });
+
+  /*
+   * ⚠ ET IL NE SE CONSOMME QU'À LA LIVRAISON. Soldé dans la boucle, un mois
+   * refusé prenait ses trente crédits pour des posts que personne ne recevra.
+   * Mesuré : le deuxième essai d'un compte ne pouvait plus réserver que deux
+   * candidats sur soixante-douze.
+   */
+  it("le règlement attend le verdict", () => {
+    expect(writeLoop).toContain("delivered.push(candidate);");
+    expect(writeLoop).not.toContain("syncCostUsd(candidate.usage), true)");
+    const verdict = SOURCE.indexOf("const monthPasses = selection.remaining.length === 0;");
+    expect(verdict).toBeGreaterThan(SOURCE.indexOf("delivered.push(candidate);"));
   });
 });

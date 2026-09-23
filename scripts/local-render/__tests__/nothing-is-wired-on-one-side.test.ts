@@ -129,13 +129,27 @@ describe("toute grandeur produite est CONSOMMÉE, pas seulement affichée", () =
   });
 
   /*
-   * ── F25 : le crédit réservé sur LES DEUX branches ─────────────────────
+   * ── F25 : le livre voit les deux chemins ──────────────────────────────
+   *
+   * Le premier correctif réservait un crédit par candidat sur les deux
+   * branches, et il était faux : à soixante-douze candidats pour un quota de
+   * trente, le lot n'en portait que vingt-neuf et le banc ne pouvait pas
+   * exister. La phase de candidature est un frais général ; le crédit se
+   * prend à l'écriture. `the-quota-holds-on-both-paths` tient le détail.
    */
-  it("les deux chemins réservent un crédit", () => {
-    const sync = MONTH.indexOf("⚠ SÉQUENTIEL, ET C'EST CE QUI REND LE CACHE UTILE");
-    const batch = MONTH.indexOf("  if (useBatch) {");
-    expect(MONTH.slice(batch, sync)).toContain("await reserve(`month ${MONTH}");
-    expect(MONTH.slice(sync)).toContain("await reserve(`month ${MONTH}");
+  it("la phase de candidature entre au livre avant la première dépense", () => {
+    const reserveAt = MONTH.indexOf("const phaseReservation = await credits.reserve({");
+    expect(reserveAt).toBeGreaterThan(-1);
+    expect(reserveAt).toBeLessThan(MONTH.indexOf("client.messages.batches.create"));
+  });
+
+  it("le quota est consulté à l'écriture, sur les deux chemins", () => {
+    const writeLoop = MONTH.slice(
+      MONTH.indexOf("for (const [index, post] of selection.chosen.entries())"),
+      MONTH.indexOf("clearJournal(journal);")
+    );
+    expect(writeLoop).toContain("await reserve(`month ${MONTH}");
+    expect(writeLoop).toContain("funnel.quotaRefusals += 1;");
   });
 
   /*
