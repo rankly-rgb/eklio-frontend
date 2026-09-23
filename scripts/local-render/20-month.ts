@@ -124,7 +124,7 @@ async function main() {
   const key = anthropicKeyOrDie();
   const db = admin();
   const client = new Anthropic({ apiKey: key });
-  const { userId, kitId } = await accountFor(db, arg("email"));
+  const { userId, projectId, kitId } = await accountFor(db, arg("email"));
 
   const { data: already } = await db
     .from("content_months").select("id, status").eq("brand_kit_id", kitId).eq("month", MONTH).maybeSingle();
@@ -155,8 +155,38 @@ async function main() {
     .from("content_checkins").select("brand_kit_id, month, sessions_theme, taking_clients, happening")
     .eq("brand_kit_id", kitId).eq("month", MONTH).maybeSingle();
   const { data: rules } = await db.from("ethics_rules").select("*");
+  /*
+   * ── ⚠ LE BRIEF DE CE PROJET-LÀ, ET LA CLAUSE QUI MANQUAIT ─────────────
+   *
+   * Cette lecture était `.limit(1).single()` SANS `.eq("project_id", …)`.
+   * Elle rendait donc la PREMIÈRE ligne de `project_briefs`, quel que soit le
+   * compte dont on écrivait le mois. Avec quinze praticiennes en base, chaque
+   * mois généré depuis le 2026-09-21 a été écrit à partir du brief de
+   * « Rowan Mercier Therapy » : son nom de cabinet, sa ville, son État, ses
+   * modalités — et sa liste d'autorisation.
+   *
+   * ⚠ C'EST LA VRAIE CAUSE DE F16. « Rowan Mercier Therapy » sur le mois
+   * d'Isla Thornbury n'était pas une identité inventée par le modèle : c'était
+   * l'identité D'UNE AUTRE PRATICIENNE, servie par une clause `where`
+   * manquante. Le modèle n'a fabriqué que l'adresse e-mail, dérivée du nom
+   * qu'on venait de lui tendre.
+   *
+   * ⚠ ET LE CONTRÔLE ÉTAIT AVEUGLE PAR CONSTRUCTION. `checkInventedIdentity`
+   * reçoit `practiceName` et `allowList` de cette même lecture : il AUTORISAIT
+   * donc « Rowan Mercier Therapy » sur les quinze comptes, et aurait signalé
+   * le vrai nom de chacune. Un filet nourri par la source qu'il surveille ne
+   * surveille rien.
+   *
+   * Le produit, lui, lit ses briefs par `project_id` partout
+   * (`lib/app/header-context.ts`, `lib/images/context.ts`) : le défaut était
+   * dans ce harnais seul. Il reste la spécification du chemin serveur, qui
+   * n'écrit pas encore de mois.
+   */
   const { data: brief } = await db
-    .from("project_briefs").select("practice_name, positioning, usp_statement, city, state, modality_ids").limit(1).single();
+    .from("project_briefs")
+    .select("practice_name, positioning, usp_statement, city, state, modality_ids")
+    .eq("project_id", projectId)
+    .single();
   if (!preferences || !rules?.length || !brief) throw new Error("the account is not complete");
 
   const directions = (kit?.directions ?? []) as Array<{ id: string; palette: never }>;

@@ -420,9 +420,15 @@ précisément pour que la ligne dise ce qu'elle vaut.
 
 ---
 
-## F16 — ⚠ UNE CARTE A INVENTÉ UN CABINET ET UNE ADRESSE E-MAIL
+## F16 — ⚠ UN MOIS A ÉTÉ ÉCRIT AVEC LE BRIEF D'UNE AUTRE PRATICIENNE
 
-Trouvé par l'évaluateur indépendant, le 2026-09-21, sur une carte publiable.
+**⚠ CETTE ENTRÉE A ÉTÉ RÉÉCRITE LE 2026-09-23. Le premier diagnostic était
+faux**, et il était rassurant : on avait conclu à une identité inventée par le
+modèle. La vraie cause est une clause `where` manquante, et elle est pire.
+
+### Ce qui a été vu
+
+Trouvé par l'évaluateur indépendant le 2026-09-21, sur une carte publiable.
 Dans un carrousel du mois d'**Isla Thornbury**, une carte praticienne porte :
 
 ```
@@ -432,27 +438,63 @@ Dans un carrousel du mois d'**Isla Thornbury**, une carte praticienne porte :
 ```
 
 Le pied de la même carte — et des trente-neuf fichiers du mois — dit « Isla
-Thornbury Therapy ». **Le nom et l'adresse sont inventés** : il n'existe aucun
-chemin de données entre deux comptes, et cette adresse n'a jamais été saisie
-nulle part. Le modèle a fabriqué une identité professionnelle complète parce
-que la forme de l'archétype lui demandait « des faits sur sa façon de
-travailler ».
+Thornbury Therapy ». On en avait conclu que le modèle avait fabriqué une
+identité professionnelle complète.
 
-**Deux mois sur douze en portaient une.** Aucune suite, aucun budget de mots,
-aucun contrôle déontologique ne les a vus — et le mois concerné avait été
-validé à l'œil.
+### Ce qui s'est réellement passé
 
-Ce n'est pas un défaut de mise en page : une adresse fabriquée sur un post
-publié envoie des clientes vers une boîte qui n'appartient à personne, et un
-nom de cabinet fabriqué est une usurpation d'identité professionnelle.
+`20-month.ts` lisait le brief de la praticienne ainsi :
 
-`checkInventedIdentity` refuse désormais toute adresse, URL ou téléphone dans
+```ts
+.from("project_briefs").select("practice_name, city, state, modality_ids, …")
+.limit(1).single()          // ⚠ aucun .eq("project_id", …)
+```
+
+Il n'y a pas de filtre. Avec **quinze praticiennes en base**, cette lecture
+rend toujours la PREMIÈRE ligne de la table — et la première ligne est
+`rowan.mercier@eklio-test.invalid`.
+
+⚠ **Chaque mois écrit depuis le 2026-09-21 l'a donc été à partir du brief de
+Rowan Mercier** : son nom de cabinet, sa ville, son État, ses modalités.
+« Rowan Mercier Therapy » sur le mois d'Isla Thornbury n'est pas une invention,
+c'est **l'identité d'une autre praticienne, servie par une clause manquante**.
+Le modèle n'a fabriqué que l'adresse e-mail, dérivée du nom qu'on venait de lui
+tendre.
+
+### ⚠ Et le contrôle était aveugle par construction
+
+`checkInventedIdentity` reçoit son `practiceName` et sa liste d'autorisation de
+**cette même lecture**. Il autorisait donc « Rowan Mercier Therapy » sur les
+quinze comptes, et aurait signalé le vrai nom de chacune si elle l'avait écrit.
+
+**Un filet nourri par la source qu'il surveille ne surveille rien.** C'est le
+défaut de mesure le plus coûteux de la session : le contrôle était vert parce
+qu'il regardait la fuite depuis l'intérieur de la fuite.
+
+### Ce qui est corrigé, et ce qui ne l'était pas
+
+Le brief se lit par `project_id`. Le test
+`lib/content/__tests__/one-brief-one-practitioner.test.ts` pose la règle pour
+tout le dépôt : **une lecture qui demande LE brief — celle qui finit en
+`.single()` ou `.maybeSingle()` — doit nommer son projet.** Une lecture qui
+balaie tous les briefs (le `cron` de relance) reste permise, et le test ne la
+touche pas.
+
+⚠ **Le produit n'avait pas ce défaut** : `lib/app/header-context.ts` et
+`lib/images/context.ts` filtrent tous les deux par `project_id`. Le défaut
+était dans le harnais seul — mais le harnais est la spécification du chemin
+serveur, qui n'écrit pas encore de mois. **La règle doit tenir le jour où il
+l'écrira.**
+
+`checkInventedIdentity` reste : il refuse toute adresse, URL ou téléphone dans
 un payload — ces informations vivent dans le profil, pas dans le contenu — et
-tout nom de cabinet qui n'est pas celui du compte.
+tout nom de cabinet qui n'est pas celui du compte. **Mais il ne remplace pas la
+liaison de données, et cette entrée dit pourquoi :** pendant deux jours, il l'a
+remplacée en apparence.
 
-⚠ **À vérifier avant production** : que le nom du cabinet affiché sur une
-carte vienne d'UNE source, le profil, et jamais du texte généré. Le contrôle
-attrape l'invention ; il ne remplace pas une liaison de données.
+⚠ **À refaire avant de conclure quoi que ce soit des mois enregistrés** : les
+douze mois de preuve portent tous le nom, la ville et l'État de Rowan Mercier.
+Aucune conclusion sur la personnalisation ne peut s'appuyer dessus.
 
 ## F17 — ⚠ CE QUE DEVIENT UN LOT INTERROMPU
 
