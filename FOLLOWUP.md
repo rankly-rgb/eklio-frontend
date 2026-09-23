@@ -1016,6 +1016,82 @@ bloquants et il n'est pas publiable.
 6. une apostrophe droite ;
 7. une mnémonique fabriquée depuis des initiales.
 
+## F27 — ⚠ « BRANCHÉ D'UN SEUL CÔTÉ » : LA CLASSE, ET SON RECENSEMENT
+
+Sept occurrences maintenant, toutes de la même forme : **une grandeur juste,
+calculée, que personne ne lit** — ou lue à un endroit où elle n'est pas
+produite.
+
+| # | la grandeur | ce qui manquait |
+|---|---|---|
+| F18 | les échecs du remplissage de banque | comptés pour un bilan que l'interruption n'a jamais atteint — 36 appels payés jetés en silence |
+| F19 | les sujets sur-générés rendus | le bloc était **après** le `throw` du refus |
+| F21 | `shortfall` | imprimé depuis toujours, relié à aucun refus — un mois de 15 posts est sorti sans constat |
+| F23 | `batch_id` | sauvé **sans** la liste de sujets qui le rend lisible |
+| F25 | `reserve_credit` | appelé sur la branche synchrone seulement, jamais sur Batch |
+| **F27a** | `response.usage` | **jeté** par `oneLine` et par `callGeneration` : le coût de tout appel produit, thèmes, légendes, textes alternatifs, kit |
+| **F27b** | `ethicsFlags` | une ligne de rapport — le post partait en base quand même |
+
+⚠ **Chaque moitié était juste.** Aucune suite ne pouvait le voir : un test
+regarde un module, et le défaut est ENTRE deux.
+
+### Le recensement, fait à la requête plutôt qu'à l'œil
+
+Trois endroits produisaient sans consommateur, et deux ont été trouvés par le
+test lui-même le jour où il a été écrit :
+
+* `judgeUsage` — le juge de complétude, ajouté le 24, absent du rapport ;
+* `themesUsage` — la dérivation des thèmes, absente du rapport ET du total ;
+* la liste des genres de crédit, écrite dans **trois** tables
+  (`credit_ledger`, `credit_quotas`, `credit_balances`) et modifiée dans une.
+  La requête qui les trouve toutes tient en une ligne et n'avait jamais été
+  posée :
+
+```sql
+select conrelid::regclass, conname from pg_constraint
+ where pg_get_constraintdef(oid) like '%post_generation%';
+```
+
+### Le test qui tient la jonction
+
+`scripts/local-render/__tests__/nothing-is-wired-on-one-side.test.ts`.
+
+⚠ **Il trouve les compteurs DANS LA SOURCE, il ne les liste pas.** Une liste
+écrite à la main ne grandit pas quand quelqu'un ajoute un appel payant — et
+c'est exactement ce qui venait d'arriver deux fois. Le test exige de chaque
+accumulateur qu'il soit dans le rapport **et** dans le total, vérifie que les
+deux branches réservent, que les sujets sont rendus avant le refus, que le lot
+part avec ses sujets, qu'une violation déontologique écarte le candidat.
+
+### ⚠ ET LA RÈGLE DE F16, ÉNONCÉE
+
+**Aucun contrôle ne tire sa référence de la source qu'il surveille.**
+
+`checkInventedIdentity` recevait son nom de cabinet et sa liste
+d'autorisation d'une lecture de brief non filtrée — la fuite même qu'il devait
+attraper. Il autorisait donc le nom d'une autre praticienne sur les quinze
+comptes, et aurait signalé le vrai nom de chacune.
+
+Les trois contrôles qui prennent une référence ont été vérifiés :
+
+| contrôle | sa référence | d'où elle vient |
+|---|---|---|
+| `checkInventedIdentity` | nom du cabinet, ville, État, modalités | le brief, lu par `project_id` ✓ |
+| `checkAcronym` | les modalités de la praticienne | le brief ✓ |
+| `checkTints` | la palette de direction | le kit, pas le SVG mesuré ✓ |
+
+Les autres (`checkMix`, `checkDuplicateTitles`, `checkEcho`,
+`checkIdenticalPayloads`, les sept de F26) ne comparent que le contenu à
+lui-même : ils n'ont pas de référence externe à corrompre.
+
+### ⚠ Ce qui reste ouvert
+
+**Aucun chemin PRODUIT n'appelle `reserve_credit` pour une génération
+mensuelle.** Le point d'étranglement SQL est juste, le plafond est tenu — et
+c'est le harnais qui frappe à la porte. `runMonthForKit` ne réserve rien.
+C'est la même forme, un cran plus haut : le garde existe, personne ne
+l'appelle. Voir l'étape 8b de la mise en production.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel

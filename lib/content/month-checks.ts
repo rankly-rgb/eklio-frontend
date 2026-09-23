@@ -88,12 +88,31 @@ export const MONTH_LIMITS = {
    * défaut que deux titres identiques — un cran plus bas.
    */
   maxIdenticalPayloads: 2,
+  /**
+   * ⚠ AU MOINS DEUX CARROUSELS PAR MOIS. MESURÉ : IL Y EN AVAIT ZÉRO.
+   *
+   * Trois mois livrés d'affilée, quatre-vingt-dix posts, pas un carrousel —
+   * avec vingt-trois sujets de carrousel libres en banque (F22). Deux causes
+   * empilées : l'ordre de tirage condamnait la dernière famille, et le modèle
+   * rendait `cards` au premier niveau.
+   *
+   * Les deux sont corrigées. Ce plancher existe parce que RIEN NE L'AURAIT
+   * DIT : `mix.distinct` demande sept archétypes sur onze, donc un mois à dix
+   * passe, et le onzième peut manquer depuis toujours. Le carrousel est le
+   * format que les onze références utilisent le plus et celui où une lectrice
+   * s'arrête ; son absence n'est pas une variation de mélange.
+   *
+   * Deux, pas un : un seul carrousel est un accident qui peut se reproduire à
+   * l'identique le mois suivant sans que le chiffre bouge.
+   */
+  minCarousels: 2,
 } as const;
 
 /** Le nombre de posts sous lequel les proportions ne veulent plus rien dire. */
 const MIX_APPLIES_FROM = 10;
 
 export const LONE_SENTENCE = "single_statement";
+export const CAROUSEL = "carousel";
 
 export function checkMix(archetypes: string[]): Finding[] {
   const out: Finding[] = [];
@@ -127,6 +146,20 @@ export function checkMix(archetypes: string[]): Finding[] {
       detail: `phrases seules à ${(lone * 100).toFixed(1)} %, plafond ${MONTH_LIMITS.maxLoneSentenceShare * 100} %`,
     });
   }
+  /*
+   * ⚠ LE PLANCHER DE CARROUSELS EST DANS LE MÉLANGE, PAS À CÔTÉ. Trois mois
+   * sont sortis sans un seul carrousel en affichant un mélange conforme :
+   * `mix.distinct` se contente de sept archétypes sur onze, donc l'absence du
+   * format le plus important ne déplaçait aucun chiffre.
+   */
+  const carousels = counts.get(CAROUSEL) ?? 0;
+  if (carousels < MONTH_LIMITS.minCarousels) {
+    out.push({
+      check: "mix.carousel",
+      detail: `${carousels} carrousel(s) dans le mois, minimum ${MONTH_LIMITS.minCarousels}`,
+    });
+  }
+
   return out;
 }
 

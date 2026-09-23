@@ -1009,6 +1009,33 @@ function selectDeliverable<
      */
     const finding = findings[0];
     let victim = -1;
+
+    /*
+     * ── ⚠ UN CONSTAT QUE LE BANC NE PEUT PAS RÉPARER ARRÊTE LA BOUCLE ───
+     *
+     * `mix.carousel` dit qu'il MANQUE un format, pas qu'un post est de trop.
+     * Le traiter comme les autres constats de mélange ferait retirer le post
+     * le plus représenté et le remplacer par le premier du banc — qui n'est
+     * pas un carrousel — puis recommencer, jusqu'à vider le banc en
+     * dégradant le mois à chaque tour.
+     *
+     * S'il reste un carrousel au banc, on échange CONTRE lui. Sinon, le mois
+     * est refusé tout de suite : c'est le bon verdict, et il coûte zéro tour.
+     */
+    if (finding.check === "mix.carousel") {
+      const spare = bench.findIndex((p) => p.composeArchetype === "carousel");
+      if (spare === -1) return { chosen, remaining: findings, dropped };
+      const counts = new Map<string, number>();
+      for (const p of chosen) counts.set(p.composeArchetype, (counts.get(p.composeArchetype) ?? 0) + 1);
+      const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      const out = chosen.map((p) => p.composeArchetype).lastIndexOf(dominant ?? "");
+      if (out === -1) return { chosen, remaining: findings, dropped };
+      dropped.push({ title: chosen[out].cardLine, why: `${finding.check} — ${finding.detail}` });
+      const [replacement] = bench.splice(spare, 1);
+      chosen = [...chosen.slice(0, out), ...chosen.slice(out + 1), replacement];
+      continue;
+    }
+
     if (finding.check.startsWith("mix.")) {
       const counts = new Map<string, number>();
       for (const p of chosen) counts.set(p.composeArchetype, (counts.get(p.composeArchetype) ?? 0) + 1);
@@ -1077,9 +1104,37 @@ function selectDeliverable<
     // nombre, dans un autre fichier : celle-ci coupait en plein mot ce que
     // l'autre avait déjà coupé proprement.
     const cardLine = capitaliseTitle(clampCardLine(result.cardLine ?? candidate.topic.title));
-    const scanned = [result.caption, result.altText, JSON.stringify(result.payload)].join("\n");
-    for (const violation of checkEthics(scanned).violations) {
+    /*
+     * ── ⚠ LA LIGNE DE CARTE ÉTAIT HORS DU SCAN DÉONTOLOGIQUE ────────────
+     *
+     * `scanned` valait `caption + altText + payload`. Le TITRE n'était lu par
+     * aucune règle — et « Efficiency can become trauma », signée par une
+     * clinicienne EMDR, est un titre (F26). Il entre dans le scan.
+     */
+    const scanned = [cardLine, result.caption, result.altText, JSON.stringify(result.payload)].join("\n");
+    const violations = checkEthics(scanned).violations;
+    for (const violation of violations) {
       ethicsFlags.push({ topic: candidate.topic.title, rule: violation.ruleId, excerpt: violation.excerpt.slice(0, 80) });
+    }
+    /*
+     * ── ⚠ UNE VIOLATION DÉONTOLOGIQUE ÉCARTE LE POST, ELLE NE LE SIGNALE PAS
+     *
+     * `ethicsFlags` était une ligne de RAPPORT : le post partait quand même
+     * en base. Un catalogue de règles qu'une clinicienne est tenue de
+     * respecter, consulté puis ignoré, ne vaut pas mieux que pas de
+     * catalogue — et c'est la classe de défauts de F18 à F25, appliquée cette
+     * fois à de la déontologie plutôt qu'à un compteur.
+     *
+     * Le candidat est écarté comme un dépassement de budget : son crédit est
+     * rendu, son sujet retourne à la banque, un remplaçant prend sa place.
+     */
+    if (violations.length > 0) {
+      failures.push({
+        topic: candidate.topic.title, kind: "ethics",
+        because: violations.map((v) => `${v.ruleId}: ${v.excerpt.slice(0, 60)}`).join("; "),
+      });
+      await settle(candidate.reservationId, 0, false);
+      continue;
     }
 
     /*
@@ -1316,7 +1371,7 @@ function selectDeliverable<
       costUsd: Number(
         (
           (useBatch ? batchCostUsd([usage]) : syncCostUsd(usage)) +
-          syncCostUsd(repairUsage) + syncCostUsd(judgeUsage)
+          syncCostUsd(repairUsage) + syncCostUsd(judgeUsage) + syncCostUsd(themesUsage)
         ).toFixed(5)
       ),
       findings: selection.remaining, dropped: selection.dropped,
@@ -1329,7 +1384,9 @@ function selectDeliverable<
   const batchCost = useBatch ? batchCostUsd([usage]) : 0;
   const syncCost = useBatch ? 0 : syncCostUsd(usage);
   // ⚠ Le juge de complétude compris : un appel payant entre dans le total.
-  const costUsd = batchCost + syncCost + syncCostUsd(repairUsage) + syncCostUsd(judgeUsage);
+  const costUsd =
+    batchCost + syncCost +
+    syncCostUsd(repairUsage) + syncCostUsd(judgeUsage) + syncCostUsd(themesUsage);
   const elapsedSeconds = Math.round((Date.now() - started) / 1000);
 
   console.log(JSON.stringify({
@@ -1355,7 +1412,7 @@ function selectDeliverable<
     releasedTopics: released.length,
     rejectedAsRedundant: rejected,
     themes: { source: themes.source, themes: themes.themes },
-    usage, repairUsage,
+    usage, repairUsage, judgeUsage, themesUsage,
     costUsd: Number(costUsd.toFixed(5)),
     capUsd: SESSION_CAP_USD,
   }, null, 2));
