@@ -87,11 +87,40 @@ const CANDIDATES = 54;
  * pas par leur nom. C'est le nombre de libellés qui décide de la taille du
  * texte, et la taille du texte décide de la lisibilité.
  */
+/*
+ * ── ⚠ L'ORDRE DES FAMILLES DÉCIDE QUELS FORMATS UN MOIS PEUT PORTER ─────
+ *
+ * Mesuré le 2026-09-23 sur deux mois livrés : **zéro carrousel sur soixante
+ * posts**, alors que la banque en portait vingt-trois de libres. Le rapport de
+ * rejet, une fois qu'il a nommé l'archétype, dit pourquoi : les CINQ
+ * carrousels tirés ont été refusés comme redondants, au tirage.
+ *
+ * `redundantAgainst` compare un titre à TOUS ceux déjà acceptés, sans regarder
+ * le format. La famille tirée en dernier affronte donc les trente-six titres
+ * des deux premières, et perd. Les rejets suivent exactement l'ordre de
+ * tirage :
+ *
+ *   statement (tiré 1er) :  7 rejets
+ *   simple    (tiré 2e)  : 15 rejets
+ *   varied    (tiré 3e)  : 23 rejets
+ *
+ * ⚠ CE N'ÉTAIT PAS UN MANQUE DE STOCK, C'ÉTAIT UN ORDRE DE PASSAGE. Les
+ * formats larges — ceux que les références utilisent le plus — étaient
+ * éliminés par construction.
+ *
+ * Ils passent donc en premier. `single_statement` a la forme la plus souple
+ * et le plus gros stock : c'est lui qui peut absorber les rejets, pas le
+ * carrousel. L'objet garde son ordre d'écriture pour que la lecture reste
+ * celle du mélange publié ; c'est `DRAW_ORDER` qui décide du tirage.
+ */
 const FAMILIES: Record<string, string[]> = {
   statement: ["single_statement", "practitioner_card"],
   simple: ["surface_and_beneath", "comparison_pair", "numbered_strategies", "cycle", "concentric_control"],
   varied: ["carousel", "quadrant_model", "annotated_curve", "lettered_technique"],
 };
+
+/** Du format le plus large au plus souple : qui affronte le moins de titres déjà pris. */
+const DRAW_ORDER = ["varied", "simple", "statement"] as const;
 
 type Topic = { id: string; archetype_key: string; intent: string; title: string; hook: string };
 type Usage = { input: number; output: number; cacheRead: number; cacheWrite: number };
@@ -265,7 +294,14 @@ async function main() {
    * — la règle du cahier des charges, « les sujets non utilisés ne sont pas
    * marqués assignés », vaut aussi pour ceux-là.
    */
-  const rejected: Array<{ title: string; because: string }> = [];
+  /*
+   * ⚠ L'ARCHÉTYPE EST DANS LE MOTIF DE REJET, et il y manquait. Le mois de
+   * teo.marrow est sorti sans un seul carrousel, et le rapport ne permettait
+   * pas de dire si aucun n'avait été tiré ou si les cinq avaient été refusés
+   * comme redondants. « Absent du mois » et « refusé au tirage » demandent
+   * deux corrections opposées.
+   */
+  const rejected: Array<{ title: string; archetype: string; because: string }> = [];
   const releasedEarly: string[] = [];
 
   const accept = (topic: Topic, family: string): boolean => {
@@ -291,6 +327,7 @@ async function main() {
     ) {
       rejected.push({
         title: topic.title,
+        archetype: topic.archetype_key,
         because: `déjà ${PRACTITIONER_CARDS_PER_MONTH} cartes praticiennes, et leurs lignes sont identiques`,
       });
       releasedEarly.push(topic.id);
@@ -312,14 +349,14 @@ async function main() {
      */
     const line = clampCardLine(topic.title).toLowerCase();
     if (candidates.some((c) => clampCardLine(c.topic.title).toLowerCase() === line)) {
-      rejected.push({ title: topic.title, because: `même ligne de carte une fois coupée : « ${line} »` });
+      rejected.push({ title: topic.title, archetype: topic.archetype_key, because: `même ligne de carte une fois coupée : « ${line} »` });
       releasedEarly.push(topic.id);
       return false;
     }
 
     const clash = redundantAgainst(topic.title, candidates.map((c) => c.topic.title));
     if (clash) {
-      rejected.push({ title: topic.title, because: clash });
+      rejected.push({ title: topic.title, archetype: topic.archetype_key, because: clash });
       releasedEarly.push(topic.id);
       return false;
     }
@@ -346,7 +383,8 @@ async function main() {
    * Un tour de rôle prend un sujet de chaque archétype, puis recommence. Un
    * archétype épuisé sort de la ronde ; les autres continuent.
    */
-  for (const [family, archetypes] of Object.entries(FAMILIES)) {
+  for (const family of DRAW_ORDER) {
+    const archetypes = FAMILIES[family];
     let taken = 0;
     // ⚠ Un archétype dont le brief ne porte pas les faits n'entre pas dans la
     // ronde : il ne sert à rien de tirer un sujet qu'on ne pourra pas composer.
