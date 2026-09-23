@@ -246,8 +246,9 @@ describe("la banque ne détient jamais les lignes d'une praticienne", () => {
    */
   it("le mois compose la carte depuis le brief, pas depuis le sujet", () => {
     const source = readFileSync("scripts/local-render/20-month.ts", "utf8");
-    const branch = source.slice(source.indexOf('candidate.topic.archetype_key === "practitioner_card"'));
-    const body = branch.slice(0, branch.indexOf("\n    }"));
+    const at = source.indexOf("const fromBrief = (candidate: Candidate) => ({");
+    expect(at, "le helper `fromBrief` a disparu").toBeGreaterThan(-1);
+    const body = source.slice(at, source.indexOf("}) as never;", at));
     expect(body).toContain("payload: practitionerPayload");
     expect(body).not.toContain("candidate.topic.payload");
   });
@@ -270,5 +271,40 @@ describe("la banque ne détient jamais les lignes d'une praticienne", () => {
     );
     expect(branch).toContain("Write ONLY the topic");
     expect(branch).not.toMatch(/"payload"/);
+  });
+});
+
+/*
+ * ── ⚠ LA RÈGLE VIT SUR LES DEUX CHEMINS, PAS SUR UN SEUL ───────────────
+ *
+ * Mesuré le 2026-09-23 : le premier mois tiré sur une banque enfin remplie
+ * est mort sur « copy-batch: no shape written for practitioner_card ».
+ *
+ * La règle « la carte praticienne ne passe pas par le modèle » n'était écrite
+ * que sur le chemin SYNCHRONE. Le chemin Batch envoyait la carte au modèle
+ * comme les autres. Rien ne le montrait parce que la banque n'avait aucune
+ * carte praticienne libre : le tirage n'en sortait jamais.
+ *
+ * ⚠ UNE RÈGLE QUI NE VIT QUE SUR UNE BRANCHE EST UNE RÈGLE QU'ON CROIT AVOIR.
+ */
+describe("aucun chemin n'envoie une carte praticienne au modèle", () => {
+  const SOURCE = readFileSync("scripts/local-render/20-month.ts", "utf8");
+
+  it("le lot ne porte que ce que le modèle écrit", () => {
+    expect(SOURCE).toContain("const asked = candidates.filter(writtenByModel);");
+    const build = SOURCE.slice(SOURCE.indexOf("const built = buildBatchRequests("));
+    expect(build.slice(0, 120)).toContain("buildBatchRequests(brand, requests)");
+    // Le lot se construit sur `asked`, jamais sur `candidates`.
+    expect(SOURCE).not.toContain("buildBatchRequests(brand, candidates");
+  });
+
+  it("le chemin synchrone remplit la carte depuis le brief", () => {
+    expect(SOURCE).toContain("if (!writtenByModel(candidate)) {");
+    expect(SOURCE).toContain("candidate.result = fromBrief(candidate);");
+  });
+
+  /* Et le constructeur lève toujours, comme filet sous les deux chemins. */
+  it("construire une requête pour une carte praticienne lève encore", () => {
+    expect(() => archetypeInstruction(PRACTITIONER_ARCHETYPE)).toThrow(/no shape written/);
   });
 });

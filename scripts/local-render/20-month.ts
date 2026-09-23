@@ -456,6 +456,33 @@ async function main() {
  */
 const SPARE_POOL = 6;
 
+  /*
+   * ── ⚠ LA CARTE PRATICIENNE NE PASSE PAR AUCUN MODÈLE ──────────────────
+   *
+   * Ses lignes viennent du brief. L'appeler coûterait un appel pour rien —
+   * et c'est exactement l'appel dont « Rowan Mercier Therapy » est sortie.
+   *
+   * ⚠ CE HELPER EXISTE PARCE QUE LA RÈGLE N'ÉTAIT ÉCRITE QUE SUR UN CHEMIN.
+   * Le chemin synchrone l'appliquait ; le chemin Batch envoyait la carte au
+   * modèle comme les autres. Tant que la banque n'avait AUCUNE carte
+   * praticienne libre, le tirage n'en sortait jamais et rien ne le montrait :
+   * le premier mois tiré sur une banque remplie est mort sur
+   * « no shape written for practitioner_card ». Une règle qui ne vit que sur
+   * une branche est une règle qu'on croit avoir.
+   */
+  const fromBrief = (candidate: Candidate) => ({
+    topicId: candidate.topic.id, ok: true,
+    payload: practitionerPayload,
+    cardLine: clampCardLine(candidate.topic.title),
+    caption: candidate.topic.hook ?? "",
+    altText: (practitionerPayload?.lines ?? []).join(". "),
+    rationale: "Assembled from the brief, not written.",
+    usage: ZERO(),
+  }) as never;
+
+  const writtenByModel = (candidate: Candidate) =>
+    candidate.topic.archetype_key !== "practitioner_card";
+
   const usable: Candidate[] = [];
 
   /*
@@ -474,13 +501,27 @@ const SPARE_POOL = 6;
      * mort pendant les vingt-cinq minutes d'attente, re-soumettre paierait
      * une seconde fois le même travail. L'identifiant est dans le journal.
      */
-    const requests = candidates.map(asRequest);
+    /*
+     * ⚠ LE LOT NE PORTE QUE CE QUE LE MODÈLE ÉCRIT. Les cartes praticiennes
+     * sont remplies ici, sans appel : les envoyer coûterait un appel chacune
+     * et rouvrirait le chemin de F16.
+     */
+    const asked = candidates.filter(writtenByModel);
+    for (const candidate of candidates) {
+      if (writtenByModel(candidate)) continue;
+      candidate.result = fromBrief(candidate);
+      funnel.generated += 1;
+      if (await settleCandidate(candidate)) usable.push(candidate);
+    }
+
+    const requests = asked.map(asRequest);
+    const built = buildBatchRequests(brand, requests);
     let batch;
     if (journal.batchId) {
       console.error(`▸ reprise du lot ${journal.batchId}`);
       batch = await client.messages.batches.retrieve(journal.batchId);
     } else {
-      batch = await client.messages.batches.create({ requests: buildBatchRequests(brand, requests) });
+      batch = await client.messages.batches.create({ requests: built });
       // ⚠ ÉCRIT AVANT D'ATTENDRE. C'est la seule fenêtre où ça change quelque chose.
       journal = rememberBatch(journal, batch.id);
       console.error(`▸ batch ${batch.id} · ${requests.length} candidates`);
@@ -499,7 +540,7 @@ const SPARE_POOL = 6;
      * dernière réponse jetait les trente précédentes, toutes payées.
      */
     const entries: Array<{ custom_id: string; result: { type: string; message?: Anthropic.Message } }> = [];
-    const byCustom = new Map(requests.map((r, i) => [buildBatchRequests(brand, requests)[i].custom_id, candidates[i]]));
+    const byCustom = new Map(built.map((b, i) => [b.custom_id, asked[i]]));
     for await (const entry of await client.messages.batches.results(batch.id)) {
       entries.push(entry as never);
       const candidate = byCustom.get((entry as { custom_id: string }).custom_id);
@@ -517,13 +558,13 @@ const SPARE_POOL = 6;
         });
       }
     }
-    const byTopic = new Map(candidates.map((c) => [c.topic.id, c.topic.archetype_key]));
+    const byTopic = new Map(asked.map((c) => [c.topic.id, c.topic.archetype_key]));
     for (const result of collectCopy(entries, byTopic)) {
-      const candidate = candidates.find((c) => c.topic.id === result.topicId);
+      const candidate = asked.find((c) => c.topic.id === result.topicId);
       if (candidate) candidate.result = result;
     }
     funnel.generated = candidates.filter((c) => c.result).length;
-    for (const candidate of candidates) {
+    for (const candidate of asked) {
       if (candidate.result?.usage) candidate.usage = candidate.result.usage;
       if (usable.length >= WANTED + SPARE_POOL) break;
       if (await settleCandidate(candidate)) {
@@ -533,7 +574,7 @@ const SPARE_POOL = 6;
         candidate.reservationId = null;
       }
     }
-    for (const u of candidates.map((c) => c.result?.usage).filter(Boolean)) {
+    for (const u of asked.map((c) => c.result?.usage).filter(Boolean)) {
       usage.input += u!.input; usage.output += u!.output;
       usage.cacheRead += u!.cacheRead; usage.cacheWrite += u!.cacheWrite;
     }
@@ -567,16 +608,8 @@ const SPARE_POOL = 6;
        * légende et le texte alternatif, qui eux sont du contenu — mais le
        * payload, jamais.
        */
-      if (candidate.topic.archetype_key === "practitioner_card") {
-        candidate.result = {
-          topicId: candidate.topic.id, ok: true,
-          payload: practitionerPayload,
-          cardLine: clampCardLine(candidate.topic.title),
-          caption: candidate.topic.hook ?? "",
-          altText: (practitionerPayload?.lines ?? []).join(". "),
-          rationale: "Assembled from the brief, not written.",
-          usage: ZERO(),
-        } as never;
+      if (!writtenByModel(candidate)) {
+        candidate.result = fromBrief(candidate);
         funnel.generated += 1;
         funnel.conformantFirstCall += 1;
         if (await settleCandidate(candidate)) usable.push(candidate);
