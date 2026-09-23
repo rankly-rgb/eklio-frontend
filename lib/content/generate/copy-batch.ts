@@ -174,14 +174,33 @@ const SHAPES: Record<string, Shape> = {
       `{"label": "Slow down", "gloss": "one thing at a time"}, ` +
       `{"label": "Stop early", "gloss": "before the tank empties"}]}`,
   },
+  /*
+   * ── ⚠ UNE TECHNIQUE NOMMÉE, PAS UN SIGLE FABRIQUÉ ────────────────────
+   *
+   * La forme disait « 3 letters » et le modèle en fabriquait un depuis les
+   * initiales de ses propres tuiles : « EMP », « EMD », « FTG », « ARC ».
+   * Mesuré sur dix essais gelés, il en a inventé un à CHAQUE carte.
+   *
+   * ⚠ ET « EMD » EST À UNE LETTRE D'« EMDR ». Sur la carte d'une praticienne
+   * EMDR, ça se lit comme une faute de frappe, ou pire comme un protocole
+   * qu'elle aurait inventé.
+   *
+   * L'archétype existe pour porter une technique que la lectrice EMPORTE.
+   * Le sigle est donc DONNÉ, choisi dans un catalogue, et les tuiles
+   * développent ses lettres — l'inverse de ce qui se passait.
+   */
   lettered_technique: {
     shape:
-      `{"acronym": "3 letters", "items": [ONE PER LETTER, IN ORDER, each ` +
+      `{"acronym": "EXACTLY one of: RAIN, STOP, HALT, SIFT, TIPP, GROW, SAFE, CALM, NAME, FACE", ` +
+      `"items": [ONE PER LETTER OF THAT ACRONYM, IN ORDER, each ` +
       `{"label": "1 to 3 words STARTING with that letter", "gloss": "1 to 6 words"}]}`,
     example:
-      `{"acronym": "RSV", "items": [{"label": "Rest", "gloss": "before it is earned"}, ` +
-      `{"label": "Slow", "gloss": "one thing at a time"}, ` +
-      `{"label": "Voice", "gloss": "say what it costs"}]}`,
+      `{"acronym": "STOP", "items": [{"label": "Stop", "gloss": "whatever you are doing"}, ` +
+      `{"label": "Take a breath", "gloss": "one, slowly"}, ` +
+      `{"label": "Observe", "gloss": "what the body is doing"}, ` +
+      `{"label": "Proceed", "gloss": "with that in hand"}]}` +
+      `  ⚠ NEVER invent an acronym from your own labels. Pick one from the ` +
+      `list and write a label for each of ITS letters, in order.`,
   },
   concentric_control: {
     shape: `{"rings": [3 x {"label": "1 to 3 words", "gloss": "1 to 6 words"}], outermost first}`,
@@ -288,6 +307,18 @@ export function archetypeInstruction(archetypeKey: string): string {
        * personne ne l'a vu : l'enveloppe était décrite une fois, dans le
        * préfixe, et elle suffisait partout ailleurs.
        */
+      /*
+       * ⚠ UN VOLET SANS ÉNONCÉ AFFICHE LE TITRE DU CARROUSEL. Deux volets
+       * pareils dans un même post, et la lectrice qui swipe revoit la même
+       * carte : même phrase en tête, même dessin, même gabarit. Mesuré sur
+       * dix essais gelés : dix carrousels sur dix en portaient au moins deux,
+       * l'un en portait trois.
+       */
+      `⚠ AT MOST ONE card may be something other than "single_statement".`,
+      `Every other archetype has no headline of its own, so it prints the`,
+      `carousel's own line: two of them and the reader swipes past the same`,
+      `card twice. Three to six cards, at most one diagram among them.`,
+      ``,
       `⚠ "cards" GOES INSIDE "payload", NOT AT THE TOP LEVEL. The word`,
       `"payload" appears twice below and they are not the same one: the outer`,
       `envelope has one, and every card inside has its own. Your whole reply`,
@@ -532,7 +563,13 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
   return {
     topicId: "",
     ok: true,
-    payload: payload,
+    /*
+     * ⚠ LA PONCTUATION EST NORMALISÉE ICI, UNE FOIS, POUR TOUT LE PAYLOAD.
+     * Dix essais gelés sur dix ont été refusés sur des apostrophes droites :
+     * le modèle écrit « isn't » parce que c'est l'anglais tel qu'on le tape.
+     * Une substitution déterministe tient ce que la consigne ne tiendrait pas.
+     */
+    payload: deepTypographic(payload),
     /*
      * ⚠ TRONQUÉE, JAMAIS REFUSÉE, ET SUR UNE FRONTIÈRE DE MOT. Trente
      * caractères est une contrainte de rendu, pas une règle de fond : un
@@ -540,11 +577,23 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
      * du mois faisait déjà ce geste plus bas dans la chaîne ; le faire ici
      * évite qu'il y ait deux endroits où la même borne se décide.
      */
-    cardLine: typeof o.card_line === "string" ? clampCardLine(o.card_line) : undefined,
-    caption: o.caption,
-    altText: o.alt_text,
-    rationale: typeof o.rationale === "string" ? o.rationale : "",
+    cardLine: typeof o.card_line === "string" ? typographicQuotes(clampCardLine(o.card_line)) : undefined,
+    caption: typographicQuotes(String(o.caption)),
+    altText: typographicQuotes(String(o.alt_text)),
+    rationale: typeof o.rationale === "string" ? typographicQuotes(o.rationale) : "",
   };
+}
+
+/** `typographicQuotes` sur toute chaîne d'une structure, où qu'elle soit rangée. */
+function deepTypographic(value: unknown): unknown {
+  if (typeof value === "string") return typographicQuotes(value);
+  if (Array.isArray(value)) return value.map(deepTypographic);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, deepTypographic(v)])
+    );
+  }
+  return value;
 }
 
 /** Quelques mots outils cités en exemple dans la consigne, pris de la liste. */
@@ -611,6 +660,42 @@ function withoutDangling(text: string): string {
     words = words.slice(0, -1);
   }
   return words.join(" ").replace(/[,;:]$/, "");
+}
+
+/**
+ * Les apostrophes et guillemets droits, remplacés par leurs formes
+ * typographiques.
+ *
+ * ── ⚠ DÉTERMINISTE, PAS DEMANDÉ AU MODÈLE ──────────────────────────────
+ *
+ * Mesuré sur dix essais gelés : `text.straightQuote` a refusé LES DIX. Le
+ * modèle écrit « isn't », « don't », « life's » — c'est l'anglais tel qu'on
+ * le tape, et aucune consigne ne l'en empêchera de façon fiable.
+ *
+ * Or U+0027 dans un empattement de display à 90 px rend un trait vertical nu.
+ * La notation indépendante l'a relevé sans hésiter : « dans un système de
+ * cartes dont le seul vrai atout est le serif, ça se voit d'en face de la
+ * pièce ».
+ *
+ * ⚠ CE N'EST PAS UN CONTOURNEMENT DU CONTRÔLE. Le contrôle existe pour
+ * qu'une carte n'IMPRIME jamais un guillemet de machine à écrire ; le faire
+ * tenir par une substitution déterministe est plus sûr que de le demander, et
+ * le contrôle reste comme filet. Demander au modèle ce qu'une ligne de code
+ * garantit est le mauvais partage du travail.
+ *
+ * L'apostrophe droite devient ’ partout — en anglais elle n'est jamais un
+ * guillemet ouvrant. Les guillemets doubles deviennent une paire, ouvrant
+ * puis fermant, en alternance.
+ */
+export function typographicQuotes(text: string): string {
+  let open = true;
+  return text
+    .replace(/'/g, "\u2019")
+    .replace(/"/g, () => {
+      const mark = open ? "\u201C" : "\u201D";
+      open = !open;
+      return mark;
+    });
 }
 
 export function clampCardLine(line: string): string {

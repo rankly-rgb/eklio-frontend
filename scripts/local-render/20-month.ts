@@ -75,7 +75,18 @@ const ZERO = (): { input: number; output: number; cacheRead: number; cacheWrite:
  * aucun post refusé. Un mois refusé sans remplaçant n'est pas une correction,
  * c'est un abandon.
  */
-const CANDIDATES = 54;
+/*
+ * ⚠ SOIXANTE-DOUZE, ET C EST MESURÉ SUR DIX ESSAIS GELÉS. À 54, la préparation
+ * rendait entre 26 et 30 posts utilisables pour 30 voulus : le banc était
+ * NÉGATIF dans huit essais sur dix, donc le sélecteur ne pouvait échanger
+ * aucun post refusé et chaque constat survivait jusqu au verdict.
+ *
+ * La perte mesurée entre le tirage et la préparation est d environ 45 %
+ * — budget de mots, schéma, déontologie depuis qu une violation écarte le
+ * candidat. Soixante-douze en rend une quarantaine : trente posés, dix au
+ * banc.
+ */
+const CANDIDATES = 72;
 
 /*
  * ── LE MÉLANGE DU MOIS ──────────────────────────────────────────────────
