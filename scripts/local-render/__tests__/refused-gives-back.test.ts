@@ -37,7 +37,7 @@ describe("un essai refusé ne s'appauvrit pas lui-même", () => {
   });
 
   it("le refus sort bien en erreur — la restitution ne l'adoucit pas", () => {
-    const tail = SOURCE.slice(refusal, refusal + 900);
+    const tail = SOURCE.slice(refusal, refusal + 1600);
     expect(tail).toContain("throw new Error(");
     expect(tail).toContain("refused: true");
   });

@@ -47,7 +47,10 @@ import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
 import { checkMonth, type Finding } from "../../lib/content/month-checks";
-import { practitionerLines, identityAllowList, type PractitionerFacts } from "../../lib/content/practitioner";
+import {
+  practitionerLines, identityAllowList, PRACTITIONER_CARDS_PER_MONTH,
+  type PractitionerFacts,
+} from "../../lib/content/practitioner";
 import { loadJournal, rememberBatch, rememberResult, clearJournal } from "./journal";
 import type { DirectionPalette } from "../../lib/compose/palette";
 import { admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD } from "./lib";
@@ -267,6 +270,34 @@ async function main() {
 
   const accept = (topic: Topic, family: string): boolean => {
     /*
+     * ── ⚠ LA CARTE PRATICIENNE EST UN APPOINT, PAS UN ARCHÉTYPE ─────────
+     *
+     * Mesuré le 2026-09-23 : dès que la banque a porté des cartes
+     * praticiennes libres, le tirage en a pris NEUF sur trente. Toutes
+     * identiques — mêmes trois lignes venues du brief, même dessin de porte,
+     * seul le titre changeait — et le mois a passé tous les contrôles, parce
+     * que 9 sur 30 font exactement 30,0 %, le plafond au centième près.
+     *
+     * ⚠ ET LE PLAFOND EST ICI, PAS DANS LA RONDE PAR FAMILLE. Posé dans la
+     * ronde, il ne tenait que sur le PREMIER des deux tirages : le rattrapage
+     * qui complète le mois demande un sujet sans nommer d'archétype, et il en
+     * a repris huit. Un plafond posé sur une seule des deux portes n'est pas
+     * un plafond. `accept` est la seule par où les deux passent.
+     */
+    if (
+      topic.archetype_key === "practitioner_card" &&
+      candidates.filter((c) => c.topic.archetype_key === "practitioner_card").length
+        >= PRACTITIONER_CARDS_PER_MONTH
+    ) {
+      rejected.push({
+        title: topic.title,
+        because: `déjà ${PRACTITIONER_CARDS_PER_MONTH} cartes praticiennes, et leurs lignes sont identiques`,
+      });
+      releasedEarly.push(topic.id);
+      return false;
+    }
+
+    /*
      * ⚠ SUR LE TITRE COMPLET **ET** SUR CE QUI SERA IMPRIMÉ.
      *
      * Le dédoublonnage lisait `topic.title`, la forme longue en banque. Mais
@@ -320,6 +351,7 @@ async function main() {
     // ⚠ Un archétype dont le brief ne porte pas les faits n'entre pas dans la
     // ronde : il ne sert à rien de tirer un sujet qu'on ne pourra pas composer.
     const live = archetypes.filter((a) => a !== "practitioner_card" || practitionerPayload !== null);
+
     while (taken < perFamily && live.length > 0) {
       for (let k = 0; k < live.length && taken < perFamily; ) {
         const { data: topicId, error } = await (db.rpc as unknown as (
@@ -339,6 +371,12 @@ async function main() {
           continue;
         }
         if (accept(topic as Topic, family)) taken += 1;
+        else if (live[k] === "practitioner_card") {
+          // Son plafond est atteint : elle sort de la ronde plutôt que de la
+          // faire tourner à vide jusqu'à épuiser la banque.
+          live.splice(k, 1);
+          continue;
+        }
         k += 1;
       }
     }
@@ -1020,6 +1058,17 @@ function selectDeliverable<
       // échangé » et « aucun remplaçant disponible » se ressemblent, et on
       // cherche le défaut dans le sélecteur au lieu de la sur-génération.
       prepared: readyPosts.length, wanted: WANTED, bench: readyPosts.length - WANTED,
+      /*
+       * ⚠ UN ESSAI REFUSÉ A COÛTÉ, ET IL LE DIT. Le coût n'était imprimé que
+       * sur le chemin livré : un mois refusé sortait en erreur sans qu'on
+       * sache ce qu'il avait dépensé, et compter les essais d'un pipeline
+       * revient à compter ce que chacun coûte.
+       */
+      costUsd: Number(
+        (
+          (useBatch ? batchCostUsd([usage]) : syncCostUsd(usage)) + syncCostUsd(repairUsage)
+        ).toFixed(5)
+      ),
       findings: selection.remaining, dropped: selection.dropped,
     }, null, 2));
     throw new Error(

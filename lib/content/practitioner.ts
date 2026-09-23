@@ -122,3 +122,20 @@ export function bankPayloadFor(archetypeKey: string): Record<string, never> | nu
 
 /** L'archétype dont le corps vient du brief, jamais d'un modèle. */
 export const PRACTITIONER_ARCHETYPE = "practitioner_card";
+
+/**
+ * Combien de cartes praticiennes un mois peut porter.
+ *
+ * ⚠ MESURÉ : NEUF SUR TRENTE ONT PASSÉ TOUS LES CONTRÔLES LE 2026-09-23.
+ *
+ * Dès que la banque a porté des cartes praticiennes libres, le tirage à tour
+ * de rôle en a pris neuf — toutes identiques, puisque leurs lignes viennent
+ * du brief et ne varient pas : « EMDR / Oakland, CA / Taking new clients »,
+ * neuf fois, avec le même dessin de porte. Le mois s'ouvrait sur neuf copies
+ * de la même image. `mix.dominant` ne l'a pas vu : 9 sur 30 font exactement
+ * 30,0 %, soit le plafond au centième près.
+ *
+ * Deux, et pas une : la carte qui dit comment elle travaille peut revenir une
+ * fois dans le mois. Au-delà, ce n'est plus un appoint, c'est une répétition.
+ */
+export const PRACTITIONER_CARDS_PER_MONTH = 2;

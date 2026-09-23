@@ -64,6 +64,25 @@ export const MONTH_LIMITS = {
    * fonds sombres, où les écarts sont naturellement plus serrés.
    */
   minTintDistance: 15,
+  /**
+   * ⚠ COMBIEN DE FOIS LE MÊME VISUEL PEUT PARAÎTRE DANS UN MOIS. MESURÉ.
+   *
+   * Le 2026-09-23, un mois a passé TOUS les contrôles avec **neuf cartes
+   * praticiennes identiques en tête de planche** : même trois lignes — « EMDR
+   * / Oakland, CA / Taking new clients » —, même dessin de porte, seul le
+   * titre changeait. `mix.dominant` ne l'a pas vu parce que 9 sur 30 font
+   * exactement 30,0 %, soit le plafond au centième près.
+   *
+   * La carte praticienne n'a pas de contenu propre : son payload vient du
+   * brief et ne varie donc PAS d'un post à l'autre. Un deuxième exemplaire
+   * est déjà la même carte avec un autre titre ; un neuvième est un mois qui
+   * s'ouvre sur neuf fois la même image.
+   *
+   * Deux, et pas un : la carte qui dit comment elle travaille peut revenir
+   * une fois dans le mois. Au-delà, c'est de la répétition, et c'est le même
+   * défaut que deux titres identiques — un cran plus bas.
+   */
+  maxIdenticalPayloads: 2,
 } as const;
 
 /** Le nombre de posts sous lequel les proportions ne veulent plus rien dire. */
@@ -447,10 +466,40 @@ export type MonthUnderCheck = {
  * question. Ce module ne corrige rien : il dit ce qui ne va pas, avec de quoi
  * le retrouver.
  */
+/*
+ * ── ⚠ DEUX POSTS AU MÊME PAYLOAD SONT LE MÊME VISUEL ───────────────────
+ *
+ * `checkDuplicateTitles` compare ce qui est ÉCRIT en tête. Ce contrôle-ci
+ * compare ce qui est DESSINÉ en dessous, et c'est par là qu'un mois entier
+ * est passé : neuf cartes praticiennes au payload rigoureusement identique,
+ * neuf titres différents, et pas un contrôle pour le dire.
+ */
+export function checkIdenticalPayloads(posts: PostUnderCheck[]): Finding[] {
+  const seen = new Map<string, string[]>();
+  for (const post of posts) {
+    if (post.payload === null || post.payload === undefined) continue;
+    const key = JSON.stringify(post.payload);
+    if (key === "{}" || key === "null") continue;
+    seen.set(key, [...(seen.get(key) ?? []), post.cardLine || post.title]);
+  }
+  const out: Finding[] = [];
+  for (const [, titles] of seen) {
+    if (titles.length <= MONTH_LIMITS.maxIdenticalPayloads) continue;
+    out.push({
+      check: "mix.samePayload",
+      detail:
+        `${titles.length} posts au payload identique, plafond ${MONTH_LIMITS.maxIdenticalPayloads} : ` +
+        titles.map((t) => `« ${t} »`).join(", "),
+    });
+  }
+  return out;
+}
+
 export function checkMonth(month: MonthUnderCheck): Finding[] {
   const out: Finding[] = [];
   out.push(...checkMix(month.posts.map((p) => p.archetype)));
   out.push(...checkDuplicateTitles(month.posts.map((p) => p.cardLine || p.title)));
+  out.push(...checkIdenticalPayloads(month.posts));
 
   for (const post of month.posts) {
     const where = `« ${post.cardLine || post.title} »`;
