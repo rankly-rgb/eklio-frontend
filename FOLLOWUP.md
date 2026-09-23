@@ -1092,6 +1092,74 @@ c'est le harnais qui frappe à la porte. `runMonthForKit` ne réserve rien.
 C'est la même forme, un cran plus haut : le garde existe, personne ne
 l'appelle. Voir l'étape 8b de la mise en production.
 
+## F28 — LA MESURE À CONTRÔLES GELÉS : DEUX MOIS LIVRÉS SUR DIX
+
+**C'est le chiffre demandé, et c'est le premier qui veut dire quelque chose.**
+Le précédent — dix essais pour un mois — ne valait rien : les contrôles avaient
+bougé sept fois pendant, toujours en se serrant, donc le taux de passage
+mesurait la sévérité de l'heure.
+
+### Le protocole
+
+Contrôles gelés au commit `8ef5b39`, dix comptes neufs, dix kits, banque
+remplie **avant** de commencer (890 appels, 1,68 $, 1 252 sujets libres pour
+un besoin mesuré de ~30 par essai). Dix essais lancés **en parallèle**.
+
+### Le résultat
+
+| essai | verdict | posts | motifs |
+|---|---|---|---|
+| pia.rosenthal | **LIVRÉ** | 30 | — |
+| quill.marchand | **LIVRÉ** | 30 | — |
+| lena.ashworth | refusé | 36 préparés | `text.borrowed` |
+| noor.bexley | refusé | 36 préparés | `month.short` |
+| kai.lindqvist | refusé | 35 préparés | `text.dangling`, `text.echo` |
+| mira.calloway | refusé | 36 préparés | `text.dangling`, `text.unfinished` |
+| oren.faulkner | refusé | 36 préparés | `text.dangling`, `text.unfinished` |
+| rune.eberhardt | refusé | 23 préparés | six constats, banque à sec |
+| sable.ingram | **n'a pas pu démarrer** | 0 tiré | banque épuisée |
+| tova.lindgren | **n'a pas pu démarrer** | 0 tiré | banque épuisée |
+
+**Deux mois livrés sur dix essais. Huit essais ont réellement tourné : deux
+livrés, un sur quatre.** Coût : **0,89 $** pour les dix, soit **0,089 $ par
+essai** et **0,45 $ par mois livré**.
+
+### ⚠ Ce que les deux derniers disent, et qui compte autant
+
+`sable.ingram` et `tova.lindgren` n'ont tiré **aucun candidat**. Dix
+praticiennes du MÊME segment tirant en parallèle épuisent une banque de dix
+mois : la fenêtre anti-collision retire à chacune ce que les neuf autres
+viennent d'assigner.
+
+⚠ **F13 dimensionnait la banque pour dix mois CONSÉCUTIFS, pas pour dix mois
+SIMULTANÉS.** Ce n'est pas la même grandeur, et c'est celle qui compte en
+production : un `cron` mensuel génère tous les mois d'un segment le même jour.
+Le stock doit couvrir `N praticiennes × 72 candidats` en une fois, pas
+`N × 30` étalés.
+
+### Les refusés étaient proches
+
+Six des huit ont préparé **35 ou 36 posts pour 30**, avec un banc réel, et
+n'ont échoué que sur **un ou deux** constats — un mot suspendu, une recopie,
+un titre d'ouvrage. Contre huit à dix constats par essai au premier tour.
+
+⚠ **Aucun n'a été corrigé en relâchant un contrôle.** Entre les deux tours,
+quatre causes ont été traitées côté GÉNÉRATION : la ponctuation normalisée au
+point d'assemblage, le sigle nommé plutôt qu'inventé, le carrousel tiré deux
+fois par tour, et 43 sujets de banque purgés parce qu'ils portaient un titre
+d'ouvrage écrit avant que le contrôle existe.
+
+### ⚠ Et un défaut que le mélange ne voit toujours pas
+
+Le mois livré porte **zéro `single_statement`**. C'est l'exact miroir de F22 —
+le carrousel absent — et pour la même raison : `mix.distinct` se contente de
+sept archétypes sur onze, donc l'absence complète d'un format ne déplace aucun
+chiffre. L'ordre de tirage a été inversé pour sauver le carrousel, et la
+phrase seule, désormais tirée en dernier, a pris sa place dans le trou.
+
+**Un plancher par format, et pas seulement un compte de formats.** Le
+carrousel en a un depuis F22 ; les dix autres n'en ont pas.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
