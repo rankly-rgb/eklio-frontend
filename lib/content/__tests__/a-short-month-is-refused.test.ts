@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { checkCount, checkMonth } from "@/lib/content/month-checks";
 
 /*
@@ -57,5 +58,40 @@ describe("un mois court est refusé", () => {
       direction: palette, wanted: 30,
     });
     expect(findings[0]?.check).toBe("month.short");
+  });
+});
+
+/*
+ * ── ⚠ ET LE NOMBRE ÉCRIT, PAS LE NOMBRE CHOISI ────────────────────────
+ *
+ * Mesuré le 2026-09-23, huit essais plus tard : un mois de **29 posts** est
+ * sorti sans refus, alors que `checkCount` venait d'être posé.
+ *
+ * `checkCount` regardait la SÉLECTION, et la sélection en portait bien trente.
+ * Entre elle et la base, un insert a échoué, `failures` a gagné une ligne
+ * « database », la boucle a continué, et personne n'a recompté.
+ *
+ * ⚠ CONTRÔLER UNE GRANDEUR EN AMONT DE L'ÉCRITURE NE DIT RIEN DE CE QUI A ÉTÉ
+ * ÉCRIT. C'est la même leçon que F21 — « imprimer une grandeur n'est pas la
+ * contrôler » — prise un cran plus loin : la contrôler au mauvais endroit non
+ * plus. Le seul nombre qui compte est celui des lignes en base.
+ */
+describe("le nombre écrit est recompté après l'écriture", () => {
+  const SOURCE = readFileSync("scripts/local-render/20-month.ts", "utf8");
+
+  it("le recompte lit `written`, pas la sélection", () => {
+    expect(SOURCE).toContain("const shortOnWrite: Finding[] = written < WANTED");
+    expect(SOURCE).toContain("posts écrits pour ${WANTED} promis");
+  });
+
+  it("il s'ajoute aux constats AVANT le refus, donc il refuse", () => {
+    const at = SOURCE.indexOf("selection.remaining.push(...shortOnWrite);");
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(SOURCE.indexOf("if (selection.remaining.length > 0) {"));
+  });
+
+  it("et il vient après la boucle d'insertion, pas avant", () => {
+    expect(SOURCE.indexOf("written += 1;"))
+      .toBeLessThan(SOURCE.indexOf("const shortOnWrite: Finding[] ="));
   });
 });

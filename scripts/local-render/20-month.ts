@@ -1100,6 +1100,26 @@ function selectDeliverable<
    * preuve doit s'arrêter là plutôt que de produire une planche qu'on
    * commenterait comme si elle était bonne.
    */
+  /*
+   * ── ⚠ ET CE QUI A ÉTÉ ÉCRIT, PAS CE QUI A ÉTÉ CHOISI ──────────────────
+   *
+   * Mesuré le 2026-09-23 : un mois de **29 posts** est sorti sans refus.
+   * `checkCount` (F21) avait bien vu trente — mais il regardait la SÉLECTION.
+   * Entre la sélection et la base, un insert a échoué, `failures` a gagné une
+   * ligne « database », et la boucle a continué. Personne ne recomptait après.
+   *
+   * ⚠ C'EST F21 UN CRAN PLUS LOIN : contrôler une grandeur en amont de
+   * l'écriture ne dit rien de ce qui a été écrit. Le seul nombre qui compte
+   * est celui des lignes en base.
+   */
+  const shortOnWrite: Finding[] = written < WANTED
+    ? [{
+        check: "month.short",
+        detail: `${written} posts écrits pour ${WANTED} promis — ${WANTED - written} insert(s) ont échoué`,
+      }]
+    : [];
+  selection.remaining.push(...shortOnWrite);
+
   if (selection.remaining.length > 0) {
     console.log(JSON.stringify({
       step: "month", refused: true, monthId: monthRow.id,
