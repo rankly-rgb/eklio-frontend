@@ -635,6 +635,49 @@ juste, et le script se terminait sur un `throw` attendu. Le test lit donc
 ⚠ **La restitution ne dépend pas du verdict** : ce qui n'a pas été publié n'a
 rien coûté à la praticienne, qu'on livre ou qu'on refuse.
 
+## F20 — ⚠ NEUF FOIS LA MÊME IMAGE, ET TOUS LES CONTRÔLES AU VERT
+
+**Mesuré le 2026-09-23**, sur le premier mois tiré d'une banque enfin remplie.
+Le mois a passé `checkMonth` en entier. La planche à 390px s'ouvre sur **neuf
+cartes praticiennes identiques** : mêmes trois lignes venues du brief — « EMDR
+/ Oakland, CA / Taking new clients » —, même dessin de porte, seul le titre
+changeait.
+
+**Aucun contrôle ne pouvait le voir**, et c'est ça qui compte :
+
+* `mix.dominant` plafonne un archétype à 30 % du mois. **9 sur 30 font
+  exactement 30,0 %** — le plafond au centième près ;
+* `checkDuplicateTitles` compare les titres, et les neuf titres différaient.
+
+Le défaut était **sous** le titre, dans le payload, où rien ne regardait.
+C'est F15 encore une fois : l'entonnoir vert, la planche mauvaise. Ici la
+mesure existait, elle était simplement posée sur la mauvaise grandeur.
+
+### La cause
+
+La carte praticienne **n'a pas de contenu propre** : ses lignes viennent du
+brief et ne varient donc pas d'un post à l'autre. Elle ne peut pas prendre son
+tour comme un archétype qui écrit quelque chose de neuf à chaque fois. Elle
+est plafonnée à deux par mois.
+
+⚠ **Et le plafond a d'abord été posé au mauvais endroit.** Placé dans la ronde
+par famille, il ne tenait que sur le PREMIER des deux tirages : le rattrapage
+qui complète le mois demande un sujet **sans nommer d'archétype**, et il en a
+repris huit à l'essai suivant. Un plafond posé sur une seule des deux portes
+n'est pas un plafond. Il vit maintenant dans `accept`, par où les deux passent.
+
+### Le filet
+
+`checkIdenticalPayloads` : **deux posts au même payload sont le même visuel**,
+quoi que disent leurs titres. Plafond de deux, et un test tient le plafond du
+TIRAGE en dessous ou à égalité de celui du CONTRÔLE — sinon chaque essai tire
+ce que le contrôle refusera, et se condamne lui-même.
+
+⚠ **Ce qu'il faut en retenir pour les autres archétypes** : tout archétype
+dont le payload vient d'une source fixe (le brief, le bilan, un catalogue)
+aura le même défaut le jour où la banque en portera assez. Le filet est
+générique exprès.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
@@ -797,6 +840,58 @@ dès qu'elle se vide.
 plafond de session de 4 $, ce qui ne laissait pas de quoi générer les mois
 que la même demande exigeait. C'est une décision de budget, écrite ici plutôt
 que devinée plus tard depuis un stock qui ne correspond à aucune cible.
+
+### ⚠ UN MOIS REFUSÉ COÛTE AUTANT DE BANQUE QU'UN MOIS LIVRÉ
+
+**Mesuré le 2026-09-23 sur quatre essais consécutifs**, banque partant de
+**372 sujets libres** :
+
+| essai | compte | tirés | publiés | rendus | reste après |
+|---|---|---|---|---|---|
+| 1 | imogen.hale | 54 | 30 | 24 | 318 |
+| 2 | maren.okafor | 30 | 29 | 1 | ~289 |
+| 3 | orin.fenwick | 39 | 30 | 9 | ~118 |
+| 4 | lysa.brandt | **18** | — | — | **88** |
+
+⚠ **Le quatrième essai n'a pas pu tirer un mois.** Dix-huit candidats pour
+trente posts : la banque ne portait plus de quoi en composer un.
+
+La raison tient en une ligne : **un mois REFUSÉ garde ses trente sujets**. Il
+reste en `proposed` — ses posts sont écrits, ce sont eux qu'on relit pour
+savoir ce qui cloche — donc ses sujets restent assignés, et la fenêtre
+anti-collision les retire à TOUTES les praticiennes du segment pour 90 jours.
+Seuls les sur-générés non retenus reviennent (F19).
+
+⚠ **LE DIMENSIONNEMENT DE F13 COMPTE DONC DES ESSAIS, PAS DES LIVRAISONS.**
+`stock = N × 90 × 3` suppose un mois par mois et par praticienne. À deux
+essais pour un mois livré, il faut le doubler ; à trois, le tripler. Le
+tableau ci-dessus dit 30 sujets par essai, quel qu'en soit le verdict — c'est
+le chiffre à multiplier, et il n'apparaissait nulle part.
+
+| praticiennes | 1 essai / mois | 2 essais / mois | 3 essais / mois |
+|---|---|---|---|
+| 5 | 1 350 sujets · 3,92 $ | 2 700 · 7,83 $ | 4 050 · 11,75 $ |
+| 20 | 5 400 · 15,66 $ | 10 800 · 31,32 $ | 16 200 · 46,98 $ |
+| 40 | 10 800 · 31,32 $ | 21 600 · 62,64 $ | 32 400 · 93,96 $ |
+
+⚠ **La requête de surveillance doit donc compter les sujets libres PAR
+ARCHÉTYPE, pas au total.** Au quatrième essai la banque portait encore 88
+sujets libres — assez en apparence — mais `cycle` et `numbered_strategies`
+n'en avaient que cinq chacun, et un mois ne se compose pas avec ça :
+
+```sql
+-- ⚠ Le total ment. C'est le minimum par archétype qui dit si un mois passe.
+select t.archetype_key,
+       count(*) filter (where a.topic_id is null) as libres
+  from public.content_topics t
+  left join public.topic_assignments a on a.topic_id = t.id
+ group by 1
+ order by 2;
+```
+
+**Seuil d'alerte : moins de 5 sujets libres sur UN archétype quelconque.**
+Mesuré : c'est la valeur qu'avaient `cycle` et `numbered_strategies` quand le
+quatrième essai n'a tiré que 18 candidats sur 54.
 
 ### ⚠ Le stock se dimensionne PAR ARCHÉTYPE, pas en total
 
