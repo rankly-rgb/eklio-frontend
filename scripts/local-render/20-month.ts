@@ -46,7 +46,9 @@ import { checkinLeaks } from "../../lib/content/leakage";
 import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
-import { checkMonth, type Finding } from "../../lib/content/month-checks";
+import { checkMonth, writtenLinesIn, type Finding } from "../../lib/content/month-checks";
+import { undecidedIn, type CompletenessVerdicts } from "../../lib/content/writing-checks";
+import { judgeCompleteness } from "../../lib/content/generate/completeness-judge";
 import {
   practitionerLines, identityAllowList, PRACTITIONER_CARDS_PER_MONTH,
   type PractitionerFacts,
@@ -498,6 +500,12 @@ async function main() {
   };
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   const repairUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  /*
+   * ⚠ LE JUGE DE COMPLÉTUDE EST UN APPEL PAYANT, DONC IL A SA LIGNE. Un appel
+   * qui ne figure dans aucun compteur est un appel qu'on croit gratuit — c'est
+   * la classe de défauts de F18 à F25, et elle ne recommence pas ici.
+   */
+  const judgeUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   const failures: Array<{ topic: string; kind: string; because: string }> = [];
 
   /** Réserve un crédit, ou dit pourquoi elle ne peut pas. */
@@ -895,7 +903,20 @@ type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ titl
 function selectDeliverable<
   T extends { cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
               candidate: { topic: { title: string } } }
->(prepared: T[], direction: DirectionPalette, wanted: number, practiceName: string, allowList: string[]): Deliverable<T> {
+>(
+  prepared: T[], direction: DirectionPalette, wanted: number, practiceName: string,
+  allowList: string[],
+  /** Les modalités du brief, pour le contrôle de sigle (F26). */
+  modalities: string[],
+  /**
+   * Ce qu'un juge a dit des lignes que le lexique n'a pas su trancher.
+   *
+   * ⚠ CALCULÉ UNE FOIS, AVANT LA SÉLECTION. Le sélecteur boucle : demander le
+   * verdict à chaque tour paierait un appel par échange, et l'ensemble des
+   * lignes ne change pas — seul le sous-ensemble retenu change.
+   */
+  completeness: CompletenessVerdicts
+): Deliverable<T> {
   const asPost = (p: T) => ({
     archetype: p.composeArchetype,
     title: p.candidate.topic.title,
@@ -911,6 +932,7 @@ function selectDeliverable<
   for (;;) {
     const findings = checkMonth({
       posts: chosen.map(asPost), direction, practiceName, identityAllowList: allowList,
+      modalities, completeness,
       /*
        * ⚠ LE NOMBRE EST UN CONTRÔLE, PAS UNE LIGNE DE RAPPORT. Un mois de
        * quinze posts est sorti « sans constat » le 2026-09-23 : le rapport
@@ -1074,8 +1096,36 @@ function selectDeliverable<
   }
 
   /* ── Les contrôles de mois, et la correction ───────────────────────── */
+
+  /*
+   * ── ⚠ LE JUGE DE COMPLÉTUDE, UN APPEL POUR TOUT LE MOIS ───────────────
+   *
+   * Quatre titres du mois précédent se sont arrêtés avant leur sens, et un
+   * seul était lexical : « When life changes without » finit sur une
+   * préposition qui ne strande pas. Les trois autres — « The thing that works
+   * costs », « High performance masks held », « Success masks an overdriven »
+   * — finissent sur des mots ordinaires, et ce qui manque est ce qui vient
+   * APRÈS. Aucune liste de mots ne le dit ; trois tours de faux positifs l'ont
+   * établi.
+   *
+   * On demande donc, une fois, sur les seules lignes que le lexique n'a pas
+   * tranchées. ⚠ Et un juge muet ne refuse rien : `judgeCompleteness` ne lève
+   * jamais et rend un verdict vide en cas de panne.
+   */
+  const allWritten = writtenLinesIn(readyPosts.map((p) => ({
+    archetype: p.composeArchetype, title: p.candidate.topic.title,
+    cardLine: p.cardLine, payload: p.payload,
+  })));
+  const toJudge = undecidedIn(allWritten);
+  const judged = await judgeCompleteness(client, toJudge);
+  judgeUsage.input += judged.usage.input;
+  judgeUsage.output += judged.usage.output;
+  console.error(`▸ complétude : ${toJudge.length} lignes indécises jugées, ${
+    Object.values(judged.verdicts).filter((v) => v === false).length} refusées`);
+
   const selection = selectDeliverable(
-    readyPosts, direction.palette as DirectionPalette, WANTED, practiceName, allowList
+    readyPosts, direction.palette as DirectionPalette, WANTED, practiceName, allowList,
+    facts.modalities, judged.verdicts
   );
   const succeeded = selection.chosen.map((p: Prepared) => p.candidate);
 
@@ -1206,7 +1256,8 @@ function selectDeliverable<
        */
       costUsd: Number(
         (
-          (useBatch ? batchCostUsd([usage]) : syncCostUsd(usage)) + syncCostUsd(repairUsage)
+          (useBatch ? batchCostUsd([usage]) : syncCostUsd(usage)) +
+          syncCostUsd(repairUsage) + syncCostUsd(judgeUsage)
         ).toFixed(5)
       ),
       findings: selection.remaining, dropped: selection.dropped,
@@ -1218,7 +1269,8 @@ function selectDeliverable<
 
   const batchCost = useBatch ? batchCostUsd([usage]) : 0;
   const syncCost = useBatch ? 0 : syncCostUsd(usage);
-  const costUsd = batchCost + syncCost + syncCostUsd(repairUsage);
+  // ⚠ Le juge de complétude compris : un appel payant entre dans le total.
+  const costUsd = batchCost + syncCost + syncCostUsd(repairUsage) + syncCostUsd(judgeUsage);
   const elapsedSeconds = Math.round((Date.now() - started) / 1000);
 
   console.log(JSON.stringify({

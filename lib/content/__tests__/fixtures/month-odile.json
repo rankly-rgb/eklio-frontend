@@ -1,0 +1,764 @@
+[
+    {
+        "title": "When the script rewrites",
+        "altText": "Card with text about nervous systems and unexpected life changes. Cream background with teal type. Caption mentions evening therapy appointments in October.",
+        "caption": "Unexpected change can rewrite your life overnight. Your nervous system doesn't always get the memo.\n\nYour body may still be braced for the old plot. Still protecting you from what already happened. Still running a story that no longer fits.\n\nThat's not failure. That's how the nervous system works. It learns new stories slowly.\n\nTherapy is a place to practice a different ending. To help your system catch up with what you already know is true.\n\nOdile offers evening slots in October.",
+        "eyebrow": "named_feeling",
+        "payload": {
+            "statement": "Your nervous system may still be living in the life you had before the change."
+        },
+        "cardLine": "When the script rewrites",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "EMDR doesn't erase",
+        "altText": "Numbered card with three strategies about EMDR: What happened stays, What it means shifts, You go back to work. Text explains EMDR changes meaning of memories, not erasing them.",
+        "caption": "EMDR doesn't erase what happened. It changes what it means.\n\nAfter time away, your body may say no to the desk, the commute, the room where it happened. That's not failure. That's information.\n\nEMDR doesn't delete the memory. It processes it—so the past stops running your nervous system in the present. Your body learns that what happened is over.\n\nThat's different from moving on. You don't leave it behind. You carry it differently, and it weighs less.\n\nEvening slots opening in October.",
+        "eyebrow": "reflective_question",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "the memory is still there",
+                    "label": "What happened stays"
+                },
+                {
+                    "gloss": "your body learns it is safe",
+                    "label": "Meaning shifts"
+                },
+                {
+                    "gloss": "not erased, but carried differently",
+                    "label": "Work dread"
+                }
+            ]
+        },
+        "cardLine": "EMDR doesn't erase",
+        "archetype": "numbered_strategies"
+    },
+    {
+        "title": "Achievement hides protection",
+        "altText": "Carousel card exploring high-functioning freeze response: how achievement can mask an active nervous system protection strategy. Includes surface-and-beneath model of visible productivity versus hidden protection patterns.",
+        "caption": "You can be high-functioning and still frozen.\n\nFreeze is a nervous system response—an old protection strategy that kept you safe once. It lives in the body as stillness, compliance, compliance-while-emptied-out. It doesn't ask permission to activate. It doesn't wait for your consent.\n\nWhen freeze is running, you can still meet deadlines. You can still show up. You can still appear reliable. What you may not be doing is feeling present, rested, or like yourself.\n\nMany people return to work after time away and notice: their body won't cooperate. They read that as personal failure. It's not. It's their nervous system telling them something changed, or something didn't change, and the mismatch needs attention.\n\nTherapy can help you recognize when freeze is active—not as a character flaw, but as a response. And once you can feel the difference between pushing through and actually moving forward, you have a choice.\n\nEvening slots are open in October for people learning to unfreeze.",
+        "eyebrow": "how_the_work_works",
+        "payload": {
+            "cards": [
+                {
+                    "payload": {
+                        "statement": "Accomplishment does not mean your nervous system feels safe."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "beneath": {
+                            "gloss": "old protection still running",
+                            "label": "What hides"
+                        },
+                        "surface": {
+                            "gloss": "productivity, reliability, results",
+                            "label": "What shows"
+                        }
+                    },
+                    "archetype_key": "surface_and_beneath"
+                },
+                {
+                    "payload": {
+                        "statement": "Your body knows the difference between pushing and resting."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "Returning to work after leave: a moment to notice what your nervous system needs."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "October evening slots now open for those learning to unfreeze."
+                    },
+                    "archetype_key": "single_statement"
+                }
+            ]
+        },
+        "cardLine": "Achievement hides protection",
+        "archetype": "carousel"
+    },
+    {
+        "title": "When the future shifts",
+        "altText": "Card reading: When the future shifts. Text explores how the nervous system orients to an expected future, and what happens in the body when that future changes unexpectedly.",
+        "caption": "Unplanned change lands differently than the kind you saw coming.\n\nYour nervous system builds an orientation to a future. It gathers small signals. It prepares. It readies the body for what's next.\n\nThen the future changes.\n\nThe change might be sudden. A leave ends sooner than expected. A plan dissolves. A return date arrives and your body says no.\n\nWhat happens next is not failure. It's recalibration.\n\nYour nervous system was oriented to a future that no longer exists. Your body was prepared for something that didn't arrive. It takes time to reorient. To build a new picture of what comes next. To let your nervous system register that the ground has shifted.\n\nTherapy can help you work with that recalibration—to notice what your body is telling you, and to build orientation to a future that actually matches the life in front of you.\n\nOdile has evening slots opening in October.",
+        "eyebrow": "permission",
+        "payload": {
+            "statement": "Your nervous system orients to a future until that future changes—then your body has to recalibrate."
+        },
+        "cardLine": "When the future shifts",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "Your body can process trauma",
+        "altText": "A quadrant chart titled 'Your body can process trauma.' Axes are 'body agrees' (horizontal) and 'processing' (vertical). Four quadrants show: still functioning but nervous system says no; breakdown required as myth about trauma work; bilateral stimulation as what processing actually needs; high-functioning held as can process and stay upright.",
+        "caption": "A lot of people came back to work after leave and found their body had not agreed to it. They read that as failure. The myth says trauma processing requires breakdown. It doesn't. EMDR uses bilateral stimulation — left-right activation of the nervous system — to process what's stuck. Your body can stay functional while it does this work. High-functioning nervous systems can process and stay upright at the same time. If you've been waiting for permission to fall apart before you try therapy: you don't need it.",
+        "eyebrow": "seasonal_note",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "nervous system says no",
+                    "label": "Still functioning"
+                },
+                {
+                    "gloss": "myth about trauma work",
+                    "label": "Breakdown required"
+                },
+                {
+                    "gloss": "what processing actually needs",
+                    "label": "Bilateral stimulation"
+                },
+                {
+                    "gloss": "can process and stay upright",
+                    "label": "High-functioning held"
+                }
+            ]
+        },
+        "cardLine": "Your body can process trauma",
+        "archetype": "numbered_strategies"
+    },
+    {
+        "title": "What's stuck moves",
+        "altText": "Card with text: 'What's stuck moves.' Describes EMDR processing beyond trauma—unfinished transitions, resistance, patterns—and opening evening availability.",
+        "caption": "EMDR is known for trauma work. It does that well. But the method itself doesn't care what the stuck thing is.\n\nA memory that won't shift. A transition your body resists. A choice you can't seem to make. A pattern that loops. A place where your system is still braced.\n\nYour nervous system holds more than trauma. It holds unfinished business. Doors you walked through and never really landed on the other side. Versions of yourself that didn't get to exist.\n\nSometimes you go back to work, or back to a role, and your body says no. That's not failure. That's information. EMDR can process it.\n\nEvening slots are opening in October.",
+        "eyebrow": "named_feeling",
+        "payload": {
+            "statement": "EMDR processes what's stuck, not just what happened."
+        },
+        "cardLine": "What's stuck moves",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "Your body stays ready to work",
+        "altText": "Concentric rings labelled: The habit (staying ready to perform), The cost (your nervous system doesn't rest), The choice (to shift what's automatic). Text explores how high-performance training affects nervous system regulation.",
+        "caption": "High performance trains your nervous system to stay in overdrive. You push, and your body learns that pushing is the baseline. It doesn't know when to turn off because turning off has not been practice.\n\nWhen you take time away, your body doesn't automatically agree that rest is safe. It flags the slowness as wrong. You feel that as failure.\n\nIt's not. It's what your nervous system was taught.\n\nTherapy works with the automatic. Not to erase drive, but to give your system other options. To make stopping feel like a choice, not a loss.\n\nEvening slots are opening in October.",
+        "eyebrow": "reflective_question",
+        "payload": {
+            "rings": [
+                {
+                    "gloss": "staying ready to perform",
+                    "label": "The habit"
+                },
+                {
+                    "gloss": "your nervous system doesn't rest",
+                    "label": "The cost"
+                },
+                {
+                    "gloss": "to shift what's automatic",
+                    "label": "The choice"
+                }
+            ]
+        },
+        "cardLine": "Your body stays ready to work",
+        "archetype": "concentric_control"
+    },
+    {
+        "title": "When life changes without",
+        "altText": "Card with acronym EMP: Eye movement, bilateral stimulation while memory surfaces. Memory, what the body stored from the shift. Processing, before the next thing begins.",
+        "caption": "A pivot nobody planned for hits differently. Your body knows it happened. Your mind may still be negotiating.\n\nEMDR is a way to process what shifted—the loss, the surprise, the things you thought were settled. Not to erase it. To metabolize it. So rebuilding comes from ground that has actually moved, not from denial of the movement.\n\nThis happens a lot right now: people back at work after leave, discovering their nervous system did not consent to the return. Reading that as personal failure. It isn't. It's information.\n\nProcessing comes before the next chapter. Evening slots are opening in October for people who need this work.",
+        "eyebrow": "how_the_work_works",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "bilateral stimulation while memory surfaces",
+                    "label": "Eye movement"
+                },
+                {
+                    "gloss": "what the body stored",
+                    "label": "Memory"
+                },
+                {
+                    "gloss": "before the next thing begins",
+                    "label": "Processing"
+                }
+            ],
+            "acronym": "EMP"
+        },
+        "cardLine": "When life changes without",
+        "archetype": "lettered_technique"
+    },
+    {
+        "title": "When busyness feels like",
+        "altText": "Text: 'When busyness feels like safety.' Invites exploration of hypervigilance masked by productivity, with information about evening availability.",
+        "caption": "You may be able to push hard and get things done. That doesn't mean your nervous system has agreed to it.\n\nSome people run on alert. They work through lunch. They notice every sound in the meeting. They plan three steps ahead. They sleep less than they need to.\n\nIt works—until it doesn't. Until you take a week off and your body refuses to get back up. Until the weight of staying ready becomes the thing you're carrying.\n\nTherapy can help you notice what's running underneath the doing. To separate what you actually need from what you think you're supposed to need. To find out what happens when you're not braced for the next thing.\n\nEvening slots are opening in October.",
+        "eyebrow": "permission",
+        "payload": {
+            "statement": "Productivity can mask the nervous system running on overdrive."
+        },
+        "cardLine": "When busyness feels like",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "Fine and safe",
+        "altText": "Carousel of six cards exploring the gap between appearing fine and actual safety. Text contrasts surface-level functioning with the nervous system's persistent readiness. Invites therapy as a place to stop performing and listen.",
+        "caption": "You can do the work and still be exhausted. You can keep everything together and have your body convinced you're not safe. That gap between what you're managing and what your nervous system believes—that's real, and it doesn't mean you're failing.\n\nWhen you return to work after time away, or push through a deadline, or just show up day after day—your body might not have agreed to any of it. It might still be braced. Still running. That's not weakness. That's how your nervous system talks.\n\nTherapy is the place to stop performing and start listening to what's actually happening underneath the \"I'm fine.\" To work with your nervous system instead of against it. To learn what safety actually feels like, not just what it looks like from the outside.\n\nOdile is opening evening slots in October. If appearing fine while feeling worn out is familiar, there's space to work on that.",
+        "eyebrow": "seasonal_note",
+        "payload": {
+            "cards": [
+                {
+                    "payload": {
+                        "statement": "High functioning doesn't mean your nervous system got the memo."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "beneath": {
+                            "gloss": "your body braced and tired",
+                            "label": "Still running"
+                        },
+                        "surface": {
+                            "gloss": "meetings, deadlines, the routine",
+                            "label": "Showing up"
+                        }
+                    },
+                    "archetype_key": "surface_and_beneath"
+                },
+                {
+                    "payload": {
+                        "statement": "Your nervous system doesn't read your calendar or your to-do list."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "Appearing fine is work. Feeling safe is different."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "Therapy is the place to stop performing and start listening."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "Evening slots opening in October."
+                    },
+                    "archetype_key": "single_statement"
+                }
+            ]
+        },
+        "cardLine": "Fine and safe",
+        "archetype": "carousel"
+    },
+    {
+        "title": "Your body remembers longer",
+        "altText": "Cream card with dark text. Card line: Your body remembers longer. Therapy works with both the mind that decides and the nervous system that takes longer to believe the story has changed.",
+        "caption": "Endings lodge in the nervous system before the mind accepts them.\n\nSomeone leaves a job, a relationship, a role. The decision is made. The mind moves forward. But the body is still there — still braced, still waiting, still living as if the old story continues.\n\nThis is not failure. This is how the nervous system works. It does not process time the way thought does. It learns through repetition, through safety, through being in a different place long enough to believe the place is real.\n\nWhen you return to work after time away and find your body refusing the old rhythm, that's not weakness. That's your system telling you something true about what it needs.\n\nTherapy works with both — the mind that has decided, and the body that is still catching up. Not by forcing one to hurry. By creating conditions where the nervous system can learn the story has actually changed.\n\nEvening slots open in October.",
+        "eyebrow": "named_feeling",
+        "payload": {
+            "statement": "Your nervous system keeps living a story your mind has already closed."
+        },
+        "cardLine": "Your body remembers longer",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "Your map became obsolete",
+        "altText": "Card with three strategies: Notice the signals (your body knows before you do); Process what shifted (EMDR tracks how you got here); Find new directions (build a map that fits now).",
+        "caption": "Life rewrote itself overnight. Your old directions no longer work.\n\nMaybe you went back to work after leave. Your body said no. Maybe something else changed the ground beneath you. Either way, the plan you had stopped making sense.\n\nThat is not failure. That is information.\n\nEMDR is a way to process what shifted. To track how you got here, and what needs to change now. Not to force yourself back into a life that no longer fits, but to find directions that do.\n\nEvening slots are opening in October.",
+        "eyebrow": "reflective_question",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "your body knows before you do",
+                    "label": "Notice the signals"
+                },
+                {
+                    "gloss": "EMDR tracks how you got here",
+                    "label": "Process what shifted"
+                },
+                {
+                    "gloss": "build a map that fits now",
+                    "label": "Find new directions"
+                }
+            ]
+        },
+        "cardLine": "Your map became obsolete",
+        "archetype": "numbered_strategies"
+    },
+    {
+        "title": "Rest does not look productive",
+        "altText": "Five-card carousel on burnout after returning to work. Explores the gap between looking competent and actually resting. Includes: high performance and rest rarely coexist; the difference between going back to work and genuine recovery; and how depletion takes longer to repair than a break takes to happen.",
+        "caption": "A lot of returning-to-work burnout this month. People go back after leave and find their body has not agreed to it. Then read that as failure.\n\nHere is what that usually means: depletion takes longer to repair than a break takes to happen. High performance and genuine rest rarely live in the same body — they run on different fuel.\n\nYour nervous system knows the difference. It knows rest that counts does not look like productivity. It knows fatigue is not laziness, and it knows when you are asking it to run on empty.\n\nThat is not failure. That is information.\n\nEvening slots are opening in October.",
+        "eyebrow": "how_the_work_works",
+        "payload": {
+            "cards": [
+                {
+                    "payload": {
+                        "statement": "High performance and genuine rest rarely live in the same body."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "beneath": {
+                            "gloss": "fatigue is not laziness",
+                            "label": "Body says no"
+                        },
+                        "surface": {
+                            "gloss": "on time, on task",
+                            "label": "Back at work"
+                        }
+                    },
+                    "archetype_key": "surface_and_beneath"
+                },
+                {
+                    "payload": {
+                        "statement": "Rest that counts does not look like productivity."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "beneath": {
+                            "gloss": "depletion needs time",
+                            "label": "What happened"
+                        },
+                        "surface": {
+                            "gloss": "as personal failure",
+                            "label": "Reading it"
+                        }
+                    },
+                    "archetype_key": "surface_and_beneath"
+                },
+                {
+                    "payload": {
+                        "statement": "Your body knows what your schedule does not."
+                    },
+                    "archetype_key": "single_statement"
+                }
+            ]
+        },
+        "cardLine": "Rest does not look productive",
+        "archetype": "carousel"
+    },
+    {
+        "title": "When the plan changes",
+        "altText": "Cream card with dark text. Top line reads \"When the plan changes.\" Below: text about returning to work after leave, listening to your body's needs, and evening therapy slots in October.",
+        "caption": "A lot of people come back from leave and find their body has other ideas. They read that as failure. It is not.\n\nYour nervous system spent weeks at a different pace. It learned something about what it needs. When you return to what was, and your body says no—that is not weakness or poor planning. That is information.\n\nTherapy is a place to listen to what interrupted you. Not to override it. Not to force yourself back into the shape you were. But to understand what your body knows and what it might be asking for.\n\nEvening slots are open in October.",
+        "eyebrow": "permission",
+        "payload": {
+            "statement": "Your body knows things your plan did not account for."
+        },
+        "cardLine": "When the plan changes",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "Your body may not have agreed",
+        "altText": "Card with three concentric rings. Outermost: 'What your mind accepted / your body may still be processing.' Middle: 'The nervous system / sometimes needs help to catch up.' Center: 'EMDR work / happens in the body, not just thought.'",
+        "caption": "You went back to work. You made the decision. You're doing it. And your nervous system is exhausted in a way that feels like failure.\n\nIt's not.\n\nYour mind can accept something your body has not yet finished processing. The two operate on different timelines. Your nervous system may be stuck in the work of managing what happened before the break — the pace, the weight, the vigilance — even though your thinking mind moved on.\n\nEMDR works with that gap. It helps your nervous system complete the processing your body is still trying to do.\n\nYou don't have to white-knuckle your way through this. There's another way to move.\n\nEvening appointments opening in October.",
+        "eyebrow": "practical_note",
+        "payload": {
+            "rings": [
+                {
+                    "gloss": "your body may still be processing",
+                    "label": "Mind's acceptance"
+                },
+                {
+                    "gloss": "sometimes needs help to catch up",
+                    "label": "The nervous system"
+                },
+                {
+                    "gloss": "happens in the body, not thought",
+                    "label": "EMDR work"
+                }
+            ]
+        },
+        "cardLine": "Your body may not have agreed",
+        "archetype": "concentric_control"
+    },
+    {
+        "title": "Efficiency itself",
+        "altText": "Card with efficiency, metabolism, and difference labeled. Text explores how high-functioning exhaustion stems from the gap between what you believe you should manage and what your body can sustain.",
+        "caption": "You go back. You do the work. Your body says no.\n\nThen you read that as failure.\n\nHigh-functioning exhaustion is not about doing less. It's about the split between what you believe you should manage and what your system can actually sustain. The efficiency itself—the story that you're supposed to handle this—becomes the thing that keeps the nervous system locked.\n\nEMDR processes that disconnect. Not by making you more efficient. By letting your brain update what it learned about your own capacity.\n\nSome people find that the return to work after leave is when the body finally speaks. That's not weakness. That's information.\n\nEvening slots opening in October.",
+        "eyebrow": "seasonal_note",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "the story you believe",
+                    "label": "Efficiency"
+                },
+                {
+                    "gloss": "what your body knows",
+                    "label": "Metabolism"
+                },
+                {
+                    "gloss": "between the two",
+                    "label": "Difference"
+                }
+            ],
+            "acronym": "EMD"
+        },
+        "cardLine": "Efficiency itself",
+        "archetype": "lettered_technique"
+    },
+    {
+        "title": "Grieving what won't happen",
+        "altText": "Cream card with green text. Top line reads 'Grieving what won't happen.' Below, text explains grief for closed futures and how EMDR can help process that loss.",
+        "caption": "When a planned future closes—illness, injury, circumstance—something real is lost. Not a dream. A future you were building toward.\n\nYour body grieves it. Maybe as exhaustion. Maybe as a wall that goes up when you try to move forward. Maybe as a voice that says you failed.\n\nYou didn't fail. You're grieving.\n\nEMDR is a way to process that loss—not to fix it or make it smaller, but to let your nervous system catch up to what actually happened. To move the story from stuck to integrated.\n\nSome people find that when they do this work, their body stops bracing. They can think about what comes next without the weight of what won't.\n\nIf you've had to let go of a future you were counting on, that's real. And there's a way to work with it.\n\nEvening slots opening in October.",
+        "eyebrow": "named_feeling",
+        "payload": {
+            "statement": "Grief for a future that won't happen is still grief. Your body knows."
+        },
+        "cardLine": "Grieving what won't happen",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "High-functioning and exhausted",
+        "altText": "A card comparing high-functioning composure with an exhausted nervous system. Text describes the gap between what people can do and what their body can sustain, and how EMDR addresses the disconnect.",
+        "caption": "You return to work after time away. You have a plan. Your body has other ideas.\n\nHigh-functioning people often discover their nervous system never got the memo about what they can handle. You read this as failure. It is not.\n\nYour system got good at running on fumes. So good that you stopped noticing the fumes. Time away—a vacation, medical leave, sabbatical—lets your body finally tell the truth about what it needs.\n\nEMDR work helps the two parts of you get on the same page. Not by pushing through. By processing what your system has been holding.\n\nIf you returned to work and your body said no to the yes your mind was ready for, that is information. Not a breakdown. A signal.\n\nEvening slots open in October.",
+        "eyebrow": "reflective_question",
+        "payload": {
+            "left": [
+                {
+                    "gloss": "shows up, gets things done",
+                    "label": "Looks composed"
+                },
+                {
+                    "gloss": "body says no to the yes",
+                    "label": "Feels wired"
+                }
+            ],
+            "right": [
+                {
+                    "gloss": "did not get the memo",
+                    "label": "Nervous system"
+                },
+                {
+                    "gloss": "the two sides can sync",
+                    "label": "EMDR work"
+                }
+            ]
+        },
+        "cardLine": "High-functioning and exhausted",
+        "archetype": "comparison_pair"
+    },
+    {
+        "title": "When your map stops working",
+        "altText": "Cream card with dark text. Header: \"When your map stops working.\" Body text discusses how bodies resist return after rest and rewire during unwanted change. Mentions October evening availability.",
+        "caption": "Unwanted change rewires how your brain processes everything.\n\nYou took time away. You came back. And something in you did not agree to the return.\n\nThat is not failure. That is your nervous system doing what it does: it learned what rest felt like. Now the shift back reads as rupture.\n\nYour body does not care that you knew the break would end. It cares that the break was real, and that you are asking it to flip a switch it does not have.\n\nWhen you come back from leave, your brain is still calibrated to the rhythm you built during those days away. The old patterns — the ones that used to feel automatic — now feel wrong. You notice the fluorescent lights. You hear your own breath. Time moves differently.\n\nThis is not weakness. This is how change works in a nervous system.\n\nWe have evening slots opening in October for people working through the dissonance between what they thought they were ready for and what their body is actually ready for.\n\nYou do not have to white-knuckle through this alone.",
+        "eyebrow": "how_the_work_works",
+        "payload": {
+            "statement": "Your body keeps score of what rest meant, even when your mind moves on."
+        },
+        "cardLine": "When your map stops working",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "Success masks an overdriven",
+        "altText": "Three-step cycle card. Success feels like you're doing it right. Body says no—nervous system on high alert. The gap widens—mind and body split apart.",
+        "caption": "High achievers often run on a nervous system stuck in overdrive. The work gets done. The goals land. And underneath, your body is braced.\n\nThen you take leave. You rest. You come back.\n\nAnd your system says no.\n\nThat's not failure. That's your nervous system telling you it never agreed to the pace. It was just too busy managing the load to say so.\n\nThe competence trap: you learned to succeed while dysregulated. So success and panic live in the same room. You can't tell them apart.\n\nTherapy can help you feel what's actually happening in your body while you work. Not to slow down the work. To change the signal underneath it.\n\nEvening slots are open in October.",
+        "eyebrow": "permission",
+        "payload": {
+            "nodes": [
+                {
+                    "gloss": "you're doing it right",
+                    "label": "Success feels like"
+                },
+                {
+                    "gloss": "nervous system on high alert",
+                    "label": "Body says no"
+                },
+                {
+                    "gloss": "mind and body split apart",
+                    "label": "The gap widens"
+                }
+            ]
+        },
+        "cardLine": "Success masks an overdriven",
+        "archetype": "cycle"
+    },
+    {
+        "title": "The block may be choice",
+        "altText": "A four-quadrant chart showing the intersection of decision-making and forward movement, with four states: stuck at a fork, chose and moved, body says no, and processing the choice.",
+        "caption": "EMDR is known for processing trauma. What gets less air: it also works with decisions that didn't land.\n\nYou made a choice. A necessary one. Then your body said no. Your nervous system braced. Sleep fractured. Mornings felt like walking into a wall.\n\nSometimes the block isn't the event that forced the choice. It's the choice itself — the part of you that still disagrees.\n\nEMDR can process that. Not override it. Process it. Move it from stuck to integrated.\n\nMany people return to work after leave and find their body has not returned with them. They read that as failure. It's not. It's information: something about this choice hasn't been metabolized yet.\n\nThere's evening availability in October if you want to start there.\n\nOdile Marchetti, Licensed Psychotherapist",
+        "eyebrow": "practical_note",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "you chose, but doubt stayed",
+                    "label": "Stuck at fork"
+                },
+                {
+                    "gloss": "the body disagreed anyway",
+                    "label": "Chose and moved"
+                },
+                {
+                    "gloss": "the choice still feels wrong",
+                    "label": "Body says no"
+                },
+                {
+                    "gloss": "what was decided can shift",
+                    "label": "Processing the choice"
+                }
+            ],
+            "axis_x": "the decision",
+            "axis_y": "moving forward"
+        },
+        "cardLine": "The block may be choice",
+        "archetype": "quadrant_model"
+    },
+    {
+        "title": "Competence can muffle rest",
+        "altText": "Cream card with text: 'Competence can muffle rest.' Below, body-centered text about high-performance masking and the signals competent people learn to ignore.",
+        "caption": "You're good at your job. You show up. You deliver. You don't complain.\n\nAnd then your body does.\n\nA tight chest. Exhaustion that sleep doesn't touch. Irritability that doesn't match the day you had. A heaviness that moves through the afternoon.\n\nYou read it as weakness. As not trying hard enough. As failure to adjust back in.\n\nIt's not.\n\nWhen you're skilled at managing pressure, at staying steady, at being the one others rely on—your nervous system learns to stay quiet. To keep signaling down. To defer its own requests.\n\nBut deferral isn't the same as absence. The body keeps asking. It just asks differently: through fatigue, through tension, through the kinds of discomfort you can push through while telling yourself you're fine.\n\nTherapy can help you listen to what your competence has taught you to ignore.\n\nEvening slots are opening in October.",
+        "eyebrow": "seasonal_note",
+        "payload": {
+            "statement": "Your body sends signals when it needs to rest. Competence can muffle those signals into silence."
+        },
+        "cardLine": "Competence can muffle rest",
+        "archetype": "single_statement"
+    },
+    {
+        "title": "Exhaustion is not failure",
+        "altText": "A comparison card. Left side: looks productive, feels depleted. Right side: has rhythm, builds resilience. Header: Exhaustion is not failure.",
+        "caption": "A lot of people come back from leave and their body won't cooperate. They read that as weakness. It isn't.\n\nYour nervous system keeps score. It tracks what it absorbed before the break—the pace, the weight, the always-on. Rest helps. It also shows you what was never sustainable.\n\nThere's a difference between pushing through and working with what you actually have. One depletes. The other teaches you where resilience actually lives.\n\nTherapy doesn't speed you up. It helps you notice the gap between what you're doing and what your body can actually hold. And what to do with that information.\n\nEvening slots are opening in October.",
+        "eyebrow": "named_feeling",
+        "payload": {
+            "left": [
+                {
+                    "gloss": "keeps up, shows up",
+                    "label": "Looks productive"
+                },
+                {
+                    "gloss": "body says no anyway",
+                    "label": "Feels depleted"
+                }
+            ],
+            "right": [
+                {
+                    "gloss": "work and rest trade places",
+                    "label": "Has rhythm"
+                },
+                {
+                    "gloss": "exhaustion becomes information",
+                    "label": "Builds resilience"
+                }
+            ]
+        },
+        "cardLine": "Exhaustion is not failure",
+        "archetype": "comparison_pair"
+    },
+    {
+        "title": "Your body knows what you deny",
+        "altText": "Five-card carousel: 'Your nervous system does not care how well you manage the day.' Surface and beneath model comparing visible performance with hidden physical strain. 'Burnout after leave is not failure. It is information.' 'The body knows what the mind has not yet admitted.' Three-node cycle of return, resistance, and reckoning. 'Therapy helps you listen before your body has to shout.'",
+        "caption": "You went away. You rested. You came back to work and your body said no.\n\nThat is not laziness. That is not weakness. That is information.\n\nHigh function masks what your nervous system already knows. You can hit your marks, clear your inbox, show up on time — and still be running on fumes. The gap between what you do and what you can sustain grows quietly. Then it becomes loud.\n\nBurnout after leave is common. It is also a signal. Your body is saying something your thinking mind has not caught up to yet.\n\nTherapy is where you learn to listen to that signal before it becomes a crisis. Not to push through it. Not to manage it better. To actually hear it.\n\nIf you came back and your body disagreed, that is the conversation to have now.\n\nEvening slots are opening in October.",
+        "eyebrow": "reflective_question",
+        "payload": {
+            "cards": [
+                {
+                    "payload": {
+                        "statement": "Your nervous system does not care how well you manage the day."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "beneath": {
+                            "gloss": "jaw clenched, breath shallow",
+                            "label": "What runs"
+                        },
+                        "surface": {
+                            "gloss": "deadlines met, email cleared",
+                            "label": "What shows"
+                        }
+                    },
+                    "archetype_key": "surface_and_beneath"
+                },
+                {
+                    "payload": {
+                        "statement": "Burnout after leave is not failure. It is information."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "The body knows what the mind has not yet admitted."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "nodes": [
+                            {
+                                "gloss": "back at the desk",
+                                "label": "Return"
+                            },
+                            {
+                                "gloss": "exhaustion, ache, fog",
+                                "label": "Resistance"
+                            },
+                            {
+                                "gloss": "something has to shift",
+                                "label": "Reckoning"
+                            }
+                        ]
+                    },
+                    "archetype_key": "cycle"
+                },
+                {
+                    "payload": {
+                        "statement": "Therapy helps you listen before your body has to shout."
+                    },
+                    "archetype_key": "single_statement"
+                }
+            ]
+        },
+        "cardLine": "Your body knows what you deny",
+        "archetype": "carousel"
+    },
+    {
+        "title": "High performance masks held",
+        "altText": "Card with two sections. Top: High performance, everything on schedule. Bottom: Stuck in gear, body says no to rest.",
+        "caption": "You return from leave ready. Your body does not. The nervous system does not read your calendar. It reads what it has learned: that stopping means falling behind. That rest is negotiable.\n\nHigh performance can look like function. It can feel like getting back on track. It is also sometimes a system that has learned to ignore its own signals—held in a gear that kept you moving through the time away.\n\nTherapy can help you listen to what your body learned while you were not paying attention. Not to fix it. To understand it. To work with it instead of against it.\n\nEvening slots are opening in October.",
+        "eyebrow": "permission",
+        "payload": {
+            "beneath": {
+                "gloss": "body says no to rest",
+                "label": "Stuck in gear"
+            },
+            "surface": {
+                "gloss": "everything on schedule",
+                "label": "High performance"
+            }
+        },
+        "cardLine": "High performance masks held",
+        "archetype": "surface_and_beneath"
+    },
+    {
+        "title": "Grief about lost plans",
+        "altText": "A curve graph titled 'Grief about lost plans' with time on the x-axis and forward motion on the y-axis. Three points mark the arc: shock holds you still, grief loops back often, old plans still block new ones.",
+        "caption": "EMDR is not just for trauma. It moves things that get stuck.\n\nYou had a plan. Life changed it. That loss is real, and your nervous system knows it. When unprocessed grief loops — when the plan you had keeps showing up as what should have been — it can feel like you are frozen. Like you should be over it by now. Like you are failing at moving on.\n\nYou are not failing. Grief about lost plans (the career shift, the timing, the version of yourself you expected to be) is grief like any other. Your system held that future. It needs to process the loss of it.\n\nEMDR does that work. It is not magic. It is a way to help your nervous system move through what is stuck, so you can feel what comes next without the old plan still running underneath.\n\nIf something about a life that did not happen still shows up — in your body, in what you reach for, in how you read yourself — that is worth looking at. Evening slots are opening in October.",
+        "eyebrow": "practical_note",
+        "payload": {
+            "axis_x": "time since loss",
+            "axis_y": "forward motion",
+            "points": [
+                {
+                    "gloss": "shock holds you still",
+                    "label": "Right after"
+                },
+                {
+                    "gloss": "grief loops back often",
+                    "label": "Months in"
+                },
+                {
+                    "gloss": "old plans still block new ones",
+                    "label": "Much later"
+                }
+            ]
+        },
+        "cardLine": "Grief about lost plans",
+        "archetype": "annotated_curve"
+    },
+    {
+        "title": "When life pivots hard",
+        "altText": "Card titled 'When life pivots hard' with three steps: name the shift (what changed and when), track the stuck (where your body says no), process it through (EMDR moves what's frozen).",
+        "caption": "A sudden change can leave your nervous system stuck in what-should-have-been. Your body may still be braced for the old plan, even when your mind has moved on.\n\nThat is not failure. That is a system that needs to process the shift.\n\nEMDR is a way to help your nervous system catch up to what actually happened. It works with the part of you that is still waiting, still resisting, still holding the life you expected.\n\nIf you went back to work after time away and your body won't settle—or if another pivot left you stuck—that can shift.\n\nOdile has evening slots opening in October.",
+        "eyebrow": "named_feeling",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "what changed and when",
+                    "label": "Name the shift"
+                },
+                {
+                    "gloss": "where your body says no",
+                    "label": "Track the stuck"
+                },
+                {
+                    "gloss": "EMDR moves what's frozen",
+                    "label": "Process it through"
+                }
+            ]
+        },
+        "cardLine": "When life pivots hard",
+        "archetype": "numbered_strategies"
+    },
+    {
+        "title": "The thing that works costs",
+        "altText": "A quadrant showing push-through patterns and rest, labeling how high performers can mistake nervous system resistance for failure when returning to work, and how healing begins when efficiency pauses.",
+        "caption": "After time away from work, your body may have said something your mind did not hear. You return, push harder, and read the resistance as failure instead of information.\n\nEmotional processing works differently than optimisation. The nervous system needs you to stop knowing the answer, stop managing the outcome, stop being ready. It needs you inefficient, uncertain, present to what actually happened.\n\nThis is not rest that makes you work better. This is work that stops protecting you from what got stored in your body when you were holding on.\n\nOdile works with this—the gap between what you can do and what your system will carry. Evening slots open in October.",
+        "eyebrow": "how_the_work_works",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "the thing that worked",
+                    "label": "High gear"
+                },
+                {
+                    "gloss": "after time away it resurfaces",
+                    "label": "Body says no"
+                },
+                {
+                    "gloss": "because it doesn't look like work",
+                    "label": "Rest feels broken"
+                },
+                {
+                    "gloss": "when efficiency steps back",
+                    "label": "Healing starts here"
+                }
+            ],
+            "axis_x": "push through",
+            "axis_y": "rest"
+        },
+        "cardLine": "The thing that works costs",
+        "archetype": "quadrant_model"
+    },
+    {
+        "title": "Efficiency can become trauma",
+        "altText": "Card titled 'Efficiency can become trauma.' Three concentric rings labeled: The efficiency (what kept you standing), The cost (your body still paying it), The rest (where you learn to stop).",
+        "caption": "You went back to work. You managed it. You did the things.\n\nThen your body said no.\n\nThat's not failure. That's what happens when you've spent months or years doing the steady thing—showing up, managing, not falling apart—and your nervous system finally registers that the ground is still shaking.\n\nEfficiency under strain is a survival skill. It gets you through. But it exacts a price your body knows about, even when your mind doesn't.\n\nIn therapy we look at what steadiness cost you. Not to blame the skill—it kept you alive—but to notice: what would it feel like to move differently now? What if stopping wasn't weakness? What if your body's \"no\" is information, not failure?\n\nEvening slots are opening in October for people navigating this exact thing: the exhaustion that comes after you've already proven you could endure.\n\nYou don't have to keep standing the same way.",
+        "eyebrow": "practical_note",
+        "payload": {
+            "rings": [
+                {
+                    "gloss": "what kept you standing",
+                    "label": "The efficiency"
+                },
+                {
+                    "gloss": "your body still paying it",
+                    "label": "The cost"
+                },
+                {
+                    "gloss": "where you learn to stop",
+                    "label": "The rest"
+                }
+            ]
+        },
+        "cardLine": "Efficiency can become trauma",
+        "archetype": "concentric_control"
+    },
+    {
+        "title": "Function is not recovery",
+        "altText": "Card titled 'Function is not recovery' with three terms: Function (what you can do), Tired (what your body needs), Gap (the space between them).",
+        "caption": "High performers often read productivity as rest. You move through the day, you manage the list, you show up — and then your body will not agree that you have recovered.\n\nThat gap — between what you can do and what you actually need — is where burnout lives.\n\nIt is not failure. It is information. Your nervous system is telling you something your schedule does not.\n\nTherapy is a place to listen to what that gap says, and to build a life where function and recovery are not at war.\n\nEvening slots are opening in October.",
+        "eyebrow": "seasonal_note",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "what you can do",
+                    "label": "Function"
+                },
+                {
+                    "gloss": "what your body needs",
+                    "label": "Tired"
+                },
+                {
+                    "gloss": "the space between them",
+                    "label": "Gap"
+                }
+            ],
+            "acronym": "FTG"
+        },
+        "cardLine": "Function is not recovery",
+        "archetype": "lettered_technique"
+    }
+]

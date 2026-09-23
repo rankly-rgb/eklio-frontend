@@ -1,5 +1,10 @@
 import { DANGLING } from "@/lib/content/generate/copy-batch";
 import type { DirectionPalette } from "@/lib/compose/palette";
+import {
+  checkUnfinished, checkCarouselPanels, checkBorrowed, checkClinicalClaim,
+  checkSellsSlots, checkStraightQuotes, checkAcronym,
+  type CompletenessVerdicts,
+} from "@/lib/content/writing-checks";
 
 /*
  * ── CE QU'UN MOIS DOIT PASSER AVANT D'ÊTRE LIVRÉ ────────────────────────
@@ -465,6 +470,20 @@ export type MonthUnderCheck = {
    */
   wanted?: number;
   direction: DirectionPalette;
+  /**
+   * Les modalités que la praticienne a saisies, pour le contrôle de sigle.
+   *
+   * ⚠ ELLES VIENNENT DU BRIEF, PAS DU CONTENU. C'est la règle de F16 : aucun
+   * contrôle ne tire sa référence de la source qu'il surveille.
+   */
+  modalities?: string[];
+  /**
+   * Ce qu'un juge a dit des lignes que le lexique n'a pas su trancher.
+   *
+   * ⚠ UNE LIGNE ABSENTE N'EST PAS REFUSÉE. L'absence de verdict n'est pas un
+   * verdict : un juge muet ne doit pas refuser un mois entier.
+   */
+  completeness?: CompletenessVerdicts;
   /** Le nom du cabinet, seul nom qu'une carte a le droit de porter. */
   practiceName?: string;
   /** Les autres chaînes du brief qu'une carte peut légitimement nommer. */
@@ -516,12 +535,47 @@ export function checkCount(count: number, wanted: number | undefined): Finding[]
   }];
 }
 
+/**
+ * Toutes les chaînes écrites par le modèle dans un mois, nommées.
+ *
+ * ⚠ LA LIGNE DE CARTE EN FAIT PARTIE, ET C'EST CE QUI MANQUAIT. `checkEthics`
+ * recevait `caption + altText + payload` : le TITRE n'était lu par aucune
+ * règle déontologique. « Efficiency can become trauma » est un titre.
+ */
+export function writtenLinesIn(posts: PostUnderCheck[]): Array<{ where: string; text: string; archetype: string }> {
+  const out: Array<{ where: string; text: string; archetype: string }> = [];
+  for (const post of posts) {
+    const where = `« ${post.cardLine || post.title} »`;
+    out.push({ where: `${where} — ligne de carte`, text: post.cardLine || post.title, archetype: post.archetype });
+    for (const s of stringsIn(post.payload)) {
+      out.push({ where: `${where} — ${s.where}`, text: s.text, archetype: post.archetype });
+    }
+  }
+  return out;
+}
+
 export function checkMonth(month: MonthUnderCheck): Finding[] {
   const out: Finding[] = [];
   out.push(...checkCount(month.posts.length, month.wanted));
   out.push(...checkMix(month.posts.map((p) => p.archetype)));
   out.push(...checkDuplicateTitles(month.posts.map((p) => p.cardLine || p.title)));
   out.push(...checkIdenticalPayloads(month.posts));
+
+  /*
+   * ── LES SEPT CONTRÔLES D'ÉCRITURE (F26) ───────────────────────────────
+   *
+   * ⚠ ILS LISENT TOUTES LES CHAÎNES, LIGNE DE CARTE COMPRISE. Les sept
+   * défauts trouvés à la main sur un mois vert vivaient dans des champs que
+   * rien ne lisait, ou que lisait quelque chose qui ne refusait rien.
+   */
+  const written = writtenLinesIn(month.posts);
+  out.push(...checkUnfinished(written, month.completeness));
+  out.push(...checkCarouselPanels(month.posts));
+  out.push(...checkBorrowed(written));
+  out.push(...checkClinicalClaim(written));
+  out.push(...checkSellsSlots(written));
+  out.push(...checkStraightQuotes(written));
+  out.push(...checkAcronym(month.posts, month.modalities ?? []));
 
   for (const post of month.posts) {
     const where = `« ${post.cardLine || post.title} »`;
