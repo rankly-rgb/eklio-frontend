@@ -1,0 +1,711 @@
+[
+    {
+        "title": "EMDR for unwanted turning",
+        "payload": {
+            "lines": [
+                "EMDR",
+                "Oakland, CA",
+                "Taking new clients"
+            ]
+        },
+        "cardLine": "EMDR for unwanted turning",
+        "archetype": "practitioner_card"
+    },
+    {
+        "title": "High function, low recovery",
+        "payload": {
+            "lines": [
+                "EMDR",
+                "Oakland, CA",
+                "Taking new clients"
+            ]
+        },
+        "cardLine": "High function, low recovery",
+        "archetype": "practitioner_card"
+    },
+    {
+        "title": "When your life rewrites itself",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "your body knows before your mind",
+                    "label": "Track what shifted"
+                },
+                {
+                    "gloss": "EMDR lets the nervous system lead",
+                    "label": "Your pace"
+                },
+                {
+                    "gloss": "who you are now, not before",
+                    "label": "Rebuild from there"
+                }
+            ]
+        },
+        "cardLine": "When your life rewrites itself",
+        "archetype": "numbered_strategies"
+    },
+    {
+        "title": "Function and exhaustion",
+        "payload": {
+            "left": [
+                {
+                    "gloss": "shows up, does the work",
+                    "label": "Looks fine"
+                },
+                {
+                    "gloss": "no one sees a crack",
+                    "label": "Runs smooth"
+                }
+            ],
+            "right": [
+                {
+                    "gloss": "body says no anyway",
+                    "label": "Feels exhausted"
+                },
+                {
+                    "gloss": "to find the gap between them",
+                    "label": "Needs time"
+                }
+            ]
+        },
+        "cardLine": "Function and exhaustion",
+        "archetype": "comparison_pair"
+    },
+    {
+        "title": "Your body learned before",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "nervous system still running old drills",
+                    "label": "Achieved it"
+                },
+                {
+                    "gloss": "even when the work went well",
+                    "label": "Burnout arrives"
+                },
+                {
+                    "gloss": "body says no first",
+                    "label": "Back from leave"
+                },
+                {
+                    "gloss": "nervous system stuck in high alert",
+                    "label": "Read as failure"
+                }
+            ],
+            "axis_x": "success",
+            "axis_y": "body braced"
+        },
+        "cardLine": "Your body learned before",
+        "archetype": "quadrant_model"
+    },
+    {
+        "title": "When life rewrites mid-chapter",
+        "payload": {
+            "rings": [
+                {
+                    "gloss": "your mind moved on",
+                    "label": "The plot twist"
+                },
+                {
+                    "gloss": "still reading the old story",
+                    "label": "Your nervous system"
+                },
+                {
+                    "gloss": "helps them turn the page",
+                    "label": "EMDR work"
+                }
+            ]
+        },
+        "cardLine": "When life rewrites mid-chapter",
+        "archetype": "concentric_control"
+    },
+    {
+        "title": "When the plan dissolved",
+        "payload": {
+            "cards": [
+                {
+                    "payload": {
+                        "statement": "Your nervous system needs time to land after sudden change."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "beneath": {
+                            "gloss": "fatigue, resistance, feeling stuck",
+                            "label": "Body says no"
+                        },
+                        "surface": {
+                            "gloss": "calendar says it’s time",
+                            "label": "Going back"
+                        }
+                    },
+                    "archetype_key": "surface_and_beneath"
+                },
+                {
+                    "payload": {
+                        "statement": "That’s not failure. That’s information your body is sending."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "Therapy can help you listen to what didn’t get said."
+                    },
+                    "archetype_key": "single_statement"
+                }
+            ]
+        },
+        "cardLine": "When the plan dissolved",
+        "archetype": "carousel"
+    },
+    {
+        "title": "Life interruption leaves marks",
+        "payload": {
+            "left": [
+                {
+                    "gloss": "processes what gets stuck",
+                    "label": "EMDR"
+                },
+                {
+                    "gloss": "one kind of stuck",
+                    "label": "Trauma"
+                }
+            ],
+            "right": [
+                {
+                    "gloss": "another kind of stuck",
+                    "label": "Burnout"
+                },
+                {
+                    "gloss": "another kind of stuck",
+                    "label": "Transition"
+                }
+            ]
+        },
+        "cardLine": "Life interruption leaves marks",
+        "archetype": "comparison_pair"
+    },
+    {
+        "title": "Competence can trap",
+        "payload": {
+            "nodes": [
+                {
+                    "gloss": "at doing it alone",
+                    "label": "You got good"
+                },
+                {
+                    "gloss": "it wants to stop",
+                    "label": "The body says"
+                },
+                {
+                    "gloss": "the same as failure",
+                    "label": "That is not"
+                }
+            ]
+        },
+        "cardLine": "Competence can trap",
+        "archetype": "cycle"
+    },
+    {
+        "title": "Grief for a plan",
+        "payload": {
+            "left": [
+                {
+                    "gloss": "knew what came next",
+                    "label": "Had a plan"
+                },
+                {
+                    "gloss": "body said no, life changed",
+                    "label": "Plan dissolved"
+                }
+            ],
+            "right": [
+                {
+                    "gloss": "real loss, real work",
+                    "label": "Grieve the plan"
+                },
+                {
+                    "gloss": "from where you are now",
+                    "label": "Start fresh"
+                }
+            ]
+        },
+        "cardLine": "Grief for a plan",
+        "archetype": "comparison_pair"
+    },
+    {
+        "title": "Looking stable. Burning",
+        "payload": {
+            "cards": [
+                {
+                    "payload": {
+                        "statement": "Your nervous system does not care that you look fine."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "beneath": {
+                            "gloss": "depletion the body remembers",
+                            "label": "What’s underneath"
+                        },
+                        "surface": {
+                            "gloss": "meetings, deadlines, schedules kept",
+                            "label": "What shows"
+                        }
+                    },
+                    "archetype_key": "surface_and_beneath"
+                },
+                {
+                    "payload": {
+                        "statement": "Rest your body took registers as safety, even if your mind didn’t notice."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "Returning to work after leave is not failure when your body says no."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "What your nervous system learned during time away does not vanish on day one back."
+                    },
+                    "archetype_key": "single_statement"
+                }
+            ]
+        },
+        "cardLine": "Looking stable. Burning",
+        "archetype": "carousel"
+    },
+    {
+        "title": "When productivity is a reflex",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "is it drive or dread",
+                    "label": "Notice the pace"
+                },
+                {
+                    "gloss": "when stillness feels like danger",
+                    "label": "Rest becomes harder"
+                },
+                {
+                    "gloss": "what your mind calls efficiency",
+                    "label": "Your body knows"
+                }
+            ]
+        },
+        "cardLine": "When productivity is a reflex",
+        "archetype": "numbered_strategies"
+    },
+    {
+        "title": "When the life you planned ends",
+        "payload": {
+            "beneath": {
+                "gloss": "returning feels like starting over",
+                "label": "Body says no"
+            },
+            "surface": {
+                "gloss": "logistics sorted, something lingers",
+                "label": "Plan changed"
+            }
+        },
+        "cardLine": "When the life you planned ends",
+        "archetype": "surface_and_beneath"
+    },
+    {
+        "title": "Functioning isn’t feeling",
+        "payload": {
+            "axis_x": "outward appearance",
+            "axis_y": "internal state",
+            "points": [
+                {
+                    "gloss": "nervous system in freeze",
+                    "label": "On time, always"
+                },
+                {
+                    "gloss": "body holding old fear",
+                    "label": "Nothing dropped"
+                },
+                {
+                    "gloss": "exhaustion underneath",
+                    "label": "Looks fine"
+                }
+            ]
+        },
+        "cardLine": "Functioning isn’t feeling",
+        "archetype": "annotated_curve"
+    },
+    {
+        "title": "When the script changes",
+        "payload": {
+            "left": [
+                {
+                    "gloss": "organized the next chapter",
+                    "label": "Planned ahead"
+                },
+                {
+                    "gloss": "the actual day arrived different",
+                    "label": "Then it shifted"
+                }
+            ],
+            "right": [
+                {
+                    "gloss": "nervous system in the old story",
+                    "label": "Body stayed back"
+                },
+                {
+                    "gloss": "processes what actually happened",
+                    "label": "EMDR moves trauma"
+                }
+            ]
+        },
+        "cardLine": "When the script changes",
+        "archetype": "comparison_pair"
+    },
+    {
+        "title": "Process loss before rebuild",
+        "payload": {
+            "nodes": [
+                {
+                    "gloss": "what your body knows",
+                    "label": "Process the loss"
+                },
+                {
+                    "gloss": "from what’s actually there",
+                    "label": "Then rebuild"
+                },
+                {
+                    "gloss": "and that’s the point",
+                    "label": "Different person"
+                }
+            ]
+        },
+        "cardLine": "Process loss before rebuild",
+        "archetype": "cycle"
+    },
+    {
+        "title": "Competence masks the signal",
+        "payload": {
+            "rings": [
+                {
+                    "gloss": "masks what your body says",
+                    "label": "The competence"
+                },
+                {
+                    "gloss": "arrives after you’re back",
+                    "label": "The burnout"
+                },
+                {
+                    "gloss": "starts when you stop",
+                    "label": "The listening"
+                }
+            ]
+        },
+        "cardLine": "Competence masks the signal",
+        "archetype": "concentric_control"
+    },
+    {
+        "title": "When the plan held",
+        "payload": {
+            "beneath": {
+                "gloss": "and that is data",
+                "label": "Body says no"
+            },
+            "surface": {
+                "gloss": "then something shifted",
+                "label": "The plan held"
+            }
+        },
+        "cardLine": "When the plan held",
+        "archetype": "surface_and_beneath"
+    },
+    {
+        "title": "When the plan ends",
+        "payload": {
+            "nodes": [
+                {
+                    "gloss": "your body keeps running",
+                    "label": "The plan stops"
+                },
+                {
+                    "gloss": "that never arrives",
+                    "label": "Braced for next"
+                },
+                {
+                    "gloss": "the nervous system disagrees",
+                    "label": "Desk dread"
+                }
+            ]
+        },
+        "cardLine": "When the plan ends",
+        "archetype": "cycle"
+    },
+    {
+        "title": "When the past hijacks now",
+        "payload": {
+            "beneath": {
+                "gloss": "nervous system still braced",
+                "label": "Old alarm"
+            },
+            "surface": {
+                "gloss": "returning to work hits different",
+                "label": "Body says no"
+            }
+        },
+        "cardLine": "When the past hijacks now",
+        "archetype": "surface_and_beneath"
+    },
+    {
+        "title": "Your body’s map of before",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "the old demand was safe",
+                    "label": "Body remembers"
+                },
+                {
+                    "gloss": "the map stayed put",
+                    "label": "Shift happened"
+                },
+                {
+                    "gloss": "EMDR lets the nervous system know",
+                    "label": "Map updating"
+                },
+                {
+                    "gloss": "orientation shifts with you",
+                    "label": "Body agrees"
+                }
+            ],
+            "axis_x": "then",
+            "axis_y": "now"
+        },
+        "cardLine": "Your body’s map of before",
+        "archetype": "quadrant_model"
+    },
+    {
+        "title": "When change breaks",
+        "payload": {
+            "left": [
+                {
+                    "gloss": "nervous system locked in rupture",
+                    "label": "Body says no"
+                },
+                {
+                    "gloss": "return-to-work, return-to-normal",
+                    "label": "Mind says go"
+                }
+            ],
+            "right": [
+                {
+                    "gloss": "processes what got stuck",
+                    "label": "EMDR unfixes time"
+                },
+                {
+                    "gloss": "nervous system moves forward",
+                    "label": "Future unlocks"
+                }
+            ]
+        },
+        "cardLine": "When change breaks",
+        "archetype": "comparison_pair"
+    },
+    {
+        "title": "Appearing fine costs more",
+        "payload": {
+            "axis_x": "weeks back",
+            "axis_y": "effort",
+            "points": [
+                {
+                    "gloss": "adrenaline carries you",
+                    "label": "First week"
+                },
+                {
+                    "gloss": "the mask gets heavy",
+                    "label": "Week three"
+                },
+                {
+                    "gloss": "your body says no",
+                    "label": "Week six"
+                }
+            ]
+        },
+        "cardLine": "Appearing fine costs more",
+        "archetype": "annotated_curve"
+    },
+    {
+        "title": "When rest reveals what work",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "exhaustion shows up first",
+                    "label": "Notice the body"
+                },
+                {
+                    "gloss": "before the system shuts down",
+                    "label": "Slow the pace"
+                },
+                {
+                    "gloss": "what does return feel like",
+                    "label": "Listen after rest"
+                }
+            ]
+        },
+        "cardLine": "When rest reveals what work",
+        "archetype": "numbered_strategies"
+    },
+    {
+        "title": "When the map stops matching",
+        "payload": {
+            "cards": [
+                {
+                    "payload": {
+                        "statement": "The plan made sense until your body said no."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "beneath": {
+                            "gloss": "My nervous system had other ideas",
+                            "label": "What shifted"
+                        },
+                        "surface": {
+                            "gloss": "I went back like I planned",
+                            "label": "What happened"
+                        }
+                    },
+                    "archetype_key": "surface_and_beneath"
+                },
+                {
+                    "payload": {
+                        "statement": "Listening to that is not failure. It’s information."
+                    },
+                    "archetype_key": "single_statement"
+                },
+                {
+                    "payload": {
+                        "statement": "Therapy helps you navigate when the map no longer fits."
+                    },
+                    "archetype_key": "single_statement"
+                }
+            ]
+        },
+        "cardLine": "When the map stops matching",
+        "archetype": "carousel"
+    },
+    {
+        "title": "What the disruption says",
+        "payload": {
+            "nodes": [
+                {
+                    "gloss": "the signal is information",
+                    "label": "Body says no"
+                },
+                {
+                    "gloss": "something shifted while you were away",
+                    "label": "Return feels harder"
+                },
+                {
+                    "gloss": "the disruption tells you what’s true",
+                    "label": "Listen first"
+                }
+            ]
+        },
+        "cardLine": "What the disruption says",
+        "archetype": "cycle"
+    },
+    {
+        "title": "Your body and mind disagree",
+        "payload": {
+            "rings": [
+                {
+                    "gloss": "your body still lives there",
+                    "label": "The before"
+                },
+                {
+                    "gloss": "your mind knows you’re here",
+                    "label": "The now"
+                },
+                {
+                    "gloss": "EMDR can help them meet",
+                    "label": "The gap"
+                }
+            ]
+        },
+        "cardLine": "Your body and mind disagree",
+        "archetype": "concentric_control"
+    },
+    {
+        "title": "High functioning has a bill",
+        "payload": {
+            "axis_x": "after time off",
+            "axis_y": "nervous system",
+            "points": [
+                {
+                    "gloss": "body says no",
+                    "label": "You return"
+                },
+                {
+                    "gloss": "composure costs energy",
+                    "label": "You push through"
+                },
+                {
+                    "gloss": "system finally heard danger passed",
+                    "label": "You crash"
+                }
+            ]
+        },
+        "cardLine": "High functioning has a bill",
+        "archetype": "annotated_curve"
+    },
+    {
+        "title": "When a door closes",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "the life you had before",
+                    "label": "What stopped"
+                },
+                {
+                    "gloss": "separate from what you think",
+                    "label": "Body knows"
+                },
+                {
+                    "gloss": "processing, not just naming it",
+                    "label": "What comes next"
+                }
+            ]
+        },
+        "cardLine": "When a door closes",
+        "archetype": "numbered_strategies"
+    },
+    {
+        "title": "When the future stops existing",
+        "payload": {
+            "items": [
+                {
+                    "gloss": "name the loss without fixing it",
+                    "label": "Hold what happened"
+                },
+                {
+                    "gloss": "it knows something your mind skipped",
+                    "label": "Body work"
+                },
+                {
+                    "gloss": "sensation, not solution, comes first",
+                    "label": "Let it move"
+                },
+                {
+                    "gloss": "not erase. the weight changes shape.",
+                    "label": "Time will shift"
+                }
+            ]
+        },
+        "cardLine": "When the future stops existing",
+        "archetype": "numbered_strategies"
+    }
+]
