@@ -61,29 +61,70 @@ import { admin, anthropicKeyOrDie, untypedTable, SESSION_CAP_USD } from "./lib";
  * en stock. Le paramètre rend ce coût explicite au lieu de le laisser
  * apparaître comme une pénurie inexpliquée au tirage.
  */
-const SCALE = (() => {
-  const i = process.argv.indexOf("--scale");
-  const n = i === -1 ? 1 : Number(process.argv[i + 1]);
-  return Number.isFinite(n) && n >= 1 ? n : 1;
-})();
+/** ⚠ `--scale` a été remplacé par `--months`, qui dit ce qu'on veut tenir. */
+const SCALE = 1;
 
-const PER_SEGMENT: Array<[string, number]> = [
-  // une phrase : 15
-  ["single_statement", 16],
-  ["practitioner_card", 4],
-  // diagrammes simples : 15
+/*
+ * ── ⚠ LE STOCK SUIT LE RYTHME DU TIRAGE, PAS CELUI DE LA PUBLICATION ────
+ *
+ * Les cibles précédentes — 16 phrases seules pour 4 de chaque diagramme —
+ * étaient calquées sur le MÉLANGE D'UN MOIS PUBLIÉ. C'est la mauvaise
+ * grandeur, et le mois de `perrin.vale` l'a montré : cinq archétypes sur
+ * onze, six icebergs identiques, alors que le total de la banque paraissait
+ * sain.
+ *
+ * Ce qui vide la banque, c'est le TIRAGE. `20-month.ts` tire `CANDIDATES`
+ * sujets répartis en trois familles à tour de rôle :
+ *
+ *   famille « statement »  2 archétypes → 18 / 2 = 9 tirés chacun par mois
+ *   famille « simple »     5 archétypes → 18 / 5 ≈ 3,6 chacun
+ *   famille « varied »     4 archétypes → 18 / 4 = 4,5 chacun
+ *
+ * Un diagramme de la famille « varied » est donc tiré 4,5 fois par mois pour
+ * un stock de 5 : il est à sec au premier mois. Une phrase seule est tirée 9
+ * fois pour un stock de 16. C'est ce rapport-là — et non le mélange publié —
+ * qui explique pourquoi une banque « équilibrée » ne rend que des phrases
+ * seules dès qu'elle se vide.
+ *
+ * Les cibles ci-dessous sont donc le TIRAGE MENSUEL MESURÉ, arrondi au
+ * supérieur. `--months` dit combien de mois consécutifs la banque doit tenir ;
+ * le cahier des charges en demande dix.
+ */
+const DRAWN_PER_MONTH: Array<[string, number]> = [
+  // famille « statement » — 9 tirés chacun
+  ["single_statement", 9],
+  ["practitioner_card", 9],
+  // famille « simple » — 3,6 tirés chacun, arrondi à 4
   ["surface_and_beneath", 4],
   ["comparison_pair", 4],
   ["numbered_strategies", 4],
   ["cycle", 4],
   ["concentric_control", 4],
-  // formes larges : 15
+  // famille « varied » — 4,5 tirés chacun, arrondi à 5
   ["carousel", 5],
   ["quadrant_model", 5],
   ["annotated_curve", 5],
   ["lettered_technique", 5],
 ];
 
+/**
+ * Combien de mois consécutifs la banque doit tenir.
+ *
+ * ⚠ DIX EST LA CIBLE DU CAHIER DES CHARGES, et elle coûte ce qu'elle coûte :
+ * 580 sujets par segment. `--months` permet d'en remplir moins quand un
+ * plafond de dépense l'impose — ce qui est alors une décision à écrire, pas un
+ * réglage à deviner.
+ */
+const MONTHS = (() => {
+  const i = process.argv.indexOf("--months");
+  const n = i === -1 ? 10 : Number(process.argv[i + 1]);
+  return Number.isFinite(n) && n >= 1 ? n : 10;
+})();
+
+const PER_SEGMENT: Array<[string, number]> = DRAWN_PER_MONTH.map(([key, perMonth]) => [
+  key,
+  Math.ceil(perMonth * MONTHS),
+]);
 const INTENTS = ["normalise", "educate", "correct_a_myth", "invite", "behind_the_practice"];
 
 type Seg = { id: string; modality_id: string; persona_id: string; state_code: string | null };
@@ -140,7 +181,29 @@ function prefix(archetypeKey: string, rules: Array<{ id: string; short_label: st
     `Count every label and every gloss before you answer. If one is too long,`,
     `cut it rather than rephrase it.`,
     ``,
-    archetypeInstruction(archetypeKey),
+    /*
+     * ── ⚠ UN SUJET N'EST PAS UN PAYLOAD ───────────────────────────────
+     *
+     * La banque écrit des SUJETS — un titre, une accroche, un angle. Le
+     * payload vient plus tard, au mois. Pour dix archétypes les deux vont
+     * ensemble et la forme aide le modèle à viser juste.
+     *
+     * `practitioner_card` fait exception depuis que ses lignes viennent du
+     * brief : lui demander sa forme lève, et c'est voulu. Son sujet reste
+     * légitime — « Where to start », « How I work » — donc on lui décrit la
+     * carte en mots, sans schéma à remplir.
+     */
+    archetypeKey === "practitioner_card"
+      ? [
+          `Archetype "practitioner_card". Write ONLY the topic: a title and a`,
+          `hook for a card that says, plainly, how she works.`,
+          ``,
+          `⚠ You do NOT write its content. The card's lines are filled from her`,
+          `own brief at composition time — modality, city, availability — and`,
+          `never by a model. Do not invent a practice name, an email, a phone`,
+          `number, a website or a handle anywhere in your answer.`,
+        ].join("\n")
+      : archetypeInstruction(archetypeKey),
   ].join("\n");
 
   return [{ type: "text" as const, text, cache_control: { type: "ephemeral" as const } }];
@@ -178,10 +241,26 @@ async function main() {
    * seconde passe qui redemanderait les 52 paierait deux fois les 19 qui sont
    * passées. Ce qui manque est lu en base, par segment et par archétype.
    */
-  const { data: held } = await untypedTable<{ segment_id: string; archetype_key: string }>(db, "content_topics")
-    .select("segment_id, archetype_key");
+  /*
+   * ── ⚠ CE QUI COMPTE EST CE QUI EST TIRABLE, PAS CE QUI EXISTE ─────────
+   *
+   * Cette requête lisait TOUS les sujets de la banque. Un sujet déjà assigné
+   * en est pourtant sorti pour 90 jours : il existe, et il ne sert plus à
+   * personne. Le script répondait donc « the bank is already at target » sur
+   * une banque intégralement bloquée — c'est F13, et c'est ce qui a rendu un
+   * mois de 10 posts puis un mois de 23.
+   *
+   * Le décompte ne retient que les sujets LIBRES.
+   */
+  const { data: held } = await untypedTable<{ segment_id: string; archetype_key: string; id: string }>(db, "content_topics")
+    .select("id, segment_id, archetype_key");
+  const { data: assigned } = await untypedTable<{ topic_id: string }>(db, "topic_assignments")
+    .select("topic_id");
+  const taken = new Set((assigned ?? []).map((r) => r.topic_id));
+
   const heldCount = new Map<string, number>();
   for (const row of held ?? []) {
+    if (taken.has(row.id)) continue;
     const k = `${row.segment_id}|${row.archetype_key}`;
     heldCount.set(k, (heldCount.get(k) ?? 0) + 1);
   }

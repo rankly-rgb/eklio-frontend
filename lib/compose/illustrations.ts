@@ -435,6 +435,52 @@ export function bubble(box: Box, colour: string, pointLeft: boolean, width = STR
   ];
 }
 
+/*
+ * ── DEUX ORIENTATIONS PAR OBJET ─────────────────────────────────────────
+ *
+ * ⚠ UNE NOTATION INDÉPENDANTE A COMPTÉ LES RÉUTILISATIONS AU PIXEL : « porte
+ * (encre 3811, 193×228 en 448,818) sur 09/18/24/36 ; anneaux (3310, 290×289)
+ * sur 19/31 ; fil (4404, 229×634) sur 06/16 ». Onze archétypes, six dessins,
+ * identiques à l'octet près — « l'ensemble se lit uniforme même là où chaque
+ * carte est correcte ».
+ *
+ * La spécification veut UN objet par archétype, et elle a raison : c'est ce
+ * qui fait qu'un mois se lit comme un système. Mais un objet n'est pas une
+ * image. Retourner l'ancre, orienter la porte de l'autre côté, faire regarder
+ * le profil à gauche — c'est le même objet, et deux cartes voisines cessent
+ * d'être la même carte.
+ *
+ * ⚠ LE MIROIR RETOURNE AUSSI LES BOÎTES. C'est la boîte, jamais le chemin,
+ * que le contrôle de dégagement lit : un `transform` SVG seul déplacerait
+ * l'encre en laissant les boîtes derrière, et on mesurerait la distance à un
+ * dessin qui n'est plus là.
+ */
+export function mirrored(strokes: Stroke[], box: Box): { strokes: Stroke[]; transform: string } {
+  const axis = box.x + box.w / 2;
+  return {
+    transform: `translate(${r2(axis * 2)}, 0) scale(-1, 1)`,
+    strokes: strokes.map((s) => ({
+      ...s,
+      box: { ...s.box, x: r2(axis * 2 - (s.box.x + s.box.w)) },
+    })),
+  };
+}
+
+/**
+ * L'orientation à donner à cette carte-ci : 0 tel quel, 1 retourné.
+ *
+ * ⚠ DÉTERMINISTE, PARCE QUE LE CACHE DE RENDU L'EXIGE. `rendered_assets` est
+ * indexé sur un hachage de (archétype + payload + palette + typographie) : si
+ * l'orientation était tirée au hasard, deux rendus du même post différeraient
+ * et le cache servirait le premier pour toujours. Elle se déduit donc de la
+ * clef de palette, qui est déjà propre à la carte.
+ */
+export function variantOf(paletteKey: string): number {
+  let h = 0;
+  for (let i = 0; i < paletteKey.length; i += 1) h = (h * 31 + paletteKey.charCodeAt(i)) | 0;
+  return Math.abs(h) % 2;
+}
+
 /** Ce que chaque archétype dessine, nommé une fois. */
 export const DRAWING_FOR: Record<string, Drawing> = {
   surface_and_beneath: surfacing,

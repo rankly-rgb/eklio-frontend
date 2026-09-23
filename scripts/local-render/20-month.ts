@@ -47,6 +47,7 @@ import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
 import { checkMonth, type Finding } from "../../lib/content/month-checks";
+import { practitionerLines, identityAllowList, type PractitionerFacts } from "../../lib/content/practitioner";
 import type { DirectionPalette } from "../../lib/compose/palette";
 import { admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD } from "./lib";
 
@@ -154,7 +155,7 @@ async function main() {
     .eq("brand_kit_id", kitId).eq("month", MONTH).maybeSingle();
   const { data: rules } = await db.from("ethics_rules").select("*");
   const { data: brief } = await db
-    .from("project_briefs").select("practice_name, positioning, usp_statement, city, state").limit(1).single();
+    .from("project_briefs").select("practice_name, positioning, usp_statement, city, state, modality_ids").limit(1).single();
   if (!preferences || !rules?.length || !brief) throw new Error("the account is not complete");
 
   const directions = (kit?.directions ?? []) as Array<{ id: string; palette: never }>;
@@ -166,6 +167,32 @@ async function main() {
    * diagramme), et c'est le même contrôle qui les arrête.
    */
   const briefLocation = [brief.city, brief.state].filter(Boolean).join(", ") || null;
+
+  /*
+   * ── ⚠ LA CARTE PRATICIENNE SE REMPLIT, ELLE NE S'ÉCRIT PAS ────────────
+   *
+   * Ses lignes viennent du brief que la praticienne a saisi. Si le brief n'en
+   * porte pas assez, `practitionerLines` rend `null` et l'archétype n'est PAS
+   * TIRÉ du tout — le mélange se rééquilibre sur les dix autres plutôt que de
+   * livrer une carte à moitié vide, ou pire, une carte inventée.
+   */
+  const facts: PractitionerFacts = {
+    practiceName: brief.practice_name ?? null,
+    city: brief.city ?? null,
+    state: brief.state ?? null,
+    // ⚠ Le libellé tel qu'il est en base, sinon l'identifiant en capitales :
+    // « emdr » devient « EMDR », qui est ce qu'une carte doit porter.
+    modalities: ((brief.modality_ids ?? []) as string[]).map((id) => id.toUpperCase()),
+    takingClients: (checkinRow?.taking_clients ?? null) as PractitionerFacts["takingClients"],
+  };
+  const practitionerPayload = (() => {
+    const lines = practitionerLines(facts);
+    return lines ? { lines } : null;
+  })();
+  const allowList = identityAllowList(facts);
+  if (!practitionerPayload) {
+    console.error("▸ practitioner_card écarté : le brief ne porte pas assez de faits");
+  }
 
   const voice = (() => {
     const guide = kit?.voice_guide as { tone?: string; sounds_like?: string[] } | null;
@@ -259,7 +286,9 @@ async function main() {
    */
   for (const [family, archetypes] of Object.entries(FAMILIES)) {
     let taken = 0;
-    const live = [...archetypes];
+    // ⚠ Un archétype dont le brief ne porte pas les faits n'entre pas dans la
+    // ronde : il ne sert à rien de tirer un sujet qu'on ne pourra pas composer.
+    const live = archetypes.filter((a) => a !== "practitioner_card" || practitionerPayload !== null);
     while (taken < perFamily && live.length > 0) {
       for (let k = 0; k < live.length && taken < perFamily; ) {
         const { data: topicId, error } = await (db.rpc as unknown as (
@@ -451,6 +480,31 @@ const SPARE_POOL = 6;
       if (!reservationId) break;
       candidate.reservationId = reservationId;
 
+      /*
+       * ── ⚠ LA CARTE PRATICIENNE NE PASSE PAS PAR LE MODÈLE ──────────────
+       *
+       * Ses lignes sont déjà assemblées depuis le brief. L'appeler ici ne
+       * coûterait pas seulement un appel pour rien : c'est exactement
+       * l'appel qui a fabriqué « Rowan Mercier Therapy ». On garde la
+       * légende et le texte alternatif, qui eux sont du contenu — mais le
+       * payload, jamais.
+       */
+      if (candidate.topic.archetype_key === "practitioner_card") {
+        candidate.result = {
+          topicId: candidate.topic.id, ok: true,
+          payload: practitionerPayload,
+          cardLine: clampCardLine(candidate.topic.title),
+          caption: candidate.topic.hook ?? "",
+          altText: (practitionerPayload?.lines ?? []).join(". "),
+          rationale: "Assembled from the brief, not written.",
+          usage: ZERO(),
+        } as never;
+        funnel.generated += 1;
+        funnel.conformantFirstCall += 1;
+        if (await settleCandidate(candidate)) usable.push(candidate);
+        continue;
+      }
+
       const request = asRequest(candidate);
       const message = await client.messages.create({
         model: massCopyModel(),
@@ -554,7 +608,7 @@ type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ titl
 function selectDeliverable<
   T extends { cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
               candidate: { topic: { title: string } } }
->(prepared: T[], direction: DirectionPalette, wanted: number, practiceName: string): Deliverable<T> {
+>(prepared: T[], direction: DirectionPalette, wanted: number, practiceName: string, allowList: string[]): Deliverable<T> {
   const asPost = (p: T) => ({
     archetype: p.composeArchetype,
     title: p.candidate.topic.title,
@@ -568,7 +622,7 @@ function selectDeliverable<
   const dropped: Array<{ title: string; why: string }> = [];
 
   for (;;) {
-    const findings = checkMonth({ posts: chosen.map(asPost), direction, practiceName });
+    const findings = checkMonth({ posts: chosen.map(asPost), direction, practiceName, identityAllowList: allowList });
     if (findings.length === 0) return { chosen, remaining: [], dropped };
     if (bench.length === 0) return { chosen, remaining: findings, dropped };
 
@@ -722,7 +776,9 @@ function selectDeliverable<
   }
 
   /* ── Les contrôles de mois, et la correction ───────────────────────── */
-  const selection = selectDeliverable(readyPosts, direction.palette as DirectionPalette, WANTED, practiceName);
+  const selection = selectDeliverable(
+    readyPosts, direction.palette as DirectionPalette, WANTED, practiceName, allowList
+  );
   const succeeded = selection.chosen.map((p: Prepared) => p.candidate);
 
   for (const [index, post] of selection.chosen.entries()) {

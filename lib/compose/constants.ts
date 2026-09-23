@@ -121,6 +121,21 @@ export const TYPE = {
 export const FIGURE_COVERAGE = { min: 0.25, max: 0.45 } as const;
 
 /**
+ * La part MINIMALE de la bande que le tracé doit réellement couvrir.
+ *
+ * ⚠ CE N'EST PAS `FIGURE_COVERAGE.min`, ET LES DEUX NE MESURENT PAS LA MÊME
+ * CHOSE. `FIGURE_COVERAGE` borne la boîte RÉSERVÉE au dessin ; celle-ci borne
+ * ce que le dessin en OCCUPE. Un archétype pouvait donc réserver 45 % de la
+ * bande et n'en noircir que 5 — c'est ce que faisait le profil du
+ * `quadrant_model`, mesuré à 4,9 % quand les références tiennent 9,2 à 9,4 %.
+ *
+ * Sous ce plancher, la carte est refusée et le repli cherche une forme dont le
+ * dessin tient sa place. Le dégagement prime toujours : une illustration
+ * agrandie qui toucherait un glyphe est refusée avant d'être mesurée ici.
+ */
+export const MIN_FIGURE_EXTENT = 0.09;
+
+/**
  * Les crans de l'échelle de résolution, du plus généreux au plus serré.
  *
  * ⚠ ELLE VIT ICI ET PLUS DANS LE MOTEUR, PARCE QUE `figureShare` DOIT LA LIRE.

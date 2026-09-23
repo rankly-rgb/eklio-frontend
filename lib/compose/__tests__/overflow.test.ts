@@ -86,20 +86,30 @@ describe("step 1 — the illustration shrinks before anything else moves", () =>
     expect(legibleAtThumb(composition.placed)).toBe(true);
   });
 
+  /*
+   * ⚠ CE CAS A CHANGÉ D'ARCHÉTYPE, ET LA RAISON EST LA MÊME QU'AVANT.
+   *
+   * Il portait sur `quadrant_model`, qui posait son profil en BANDEAU au-dessus
+   * de la grille et devait donc rétrécir pour loger quatre cases. Le profil y
+   * tombait à 4,4 % de la bande — `MIN_FIGURE_EXTENT` le refuse désormais — et
+   * l'archétype est passé en GOUTTIÈRE, où la hauteur ne se dispute plus. Il ne
+   * rétrécit donc plus rien.
+   *
+   * Exiger encore de lui le symptôme après avoir soigné la cause serait la
+   * troisième fois. L'ORDRE du résolveur reste à vérifier, et `annotated_curve`
+   * est maintenant la carte qui le montre : sa courbe est horizontale par
+   * nature, elle ne peut pas passer en gouttière, et quatre points nommés la
+   * forcent à céder un cran avant qu'aucun mot ne bouge.
+   */
   it("le dessin cède avant les mots, là où quelque chose doit céder", () => {
-    /*
-     * Quatre cases glosées sous un profil : c'est la carte qui manque
-     * vraiment de hauteur. Le résolveur descend l'illustration et s'arrête là
-     * — il ne touche pas aux gloses tant qu'un cran reste à essayer.
-     */
     const { composition } = render({
       ...SHORT,
-      archetype: "quadrant_model",
+      archetype: "annotated_curve",
       palette: PALETTES[0],
       payload: {
-        axis_x: "Effort here",
-        axis_y: "Relief here",
-        items: [item("Out there"), item("Nearer"), item("Right here"), item("Inside")],
+        axis_x: "Weeks here",
+        axis_y: "Steady here",
+        points: [item("First"), item("Third"), item("Sixth"), item("Ninth")],
       },
     });
     expect(composition.resolution.some((r) => r.startsWith("illustration shrunk"))).toBe(true);

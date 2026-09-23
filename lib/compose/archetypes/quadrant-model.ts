@@ -1,6 +1,6 @@
 import { CLEARANCE, figureShare, TYPE } from "@/lib/compose/constants";
 import { cell, columns, fitText, linesFrom, rows } from "@/lib/compose/layout";
-import { profile } from "@/lib/compose/illustrations";
+import { mirrored, profile, variantOf } from "@/lib/compose/illustrations";
 import { round2 } from "@/lib/compose/measure";
 import type { Placed } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
@@ -33,83 +33,85 @@ export const quadrantModel: ArchetypeModule<QuadrantModel> = {
   compose({ payload, palette, content, figureScale, secondaryMax }) {
     const placed: Placed[] = [];
 
-    // The axis strip at the top of the content band: the cross, and the two
-    // names. Its height is the illustration's share, scaled by the resolver.
-    const stripH = round2(content.h * figureShare(figureScale));
-    if (stripH < 150) return null;
-
-    const strip = { x: content.x, y: content.y, w: content.w, h: stripH };
-    const cx = round2(strip.x + strip.w / 2);
-    const cy = round2(strip.y + strip.h / 2);
-
     /*
-     * ⚠ LA CROIX N'ÉTAIT PAS UNE ILLUSTRATION, ET LES QUATRE CASES DISAIENT
-     * DÉJÀ CE QU'ELLE DISAIT. Deux segments perpendiculaires au-dessus d'une
-     * grille 2×2 répètent la grille : c'est de l'échafaudage, et la
-     * spécification le nomme — « un cercle vide n'est pas une illustration ».
+     * ── ⚠ EN GOUTTIÈRE, COMME LE CYCLE, ET POUR LA MÊME MESURE ──────────
      *
-     * Un modèle en quatre cases décrit ce qui se passe dans une tête. La tête
-     * de profil, ouverte à l'arrière, est ce sujet dessiné ; les deux axes
-     * restent NOMMÉS, à gauche et au-dessus, puisque ce sont eux qui disent
-     * comment lire la grille.
+     * Le profil était posé en BANDEAU au-dessus de la grille, donc il
+     * disputait aux quatre cases la HAUTEUR — la seule dimension dont cette
+     * carte manque. Le résolveur descendait l'illustration cran par cran
+     * jusqu'à ce qu'elle tienne, et elle finissait à **4,4 % de la bande** là
+     * où les références en couvrent 9,2 : la tête devenait un crochet.
+     *
+     * Une notation indépendante a mesuré ce 4,9 %, et `MIN_FIGURE_EXTENT` le
+     * refuse désormais — ce qui, en bandeau, faisait replier l'archétype que
+     * la même notation avait classé meilleure carte-diagramme du lot. Le
+     * plancher avait raison, le remède était ailleurs.
+     *
+     * Une gouttière coûte de la LARGEUR, que cette carte a : la tête y tient
+     * sur toute la hauteur, et les quatre cases se partagent le reste.
      */
+    const gutterW = round2(content.w * figureShare(figureScale) * 0.8);
+    if (gutterW < 220) return null;
+
+    const gridBox = {
+      x: round2(content.x + gutterW + CLEARANCE.fieldToField),
+      y: content.y,
+      w: round2(content.w - gutterW - CLEARANCE.fieldToField),
+      h: content.h,
+    };
+    if (gridBox.w < 300) return null;
+
     const half = STROKE / 2;
-    const headW = round2(Math.min(strip.w * 0.42, strip.h * 0.92));
+    const headW = round2(Math.min(gutterW, content.h * 0.58));
     const head = {
-      x: round2(cx - headW / 2),
-      y: round2(cy - headW / 2),
+      x: round2(content.x + (gutterW - headW) / 2),
+      y: round2(content.y + (content.h - headW) / 2),
       w: headW,
       h: headW,
     };
+    /*
+     * ⚠ LE PROFIL REGARDE D'UN CÔTÉ OU DE L'AUTRE. Deux cartes `quadrant_model`
+     * dans un même mois portaient exactement la même tête ; l'orientation se
+     * déduit de la clef de palette, donc elle est propre à la carte et stable
+     * d'un rendu à l'autre.
+     */
+    const drawn = profile(head, palette.ink, STROKE);
+    const flip = variantOf(palette.key) === 1 ? mirrored(drawn, head) : null;
     placed.push({
       role: "figure",
       band: "content",
       box: head,
-      strokes: profile(head, palette.ink, STROKE),
+      strokes: flip ? flip.strokes : drawn,
+      ...(flip ? { transform: flip.transform } : {}),
     });
 
-    // The names, kept a full `glyphToStroke` clear of the arms they label.
+    /*
+     * Les deux axes restent NOMMÉS — ce sont eux qui disent comment lire la
+     * grille — posés au-dessus et au-dessous de la tête, dans la gouttière,
+     * à un dégagement complet du tracé.
+     */
     const nameRange = { min: TYPE.mono.min, max: Math.min(TYPE.mono.max, secondaryMax), floor: TYPE.mono.floor };
     if (nameRange.max < nameRange.floor) return null;
-    const xFit = fitText(payload.axis_x, "mono", strip.w * 0.3, 40, nameRange);
-    const yFit = fitText(payload.axis_y, "mono", strip.w * 0.3, 40, nameRange);
+    const xFit = fitText(payload.axis_x, "mono", gutterW, 40, nameRange);
+    const yFit = fitText(payload.axis_y, "mono", gutterW, 40, nameRange);
     if (!xFit || !yFit) return null;
+
+    const above = round2(head.y - half - CLEARANCE.glyphToStroke - yFit.height);
+    const below = round2(head.y + head.h + half + CLEARANCE.glyphToStroke);
+    if (above < content.y || below + xFit.height > content.y + content.h) return null;
 
     placed.push({
       role: "text",
       band: "content",
-      box: strip,
+      box: { x: content.x, y: above, w: gutterW, h: round2(below + xFit.height - above) },
       lines: [
-        // Le nom de l'axe horizontal, à droite du profil, à hauteur d'yeux.
-        ...linesFrom(
-          xFit,
-          round2(head.x + head.w + half + CLEARANCE.glyphToStroke),
-          round2(cy - xFit.size * 0.6),
-          strip.w * 0.3, "mono", 500, palette.ink, "start"
-        ),
-        // Celui de l'axe vertical en haut à gauche, du même côté que la
-        // grille qu'il ordonne, et dégagé du tracé du profil.
-        ...linesFrom(
-          yFit,
-          strip.x,
-          strip.y,
-          strip.w * 0.3, "mono", 500, palette.ink, "start"
-        ),
+        ...linesFrom(yFit, content.x, above, gutterW, "mono", 500, palette.ink, "start"),
+        ...linesFrom(xFit, content.x, below, gutterW, "mono", 500, palette.ink, "start"),
       ],
     });
 
-    // The four cells, below the strip, `fieldToField` clear of it.
-    const grid = {
-      x: content.x,
-      y: round2(strip.y + strip.h + CLEARANCE.fieldToField),
-      w: content.w,
-      h: round2(content.h - strip.h - CLEARANCE.fieldToField),
-    };
-    if (grid.h <= 0) return null;
-
-    const [top, bottom] = rows(grid, 2);
+    const [top, bottom] = rows(gridBox, 2);
     const boxes = [...columns(top, 2), ...columns(bottom, 2)];
-
     for (let i = 0; i < 4; i += 1) {
       const built = cell("content", boxes[i], payload.items[i].label, payload.items[i].gloss, palette, i, secondaryMax);
       if (!built) return null;
@@ -117,5 +119,5 @@ export const quadrantModel: ArchetypeModule<QuadrantModel> = {
     }
 
     return placed;
-  },
+  }
 };

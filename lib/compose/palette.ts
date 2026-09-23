@@ -56,86 +56,50 @@ export function inkFor(ground: string, dark: string, light: string): string {
 }
 
 /**
- * De combien une teinte de marque est ramenée vers le papier.
- *
- * ── ⚠ CE MODULE REFUSAIT DE LE FAIRE, ET IL AVAIT TORT ─────────────────
- *
- * Le commentaire disait : « LES TEINTES SONT CELLES DE LA MARQUE, JAMAIS
- * OBTENUES EN ÉCLAIRCISSANT. Mélanger son primaire avec du blanc produit une
- * couleur qu'elle n'a jamais choisie, et une différente pour chaque marque,
- * ce qui est la façon dont un système cesse de ressembler à un système. »
- *
- * L'objection est réelle et la conclusion était fausse, pour deux raisons que
- * le rendu du 2026-10 a rendues visibles :
- *
- * 1. `tints` valait `[light, secondary, primary]`, et sur un vrai kit cela
- *    donne `[#F4EEE3, #C08A3E, #B4674A]` — une teinte presque blanche et DEUX
- *    APLATS DE MARQUE À PLEINE SATURATION. Un contrôle indépendant du mois
- *    rendu l'a noté sur les dix-neuf cartes-diagrammes : « brand ochre et
- *    brand terracotta près de la saturation maximale, la plupart des cartes se
- *    lisent comme des bandes lourdes ».
- * 2. `inkOnTint` est calculé UNE fois, sur `tints[0]`, puis posé sur les trois.
- *    Avec une première teinte presque blanche et une troisième saturée, l'encre
- *    choisie pour la première perd son contraste sur la troisième.
- *
- * Adoucir vers le PAPIER, et non vers le blanc, répond à l'objection : le
- * résultat reste sur l'axe de la marque, la proportion est la même pour tous
- * les kits — donc le système reste un système — et les trois teintes
- * redeviennent claires, ce qui résout aussi (2) sans toucher à l'encre.
- *
- * La valeur est fixée par la spécification validée, qui demande « 2-3 teintes
- * du kit adoucies en aplats (pas les couleurs de marque saturées) ».
- */
-export const SOFTEN_TOWARD_PAPER = 0.62;
-
-/**
- * De combien chaque emplacement est adouci, séparément.
+ * De combien chaque emplacement est adouci, et vers quoi.
  *
  * ── ⚠ UN TAUX UNIQUE ÉCRASE LA MARQUE SUR ELLE-MÊME ────────────────────
  *
- * Mesuré sur un vrai kit : l'or `#C08A3E` et la terracotta `#B4674A` sont à 39
- * de distance RGB. Ramenés tous deux de 62 % vers le papier, l'écart est
- * multiplié par (1 − 0.62) : **il tombe à 15**. Les deux aplats deviennent
- * indistinguables — c'est très exactement ce que la première notation
- * indépendante décrivait comme « deux teintes quasi identiques », et la
- * correction qui a suivi n'a rien changé à ce point-là parce qu'elle a gardé
- * un taux unique.
+ * L'or `#C08A3E` et la terracotta `#B4674A` sont à 39 de distance RGB.
+ * Ramenés tous deux de 62 % vers le papier, l'écart tombait à 15 : les deux
+ * aplats devenaient indistinguables. Adoucir de quantités DIFFÉRENTES
+ * conserve l'écart.
  *
- * Adoucir de quantités DIFFÉRENTES conserve l'écart : la luminosité fait le
- * travail que la teinte ne peut plus faire une fois les couleurs rapprochées
- * du papier. Les quatre emplacements restent des versions adoucies de deux
- * couleurs de marque, et aucun n'est la couleur brute.
+ * ── ⚠ ET LA QUATRIÈME NE PEUT PAS ÊTRE UNE SECONDE LUMINOSITÉ DE LA
+ *      DEUXIÈME, CE QUI A ÉTÉ LA CORRECTION SUIVANTE ────────────────────
  *
- * ⚠ LE PREMIER EMPLACEMENT N'EST PAS À ZÉRO, ET IL L'A ÉTÉ. Sur une carte
- * CLAIRE il porte `light`, déjà un aplat doux que le garde-fou `ALREADY_SOFT`
- * laisse intact quel que soit le taux. Sur une carte SOMBRE il porte le
- * primaire de marque — et un taux de zéro le livrait donc brut, ce que le
- * contrôle de saturation rejette à juste titre. C'est le garde-fou qui décide
- * « déjà doux », jamais un zéro écrit en dur.
+ * Elle l'a été, et une notation indépendante l'a relevée : `#DDC096` et
+ * `#D1AA73` sont **à 11,7 en ΔE76**, même teinte. Le contrôle les déclarait
+ * distinctes parce qu'il mesurait en RGB, où elles sont à 43 — le RGB compte
+ * les bits, pas ce qu'on voit.
+ *
+ * Il fallait donc une quatrième TEINTE, pas une quatrième luminosité, et sans
+ * inventer de couleur. `dark` est l'un des cinq rôles du kit : adouci vers le
+ * papier il donne un neutre chaud, franchement séparé de l'or et de la
+ * terracotta, et il reste à elle.
+ *
+ * ── ⚠ LE PREMIER APLAT SE FONÇAIT, IL NE S'ADOUCISSAIT PAS ─────────────
+ *
+ * `light` vaut `#F4EEE3` sur un papier `#FAF6EE` : **ΔE 3,2**, soit un champ
+ * qu'on ne voit pas. La même notation l'a relevé, en citant la référence qui
+ * sépare de 6,5. Il est donc mêlé vers l'ENCRE, pas vers le papier, ce qui
+ * porte l'écart à 9,8.
+ *
+ * Mesuré sur un vrai kit : l'écart minimal entre deux aplats d'une carte
+ * vaut 15,1 en fond clair et 19,3 en fond sombre.
  */
-const SOFTEN_BY_SLOT = [0.55, 0.5, 0.68, 0.3] as const;
+const DEEPEN_FIRST = 0.1;
+const SOFTEN_LIGHT = [0.42, 0.52, 0.62] as const;
 
 /**
- * Une seconde adoucissure, pour la quatrième partie d'un diagramme.
+ * Sur fond sombre, la quatrième est une seconde luminosité du PRIMAIRE.
  *
- * ⚠ QUATRE PARTIES EXISTENT — `quadrant_model` en a exactement quatre — ET IL
- * N'Y AVAIT QUE TROIS TEINTES. `tintFor` repartait donc sur la première, et le
- * contrôle indépendant a relevé exactement ça sur trois cartes : « la
- * quatrième case reprend la teinte de la première, deux des quatre parties ne
- * se distinguent pas ».
- *
- * Une quatrième COULEUR serait une seconde marque. Une quatrième LUMINOSITÉ
- * d'une teinte déjà présente ne l'est pas.
- *
- * ⚠ ET ELLE ÉTAIT PLUS PÂLE, CE QUI LA RAMENAIT SUR LA PREMIÈRE. Adoucir la
- * troisième à 0.82 donnait un ton presque papier, voisin de `light` : un
- * contrôle indépendant l'a relevé sur une carte à quatre parties, « la
- * quatrième teinte est une reprise délavée de la première, deux champs se
- * lisent comme une seule couleur ». Elle est donc une seconde LUMINOSITÉ, plus
- * SOUTENUE, de la deuxième — encore un aplat doux, mais du côté opposé des
- * trois autres.
+ * ⚠ ET NON LE NEUTRE, QUI Y COLLAPSE. Le fond sombre tire ses aplats de
+ * `[primaire, secondaire, clair]` : le neutre issu du papier et le `clair`
+ * adouci y sont tous deux des gris (ΔE 6,4 l'un de l'autre). La terracotta
+ * assombrie, elle, tient à 19,3 de tout le reste.
  */
-const SOFTEN_FOURTH = 0.42;
+const SOFTEN_DARK = [0.25, 0.25, 0.25, 0.65] as const;
 
 /** Mélange linéaire de deux couleurs, `amount` étant la part de `towards`. */
 export function mix(colour: string, towards: string, amount: number): string {
@@ -155,20 +119,6 @@ export function mix(colour: string, towards: string, amount: number): string {
 }
 
 /**
- * Déjà assez proche du fond pour qu'adoucir la ferait disparaître.
- *
- * ⚠ SANS CE GARDE-FOU, LA PREMIÈRE TEINTE S'ÉVAPORE. `light` vaut #F4EEE3 sur
- * un papier #FAF6EE : elle est déjà un aplat doux, et la ramener encore de
- * 62 % vers le papier la rendrait indistinguable de lui. Un champ invisible
- * n'est pas un champ.
- */
-const ALREADY_SOFT = 1.6;
-
-function soften(tint: string, paper: string, amount: number): string {
-  return contrast(tint, paper) <= ALREADY_SOFT ? tint : mix(tint, paper, amount);
-}
-
-/**
  * A card palette from a brand direction.
  *
  * `dark` picks the dark-ground variant. The planner decides how many cards in
@@ -177,7 +127,7 @@ function soften(tint: string, paper: string, amount: number): string {
  *
  * ⚠ LES TEINTES RESTENT CELLES DE LA MARQUE, ADOUCIES VERS LE PAPIER — jamais
  * vers le blanc, jamais vers une couleur choisie ici. Voir
- * `SOFTEN_TOWARD_PAPER` pour ce que cette distinction règle.
+ * `DEEPEN_FIRST` et `SOFTEN_LIGHT` pour ce que cette distinction règle.
  */
 export function cardPalette(
   key: string,
@@ -185,22 +135,26 @@ export function cardPalette(
   dark = false
 ): Palette {
   const paper = dark ? direction.dark : direction.paper;
-  const brand = dark
-    ? [direction.primary, direction.secondary, direction.light]
-    : [direction.light, direction.secondary, direction.primary];
+  const ink = dark ? direction.paper : direction.dark;
 
   /*
-   * ⚠ LA QUATRIÈME EST LA TROISIÈME, PLUS PÂLE — pas une couleur de plus. Elle
-   * n'est posée que sur un diagramme qui a vraiment quatre parties ; ailleurs
-   * `tintFor` ne l'atteint jamais.
+   * ⚠ LE PREMIER APLAT EST FONCÉ VERS L'ENCRE, LES AUTRES ADOUCIS VERS LE
+   * FOND. C'est la seule façon d'obtenir quatre champs qu'on distingue à
+   * partir de cinq couleurs dont deux sont presque le papier.
    */
-  /*
-   * Le quatrième emplacement est une seconde luminosité de la DEUXIÈME
-   * couleur, plus soutenue — une quatrième couleur serait une seconde marque.
-   */
-  const tints = [brand[0], brand[1], brand[2], brand[1]].map((t, i) =>
-    soften(t, paper, SOFTEN_BY_SLOT[i])
-  );
+  const tints = dark
+    ? [
+        mix(direction.primary, paper, SOFTEN_DARK[0]),
+        mix(direction.secondary, paper, SOFTEN_DARK[1]),
+        mix(direction.light, paper, SOFTEN_DARK[2]),
+        mix(direction.primary, paper, SOFTEN_DARK[3]),
+      ]
+    : [
+        mix(direction.light, ink, DEEPEN_FIRST),
+        mix(direction.secondary, paper, SOFTEN_LIGHT[0]),
+        mix(direction.primary, paper, SOFTEN_LIGHT[1]),
+        mix(direction.dark, paper, SOFTEN_LIGHT[2]),
+      ];
 
   return {
     key: dark ? `${key}_dark` : key,

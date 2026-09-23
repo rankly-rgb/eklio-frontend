@@ -130,7 +130,23 @@ export function budgetErrors(archetype: string, payload: unknown): BudgetError[]
       const cards = Array.isArray(p.cards) ? p.cards : [];
       cards.forEach((card, i) => {
         const c = card as Record<string, unknown>;
-        budgetErrors(String(c?.archetype_key ?? ""), c?.payload).forEach((e) =>
+        const key = String(c?.archetype_key ?? "");
+        /*
+         * ⚠ PAS DE CARTE PRATICIENNE DANS UN CARROUSEL, ET C'EST PAR LÀ QUE
+         * L'IDENTITÉ INVENTÉE EST PASSÉE. « Rowan Mercier Therapy » et
+         * « rowan@rowanmercier.com » étaient le cinquième volet d'un
+         * carrousel, pas une carte praticienne de premier niveau.
+         *
+         * Cet archétype ne s'écrit plus : ses lignes viennent du brief. Un
+         * carrousel qui en réclame un demande donc au modèle d'inventer une
+         * identité, et il est refusé ici — avant la composition, avant le
+         * filet de `checkInventedIdentity`.
+         */
+        if (key === "practitioner_card") {
+          errors.push({ path: `cards[${i}].archetype_key`, said: -1, allowed: 0 });
+          return;
+        }
+        budgetErrors(key, c?.payload).forEach((e) =>
           errors.push({ ...e, path: `cards[${i}].${e.path}` })
         );
       });

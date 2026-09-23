@@ -34,7 +34,14 @@ export type Placed =
    * dans la marge basse du champ que le texte n'occupe pas.
    */
   | { role: "field"; band: Band; box: Box; fill: string; radius: number; tail?: "left" | "right" }
-  | { role: "figure"; band: Band; box: Box; strokes: Stroke[] };
+  /*
+   * ⚠ `transform` NE DÉPLACE QUE L'ENCRE, JAMAIS LES BOÎTES. Les boîtes des
+   * traits sont ce que le contrôle de dégagement lit ; une transformation qui
+   * les laisserait en place ferait mesurer une distance à un dessin qui n'est
+   * plus là. `mirrored()` retourne donc les deux ensemble — l'attribut SVG ET
+   * les boîtes — et c'est la seule façon prévue d'en poser un.
+   */
+  | { role: "figure"; band: Band; box: Box; strokes: Stroke[]; transform?: string };
 
 /**
  * A drawn stroke, in canvas coordinates, with its own bounding box already

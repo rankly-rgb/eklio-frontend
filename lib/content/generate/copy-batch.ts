@@ -200,12 +200,20 @@ const SHAPES: Record<string, Shape> = {
       `{"label": "Week three", "gloss": "the relief runs out"}, ` +
       `{"label": "Week six", "gloss": "the old pace returns"}]}`,
   },
-  practitioner_card: {
-    // ⚠ DES FAITS, PAS UNE REFORMULATION DU TITRE. Voir la règle « card_line
-    // n'apparaît jamais dans payload » : c'est cet archétype qui l'enfreignait.
-    shape: `{"lines": [2 to 4 strings, each 1 to 8 words — plain facts about how she works: modality, place, availability. Never the card_line again]}`,
-    example: `{"lines": ["EMDR for burnout", "Oakland, California", "Taking new clients"]}`,
-  },
+  /*
+   * ⚠ `practitioner_card` N'EST PLUS ICI, ET C'EST LE POINT.
+   *
+   * Sa forme demandait au modèle « des faits sur sa façon de travailler ».
+   * N'en ayant aucun, il en a fabriqué : « Rowan Mercier Therapy » et
+   * « rowan@rowanmercier.com » sont sortis sur le mois d'une AUTRE
+   * praticienne, dans deux mois sur douze.
+   *
+   * Ses lignes sont désormais assemblées depuis le brief
+   * (`lib/content/practitioner.ts`) au moment de composer. Le modèle n'est
+   * plus interrogé pour cet archétype : ce qu'il ne peut pas écrire, il ne
+   * peut pas l'inventer. Un contrôle bloquant reste en place, mais comme
+   * filet — plus comme seule défense.
+   */
   carousel: {
     shape: `{"cards": [3 to 6 x {"archetype_key": "any archetype except carousel", "payload": {that archetype's shape}}]}`,
     example:
@@ -225,6 +233,19 @@ const SHAPES: Record<string, Shape> = {
  * Dérivé du catalogue plutôt que recopié : un archétype absent du catalogue
  * lève ici, avant l'appel.
  */
+/**
+ * Les archétypes dont le modèle écrit le payload.
+ *
+ * ⚠ CE N'EST PLUS LA LISTE DES ARCHÉTYPES. `practitioner_card` en est sorti :
+ * ses lignes viennent du brief, pas d'un modèle. Tout ce qui tire un sujet ou
+ * compose un mois doit lire CETTE liste, sinon il demandera au modèle un
+ * payload qu'il n'a pas le droit d'écrire.
+ */
+export const MODEL_WRITTEN_ARCHETYPES = Object.keys(SHAPES);
+
+/** Les archétypes qu'un carrousel a le droit d'empiler. */
+export const CAROUSEL_INNER_ARCHETYPES = MODEL_WRITTEN_ARCHETYPES.filter((k) => k !== "carousel");
+
 export function archetypeInstruction(archetypeKey: string): string {
   const entry = ARCHETYPES[archetypeKey];
   if (!entry) throw new Error(`copy-batch: unknown archetype ${archetypeKey}`);

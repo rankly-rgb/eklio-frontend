@@ -1,6 +1,6 @@
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { BODY, EYEBROW, FOOTER } from "@/lib/compose/constants-bands";
-import { CLEARANCE, TYPE, CANVAS, CONTENT_MIN_AT_CANVAS, FIGURE_SCALES, THUMB } from "@/lib/compose/constants";
+import { CLEARANCE, TYPE, CANVAS, CONTENT_MIN_AT_CANVAS, FIGURE_SCALES, MIN_FIGURE_EXTENT, THUMB } from "@/lib/compose/constants";
 import { BudgetExceededError, budgetErrors } from "@/lib/compose/budget";
 import { fitText, linesFrom, splitBody } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
@@ -182,6 +182,41 @@ export function smallestInContent(placed: Placed[]): number {
 }
 
 /** Lisible dans une vignette de 350px ? Vide compte comme lisible. */
+/**
+ * La part de la bande de contenu que le TRACÉ occupe réellement.
+ *
+ * ── ⚠ LA BOÎTE DÉCLARÉE N'EST PAS CE QU'ON VOIT ────────────────────────
+ *
+ * `FIGURE_COVERAGE` borne la boîte qu'un archétype RÉSERVE à son dessin, et
+ * elle est respectée partout. Mais un dessin ne remplit pas sa boîte : le
+ * profil du `quadrant_model` occupait 4,9 % de la bande là où sa boîte en
+ * réservait bien davantage, et une notation indépendante l'a mesuré carte par
+ * carte — « 2,4 à 6,3 % contre 9,2 à 9,4 % dans les références ».
+ *
+ * Cette fonction mesure l'ÉTENDUE DES TRACÉS, boîtes de traits réunies. C'est
+ * la grandeur que l'œil juge, et celle sur laquelle le plancher porte.
+ */
+export function figureExtentShare(placed: Placed[]): number {
+  const strokes = placed
+    .filter((p) => p.role === "figure" && p.band === "content")
+    .flatMap((p) => (p as Extract<Placed, { role: "figure" }>).strokes);
+  if (strokes.length === 0) return 0;
+
+  const content = placed.filter((p) => p.band === "content");
+  if (content.length === 0) return 0;
+
+  const extent = (boxes: Array<{ x: number; y: number; w: number; h: number }>) => {
+    const x0 = Math.min(...boxes.map((b) => b.x));
+    const y0 = Math.min(...boxes.map((b) => b.y));
+    const x1 = Math.max(...boxes.map((b) => b.x + b.w));
+    const y1 = Math.max(...boxes.map((b) => b.y + b.h));
+    return (x1 - x0) * (y1 - y0);
+  };
+
+  const band = extent(content.map((p) => p.box));
+  return band > 0 ? extent(strokes.map((s) => s.box)) / band : 0;
+}
+
 export function legibleAtThumb(placed: Placed[]): boolean {
   const px = smallestInContent(placed);
   return px === 0 || px >= CONTENT_MIN_AT_CANVAS;
@@ -204,6 +239,8 @@ export function render(input: RenderInput): RenderResult {
   const resolution: string[] = [];
   /** La meilleure taille de contenu vue, quand c'est la vignette qui a refusé. */
   let illegible = 0;
+  /** La part couverte par le tracé au dernier essai refusé pour cette raison. */
+  let tooSmall = 0;
 
   /*
    * ⚠ A THIRD OF THE BODY, NOT A HALF.
@@ -283,6 +320,25 @@ export function render(input: RenderInput): RenderResult {
         continue;
       }
 
+      /*
+       * ⚠ ET LE DESSIN DOIT OCCUPER SA PLACE, PAS SEULEMENT L'AVOIR RÉSERVÉE.
+       *
+       * Comme la vignette, ce refus laisse l'échelle continuer — mais dans
+       * l'autre sens : c'est au cran le plus GÉNÉREUX que le tracé a le plus
+       * de place, donc un refus ici ne se répare pas en rétrécissant. Il sert
+       * au repli, qui cherchera une forme dont l'objet tient sa place.
+       *
+       * `single_statement` en est exempt : sa marque est spécifiée comme
+       * petite, et lui imposer 9 % ferait d'une respiration un objet.
+       */
+      if (archetype.illustrationZone !== "none" && input.archetype !== "single_statement") {
+        const share = figureExtentShare(placed);
+        if (share > 0 && share < MIN_FIGURE_EXTENT) {
+          tooSmall = share;
+          continue;
+        }
+      }
+
       if (figureScale < 1) resolution.push(`illustration shrunk to ${figureScale}`);
 
       const composition: Composition = {
@@ -310,6 +366,18 @@ export function render(input: RenderInput): RenderResult {
    * différents, et un appelant qui ne peut pas les distinguer les traite
    * pareil. Le second cite la mesure.
    */
+  /*
+   * ⚠ NOMMÉ AVANT L'ILLISIBILITÉ, parce qu'un dessin trop petit se corrige en
+   * changeant de forme et non en rétrécissant le texte : c'est le repli qui
+   * doit l'entendre, et le message doit lui dire quoi chercher.
+   */
+  if (tooSmall > 0) {
+    throw new CompositionError(
+      `${input.archetype}: the drawing covers ${(tooSmall * 100).toFixed(1)}% of the content band, ` +
+        `under the ${(MIN_FIGURE_EXTENT * 100).toFixed(0)}% floor — fall back to a form whose object fills its place`
+    );
+  }
+
   if (illegible > 0) {
     throw new CompositionError(
       `${input.archetype}: sets at ${illegible}px, which is ` +

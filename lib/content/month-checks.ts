@@ -54,14 +54,16 @@ export const MONTH_LIMITS = {
   /**
    * La distance RGB minimale entre deux aplats d'une même carte.
    *
-   * ⚠ MESURÉE, PAS CHOISIE. L'or et la terracotta d'un vrai kit sont à 39 de
-   * distance ; adoucis du même taux vers le papier, l'écart tombait à 15 et
-   * les deux champs se lisaient comme un seul — ce qu'une notation
-   * indépendante a décrit comme « deux teintes quasi identiques ». Adoucis de
-   * taux différents, l'écart minimal remonte à 25 sur fond sombre et 38 sur
-   * fond clair. Le seuil est posé sous le pire des deux.
+   * ⚠ EN ΔE76, PAS EN RGB, ET C'EST CE CHANGEMENT QUI A RÉVÉLÉ LE DÉFAUT.
+   * Le seuil valait 24 en distance RGB, où `#DDC096` et `#D1AA73` sont à 43 —
+   * donc « distinctes ». Une notation indépendante les a relevées comme quasi
+   * identiques : en ΔE76 elles ne sont qu'à 11,7.
+   *
+   * 15 est le seuil retenu. En dessous, deux aplats voisins d'une même carte
+   * se lisent comme un seul ; au-dessus, la séparation tient même sur les
+   * fonds sombres, où les écarts sont naturellement plus serrés.
    */
-  minTintDistance: 24,
+  minTintDistance: 15,
 } as const;
 
 /** Le nombre de posts sous lequel les proportions ne veulent plus rien dire. */
@@ -250,6 +252,10 @@ export function checkEcho(cardLine: string, title: string, payload: unknown): Fi
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 const URL = /https?:\/\/|\bwww\.[a-z0-9-]+\.[a-z]{2,}/i;
 const PHONE = /\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/;
+/** Un identifiant social : « @quelquechose » d'au moins trois caractères. */
+const HANDLE = /(^|\s)@[a-z0-9._]{3,}/i;
+/** Un nom de cabinet : des mots capitalisés suivis d'un suffixe de métier. */
+const PRACTICE_NAME = /\b[A-Z][\w'-]+(?:\s+[A-Z][\w'-]+)*\s+(?:Therapy|Counselling|Counseling|Psychotherapy|Practice|Wellness|Clinic)\b/g;
 
 /**
  * Une carte n'invente ni coordonnée, ni nom de cabinet.
@@ -277,24 +283,42 @@ const PHONE = /\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/;
  * téléphone : ces informations vivent dans le profil, pas dans le contenu.
  * Le nom du cabinet, lui, n'est autorisé que s'il EST celui du compte.
  */
-export function checkInventedIdentity(payload: unknown, practiceName: string): Finding[] {
+export function checkInventedIdentity(
+  payload: unknown,
+  practiceName: string,
+  /*
+   * ⚠ TOUT CE QUE LA PRATICIENNE A SAISI, ET RIEN D'AUTRE. Sans cette liste,
+   * le contrôle ne peut que reconnaître des FORMES — une arobase, un suffixe
+   * « Therapy » — et il suffit d'une tournure qu'aucune expression régulière
+   * ne couvre pour qu'un nom inventé passe. Avec elle, la question devient
+   * la bonne : ce nom est-il dans le brief ?
+   */
+  allowed: string[] = []
+): Finding[] {
   const out: Finding[] = [];
+  const permitted = [practiceName, ...allowed]
+    .filter(Boolean)
+    .map((v) => v.trim().toLowerCase());
+
   for (const { where, text } of stringsIn(payload)) {
     if (EMAIL.test(text)) out.push({ check: "identity.contact", detail: `${where} porte une adresse e-mail : « ${text} »` });
     if (URL.test(text)) out.push({ check: "identity.contact", detail: `${where} porte une URL : « ${text} »` });
     if (PHONE.test(text)) out.push({ check: "identity.contact", detail: `${where} porte un numéro : « ${text} »` });
+    if (HANDLE.test(text)) out.push({ check: "identity.contact", detail: `${where} porte un identifiant social : « ${text} »` });
 
     /*
-     * Un nom de cabinet est repéré par son suffixe de métier. Comparé au nom
-     * du compte insensiblement à la casse : « Therapy » seul ne déclenche
-     * rien, « Rowan Mercier Therapy » sur le compte d'Isla, si.
+     * Un nom de cabinet est repéré par son suffixe de métier, puis confronté à
+     * ce que le brief porte. « Therapy » seul ne déclenche rien ; « Rowan
+     * Mercier Therapy » sur le compte d'Isla, si.
      */
-    const practice = /\b([A-Z][\w'-]+(?:\s+[A-Z][\w'-]+)*)\s+(Therapy|Counselling|Counseling|Psychotherapy|Practice)\b/.exec(text);
-    if (practice && practice[0].toLowerCase() !== practiceName.trim().toLowerCase()) {
-      out.push({
-        check: "identity.practice",
-        detail: `${where} nomme « ${practice[0]} » alors que le cabinet est « ${practiceName} »`,
-      });
+    for (const m of text.matchAll(PRACTICE_NAME)) {
+      const named = m[0].trim();
+      if (!permitted.includes(named.toLowerCase())) {
+        out.push({
+          check: "identity.practice",
+          detail: `${where} nomme « ${named} », qui n'est pas dans le brief (cabinet : « ${practiceName} »)`,
+        });
+      }
     }
   }
   return out;
@@ -309,9 +333,40 @@ const rgbOf = (hex: string): [number, number, number] | null => {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
 
+/**
+ * La distance perceptuelle entre deux couleurs — ΔE76, dans l'espace Lab.
+ *
+ * ── ⚠ LA DISTANCE RGB DISAIT « 43 » LÀ OÙ L'ŒIL VOIT « PRESQUE PAREIL » ──
+ *
+ * Le contrôle mesurait une distance euclidienne en RGB, avec un seuil de 24.
+ * `#DDC096` et `#D1AA73` en sont à 43 : il les déclarait distinctes. Un
+ * évaluateur indépendant les a pourtant relevées comme « quasi identiques,
+ * même teinte », et il avait raison — en ΔE76 elles ne sont qu'à **11,7**.
+ *
+ * Le RGB n'est pas perceptuel : il compte les bits, pas ce qu'on voit. Deux
+ * jaunes séparés de 43 unités RGB se ressemblent beaucoup plus que deux bleus
+ * séparés d'autant. Lab est fait pour cette question-là, et c'est l'unité dans
+ * laquelle la remarque a été formulée.
+ */
+function toLab(hex: string): [number, number, number] | null {
+  const rgb = rgbOf(hex);
+  if (!rgb) return null;
+  const lin = rgb.map((c) => {
+    const v = c / 255;
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  }) as [number, number, number];
+  // sRGB → XYZ (D65), puis XYZ → Lab.
+  const x = (0.4124 * lin[0] + 0.3576 * lin[1] + 0.1805 * lin[2]) / 0.95047;
+  const y = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  const z = (0.0193 * lin[0] + 0.1192 * lin[1] + 0.9505 * lin[2]) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const [fx, fy, fz] = [f(x), f(y), f(z)];
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
 export function colourDistance(a: string, b: string): number {
-  const x = rgbOf(a);
-  const y = rgbOf(b);
+  const x = toLab(a);
+  const y = toLab(b);
   if (!x || !y) return Number.POSITIVE_INFINITY;
   return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
 }
@@ -380,6 +435,8 @@ export type MonthUnderCheck = {
   direction: DirectionPalette;
   /** Le nom du cabinet, seul nom qu'une carte a le droit de porter. */
   practiceName?: string;
+  /** Les autres chaînes du brief qu'une carte peut légitimement nommer. */
+  identityAllowList?: string[];
 };
 
 /**
@@ -405,7 +462,9 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
       )
     );
     out.push(...checkEcho(post.cardLine, post.title, post.payload));
-    if (month.practiceName) out.push(...checkInventedIdentity(post.payload, month.practiceName));
+    if (month.practiceName) {
+      out.push(...checkInventedIdentity(post.payload, month.practiceName, month.identityAllowList ?? []));
+    }
     if (post.svg) out.push(...checkTints(post.svg, month.direction));
   }
   return out;

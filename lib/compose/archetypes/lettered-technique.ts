@@ -104,6 +104,14 @@ export const letteredTechnique: ArchetypeModule<LetteredTechnique> = {
        * Une technique en étapes tourne autour d'un point d'appui : l'ancre
        * est ce point, et elle dit ce que la technique fait.
        */
+      /*
+       * ⚠ PAS DE VARIANTE ICI, ET C'EST UN CHOIX MESURÉ. L'ancre est
+       * SYMÉTRIQUE : la retourner ne change rien à ce qu'on voit, et il
+       * suffirait d'oublier le `transform` qui va avec les boîtes retournées
+       * pour que le dégagement se mesure sur un dessin qui n'est plus là.
+       * Les variantes vont aux objets asymétriques — le profil, la porte —
+       * où elles se voient.
+       */
       strokes: anchor(
         { x: content.x, y: braceTop, w: braceW, h: round2(braceBottom - braceTop) },
         palette.ink,

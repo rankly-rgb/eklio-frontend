@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cachedPrefix, CARD_LINE_MAX, CAPTION_MAX, ALT_TEXT_MAX, RATIONALE_MAX_WORDS } from "@/lib/content/generate/copy-batch";
 import { CANVAS, CONTENT_MIN_AT_CANVAS, THUMB, TYPE } from "@/lib/compose/constants";
-import { ARCHETYPE_KEYS } from "@/lib/compose/archetypes/index";
+import { MODEL_WRITTEN_ARCHETYPES, CAROUSEL_INNER_ARCHETYPES, archetypeInstruction } from "@/lib/content/generate/copy-batch";
 import type { BrandContext } from "@/lib/content/generate/copy-batch";
 
 /*
@@ -82,8 +82,35 @@ const numbersIn = (text: string): number[] =>
     (m) => Number(m[1])
   );
 
+/*
+ * ── ⚠ ON NE DEMANDE PLUS DE CARTE PRATICIENNE AU MODÈLE ────────────────
+ *
+ * Ce fichier parcourait `ARCHETYPE_KEYS`, la liste des onze. Elle n'est plus
+ * la bonne : `practitioner_card` a quitté le schéma de sortie du modèle le
+ * 2026-09-23, après qu'une de ses cartes a inventé « Rowan Mercier Therapy »
+ * et « rowan@rowanmercier.com » sur le compte d'une autre praticienne.
+ *
+ * La bonne liste est `MODEL_WRITTEN_ARCHETYPES`, et les deux cas ci-dessous
+ * tiennent la frontière : demander cet archétype au modèle lève, et aucun
+ * carrousel ne peut l'empiler.
+ */
+describe("la carte praticienne ne s'écrit plus", () => {
+  it("demander sa forme au modèle lève, plutôt que de rendre un schéma", () => {
+    expect(() => archetypeInstruction("practitioner_card")).toThrow(/no shape written/);
+  });
+
+  it("elle ne figure ni dans les archétypes écrits, ni dans les volets d'un carrousel", () => {
+    expect(MODEL_WRITTEN_ARCHETYPES).not.toContain("practitioner_card");
+    expect(CAROUSEL_INNER_ARCHETYPES).not.toContain("practitioner_card");
+  });
+
+  it("et la consigne du carrousel ne la propose nulle part", () => {
+    expect(archetypeInstruction("carousel")).not.toContain("practitioner_card");
+  });
+});
+
 describe("le prompt ne porte aucun chiffre qui ne vienne du code", () => {
-  it.each(ARCHETYPE_KEYS)("%s", (archetype) => {
+  it.each(MODEL_WRITTEN_ARCHETYPES)("%s", (archetype) => {
     const prefix = cachedPrefix(BRAND, archetype)
       .map((b) => (b.type === "text" ? b.text : ""))
       .join("\n");

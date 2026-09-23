@@ -1,7 +1,7 @@
 import { CLEARANCE, TYPE } from "@/lib/compose/constants";
 import { fitText, linesFrom, FIELD_RADIUS } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
-import { door } from "@/lib/compose/illustrations";
+import { door, mirrored, variantOf } from "@/lib/compose/illustrations";
 import { tintFor } from "@/lib/compose/palette";
 import type { Line, Placed } from "@/lib/compose/types";
 import type { ArchetypeModule } from "@/lib/compose/archetypes/types";
@@ -68,14 +68,22 @@ export const practitionerCard: ArchetypeModule<PractitionerCard> = {
 
     const left = round2(content.h - fieldH - CLEARANCE.fieldToField);
     if (left >= 150) {
-      const size = round2(Math.min(left, content.w * 0.3));
+      // ⚠ 0.3 laissait la porte à 8,9 % de la bande, juste sous le plancher.
+      const size = round2(Math.min(left, content.w * 0.38));
       const draw = {
         x: round2(content.x + (content.w - size) / 2),
         y: round2(box.y + fieldH + CLEARANCE.fieldToField),
         w: size,
         h: size,
       };
-      placed.push({ role: "figure", band: "content", box: draw, strokes: door(draw, palette.ink) });
+      // ⚠ La porte s'ouvre d'un côté ou de l'autre, selon la carte.
+      const drawn = door(draw, palette.ink);
+      const flip = variantOf(palette.key) === 1 ? mirrored(drawn, draw) : null;
+      placed.push({
+        role: "figure", band: "content", box: draw,
+        strokes: flip ? flip.strokes : drawn,
+        ...(flip ? { transform: flip.transform } : {}),
+      });
     }
 
     return placed;

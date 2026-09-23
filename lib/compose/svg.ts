@@ -80,6 +80,9 @@ function renderPlaced(p: Placed): string {
   }
 
   if (p.role === "figure") {
+    const open = p.transform
+      ? `<g data-role="figure" data-band="${p.band}" data-box="${boxAttr(p.box)}" transform="${p.transform}">`
+      : head;
     const body = p.strokes
       .map((s) => {
         const common =
@@ -89,7 +92,7 @@ function renderPlaced(p: Placed): string {
         return `<path d="${s.d}" ${common}/>`;
       })
       .join("");
-    return head + body + `</g>`;
+    return open + body + `</g>`;
   }
 
   const body = p.lines
