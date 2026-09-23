@@ -79,9 +79,19 @@ describe("un mois court est refusé", () => {
 describe("le nombre écrit est recompté après l'écriture", () => {
   const SOURCE = readFileSync("scripts/local-render/20-month.ts", "utf8");
 
-  it("le recompte lit `written`, pas la sélection", () => {
-    expect(SOURCE).toContain("const shortOnWrite: Finding[] = written < WANTED");
-    expect(SOURCE).toContain("posts écrits pour ${WANTED} promis");
+  it("le recompte lit `written` CONTRE la sélection, pas contre la cible", () => {
+    expect(SOURCE).toContain("const shortOnWrite: Finding[] = written < selection.chosen.length");
+    expect(SOURCE).toContain("insert(s) ont échoué");
+  });
+
+  /*
+   * ⚠ ET IL SE TAIT QUAND LA BANQUE EST LA CAUSE. Comparé à `WANTED`, il
+   * accusait « 9 insert(s) ont échoué » sur un mois où 21 posts seulement
+   * avaient été retenus faute de sujets — une cause fausse, qui envoie
+   * chercher le défaut du mauvais côté. `checkCount` le dit déjà, et bien.
+   */
+  it("il ne redit pas ce que checkCount a déjà dit", () => {
+    expect(SOURCE).not.toContain("written < WANTED");
   });
 
   it("il s'ajoute aux constats AVANT le refus, donc il refuse", () => {

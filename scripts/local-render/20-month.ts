@@ -1112,10 +1112,19 @@ function selectDeliverable<
    * l'écriture ne dit rien de ce qui a été écrit. Le seul nombre qui compte
    * est celui des lignes en base.
    */
-  const shortOnWrite: Finding[] = written < WANTED
+  /*
+   * ⚠ CONTRE LA SÉLECTION, PAS CONTRE LA CIBLE. Un mois court parce que la
+   * banque était vide est DÉJÀ signalé par `checkCount` ; le redire ici avec
+   * « des insert(s) ont échoué » nommerait une cause fausse et enverrait
+   * chercher le défaut du mauvais côté. Ce constat-ci ne parle que de ce qui
+   * s'est perdu ENTRE la sélection et la base.
+   */
+  const shortOnWrite: Finding[] = written < selection.chosen.length
     ? [{
         check: "month.short",
-        detail: `${written} posts écrits pour ${WANTED} promis — ${WANTED - written} insert(s) ont échoué`,
+        detail:
+          `${written} posts écrits pour ${selection.chosen.length} retenus — ` +
+          `${selection.chosen.length - written} insert(s) ont échoué`,
       }]
     : [];
   selection.remaining.push(...shortOnWrite);
