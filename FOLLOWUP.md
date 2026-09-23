@@ -678,6 +678,41 @@ dont le payload vient d'une source fixe (le brief, le bilan, un catalogue)
 aura le même défaut le jour où la banque en portera assez. Le filet est
 générique exprès.
 
+## F21 — ⚠ UN MOIS DE QUINZE POSTS EST SORTI SANS UN SEUL CONSTAT
+
+**Mesuré le 2026-09-23**, quatrième essai, sur une banque à sec. Le tirage n'a
+rendu que 18 candidats pour 30 posts ; 15 ont été écrits ; le mois est sorti
+**sans refus et sans erreur**.
+
+Le rapport portait pourtant la ligne exacte :
+
+```
+"shortfall": [
+  "statement: 5 of 18 (the bank had no more)",
+  "simple: 6 of 18 (the bank had no more)",
+  "varied: 7 of 18 (the bank had no more)"
+]
+```
+
+⚠ **Mais un `shortfall` de rapport n'est pas un contrôle.** Rien ne refusait le
+mois. La règle « un mois qui échoue n'est jamais livré » ne couvrait pas le cas
+où ce qui échoue est le **NOMBRE** — et c'est le cas le plus simple à voir et
+le seul que personne n'avait posé.
+
+Un mois court n'est pas un mois imparfait : c'est **la moitié de ce qui a été
+acheté**. `credit_quotas` accorde trente crédits `post_generation` par mois ;
+en livrer quinze est une demi-livraison. Les mois de 23, 16 et 10 posts des
+jours précédents étaient dans le même cas, et ont été lus comme des résultats.
+
+`checkCount` passe désormais en PREMIER dans `checkMonth`. Aucun échange ne
+peut le réparer — s'il manque des posts, le banc est vide par construction —
+donc le constat sort du premier tour et le mois est refusé.
+
+⚠ **C'est la troisième fois de la session qu'une grandeur mesurée et imprimée
+n'était reliée à aucun refus** : le `shortfall` ici, les échecs comptés pour un
+bilan jamais atteint (F18), les sujets rendus après un `throw` (F19).
+**Imprimer une grandeur n'est pas la contrôler.**
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
