@@ -26,22 +26,40 @@ const posts: PostUnderCheck[] = JSON.parse(
 const written = writtenLinesIn(posts);
 
 /*
- * ── LES VERDICTS DU JUGE, ENREGISTRÉS ───────────────────────────────────
+ * ── LES VERDICTS DU JUGE, MESURÉS LE 2026-09-24 ─────────────────────────
  *
- * ⚠ TROIS DES QUATRE TITRES INACHEVÉS NE SONT PAS TRANCHABLES PAR UN LEXIQUE.
- * « costs », « held », « choice » sont des mots parfaitement ordinaires ; ce
- * qui manque est ce qui vient APRÈS, et aucune liste ne le dit.
+ * ⚠ CES VERDICTS ONT ÉTÉ DEMANDÉS, PAS ÉCRITS. `97-record-verdicts.ts` les a
+ * obtenus en un appel de 0,00093 $ sur ces neuf lignes exactement. Un verdict
+ * inventé prouverait que le test passe, pas que le juge tranche.
  *
- * Ces verdicts sont ceux qu'un appel court a rendus sur ces lignes-là, le
- * 2026-09-24. Les rejouer plutôt que de les redemander garde la suite hors
- * ligne, déterministe et gratuite — et prouve le contrôle, pas le modèle.
+ * ⚠ ET LE JUGE N'EST PAS D'ACCORD AVEC LA NOTATION SUR UNE LIGNE.
+ *
+ * « The block may be choice » : la notation indépendante l'a relevée comme
+ * « ungrammatical (missing article) », et le juge la dit COMPLÈTE. Les deux
+ * ont raison sur leur question — il manque un article, et la phrase ne
+ * s'arrête pas avant son sens. Ce contrôle-ci mesure la complétude, pas la
+ * grammaire, et forcer le verdict pour faire un compte rond reviendrait à
+ * écrire le résultat qu'on voulait.
+ *
+ * Trois des quatre titres, donc, plus celui que le lexique tranche seul.
  */
 const RECORDED_VERDICTS: Record<string, boolean> = {
   "Success masks an overdriven": false,
   "The thing that works costs": false,
   "High performance masks held": false,
-  "The block may be choice": false,
+  "The block may be choice": true,
+  "When life changes without": false,
+  // Les témoins : des lignes finies, que le juge confirme finies.
+  "Rest is not a reward": true,
+  "Body says no": true,
+  "information to work with": true,
+  "nothing left by Friday": true,
 };
+
+/** Ceux que le juge a effectivement refusés. */
+const JUDGED_UNFINISHED = Object.entries(RECORDED_VERDICTS)
+  .filter(([, ok]) => ok === false)
+  .map(([line]) => line);
 
 const names = (f: { check: string }[]) => [...new Set(f.map((x) => x.check))];
 const detailsOf = (f: { check: string; detail: string }[], check: string) =>
@@ -52,8 +70,8 @@ describe("défaut 1 — la phrase qui s'arrête avant son sens", () => {
    * ⚠ AUCUN DES QUATRE N'ÉTAIT TRONQUÉ. Ils font 25, 26, 27 et 27 caractères,
    * tous sous la limite de trente : `clampCardLine` n'y a pas touché.
    */
-  it("les quatre titres fautifs font moins que la limite de coupe", () => {
-    for (const t of Object.keys(RECORDED_VERDICTS)) {
+  it("les titres fautifs font moins que la limite de coupe", () => {
+    for (const t of JUDGED_UNFINISHED) {
       expect(t.length, `« ${t} »`).toBeLessThan(30);
     }
   });
@@ -88,11 +106,23 @@ describe("défaut 1 — la phrase qui s'arrête avant son sens", () => {
     expect(completenessOf("Rest is not a reward")).not.toBe("unfinished");
   });
 
-  it("avec les verdicts enregistrés, les quatre sont refusés", () => {
+  it("avec les verdicts mesurés, les quatre refusés le sont", () => {
     const found = checkUnfinished(written, RECORDED_VERDICTS);
     const joined = detailsOf(found, "text.unfinished").join(" | ");
-    for (const t of Object.keys(RECORDED_VERDICTS)) expect(joined).toContain(t);
-    expect(joined).toContain("When life changes without");
+    for (const t of JUDGED_UNFINISHED) expect(joined).toContain(t);
+  });
+
+  /*
+   * ⚠ ET LES TÉMOINS NE SONT PAS REFUSÉS. Sans eux, un juge qui répondrait
+   * « incomplet » à tout ferait passer ce fichier en entier.
+   */
+  it("les lignes finies que le juge a vues ne sont pas refusées", () => {
+    const witnesses = ["Rest is not a reward", "Body says no", "information to work with"];
+    const found = checkUnfinished(
+      witnesses.map((text) => ({ where: "témoin", text })),
+      RECORDED_VERDICTS
+    );
+    expect(found).toHaveLength(0);
   });
 
   /*
