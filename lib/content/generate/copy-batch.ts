@@ -270,7 +270,33 @@ export function archetypeInstruction(archetypeKey: string): string {
       `Archetype "carousel". The payload object must be exactly:`,
       shape.shape,
       ``,
-      `A CONFORMING EXAMPLE — count the words in it before you write your own:`,
+      /*
+       * ── ⚠ LE MOT « payload » APPARAÎT DEUX FOIS, ET LE MODÈLE CONFOND ──
+       *
+       * Mesuré le 2026-09-23 : ZÉRO carrousel sur quatre-vingt-dix posts
+       * livrés. Chacun était tiré, envoyé, PAYÉ, puis refusé sur
+       * `payload_shape`. Une sonde a montré ce que le modèle rendait :
+       *
+       *   {"cards": [...], "card_line": "...", "caption": "..."}
+       *
+       * — `cards` au PREMIER niveau, et donc `o.payload` indéfini. Le
+       * carrousel est le seul archétype dont la forme emploie elle-même le mot
+       * « payload », pour les cartes qu'elle empile : le modèle a lu le
+       * deuxième et aplati le premier.
+       *
+       * Les dix autres archétypes n'ont pas ce piège, et c'est pour ça que
+       * personne ne l'a vu : l'enveloppe était décrite une fois, dans le
+       * préfixe, et elle suffisait partout ailleurs.
+       */
+      `⚠ "cards" GOES INSIDE "payload", NOT AT THE TOP LEVEL. The word`,
+      `"payload" appears twice below and they are not the same one: the outer`,
+      `envelope has one, and every card inside has its own. Your whole reply`,
+      `is shaped like this, and anything else is thrown away:`,
+      `{"payload": {"cards": [...]}, "card_line": "...", "caption": "...",`,
+      ` "alt_text": "...", "rationale": "..."}`,
+      ``,
+      `A CONFORMING EXAMPLE of "payload" — count the words in it before you`,
+      `write your own:`,
       shape.example,
       ``,
       `Each card's "archetype_key" is one of these, and its "payload" must`,
@@ -464,9 +490,27 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
 
   const entry = ARCHETYPES[archetypeKey];
   if (!entry) return { ...base, reason: "unknown_archetype" };
-  if (entry.parse(o.payload) === null) return { ...base, reason: "payload_shape" };
 
-  const budget = budgetErrors(archetypeKey, o.payload);
+  /*
+   * ── ⚠ UN PAYLOAD APLATI EST RELEVÉ, PAS JETÉ ─────────────────────────
+   *
+   * Mesuré : zéro carrousel sur quatre-vingt-dix posts livrés, chacun tiré,
+   * envoyé, PAYÉ, puis refusé sur `payload_shape`. Le modèle rendait ses
+   * `cards` au premier niveau, à côté de `card_line` et `caption`, au lieu de
+   * les poser sous `payload` — le carrousel est le seul archétype dont la
+   * forme emploie elle-même le mot « payload », et il a lu le mauvais.
+   *
+   * La consigne est corrigée. Ce relevé reste, parce que le contenu était
+   * JUSTE : seules les accolades étaient mal placées, et jeter un appel payé
+   * pour un niveau d'imbrication est le défaut qu'on répare, pas celui qu'on
+   * accepte. Il est étroit exprès — la forme doit parser telle quelle, sinon
+   * le refus tient.
+   */
+  const flattened = entry.parse(o.payload) === null ? entry.parse(o) : null;
+  const payload: unknown = flattened === null ? o.payload : o;
+  if (entry.parse(payload) === null) return { ...base, reason: "payload_shape" };
+
+  const budget = budgetErrors(archetypeKey, payload);
   if (budget.length > 0) {
     /*
      * ⚠ LE PAYLOAD PART AVEC LE REFUS, et c'est ce qui rend une réparation
@@ -478,7 +522,7 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
      * ne doit pouvoir l'écrire en base sans être passé par une réparation
      * qui le fait rentrer dans les bornes.
      */
-    return { ...base, reason: "over_budget", budget, payload: o.payload,
+    return { ...base, reason: "over_budget", budget, payload: payload,
              caption: typeof o.caption === "string" ? o.caption : undefined,
              altText: typeof o.alt_text === "string" ? o.alt_text : undefined,
              rationale: typeof o.rationale === "string" ? o.rationale : undefined,
@@ -488,7 +532,7 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
   return {
     topicId: "",
     ok: true,
-    payload: o.payload,
+    payload: payload,
     /*
      * ⚠ TRONQUÉE, JAMAIS REFUSÉE, ET SUR UNE FRONTIÈRE DE MOT. Trente
      * caractères est une contrainte de rendu, pas une règle de fond : un
