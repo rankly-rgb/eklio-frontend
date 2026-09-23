@@ -816,6 +816,60 @@ porte `batch_id` ; `content_generation_results` porte une ligne par sujet,
 question se pose. La migration doit écrire les lignes de `results` (sans
 `result`) **à la soumission**, en même temps que le `run`.
 
+## F24 — ⚠ DIX ESSAIS POUR UN MOIS QUI PASSE TOUS LES CONTRÔLES
+
+**C'est le chiffre que le cahier des charges demandait**, et il faut le lire
+avec ce qui l'accompagne : *les contrôles ont changé sept fois pendant les dix
+essais*, toujours dans le sens du serrage. Un essai n'a donc pas affronté la
+même porte que le suivant.
+
+| # | compte | verdict | motif |
+|---|---|---|---|
+| 1 | imogen.hale | passé, **puis abandonné** | 9 cartes praticiennes identiques — F20, invisible aux contrôles d'alors |
+| 2 | maren.okafor | refusé | `mix.distinct`, `mix.dominant`, `mix.loneSentence` — tirage à 30 faute de banque |
+| 3 | orin.fenwick | refusé | `mix.samePayload` (8 cartes identiques), `text.echo` |
+| 4 | lysa.brandt | passé à **15 posts**, puis abandonné | F21 : rien ne refusait un mois court |
+| 5 | teo.marrow | **passé** | — mais zéro carrousel (F22) |
+| 6 | wilder.nance | **passé** | — zéro carrousel |
+| 7 | edda.linnet | **passé** | — zéro carrousel |
+| 8 | fable.ostrow | passé à **29 posts**, puis abandonné | un insert refusé par la déontologie, jamais recompté |
+| 9 | rue.calloway | refusé | `month.short` (21/30), `mix.dominant` |
+| 10 | **odile.marchetti** | **LIVRÉ** | 30 posts, 48 volets, 4 carrousels, 10 archétypes |
+
+### Ce que le chiffre dit vraiment
+
+⚠ **Quatre des dix essais sont « passés » sur des contrôles qui les auraient
+refusés une heure plus tard.** Trois défauts majeurs — neuf visuels identiques,
+un mois de quinze posts, un mois de vingt-neuf — sont sortis avec un entonnoir
+entièrement vert. Aucun n'a été trouvé par une suite : ils l'ont été **en
+regardant la planche** et **en lisant le rapport de rejet**.
+
+**Un mois livré tous les trois essais n'est pas tenable** — et ce n'est même
+pas la bonne inquiétude. La bonne est celle-ci : *le taux de passage ne
+mesurait pas la qualité, il mesurait la sévérité des contrôles du moment*.
+
+### Ce qu'il faudra remesurer
+
+Les quatre derniers essais (7 à 10) ont tourné sur des contrôles proches des
+actuels : **trois passés, un refusé**. C'est l'estimation la moins mauvaise
+qu'on ait — **environ 1,3 essai par mois livré** — et elle repose sur quatre
+points, ce qui ne suffit pas. ⚠ **À remesurer sur dix essais consécutifs sans
+changer un seul contrôle**, avant de dimensionner quoi que ce soit dessus (et
+F13 dimensionne la banque dessus).
+
+### Ce que chaque essai coûte
+
+| | par essai |
+|---|---|
+| appels au modèle | 54 candidats, chemin Batch |
+| argent | **0,047 $ à 0,093 $** — moyenne **0,072 $** |
+| banque | **~30 sujets**, livré ou refusé (F13) |
+
+⚠ **L'argent n'est pas le facteur limitant, la banque l'est.** Dix essais ont
+coûté 0,72 $ et **300 sujets**, soit plus que ce qu'un remplissage à 0,42 $
+produit. C'est la banque qu'il faut dimensionner sur le nombre d'essais, pas le
+budget.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
