@@ -584,6 +584,38 @@ Pour mémoire, la banque du bac à sable a demandé **cinq remplissages pour
 atteindre 295 sujets tirables** sur deux segments, et elle s'est vidée à
 chaque mois généré : douze mois réels l'ont traversée en une journée.
 
+### La composition, par archétype — mesurée sur le TIRAGE
+
+⚠ **Les cibles étaient calquées sur le mélange d'un mois PUBLIÉ. C'est la
+mauvaise grandeur.** Ce qui vide la banque, c'est le TIRAGE : `20-month.ts`
+tire `CANDIDATES` sujets répartis en trois familles, à tour de rôle dans
+chacune.
+
+| famille | archétypes | tirés par mois **chacun** |
+|---|---|---|
+| statement | `single_statement`, `practitioner_card` | 18 / 2 = **9** |
+| simple | `surface_and_beneath`, `comparison_pair`, `numbered_strategies`, `cycle`, `concentric_control` | 18 / 5 ≈ **4** |
+| varied | `carousel`, `quadrant_model`, `annotated_curve`, `lettered_technique` | 18 / 4 ≈ **5** |
+
+Un diagramme de la famille « varied » était donc tiré 4,5 fois par mois pour
+un stock de 5 : à sec au premier mois. Une phrase seule était tirée 9 fois
+pour un stock de 16. C'est ce rapport-là, et non le mélange publié, qui
+explique qu'une banque « équilibrée » ne rende plus que des phrases seules
+dès qu'elle se vide.
+
+**Cible par segment**, `10-topic-bank.ts --months N` :
+
+| mois tenus | sujets / segment | 2 segments | coût |
+|---|---|---|---|
+| 1 | 58 | 116 | 0,34 $ |
+| 4 | 232 | 464 | 1,35 $ |
+| **10** (cible) | **580** | **1 160** | **3,36 $** |
+
+⚠ **Six mois ont été remplis ce jour-là, pas dix** : dix coûtent 3,36 $ d'un
+plafond de session de 4 $, ce qui ne laissait pas de quoi générer les mois
+que la même demande exigeait. C'est une décision de budget, écrite ici plutôt
+que devinée plus tard depuis un stock qui ne correspond à aucune cible.
+
 ### ⚠ Le stock se dimensionne PAR ARCHÉTYPE, pas en total
 
 Trouvé en regardant une banque qui se vide. `PER_SEGMENT` vise 16
