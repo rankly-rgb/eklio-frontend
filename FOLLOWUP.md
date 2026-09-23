@@ -454,6 +454,68 @@ tout nom de cabinet qui n'est pas celui du compte.
 carte vienne d'UNE source, le profil, et jamais du texte généré. Le contrôle
 attrape l'invention ; il ne remplace pas une liaison de données.
 
+## F17 — ⚠ CE QUE DEVIENT UN LOT INTERROMPU
+
+**Mesuré, pas supposé : 0,81 $ d'appels déjà payés ont été jetés le
+2026-09-23.** Un remplissage de banque accumulait 695 réponses en mémoire et
+insérait à la fin ; PostgreSQL est tombé au 280ᵉ appel. La banque n'a pas
+gagné un sujet.
+
+Le même défaut existait à deux endroits de plus dans la génération mensuelle.
+
+### Le cas qui coûte le plus cher
+
+Un lot Batch est **facturé à la soumission**. Entre `batches.create` et la
+première réponse il se passe vingt-cinq à trente minutes. Dans cette fenêtre,
+l'argent est dépensé et le résultat n'existe nulle part chez nous — et
+l'identifiant du lot ne vivait que dans une ligne de log. Un processus qui
+mourait là ne pouvait même pas aller chercher ce qu'il avait payé : il fallait
+re-soumettre, donc repayer.
+
+### Ce qui est conservé, repris, perdu
+
+| moment de l'interruption | conservé | repris | perdu |
+|---|---|---|---|
+| avant `batches.create` | rien à conserver | le tirage se refait | rien (rien n'est payé) |
+| **pendant l'attente du lot** | l'identifiant, écrit avant l'attente | le lot est **rattaché**, pas re-soumis | rien |
+| pendant la lecture des résultats | chaque réponse, écrite à l'arrivée | les réponses déjà écrites | au plus la réponse en cours |
+| entre la génération et la publication | toutes les réponses et les crédits déjà soldés | tout, sans un appel de plus | rien |
+| après `clearJournal` | les trente posts en base | — | — |
+
+Un crédit déjà soldé est marqué dans le journal : **sans ce drapeau, une
+reprise facture un second crédit pour un post déjà payé.**
+
+### Ce que le journal ne fait pas
+
+Il ne publie rien. Un mois ne s'écrit en base qu'une fois **entier et
+contrôlé** — `checkMonth` ne peut pas juger un mélange sur vingt-neuf posts.
+Le journal sépare donc deux choses qui étaient confondues : le TRAVAIL PAYÉ,
+qui doit survivre à tout, et la PUBLICATION, qui doit rester atomique.
+
+### ⚠ Ce qu'il faut pour la production
+
+Le journal du harnais est un fichier, sous `.eklio-journal/`. C'est suffisant
+pour un script qu'on relance à la main ; ça ne l'est pas pour Vercel, où le
+système de fichiers ne survit pas à l'invocation.
+
+Il faut donc une **table durable** avant d'armer la génération mensuelle :
+
+1. `content_generation_runs` — une ligne par (kit, mois) : l'identifiant du
+   lot, son état, l'horodatage de soumission. Écrite **avant** l'attente ;
+2. `content_generation_results` — une ligne par sujet : la sortie du modèle,
+   son `usage`, et si le crédit est soldé. Écrite **à l'arrivée** de chaque
+   réponse ;
+3. une reprise qui, au réveil, lit la ligne de `runs` et rattache le lot au
+   lieu d'en créer un — un `cron` qui re-soumettrait à chaque réveil paierait
+   le mois une fois par réveil ;
+4. une purge : un lot Anthropic reste lisible 29 jours, donc une ligne plus
+   vieille que ça n'est plus rattachable et doit être close explicitement.
+
+⚠ **Rien de tout cela n'existe en base aujourd'hui.** `insight_runs` est la
+seule table de ce genre, et elle ne couvre pas la génération de contenu. Tant
+qu'elle n'existe pas, une génération mensuelle interrompue en production est
+**intégralement reperdue et repayée**.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
@@ -476,6 +538,7 @@ facturation.
 | 5 | **Variables d'environnement.** Voir le tableau ci-dessous. | agent pour les non-secrètes, **humain** pour les secrets |
 | 6 | **Créer `main`** depuis la branche validée. ⚠ Aujourd'hui `main` **n'existe pas** : les seules branches distantes sont `claude/gallant-lamport-mt20i0` et `claude/great-brahmagupta-za7qmx`. La branche source est celle que Naima a validée, nommée explicitement dans la demande — jamais « la dernière ». | **humain** décide laquelle ; agent exécute |
 | 7 | **Repointer Vercel** sur `main`, vérifier que les quatre `crons` de `vercel.json` (`anon-briefs` 05:00, `nudges` 14:00, `purge-deleted-kits` 06:00, `purge-events` 04:00) sont enregistrés et que `CRON_SECRET` les protège. | agent (jeton Vercel) |
+| 7b | **Créer les tables de reprise** (F17) avant d'armer la génération mensuelle : sans elles, tout lot interrompu est repayé en entier. | agent (migration) |
 | 8 | **Générer la banque de production.** Voir F13 pour le dimensionnement : `N × 90 × 3` par segment, 0,00290 $ le sujet. ⚠ **Après** les migrations et **après** F12, sinon les segments n'existent pas. Un mois généré sur une banque à sec sort court sans que rien le signale. | agent (clé passée par commande) |
 | 9 | **Stripe.** ⚠ **Le test de bout en bout n'a jamais été confirmé** — ni en test, ni en production. Avant d'ouvrir : un paiement réel de bout en bout, un webhook reçu et vérifié, un remboursement, une annulation d'abonnement. | **humain** |
 | 10 | **Premier mois réel sur un compte témoin**, planche regardée par une personne avant d'ouvrir aux autres. ⚠ Le regard ne remplace pas la barrière et la barrière ne remplace pas le regard : le mois validé à l'œil le 2026-09-21 portait trois recopies de titre, un titre coupé et une identité inventée (F16) — tous invisibles à l'œil, tous refusés par `checkMonth`. | agent génère, **humain** regarde |

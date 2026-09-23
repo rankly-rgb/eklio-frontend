@@ -48,6 +48,7 @@ import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
 import { checkMonth, type Finding } from "../../lib/content/month-checks";
 import { practitionerLines, identityAllowList, type PractitionerFacts } from "../../lib/content/practitioner";
+import { loadJournal, rememberBatch, rememberResult, clearJournal } from "./journal";
 import type { DirectionPalette } from "../../lib/compose/palette";
 import { admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD } from "./lib";
 
@@ -427,18 +428,65 @@ const SPARE_POOL = 6;
 
   const usable: Candidate[] = [];
 
+  /*
+   * ⚠ LE JOURNAL S'OUVRE AVANT LE PREMIER APPEL PAYANT. S'il porte déjà des
+   * résultats, ils ont été payés lors d'un passage précédent : on les reprend
+   * au lieu de les racheter.
+   */
+  let journal = loadJournal(MONTH, arg("email") ?? "default");
+  const resumed = Object.keys(journal.entries).length;
+  if (resumed > 0) console.error(`▸ journal : ${resumed} résultats déjà payés repris`);
+
   if (useBatch) {
+    /*
+     * ⚠ UN LOT DÉJÀ SOUMIS SE RATTACHE, IL NE SE RE-SOUMET PAS. Le lot est
+     * facturé à la soumission : si un passage précédent l'a créé puis est
+     * mort pendant les vingt-cinq minutes d'attente, re-soumettre paierait
+     * une seconde fois le même travail. L'identifiant est dans le journal.
+     */
     const requests = candidates.map(asRequest);
-    const batch = await client.messages.batches.create({ requests: buildBatchRequests(brand, requests) });
-    console.error(`▸ batch ${batch.id} · ${requests.length} candidates`);
+    let batch;
+    if (journal.batchId) {
+      console.error(`▸ reprise du lot ${journal.batchId}`);
+      batch = await client.messages.batches.retrieve(journal.batchId);
+    } else {
+      batch = await client.messages.batches.create({ requests: buildBatchRequests(brand, requests) });
+      // ⚠ ÉCRIT AVANT D'ATTENDRE. C'est la seule fenêtre où ça change quelque chose.
+      journal = rememberBatch(journal, batch.id);
+      console.error(`▸ batch ${batch.id} · ${requests.length} candidates`);
+    }
+
     let status = batch;
     while (status.processing_status !== "ended") {
       await new Promise((r) => setTimeout(r, 15000));
       status = await client.messages.batches.retrieve(batch.id);
       console.error(`  … ${status.processing_status} ${JSON.stringify(status.request_counts)}`);
     }
+
+    /*
+     * ⚠ CHAQUE RÉSULTAT EST ÉCRIT DÈS QU'IL ARRIVE. Le flux rendait tout en
+     * mémoire avant qu'une seule ligne ne soit persistée : une panne à la
+     * dernière réponse jetait les trente précédentes, toutes payées.
+     */
     const entries: Array<{ custom_id: string; result: { type: string; message?: Anthropic.Message } }> = [];
-    for await (const entry of await client.messages.batches.results(batch.id)) entries.push(entry as never);
+    const byCustom = new Map(requests.map((r, i) => [buildBatchRequests(brand, requests)[i].custom_id, candidates[i]]));
+    for await (const entry of await client.messages.batches.results(batch.id)) {
+      entries.push(entry as never);
+      const candidate = byCustom.get((entry as { custom_id: string }).custom_id);
+      const message = (entry as { result?: { message?: Anthropic.Message } }).result?.message;
+      if (candidate && message) {
+        journal = rememberResult(journal, candidate.topic.id, {
+          result: null,
+          usage: {
+            input: message.usage.input_tokens,
+            output: message.usage.output_tokens,
+            cacheRead: message.usage.cache_read_input_tokens ?? 0,
+            cacheWrite: message.usage.cache_creation_input_tokens ?? 0,
+          },
+          settled: false,
+        });
+      }
+    }
     const byTopic = new Map(candidates.map((c) => [c.topic.id, c.topic.archetype_key]));
     for (const result of collectCopy(entries, byTopic)) {
       const candidate = candidates.find((c) => c.topic.id === result.topicId);
@@ -505,6 +553,26 @@ const SPARE_POOL = 6;
         continue;
       }
 
+      /*
+       * ⚠ UN RÉSULTAT DÉJÀ PAYÉ NE SE RACHÈTE PAS. Le journal porte la sortie
+       * du modèle et le fait qu'un crédit ait été soldé pour elle ; une
+       * reprise saute l'appel ET le règlement, sinon le second passage
+       * facturerait un crédit de plus pour le même post.
+       */
+      const already = journal.entries[candidate.topic.id];
+      if (already?.result) {
+        candidate.result = already.result as typeof candidate.result;
+        candidate.usage = already.usage;
+        funnel.generated += 1;
+        if (already.settled) {
+          usable.push(candidate);
+        } else if (await settleCandidate(candidate)) {
+          journal = rememberResult(journal, candidate.topic.id, { ...already, settled: true });
+          usable.push(candidate);
+        }
+        continue;
+      }
+
       const request = asRequest(candidate);
       const message = await client.messages.create({
         model: massCopyModel(),
@@ -523,6 +591,21 @@ const SPARE_POOL = 6;
       candidate.result = { ...validateCopy(candidate.topic.archetype_key, text), topicId: candidate.topic.id };
 
       /*
+       * ⚠ ÉCRIT ICI, PAS À LA FIN DE LA BOUCLE. L'appel est payé : à partir de
+       * cet instant, une panne ne doit plus pouvoir effacer ce qu'il a rendu.
+       */
+      journal = rememberResult(journal, candidate.topic.id, {
+        result: candidate.result,
+        usage: {
+          input: message.usage.input_tokens,
+          output: message.usage.output_tokens,
+          cacheRead: message.usage.cache_read_input_tokens ?? 0,
+          cacheWrite: message.usage.cache_creation_input_tokens ?? 0,
+        },
+        settled: false,
+      });
+
+      /*
        * ⚠ LE VERDICT TOMBE ICI, ET LE CRÉDIT AVEC. Un candidat refusé rend sa
        * réservation tout de suite — avec son coût — et la place se libère
        * pour l'essai suivant. C'est ce qui rend la sur-génération possible
@@ -535,6 +618,9 @@ const SPARE_POOL = 6;
       };
       const cost = syncCostUsd(candidate.usage);
       if (await settleCandidate(candidate)) {
+        // Le crédit est réglé : le journal le dit, pour qu'une reprise ne le règle pas deux fois.
+        const entry = journal.entries[candidate.topic.id];
+        if (entry) journal = rememberResult(journal, candidate.topic.id, { ...entry, settled: true });
         usable.push(candidate);
       } else {
         await settle(candidate.reservationId, cost, false);
@@ -801,6 +887,13 @@ function selectDeliverable<
     written += 1;
     await settle(candidate.reservationId, useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage), true);
   }
+
+  /*
+   * ⚠ LE JOURNAL S'EFFACE QUAND LE MOIS EST EN BASE, PAS AVANT. Tant que
+   * `content_items` ne porte pas les trente posts, le travail payé n'existe
+   * que là.
+   */
+  clearJournal(journal);
 
   // Les préparés non retenus n'ont rien publié : leur réservation se solde.
   for (const post of readyPosts) {

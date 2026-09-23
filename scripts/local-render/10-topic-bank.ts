@@ -317,6 +317,15 @@ async function main() {
    * sujets, c'est une demi-heure d'attente pour six centièmes de dollar
    * d'économie. Le lot reste le bon outil pour remplir une banque vide.
    */
+  /* ── Ce que le lot a rendu ─────────────────────────────────────────── */
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const failures: Array<{ id: string; because: string }> = [];
+  let written = 0;
+  let reviewed = 0;
+  let retries = 0;
+  let repaired = 0;
+  const retryUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+
   const sync = process.argv.includes("--sync");
   type Entry = { custom_id: string; result: { type: string; message?: Anthropic.Message } };
   const entries: Entry[] = [];
@@ -377,14 +386,6 @@ async function main() {
     }
   }
 
-  /* ── Ce que le lot a rendu ─────────────────────────────────────────── */
-  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-  const failures: Array<{ id: string; because: string }> = [];
-  let written = 0;
-  let reviewed = 0;
-  let retries = 0;
-  let repaired = 0;
-  const retryUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
   /**
    * Écrire ce qui est revenu. Appelée en chemin ET à la fin.
