@@ -906,6 +906,116 @@ select date_trunc('month', created_at) as mois, count(*)
   from public.credit_ledger group by 1 order by 1 desc;
 ```
 
+## F26 — ⚠ LA NOTATION INDÉPENDANTE DU MOIS LIVRÉ, ET CE QU'ELLE TROUVE
+
+Une seule passe, sans tour de correction, sur le mois d'`odile.marchetti`
+(30 posts, 48 volets) — le mois qui passe TOUS les contrôles automatiques.
+
+| critère | note brute |
+|---|---|
+| Élaboration | **1,80 / 5** |
+| Lisibilité à 390 px | **3,10 / 5** |
+| Variété visuelle | **1,60 / 5** |
+| Qualité des illustrations | **2,20 / 5** |
+| Typographie | **2,40 / 5** |
+| Couleur | **2,90 / 5** |
+| Écriture | **1,40 / 5** |
+
+⚠ **Un mois au vert sur toutes les barrières automatiques note 1,4 sur 5 en
+écriture.** C'est F15 énoncé en chiffres : *les contrôles mesurent ce qu'on a
+su formuler, pas ce qu'une lectrice voit.*
+
+### Les défauts vérifiés en base, un par un
+
+**1. Quatre titres s'arrêtent avant leur sens.** Vérifié : « Success masks an
+overdriven » (27 car.), « When life changes without » (25), « High performance
+masks held » (27), « The thing that works costs » (26) — **tous sous la limite
+de 30 caractères**. Ils n'ont donc PAS été coupés par `clampCardLine` : le
+modèle les a écrits ainsi, et `checkDangling` les a laissés passer.
+
+⚠ **Le trou est dans ma liste, et je l'y ai mis.** `DANGLING` avait été réduit
+aux articles, `of/to/than`, conjonctions non adverbiales et relatifs, parce que
+l'anglais laisse légitimement une préposition en fin de proposition relative
+(« information to work with »). Mais « When life changes without » n'a pas de
+relative : la différence est **grammaticale, pas lexicale**, et un contrôle qui
+ne regarde que le DERNIER MOT ne peut pas la faire. « Success masks an
+overdriven » est pire encore : le dernier mot est un adjectif, et ce qui
+manque est le nom qu'il qualifie — deux mots avant, il y a « an ».
+
+**2. Deux volets identiques à l'intérieur d'un même carrousel.** Vérifié : le
+carrousel « Rest does not look productive » empile
+`single_statement, surface_and_beneath, single_statement, surface_and_beneath,
+single_statement`. Les deux `surface_and_beneath` n'ont pas d'énoncé propre,
+donc chacun **affiche le titre du carrousel** — même phrase, même pentagone,
+même mise en page, aux volets 2 et 4 d'un même post. Idem pour « Your body
+knows what you deny ».
+
+⚠ **`checkIdenticalPayloads` ne regarde pas DANS un carrousel.** Il compare les
+payloads de posts ; un carrousel n'a qu'un payload, et la répétition est à
+l'intérieur.
+
+**3. Une affirmation clinique fausse est passée.** « Efficiency can become
+trauma. », sous le surtitre `BEHIND THE PRACTICE`, signée par une clinicienne
+EMDR. `checkEthics` ne l'a pas vue.
+
+**4. Un titre de livre non attribué.** « Your body keeps score of what rest
+meant… » — *The Body Keeps the Score*, dans la voix de la praticienne, sans
+source.
+
+**5. Deux volets de clôture vendent des rendez-vous.** « October evening slots
+now open for those learning to unfreeze. » et « Evening slots opening in
+October. » ferment deux carrousels différents.
+
+**6. Neuf apostrophes droites** (U+0027) dans un empattement de display à
+90 px. Comptées en base.
+
+**7. Un acronyme inventé, à une lettre de la modalité.** `lettered_technique`
+fabrique sa mnémonique depuis les initiales de ses tuiles : « EMP », « EMD »,
+« FTG ». **« EMD » sur une carte EMDR se lira comme une faute de frappe.**
+
+### Ce que la mesure nuance
+
+* **« La couverture d'illustration est le problème » — non, plus maintenant.**
+  Mesuré sur ce mois : 24 volets sur 48 portent une figure, couverture moyenne
+  **49,4 %** de la bande contenu, minimum **9,6 %**, plancher 9 %, **aucun en
+  dessous**. Le reproche d'élaboration ne porte plus sur la TAILLE du dessin —
+  il porte sur ce qu'il y a SOUS le titre : les tuiles sans glose. C'est un
+  autre défaut que celui corrigé au tour précédent, et il fallait la mesure
+  pour le dire.
+* **« comparison_pair n'a aucune illustration » — faux.** Son
+  `illustrationZone` vaut `content` : les bulles SONT son illustration.
+  L'observation juste est que seules les deux tuiles hautes reçoivent une
+  queue, ce qui se lit comme un défaut de rendu.
+* **« La mnémonique est sous le plancher » — non.** `smallestInContent` la
+  tient à 30 px au canvas, soit **10,83 px à 390**, c'est-à-dire AU plancher.
+  ⚠ **Mais deux planchers se contredisent** : `TYPE.mono.floor` vaut **22**,
+  soit 7,9 px à 390. Seul `smallestInContent` empêche aujourd'hui une mono de
+  descendre là. Un chemin qui poserait de la mono dans la bande contenu sans
+  passer par l'échelle publierait du 7,9 px.
+* **« Or et rose se confondent » — la mesure confirme le chiffre, pas le
+  seuil.** ΔE76 = **15,14**, contre un plancher de 15 : au centième près. Le
+  plancher avait été posé comme *le minimum atteignable*, jamais comme *le
+  minimum perceptible*, et ces deux choses ont été confondues.
+* **« La tuile haute n'a pas de bord » — juste, et l'exclusion est à moi.**
+  Pierre contre papier : ΔE76 = **9,82**. `checkTints` exclut délibérément la
+  paire papier/teinte. Cette exclusion est maintenant montrée fausse.
+
+### Ce qu'il faut en tirer
+
+⚠ **Aucun de ces sept défauts n'aurait été trouvé par une suite de tests.** Ils
+l'ont été en REGARDANT la planche. Le mois est au vert sur quinze contrôles
+bloquants et il n'est pas publiable.
+
+**Les contrôles à écrire, dans l'ordre de gravité** — aucun n'existe :
+
+1. un titre qui s'arrête avant son sens (grammatical, pas lexical) ;
+2. deux volets identiques DANS un carrousel ;
+3. une affirmation clinique qui n'est pas dans le catalogue déontologique ;
+4. une citation d'ouvrage non attribuée ;
+5. un volet de clôture qui vend un créneau ;
+6. une apostrophe droite ;
+7. une mnémonique fabriquée depuis des initiales.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
