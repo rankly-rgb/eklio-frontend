@@ -199,8 +199,11 @@ const SHAPES: Record<string, Shape> = {
       `{"label": "Take a breath", "gloss": "one, slowly"}, ` +
       `{"label": "Observe", "gloss": "what the body is doing"}, ` +
       `{"label": "Proceed", "gloss": "with that in hand"}]}` +
-      `  ⚠ NEVER invent an acronym from your own labels. Pick one from the ` +
-      `list and write a label for each of ITS letters, in order.`,
+      `  ⚠ NEVER invent an acronym from your own labels, and NEVER use a ` +
+      `modality name. "EMDR", "IFS", "CBT", "ACT", "DBT" are treatments, not ` +
+      `techniques a reader can carry out of a post, and a card that offers ` +
+      `one as a mnemonic is refused. Pick a word from the list above and ` +
+      `write a label for each of ITS letters, in order.`,
   },
   concentric_control: {
     shape: `{"rings": [3 x {"label": "1 to 3 words", "gloss": "1 to 6 words"}], outermost first}`,
@@ -585,7 +588,7 @@ export function validateCopy(archetypeKey: string, raw: string): CopyResult {
 }
 
 /** `typographicQuotes` sur toute chaîne d'une structure, où qu'elle soit rangée. */
-function deepTypographic(value: unknown): unknown {
+export function deepTypographic(value: unknown): unknown {
   if (typeof value === "string") return typographicQuotes(value);
   if (Array.isArray(value)) return value.map(deepTypographic);
   if (value && typeof value === "object") {

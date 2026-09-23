@@ -30,6 +30,8 @@ import {
   collectCopy,
   batchCostUsd,
   clampCardLine,
+  typographicQuotes,
+  deepTypographic,
   syncCostUsd,
   massCopyModel,
   type BrandContext,
@@ -130,7 +132,14 @@ const CANDIDATES = 72;
 const FAMILIES: Record<string, string[]> = {
   statement: ["single_statement", "practitioner_card"],
   simple: ["surface_and_beneath", "comparison_pair", "numbered_strategies", "cycle", "concentric_control"],
-  varied: ["carousel", "quadrant_model", "annotated_curve", "lettered_technique"],
+  /*
+   * ⚠ `carousel` Y FIGURE DEUX FOIS, ET C'EST MESURÉ. Le mélange en exige au
+   * moins deux par mois (F22) ; sur huit essais gelés, trois n'en ont livré
+   * qu'UN. Le carrousel empile trois à six payloads : il se perd à la
+   * validation plus souvent que les autres, et un tirage à égalité n'en
+   * laisse pas deux debout. Deux tours sur quatre, donc.
+   */
+  varied: ["carousel", "quadrant_model", "carousel", "annotated_curve", "lettered_technique"],
 };
 
 /** Du format le plus large au plus souple : qui affronte le moins de titres déjà pris. */
@@ -1131,7 +1140,25 @@ function selectDeliverable<
     // ⚠ `clampCardLine`, PAS UN `slice(0, 34)`. Une seconde borne, à un autre
     // nombre, dans un autre fichier : celle-ci coupait en plein mot ce que
     // l'autre avait déjà coupé proprement.
-    const cardLine = capitaliseTitle(clampCardLine(result.cardLine ?? candidate.topic.title));
+    /*
+     * ── ⚠ LA PONCTUATION SE NORMALISE ICI, AU SEUL POINT D'ASSEMBLAGE ───
+     *
+     * Elle l'était dans `validateCopy`, et vingt-sept apostrophes droites
+     * sont quand même sorties sur huit essais gelés. Trois chemins la
+     * contournaient :
+     *
+     *   * `result.cardLine ?? candidate.topic.title` — quand le modèle omet
+     *     sa ligne, c'est le TITRE DE BANQUE qui sert, et il n'est jamais
+     *     passé par là ;
+     *   * la réparation, qui remplace le payload normalisé par le sien ;
+     *   * `fromBrief`, dont les lignes viennent du brief.
+     *
+     * ⚠ NORMALISER À TROIS ENDROITS EN AURAIT LAISSÉ UN QUATRIÈME. Le point
+     * d'assemblage est le seul par où tout passe.
+     */
+    const cardLine = typographicQuotes(
+      capitaliseTitle(clampCardLine(result.cardLine ?? candidate.topic.title))
+    );
     /*
      * ── ⚠ LA LIGNE DE CARTE ÉTAIT HORS DU SCAN DÉONTOLOGIQUE ────────────
      *
@@ -1229,7 +1256,7 @@ function selectDeliverable<
     }
 
     readyPosts.push({
-      candidate, cardLine, composeArchetype, payload, svg: composedSvg,
+      candidate, cardLine, composeArchetype, payload: deepTypographic(payload), svg: composedSvg,
       register, layout, theme: themes.themes[index % themes.themes.length],
     });
   }
