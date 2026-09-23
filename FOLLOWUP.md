@@ -713,6 +713,76 @@ n'était reliée à aucun refus** : le `shortfall` ici, les échecs comptés pou
 bilan jamais atteint (F18), les sujets rendus après un `throw` (F19).
 **Imprimer une grandeur n'est pas la contrôler.**
 
+## F22 — ⚠ ZÉRO CARROUSEL SUR QUATRE-VINGT-DIX POSTS LIVRÉS
+
+**Mesuré le 2026-09-23** sur trois mois livrés, banque portant **23 carrousels
+libres**. Pas un seul dans les trente visuels d'aucun des trois. Le carrousel
+est pourtant le format que les onze références utilisent le plus, et c'est
+celui sur lequel l'identité inventée de F16 était passée.
+
+Ce n'était pas une cause, c'en était deux — et la première masquait la seconde.
+
+### 1. L'ordre de tirage condamnait un format par son rang
+
+Le rapport de rejet ne nommait que le titre. « Aucun carrousel tiré » et
+« cinq carrousels refusés » se ressemblaient donc — et ils demandent deux
+corrections opposées. **Le rapport nomme maintenant l'archétype**, et la
+réponse est sortie tout de suite :
+
+| famille | rang de tirage | rejets « redondant » |
+|---|---|---|
+| statement | 1er | 7 |
+| simple | 2e | 15 |
+| varied (dont le carrousel) | 3e | **23** |
+
+`redundantAgainst` compare un titre à TOUS ceux déjà acceptés, **sans regarder
+le format**. La famille tirée en dernier affronte les trente-six titres des
+deux premières et perd. Ce n'était pas un manque de stock, c'était un ordre de
+passage.
+
+Les formats larges passent donc en premier (`DRAW_ORDER`). `single_statement`
+a la forme la plus souple et le plus gros stock : c'est lui qui peut absorber
+les rejets, pas le carrousel.
+
+### 2. ⚠ Et chaque carrousel tiré était payé puis jeté
+
+L'ordre corrigé, il restait zéro carrousel — et cette fois ils n'étaient plus
+refusés au tirage mais à la validation, sur `payload_shape`. **Une sonde d'un
+seul appel** a montré ce que le modèle rendait :
+
+```json
+{"cards": [...], "card_line": "...", "caption": "...", "alt_text": "..."}
+```
+
+`cards` au **premier niveau**. `o.payload` valait donc `undefined`, et
+`parse(undefined)` rend `null`.
+
+⚠ **Le carrousel est le seul archétype dont la forme emploie elle-même le mot
+« payload »**, pour les cartes qu'il empile. Le modèle a lu le second et
+aplati le premier. Les dix autres n'ont pas ce piège : l'enveloppe était
+décrite une fois, dans le préfixe, et elle suffisait partout ailleurs.
+
+Deux corrections, encore la cause et le filet :
+
+* la consigne montre **l'enveloppe entière** et dit que les deux « payload »
+  ne sont pas le même ;
+* une sortie aplatie est **relevée**, pas jetée. Le contenu était juste ;
+  seules les accolades étaient mal placées, et jeter un appel payé pour un
+  niveau d'imbrication est le défaut qu'on répare. Le relevé est étroit
+  exprès : la forme doit parser telle quelle, sinon le refus tient.
+
+### Ce qu'il faut en retenir
+
+⚠ **Un archétype peut disparaître complètement sans qu'aucun contrôle ne
+bouge.** `mix.distinct` demande sept archétypes sur onze : un mois à dix
+archétypes sur onze passe, et le onzième peut être absent depuis toujours.
+Les trois mois livrés affichaient un entonnoir vert, un mélange conforme et
+dix archétypes — et il manquait le format le plus important.
+
+**La mesure qui l'aurait vu n'existait pas** : personne ne comparait la
+composition livrée à la composition VISÉE. C'est la même leçon que F15, prise
+par un autre bout.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
