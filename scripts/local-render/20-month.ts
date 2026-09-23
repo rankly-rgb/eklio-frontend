@@ -658,6 +658,32 @@ const SPARE_POOL = 6;
    * En `overhead` : ces appels coûtent et ne prennent aucun crédit. Le quota
    * se tient plus bas, un crédit par post ÉCRIT.
    */
+  /*
+   * ── ⚠ UN TIRAGE VIDE EST UN REFUS, PAS UNE ERREUR 400 ────────────────
+   *
+   * Mesuré le 2026-09-24 : sur dix essais lancés en parallèle, les DEUX
+   * derniers ont tiré zéro candidat — la banque était prise par les huit
+   * premiers, et la fenêtre anti-collision retire à chaque praticienne ce que
+   * les autres du même segment viennent d'assigner. Le script est alors mort
+   * sur « requests: List should have at least 1 item », une erreur du
+   * fournisseur, sans rapport, sans coût et sans motif lisible.
+   *
+   * C'est un refus ordinaire — le mois ne peut pas être composé — et il doit
+   * se lire comme les autres.
+   */
+  if (candidates.length === 0) {
+    console.log(JSON.stringify({
+      step: "month", refused: true, monthId: null,
+      prepared: 0, wanted: WANTED, bench: -WANTED, costUsd: 0,
+      findings: [{
+        check: "month.short",
+        detail: `0 candidat tiré pour ${WANTED} promis — la banque n'avait plus rien de tirable pour ce segment`,
+      }],
+      dropped: [],
+    }, null, 2));
+    throw new Error("le mois ne passe pas ses contrôles : month.short");
+  }
+
   const phaseReservation = await credits.reserve({
     userId, kind: "overhead", reason: `month ${MONTH}: candidate generation`,
   });
