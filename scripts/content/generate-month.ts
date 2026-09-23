@@ -208,8 +208,18 @@ async function main() {
     .join("\n");
 
   /* ── The ceiling goes on before the first call ───────────────────────── */
+  /*
+   * ⚠ LE PUITS DE CONSOMMATION EST OBLIGATOIRE DEPUIS QUE `oneLine` LE REND.
+   * Il jetait `response.usage`, donc le coût de chaque appel de ce script
+   * était invisible — et le plafond d'appels comptait des APPELS, pas des
+   * jetons. Deux grandeurs différentes, et une seule était lue.
+   */
+  const modelUsage = { input: 0, output: 0 };
   const { model, ledger } = withCallCeiling(
-    anthropicContentModel(rules ?? []),
+    anthropicContentModel(rules ?? [], (u) => {
+      modelUsage.input += u.input;
+      modelUsage.output += u.output;
+    }),
     maxCalls
   );
 

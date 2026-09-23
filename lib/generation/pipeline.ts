@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { loadBrief, type BriefBundle } from "@/lib/data/brief";
+import { GENERATION_MODEL } from "@/lib/ai/client";
 import { readCatalog } from "@/lib/catalog/read";
 import type { Catalog } from "@/lib/catalog/types";
 import {
@@ -141,6 +142,25 @@ export async function runGenerationPipeline(input: PipelineInput): Promise<void>
   const call = input.call ?? callGeneration;
   const rewriteCall = input.rewrite ?? callRewrite;
 
+  /*
+   * ── ⚠ CE QUE LA GÉNÉRATION D'UN KIT COÛTE, ET QU'ON NE SAVAIT PAS DIRE ─
+   *
+   * `callGeneration` et `callRewrite` jetaient `response.usage`. Le kit a bien
+   * sa comptabilité de CRÉDITS — `generation_credits`,
+   * `consume_generation_credit`, `release_generation_credit` — mais aucun
+   * DOLLAR n'en sortait : dans le total d'une session de travail, c'était la
+   * seule ligne estimée au doigt plutôt que mesurée.
+   *
+   * Le cumul est écrit au livre à la fin, en `overhead` : un kit n'est pas un
+   * post, il ne prend aucun crédit de contenu, et sa dépense doit néanmoins
+   * être lisible. Même règle que la réparation et le juge de complétude.
+   */
+  const modelUsage = { input: 0, output: 0 };
+  const onUsage = (u: { input: number; output: number }) => {
+    modelUsage.input += u.input;
+    modelUsage.output += u.output;
+  };
+
   const bundle = await loadBrief(supabase, projectId, userId);
   if (!bundle) throw new Error("Brief introuvable pour la génération.");
 
@@ -172,14 +192,14 @@ export async function runGenerationPipeline(input: PipelineInput): Promise<void>
   try {
     const system = systemPrompt(catalog.ethicsRules);
     const prompt = buildBriefContext(bundle, catalog, bases);
-    draft = await call(system, prompt);
+    draft = await call(system, prompt, onUsage);
   } finally {
     ticker.stop();
   }
 
   // ── Garde 2 : les contraintes de rendu, avec une reprise par champ ──────
   const repaired = await repairDraft(draft, (instruction) =>
-    rewriteCall(ETHICS_SYSTEM_RULES, instruction)
+    rewriteCall(ETHICS_SYSTEM_RULES, instruction, onUsage)
   );
 
   // ── Garde 3 : la déontologie, sur TOUTE chaîne publiable ────────────────
@@ -206,7 +226,8 @@ Problems:
 ${problems}
 
 Keep the same meaning, the same length, and the same voice. Reply with the
-rewritten line only — no quotes, no explanation.`
+rewritten line only — no quotes, no explanation.`,
+      onUsage
     );
   };
 
@@ -256,7 +277,59 @@ rewritten line only — no quotes, no explanation.`
     console.error("[generation] seed_launch_checklist", checklistError);
   }
 
+  /*
+   * ── ⚠ ET CE QUE LE KIT A COÛTÉ ENTRE AU LIVRE ─────────────────────────
+   *
+   * En `overhead` : un kit n'est pas un post, il ne prend aucun crédit de
+   * contenu — sa comptabilité de crédits est ailleurs
+   * (`consume_generation_credit`). Ce qui manquait était les DOLLARS.
+   *
+   * ⚠ APRÈS L'ÉCRITURE, ET SANS POUVOIR LA FAIRE ÉCHOUER. Le kit est en base,
+   * la cliente l'a ; un livre de comptes qui refuserait la ligne ne doit pas
+   * défaire ça. L'échec se voit par l'ABSENCE de ligne, que
+   * `credit_month_audit` sert à lire.
+   */
+  // ⚠ Un brief anonyme n'a pas d'utilisatrice : aucune ligne à lui imputer.
+  if (userId) await bookKitCost(admin, userId, brandKitId, modelUsage);
+
   await finishJob(admin, brandKitId, { status: "done", stage: "directions" });
+}
+
+/** Les tarifs d'entrée et de sortie du modèle de génération, par million. */
+const KIT_PRICE_PER_MTOK = { input: 3, output: 15 } as const;
+
+async function bookKitCost(
+  admin: Client,
+  userId: string,
+  brandKitId: string,
+  usage: { input: number; output: number }
+): Promise<void> {
+  if (usage.input === 0 && usage.output === 0) return;
+  const costUsd =
+    (usage.input * KIT_PRICE_PER_MTOK.input + usage.output * KIT_PRICE_PER_MTOK.output) / 1_000_000;
+
+  try {
+    const { data } = await admin.rpc("reserve_credit", {
+      p_user: userId,
+      p_kind: "overhead",
+      p_reason: "brand kit generation",
+      p_ref_type: "brand_kit",
+      p_ref_id: brandKitId,
+      p_provider: "anthropic",
+      p_model: GENERATION_MODEL,
+      p_estimated_cost_usd: Number(costUsd.toFixed(6)),
+    } as never);
+    const row = data as unknown as { ok?: boolean; reservation_id?: string } | null;
+    if (row?.ok !== true || !row.reservation_id) return;
+
+    await admin.rpc("settle_credit", {
+      p_reservation_id: row.reservation_id,
+      p_actual_cost_usd: Number(costUsd.toFixed(6)),
+      p_succeeded: true,
+    } as never);
+  } catch (bookError) {
+    console.error("[generation] bookKitCost", bookError);
+  }
 }
 
 function startStageTicker(admin: Client, brandKitId: string) {

@@ -248,13 +248,35 @@ export function parseGenerationResponse(
   return generationDraftSchema.parse(toolUse.input);
 }
 
+/**
+ * Ce qu'un appel a consommé, rendu à l'appelant.
+ *
+ * ── ⚠ IL ÉTAIT JETÉ, ET C'EST LA SEULE LIGNE D'UN TOTAL QU'ON NE SAVAIT
+ *      PAS PROUVER ────────────────────────────────────────────────────────
+ *
+ * `callGeneration` et `callRewrite` lisaient `response.content` et laissaient
+ * tomber `response.usage`. La génération d'un kit — l'appel le plus gros du
+ * produit, celui qui écrit trois directions complètes — n'avait donc AUCUN
+ * coût mesurable, et le total d'une session de travail portait une ligne
+ * estimée au doigt.
+ *
+ * Le kit a bien sa comptabilité de CRÉDITS (`generation_credits`,
+ * `consume_generation_credit`) : ce qui manquait était les DOLLARS. Deux
+ * grandeurs différentes, et une seule était tenue.
+ */
+export type UsageSink = (usage: { input: number; output: number }) => void;
+
+/** Un puits qui jette : réservé aux tests et aux stubs, jamais à un appel réel. */
+export const DISCARD_USAGE: UsageSink = () => {};
+
 export type GenerationCall = (
   system: string,
-  prompt: string
+  prompt: string,
+  onUsage: UsageSink
 ) => Promise<GenerationDraft>;
 
 /** Appel réel, outil forcé — pas de texte libre à analyser. */
-export const callGeneration: GenerationCall = async (system, prompt) => {
+export const callGeneration: GenerationCall = async (system, prompt, onUsage) => {
   const response = await getAnthropicClient().messages.create({
     model: GENERATION_MODEL,
     max_tokens: GENERATION_MAX_TOKENS,
@@ -263,6 +285,7 @@ export const callGeneration: GenerationCall = async (system, prompt) => {
     tool_choice: { type: "tool", name: TOOL.name },
     messages: [{ role: "user", content: prompt }],
   });
+  onUsage({ input: response.usage.input_tokens, output: response.usage.output_tokens });
   return parseGenerationResponse(response);
 };
 
@@ -272,7 +295,8 @@ export const callGeneration: GenerationCall = async (system, prompt) => {
  */
 export async function callRewrite(
   system: string,
-  instruction: string
+  instruction: string,
+  onUsage: UsageSink = DISCARD_USAGE
 ): Promise<string> {
   const response = await getAnthropicClient().messages.create({
     model: GENERATION_MODEL,
@@ -280,6 +304,7 @@ export async function callRewrite(
     system,
     messages: [{ role: "user", content: instruction }],
   });
+  onUsage({ input: response.usage.input_tokens, output: response.usage.output_tokens });
 
   const text = response.content.find(
     (block): block is Anthropic.TextBlock => block.type === "text"

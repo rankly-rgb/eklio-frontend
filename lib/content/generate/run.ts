@@ -229,11 +229,36 @@ export type RunOutcome = {
   generated: GeneratedMonth;
   /** Where the three themes came from, and the sentence they came from. */
   themes: DerivedThemes;
+  /**
+   * Ce que ce mois a consommé chez le fournisseur, jetons d'entrée et de
+   * sortie cumulés.
+   *
+   * ── ⚠ IL N'ÉTAIT RENDU NULLE PART ────────────────────────────────────
+   *
+   * `oneLine` lisait la réponse et jetait `response.usage`. Tous les appels
+   * qui passent ici — les trois thèmes, chaque ligne sur image, chaque
+   * légende, chaque texte alternatif, chaque réécriture déontologique —
+   * avaient donc un coût invisible, sur le chemin PRODUIT, pas le harnais.
+   *
+   * Mesuré autrement : dix mois générés, `credit_ledger` inchangé (F25). Une
+   * dépense qu'aucun appelant ne peut lire est une dépense qu'on croit nulle.
+   */
+  usage: { input: number; output: number };
 };
 
 export async function runMonthForKit(input: RunMonthInput): Promise<RunOutcome> {
   const monthKey = input.month.slice(0, 7);
-  const model = input.model ?? anthropicContentModel(input.rules);
+  /*
+   * ⚠ LE PUITS EST ICI, ET IL EST RENDU À L'APPELANT. Sans lui, aucun appelant
+   * de `runMonthForKit` ne pouvait savoir ce que le mois avait coûté — et
+   * `credit_ledger` en portait la trace : inchangé après dix mois (F25).
+   */
+  const usage = { input: 0, output: 0 };
+  const onUsage = (u: { input: number; output: number }) => {
+    usage.input += u.input;
+    usage.output += u.output;
+  };
+  const model = input.model ?? anthropicContentModel(input.rules, onUsage);
 
   /*
    * Step 0, and it is a model call like the others: it goes through the same
@@ -272,7 +297,7 @@ export async function runMonthForKit(input: RunMonthInput): Promise<RunOutcome> 
     compose: composeFromGround,
   });
 
-  return { generated, themes };
+  return { generated, themes, usage };
 }
 
 /* ── Persistence ───────────────────────────────────────────────────────── */

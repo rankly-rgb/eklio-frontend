@@ -187,13 +187,42 @@ Return the alt text and nothing else.`;
 
 /* ── The real call ─────────────────────────────────────────────────────── */
 
-async function oneLine(system: string, prompt: string, maxTokens: number): Promise<string> {
+/**
+ * Ce qu'un appel a consommé, rendu à l'appelant.
+ *
+ * ── ⚠ IL ÉTAIT JETÉ, ET C'EST UN TROU DE PLUS DANS LA MÊME CLASSE ──────
+ *
+ * `oneLine` lisait `response.content` et laissait tomber `response.usage`.
+ * Tous les appels qui passent par `ContentModel` — les trois thèmes du mois,
+ * chaque ligne sur image, chaque légende, chaque texte alternatif, chaque
+ * réécriture déontologique — avaient donc un coût INVISIBLE. Ce n'est pas le
+ * harnais : c'est le chemin produit.
+ *
+ * Mesuré autrement : dix mois générés, `credit_ledger` inchangé (F25). Cinq
+ * défauts de la même famille avant celui-ci (F18, F19, F21, F23, F25) disent
+ * tous la même chose — une grandeur juste, calculée, jamais consommée.
+ *
+ * ⚠ LE PUITS EST OBLIGATOIRE, PAS OPTIONNEL. Un paramètre optionnel aurait
+ * laissé les trois appelants existants continuer à jeter le chiffre sans que
+ * rien ne le dise, ce qui est exactement le défaut. Le rendre obligatoire
+ * force chaque appelant à DÉCIDER où va la dépense.
+ */
+export type UsageSink = (usage: { input: number; output: number }) => void;
+
+async function oneLine(
+  system: string,
+  prompt: string,
+  maxTokens: number,
+  onUsage: UsageSink
+): Promise<string> {
   const response = await getAnthropicClient().messages.create({
     model: GENERATION_MODEL,
     max_tokens: maxTokens,
     system,
     messages: [{ role: "user", content: prompt }],
   });
+
+  onUsage({ input: response.usage.input_tokens, output: response.usage.output_tokens });
 
   const text = response.content.find(
     (block): block is Anthropic.TextBlock => block.type === "text"
@@ -203,15 +232,15 @@ async function oneLine(system: string, prompt: string, maxTokens: number): Promi
   return (text?.text ?? "").trim().replace(/^["“”']|["“”']$/g, "").trim();
 }
 
-export function anthropicContentModel(rules: EthicsRule[]): ContentModel {
+export function anthropicContentModel(rules: EthicsRule[], onUsage: UsageSink): ContentModel {
   const system = contentSystemPrompt(rules);
   return {
     label: GENERATION_MODEL,
     writeThemes: async (request) =>
-      parseThemeLines(await oneLine(system, themesPrompt(request), 300)),
-    writeOnImageLine: (request) => oneLine(system, onImagePrompt(request), 400),
-    writeCaption: (request) => oneLine(system, captionPrompt(request), 1500),
-    writeAltText: (request) => oneLine(system, altTextPrompt(request), 400),
+      parseThemeLines(await oneLine(system, themesPrompt(request), 300, onUsage)),
+    writeOnImageLine: (request) => oneLine(system, onImagePrompt(request), 400, onUsage),
+    writeCaption: (request) => oneLine(system, captionPrompt(request), 1500, onUsage),
+    writeAltText: (request) => oneLine(system, altTextPrompt(request), 400, onUsage),
     rewrite: (request) =>
       oneLine(
         system,
@@ -223,7 +252,8 @@ THE TEXT:
 THE PROBLEM: ${request.problem}
 
 Rewrite it so the problem is gone. Keep the length, the register and the meaning as close to the original as the rule allows. Return the rewritten text and nothing else.`,
-        1500
+        1500,
+        onUsage
       ),
   };
 }

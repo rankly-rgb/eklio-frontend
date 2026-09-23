@@ -56,6 +56,7 @@ import {
 import { loadJournal, rememberBatch, rememberResult, clearJournal } from "./journal";
 import type { DirectionPalette } from "../../lib/compose/palette";
 import { admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD } from "./lib";
+import { withOverhead, type CreditPort } from "../../lib/credits/paid-call";
 
 const WANTED = 30;
 
@@ -159,6 +160,41 @@ async function main() {
   const db = admin();
   const client = new Anthropic({ apiKey: key });
   const { userId, projectId, kitId } = await accountFor(db, arg("email"));
+
+  /*
+   * ── ⚠ LA SEULE PORTE D'UN APPEL PAYANT, ET ELLE EST OUVERTE ICI ───────
+   *
+   * Mesuré : dix mois, trois cents posts, `credit_ledger` inchangé (F25). Le
+   * port est défini AVANT le premier appel du script — la dérivation des
+   * thèmes — parce que les helpers `reserve`/`settle` d'avant étaient déclarés
+   * quatre cents lignes plus bas, après elle. Un appel payant écrit au-dessus
+   * de sa comptabilité est un appel qu'aucune comptabilité ne voit.
+   */
+  const credits: CreditPort = {
+    async reserve(spec) {
+      const { data } = await db.rpc("reserve_credit", {
+        p_user: spec.userId, p_kind: spec.kind, p_reason: spec.reason,
+        p_provider: spec.provider ?? "anthropic", p_model: spec.model ?? massCopyModel(),
+        p_month: spec.month ?? MONTH,
+      } as never);
+      const row = data as unknown as { ok?: boolean; reservation_id?: string } | null;
+      return row?.ok === true ? (row.reservation_id ?? null) : null;
+    },
+    async settle(reservationId, costUsd, succeeded) {
+      await db.rpc("settle_credit", {
+        p_reservation_id: reservationId,
+        p_actual_cost_usd: Number(costUsd.toFixed(6)),
+        p_succeeded: succeeded,
+      } as never);
+    },
+  };
+
+  /** Un appel de frais généraux : au livre, sans prendre de crédit. */
+  const overhead = <T>(reason: string, run: () => Promise<{ value: T; usage: Usage }>) =>
+    withOverhead(credits, { userId, reason, model: massCopyModel(), month: MONTH }, async () => {
+      const { value, usage: u } = await run();
+      return { value, usage: u, costUsd: syncCostUsd(u) };
+    });
 
   const { data: already } = await db
     .from("content_months").select("id, status").eq("brand_kit_id", kitId).eq("month", MONTH).maybeSingle();
@@ -268,12 +304,27 @@ async function main() {
   };
 
   const checkin = (checkinRow ?? null) as ContentCheckin | null;
-  const themes = await deriveThemes(anthropicContentModel(rules), {
-    month: MONTH,
-    checkin,
-    briefContext: [brief.positioning, brief.usp_statement].filter(Boolean).join("\n"),
-    offLimits: preferences.off_limits ?? null,
-  });
+  /*
+   * ⚠ LA DÉRIVATION DES THÈMES EST UN APPEL PAYANT, ET ELLE N'ÉTAIT DANS
+   * AUCUN COMPTEUR. `oneLine` jetait `response.usage` : son coût n'était pas
+   * seulement absent du livre, il était inconnu. Le puits le rend maintenant,
+   * et `overhead` l'inscrit sans prendre de crédit à la praticienne — un mois
+   * n'a pas à lui coûter un post pour choisir ses trois thèmes.
+   */
+  const themesUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const themes = (await overhead("month themes", async () => {
+    const model = anthropicContentModel(rules, (u) => {
+      themesUsage.input += u.input;
+      themesUsage.output += u.output;
+    });
+    const value = await deriveThemes(model, {
+      month: MONTH,
+      checkin,
+      briefContext: [brief.positioning, brief.usp_statement].filter(Boolean).join("\n"),
+      offLimits: preferences.off_limits ?? null,
+    });
+    return { value, usage: themesUsage };
+  })).value;
   console.error(`▸ themes (${themes.source}): ${themes.themes.join(" · ")}`);
   console.error(`▸ ${firstMonth ? "FIRST month → synchronous" : "a later month"} · ${useBatch ? "Batch API" : "sync calls"}`);
 
@@ -508,25 +559,22 @@ async function main() {
   const judgeUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   const failures: Array<{ topic: string; kind: string; because: string }> = [];
 
-  /** Réserve un crédit, ou dit pourquoi elle ne peut pas. */
+  /*
+   * ⚠ UN SEUL CHEMIN VERS LE LIVRE, ET C'EST `credits`. Ces deux helpers ne
+   * refont pas l'appel RPC : ils délèguent au port défini en tête, pour qu'il
+   * n'existe pas deux façons de réserver un crédit — c'était le cas, et l'une
+   * des deux n'était branchée que sur le chemin synchrone (F25).
+   */
   async function reserve(reason: string): Promise<string | null> {
-    const { data } = await db.rpc("reserve_credit", {
-      p_user: userId, p_kind: "post_generation", p_reason: reason,
-      p_provider: "anthropic", p_model: massCopyModel(), p_month: MONTH,
-    } as never);
-    const row = data as unknown as { ok?: boolean; reservation_id?: string; reason?: string } | null;
-    if (row?.ok !== true) { funnel.quotaRefusals += 1; return null; }
-    return row.reservation_id ?? null;
+    const id = await credits.reserve({ userId, kind: "post_generation", reason });
+    if (!id) { funnel.quotaRefusals += 1; return null; }
+    return id;
   }
 
   /** Règle : succès (le crédit est consommé) ou release AVEC son coût. */
   async function settle(reservationId: string | null, costUsd: number, succeeded: boolean) {
     if (!reservationId) return;
-    await db.rpc("settle_credit", {
-      p_reservation_id: reservationId,
-      p_actual_cost_usd: Number(costUsd.toFixed(6)),
-      p_succeeded: succeeded,
-    } as never);
+    await credits.settle(reservationId, costUsd, succeeded);
   }
 
   /** Les candidats retenus, dans l'ordre où ils se sont avérés utilisables. */
@@ -862,11 +910,19 @@ const SPARE_POOL = 6;
       return false;
     }
 
-    const repair = await repairPayload(
-      (params) => client.messages.create(params),
-      candidate.topic.archetype_key,
-      result.payload
-    );
+    /*
+     * ⚠ LA RÉPARATION EST UN APPEL PAYANT DE PLUS, ET ELLE NE FACTURE PAS.
+     * Le crédit du post a déjà été réservé ; réparer son payload ne doit pas
+     * en prendre un second. Mais la dépense, elle, entre au livre.
+     */
+    const repair = (await overhead(`repair ${candidate.topic.archetype_key}`, async () => {
+      const value = await repairPayload(
+        (params) => client.messages.create(params),
+        candidate.topic.archetype_key,
+        result.payload
+      );
+      return { value, usage: value.usage };
+    })).value;
     repairUsage.input += repair.usage.input; repairUsage.output += repair.usage.output;
     repairUsage.cacheRead += repair.usage.cacheRead; repairUsage.cacheWrite += repair.usage.cacheWrite;
 
@@ -1117,7 +1173,10 @@ function selectDeliverable<
     cardLine: p.cardLine, payload: p.payload,
   })));
   const toJudge = undecidedIn(allWritten);
-  const judged = await judgeCompleteness(client, toJudge);
+  const judged = (await overhead("completeness judge", async () => {
+    const value = await judgeCompleteness(client, toJudge);
+    return { value, usage: { ...value.usage, cacheRead: 0, cacheWrite: 0 } };
+  })).value;
   judgeUsage.input += judged.usage.input;
   judgeUsage.output += judged.usage.output;
   console.error(`▸ complétude : ${toJudge.length} lignes indécises jugées, ${
