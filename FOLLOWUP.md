@@ -1160,6 +1160,64 @@ phrase seule, désormais tirée en dernier, a pris sa place dans le trou.
 **Un plancher par format, et pas seulement un compte de formats.** Le
 carrousel en a un depuis F22 ; les dix autres n'en ont pas.
 
+## F29 — LA NOTATION DU MOIS LIVRÉ À CONTRÔLES GELÉS
+
+Une passe, sans tour de correction, sur `pia.rosenthal` — le mois qui passe
+les quinze contrôles **plus les sept de F26**, sans qu'un seuil ait bougé.
+
+| critère | 2026-09-23 (odile) | 2026-09-24 (pia) |
+|---|---|---|
+| Élaboration | 1,80 | **2,20** |
+| Lisibilité à 390 px | 3,10 | **3,30** |
+| Variété visuelle | 1,60 | **2,10** |
+| Illustrations | 2,20 | **1,80** |
+| Typographie | 2,40 | **2,90** |
+| Couleur | 2,90 | **3,10** |
+| Écriture | 1,40 | **1,60** |
+
+Six critères sur sept montent, d'environ un demi-point. **Aucun n'atteint 3,5.**
+Les sept contrôles ont supprimé les défauts qu'ils nomment — plus une seule
+apostrophe droite, plus un sigle inventé, plus de citation non attribuée, plus
+de volet répété — et **l'écriture reste à 1,6**.
+
+### Ce que la mesure confirme
+
+* **« Looking stable. Burning »** — 23 caractères, donc **pas tronquée** : le
+  modèle l'a écrite, et le juge de complétude l'a dite COMPLÈTE. C'est un vrai
+  manque du juge, sur le seul cas où il aurait dû trancher.
+* **« Competence can trap »** — 19 caractères, verbe transitif sans objet, même
+  verdict du juge. Deux ratés sur une trentaine de lignes jugées.
+* **Trois posts bâtis sur « X is not failure, it's information »** — vérifié en
+  base. `redundantAgainst` compare les TITRES au tirage ; ces trois-là ont des
+  titres différents et la même phrase.
+* **« Body says no » sept fois** en libellé de bloc — aucun contrôle ne regarde
+  la répétition d'un libellé À TRAVERS les posts.
+* **Zéro `single_statement`, zéro `lettered_technique`** — déjà F28 pour le
+  premier ; le second est la conséquence assumée du catalogue de techniques
+  nommées, et il faut le dire ainsi plutôt que le découvrir.
+
+### ⚠ Le surtitre porte un identifiant interne
+
+La notation relève « ONLY ONE » et « A SOFT INVITATION » imprimés au-dessus
+des cartes — un drapeau de pagination et un libellé d'intention, sur une carte
+publiable. Je n'ai pas retrouvé leur origine dans le temps imparti.
+
+**Ce que j'ai pu prouver est du même ordre et pire** : sur le chemin du
+harnais, `eyebrowFor` reçoit `intent` brut et rend **« CORRECTAMYTH »** et
+**« BEHINDTHEPRACTICE »** — les soulignés retirés, les mots collés. Le champ
+attendait un LIBELLÉ (`angle_label`, « A soft invitation »), il reçoit un CODE.
+
+⚠ **C'est encore la classe de F27** : une valeur juste, lue au mauvais endroit.
+Et aucun des vingt-deux contrôles ne regarde la bande de surtitre.
+
+### Ce que je n'écarte pas
+
+Rien de substantiel. La seule nuance porte sur « EMDR for unwanted turning »,
+« Competence can trap », « Your body learned before » : la notation les range
+avec les phrases inachevées, et elles sont **syntaxiquement complètes**. Ce qui
+leur manque est le SENS, et `text.unfinished` ne le mesure pas — c'est un
+critère de plus à écrire, pas un faux positif de la notation.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
