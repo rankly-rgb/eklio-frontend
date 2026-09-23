@@ -54,6 +54,93 @@ describe("le modèle ne peut plus écrire d'identité", () => {
   });
 });
 
+/*
+ * ── ⚠ L'INTERDICTION TIENT À L'INTÉRIEUR D'UN CARROUSEL ────────────────
+ *
+ * C'est le chemin RÉEL du défaut, et il n'était couvert que par ricochet :
+ * « Rowan Mercier Therapy » et « rowan@rowanmercier.com » étaient le cinquième
+ * VOLET d'un carrousel du mois d'Isla Thornbury. Une carte praticienne de
+ * premier niveau n'a jamais rien inventé.
+ *
+ * Un payload de carrousel est imbriqué — `cards[i].payload.lines[j]` — et un
+ * contrôle qui ne descendrait pas d'un niveau verrait un carrousel propre. Les
+ * cas ci-dessous posent la question à l'endroit exact où elle s'est posée.
+ */
+describe("l'identité est interdite JUSQUE DANS un carrousel", () => {
+  const allowed = identityAllowList(FACTS);
+
+  it("un nom de cabinet inventé dans un volet est vu", () => {
+    const carousel = {
+      cards: [
+        { archetype_key: "single_statement", payload: { statement: "Rest is not a reward you earn." } },
+        { archetype_key: "practitioner_card", payload: { lines: ["Rowan Mercier Therapy", "Oakland, CA"] } },
+      ],
+    };
+    const findings = checkInventedIdentity(carousel, FACTS.practiceName!, allowed);
+    expect(findings.some((f) => f.check === "identity.practice")).toBe(true);
+    // ⚠ Le chemin nomme le volet, sinon on cherche le défaut sur la mauvaise carte.
+    expect(findings.find((f) => f.check === "identity.practice")!.detail).toContain("cards[1]");
+  });
+
+  it("une adresse dans un volet est vue, à n'importe quelle profondeur", () => {
+    const carousel = {
+      cards: [
+        { archetype_key: "single_statement", payload: { statement: "The body keeps its own time." } },
+        {
+          archetype_key: "surface_and_beneath",
+          payload: {
+            surface: { label: "Looking fine", gloss: "write to hello@somewhere.com" },
+            beneath: { label: "Running empty", gloss: "nothing left by Friday" },
+          },
+        },
+      ],
+    };
+    const findings = checkInventedIdentity(carousel, FACTS.practiceName!, allowed);
+    expect(findings.some((f) => f.check === "identity.contact")).toBe(true);
+    expect(findings[0].detail).toContain("cards[1].payload.surface.gloss");
+  });
+
+  it("un identifiant social dans un volet est vu", () => {
+    const carousel = {
+      cards: [{ archetype_key: "single_statement", payload: { statement: "Find me @islathornbury there." } }],
+    };
+    expect(
+      checkInventedIdentity(carousel, FACTS.practiceName!, allowed).some((f) => f.check === "identity.contact")
+    ).toBe(true);
+  });
+
+  /*
+   * ⚠ ET LE CARROUSEL RÉELLEMENT PUBLIÉ EST REFUSÉ, tel qu'il est en base.
+   * C'est la seule version du cas qui ne repose pas sur une fixture écrite
+   * après coup pour ressembler au défaut.
+   */
+  it("le carrousel qui a réellement publié l'identité est refusé", () => {
+    const month = JSON.parse(
+      readFileSync("lib/content/__tests__/fixtures/month-isla.json", "utf8")
+    ) as Array<{ archetype: string; payload: unknown }>;
+    const carousels = month.filter((p) => p.archetype === "carousel");
+    expect(carousels.length).toBeGreaterThan(0);
+
+    const findings = carousels.flatMap((p) =>
+      checkInventedIdentity(p.payload, FACTS.practiceName!, allowed)
+    );
+    expect(findings.some((f) => f.detail.includes("Rowan Mercier Therapy"))).toBe(true);
+    expect(findings.some((f) => f.detail.includes("rowan@rowanmercier.com"))).toBe(true);
+    // Et le constat pointe bien un volet, pas la carte de premier niveau.
+    expect(findings.every((f) => f.detail.includes("cards["))).toBe(true);
+  });
+
+  it("un carrousel propre ne dit rien", () => {
+    const clean = {
+      cards: [
+        { archetype_key: "single_statement", payload: { statement: "Rest is not a reward you earn." } },
+        { archetype_key: "single_statement", payload: { statement: "The body keeps its own time." } },
+      ],
+    };
+    expect(checkInventedIdentity(clean, FACTS.practiceName!, allowed)).toEqual([]);
+  });
+});
+
 describe("les lignes viennent du brief, ou la carte n'existe pas", () => {
   it("un brief complet donne des lignes recopiées, jamais rédigées", () => {
     expect(practitionerLines(FACTS)).toEqual(["EMDR", "Oakland, CA", "Taking new clients"]);

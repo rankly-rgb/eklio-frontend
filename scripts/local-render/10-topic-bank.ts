@@ -332,11 +332,28 @@ async function main() {
      * base depuis un autre terminal.
      */
     const started = Date.now();
+    /*
+     * ── ⚠ ON ÉCRIT EN CHEMIN, PAS À LA FIN ────────────────────────────
+     *
+     * Cette boucle accumulait TOUT puis insérait après. Le 2026-09-23,
+     * PostgreSQL est tombé au 280ᵉ appel sur 695 : le script est mort avant
+     * l'insertion et **280 appels payés — environ 0,81 $ — ont été jetés**.
+     * La banque n'a pas bougé d'un sujet.
+     *
+     * Le remède n'est pas de rendre la base plus fiable, c'est de ne plus
+     * faire dépendre un travail déjà payé d'un écrit qui vient une demi-heure
+     * plus tard. `flushEvery` vide le tampon régulièrement : une panne coûte
+     * désormais au plus ce qui n'a pas encore été écrit.
+     */
+    const flushEvery = 25;
     for (const [i, request] of requests.entries()) {
       const message = await client.messages.create(
         request.params as Anthropic.Messages.MessageCreateParamsNonStreaming
       );
       entries.push({ custom_id: request.custom_id, result: { type: "succeeded", message } });
+      if (entries.length >= flushEvery) {
+        await persist(entries.splice(0, entries.length));
+      }
       if ((i + 1) % 10 === 0 || i + 1 === requests.length) {
         const elapsed = Math.round((Date.now() - started) / 1000);
         const eta = Math.round((elapsed / (i + 1)) * (requests.length - i - 1));
@@ -369,121 +386,134 @@ async function main() {
   let repaired = 0;
   const retryUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
-  for (const entry of entries) {
-    const job = jobs.find((j) => j.customId === entry.custom_id);
-    if (!job) continue;
-    if (entry.result.type !== "succeeded" || !entry.result.message) {
-      failures.push({ id: entry.custom_id, because: `batch:${entry.result.type}` });
-      continue;
-    }
-    const message = entry.result.message;
-    usage.input += message.usage.input_tokens;
-    usage.output += message.usage.output_tokens;
-    usage.cacheRead += message.usage.cache_read_input_tokens ?? 0;
-    usage.cacheWrite += message.usage.cache_creation_input_tokens ?? 0;
-
-    const raw = message.content.filter((b) => b.type === "text").map((b) => b.text).join("");
-    let parsed: { title?: string; hook?: string; payload?: unknown; caption_seed?: string; rationale_template?: string };
-    try {
-      parsed = JSON.parse(raw.trim().replace(/^```(?:json)?\n?|```$/g, ""));
-    } catch {
-      failures.push({ id: entry.custom_id, because: "schema: not JSON" });
-      continue;
-    }
-    if (!parsed.title || !parsed.hook || !parsed.payload || !parsed.caption_seed || !parsed.rationale_template) {
-      failures.push({ id: entry.custom_id, because: "schema: a required field is missing" });
-      continue;
-    }
-
-    /*
-     * ── LE BUDGET DE MOTS, MESURÉ ICI PLUTÔT QUE DEVINÉ EN BASE ────────
-     *
-     * `content_topics_payload_check` dit « refusé » et rien d'autre : sur la
-     * première passe, 29 idées sur 52 sont mortes là sans qu'on sache quel
-     * champ débordait. `budgetErrors` est le miroir TypeScript du validateur
-     * SQL ; il nomme le chemin, ce qui a été dit, et ce qui était permis.
-     *
-     * ⚠ ET UNE SEULE RELANCE, AVEC LE REPROCHE EXACT. C'est la politique que
-     * `write-one.ts` applique déjà côté produit : une relance nourrie de
-     * l'erreur, puis un échec marqué. Rien n'est réparé à la main — un
-     * payload recoupé ici serait une carte que personne n'a écrite.
-     */
-    let over = budgetErrors(job.archetype, parsed.payload);
-    if (over.length > 0) {
-      const reproach = over.map((e) => `- ${e.path}: you wrote ${e.said} words, at most ${e.allowed} are allowed`).join("\n");
-      const retry = await client.messages.create({
-        model: massCopyModel(),
-        max_tokens: 1200,
-        system: prefix(job.archetype, rules),
-        messages: [
-          { role: "user", content: variable(job.seg, job.modalityLabel, job.personaLabel, job.personaDesc, job.intent, 0) },
-          { role: "assistant", content: raw },
-          { role: "user", content: `The database refused this payload on its word budget:\n${reproach}\n\nSend the WHOLE JSON object again, with those fields shortened to fit. Change nothing else.` },
-        ],
-      });
-      retries += 1;
-      retryUsage.input += retry.usage.input_tokens;
-      retryUsage.output += retry.usage.output_tokens;
-      const retryRaw = retry.content.filter((b) => b.type === "text").map((b) => b.text).join("");
-      try {
-        const reparsed = JSON.parse(retryRaw.trim().replace(/^```(?:json)?\n?|```$/g, ""));
-        if (reparsed?.payload) {
-          const stillOver = budgetErrors(job.archetype, reparsed.payload);
-          if (stillOver.length === 0) {
-            parsed = { ...parsed, ...reparsed };
-            over = [];
-            repaired += 1;
-          } else {
-            over = stillOver;
-          }
-        }
-      } catch {
-        /* la relance n'a pas rendu du JSON : l'échec reste l'échec */
+  /**
+   * Écrire ce qui est revenu. Appelée en chemin ET à la fin.
+   *
+   * ⚠ IDEMPOTENTE PAR CONSTRUCTION : chaque appel consomme le tampon qui
+   * lui est passé et ne relit rien. Deux appels ne peuvent pas écrire deux
+   * fois le même sujet, parce qu'un sujet n'est dans le tampon qu'une fois.
+   */
+  async function persist(batch: Entry[]) {
+    for (const entry of batch) {
+      const job = jobs.find((j) => j.customId === entry.custom_id);
+      if (!job) continue;
+      if (entry.result.type !== "succeeded" || !entry.result.message) {
+        failures.push({ id: entry.custom_id, because: `batch:${entry.result.type}` });
+        continue;
       }
-    }
-    if (over.length > 0) {
-      failures.push({
-        id: entry.custom_id,
-        because: `word budget: ${over.map((e) => `${e.path} said ${e.said}, allowed ${e.allowed}`).join("; ")}`,
+      const message = entry.result.message;
+      usage.input += message.usage.input_tokens;
+      usage.output += message.usage.output_tokens;
+      usage.cacheRead += message.usage.cache_read_input_tokens ?? 0;
+      usage.cacheWrite += message.usage.cache_creation_input_tokens ?? 0;
+
+      const raw = message.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+      let parsed: { title?: string; hook?: string; payload?: unknown; caption_seed?: string; rationale_template?: string };
+      try {
+        parsed = JSON.parse(raw.trim().replace(/^```(?:json)?\n?|```$/g, ""));
+      } catch {
+        failures.push({ id: entry.custom_id, because: "schema: not JSON" });
+        continue;
+      }
+      if (!parsed.title || !parsed.hook || !parsed.payload || !parsed.caption_seed || !parsed.rationale_template) {
+        failures.push({ id: entry.custom_id, because: "schema: a required field is missing" });
+        continue;
+      }
+
+      /*
+       * ── LE BUDGET DE MOTS, MESURÉ ICI PLUTÔT QUE DEVINÉ EN BASE ────────
+       *
+       * `content_topics_payload_check` dit « refusé » et rien d'autre : sur la
+       * première passe, 29 idées sur 52 sont mortes là sans qu'on sache quel
+       * champ débordait. `budgetErrors` est le miroir TypeScript du validateur
+       * SQL ; il nomme le chemin, ce qui a été dit, et ce qui était permis.
+       *
+       * ⚠ ET UNE SEULE RELANCE, AVEC LE REPROCHE EXACT. C'est la politique que
+       * `write-one.ts` applique déjà côté produit : une relance nourrie de
+       * l'erreur, puis un échec marqué. Rien n'est réparé à la main — un
+       * payload recoupé ici serait une carte que personne n'a écrite.
+       */
+      let over = budgetErrors(job.archetype, parsed.payload);
+      if (over.length > 0) {
+        const reproach = over.map((e) => `- ${e.path}: you wrote ${e.said} words, at most ${e.allowed} are allowed`).join("\n");
+        const retry = await client.messages.create({
+          model: massCopyModel(),
+          max_tokens: 1200,
+          system: prefix(job.archetype, rules ?? []),
+          messages: [
+            { role: "user", content: variable(job.seg, job.modalityLabel, job.personaLabel, job.personaDesc, job.intent, 0) },
+            { role: "assistant", content: raw },
+            { role: "user", content: `The database refused this payload on its word budget:\n${reproach}\n\nSend the WHOLE JSON object again, with those fields shortened to fit. Change nothing else.` },
+          ],
+        });
+        retries += 1;
+        retryUsage.input += retry.usage.input_tokens;
+        retryUsage.output += retry.usage.output_tokens;
+        const retryRaw = retry.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+        try {
+          const reparsed = JSON.parse(retryRaw.trim().replace(/^```(?:json)?\n?|```$/g, ""));
+          if (reparsed?.payload) {
+            const stillOver = budgetErrors(job.archetype, reparsed.payload);
+            if (stillOver.length === 0) {
+              parsed = { ...parsed, ...reparsed };
+              over = [];
+              repaired += 1;
+            } else {
+              over = stillOver;
+            }
+          }
+        } catch {
+          /* la relance n'a pas rendu du JSON : l'échec reste l'échec */
+        }
+      }
+      if (over.length > 0) {
+        failures.push({
+          id: entry.custom_id,
+          because: `word budget: ${over.map((e) => `${e.path} said ${e.said}, allowed ${e.allowed}`).join("; ")}`,
+        });
+        continue;
+      }
+
+      /*
+       * ⚠ LE GARDE DU PRODUIT, AVANT LA DATE DE RELECTURE. `ethics_reviewed_at`
+       * est ce qui rend un sujet tirable ; le poser sans avoir rien lu serait un
+       * tampon. Le texte passe donc `checkEthics`, et un sujet signalé entre en
+       * banque SANS date — visible, non tirable, en attente d'un humain.
+       */
+      /* La relance a pu rendre un objet incomplet : on revérifie avant d'écrire. */
+      const { title, hook, caption_seed: captionSeed, rationale_template: rationaleTemplate, payload } = parsed;
+      if (!title || !hook || !captionSeed || !rationaleTemplate || !payload) {
+        failures.push({ id: entry.custom_id, because: "schema: a required field is missing after the retry" });
+        continue;
+      }
+
+      const scanned = [title, hook, captionSeed, JSON.stringify(payload)].join("\n");
+      const verdict = checkEthics(scanned);
+      const clean = verdict.violations.length === 0;
+
+      const { error } = await db.from("content_topics").insert({
+        segment_id: job.seg.id,
+        archetype_key: job.archetype,
+        intent: job.intent,
+        title,
+        hook,
+        payload: payload as never,
+        caption_seed: captionSeed,
+        rationale_template: rationaleTemplate,
+        ethics_reviewed_at: clean ? new Date().toISOString() : null,
       });
-      continue;
+      if (error) {
+        failures.push({ id: entry.custom_id, because: `db: ${error.message.slice(0, 120)}` });
+        continue;
+      }
+      written += 1;
+      if (clean) reviewed += 1;
     }
-
-    /*
-     * ⚠ LE GARDE DU PRODUIT, AVANT LA DATE DE RELECTURE. `ethics_reviewed_at`
-     * est ce qui rend un sujet tirable ; le poser sans avoir rien lu serait un
-     * tampon. Le texte passe donc `checkEthics`, et un sujet signalé entre en
-     * banque SANS date — visible, non tirable, en attente d'un humain.
-     */
-    /* La relance a pu rendre un objet incomplet : on revérifie avant d'écrire. */
-    const { title, hook, caption_seed: captionSeed, rationale_template: rationaleTemplate, payload } = parsed;
-    if (!title || !hook || !captionSeed || !rationaleTemplate || !payload) {
-      failures.push({ id: entry.custom_id, because: "schema: a required field is missing after the retry" });
-      continue;
-    }
-
-    const scanned = [title, hook, captionSeed, JSON.stringify(payload)].join("\n");
-    const verdict = checkEthics(scanned);
-    const clean = verdict.violations.length === 0;
-
-    const { error } = await db.from("content_topics").insert({
-      segment_id: job.seg.id,
-      archetype_key: job.archetype,
-      intent: job.intent,
-      title,
-      hook,
-      payload: payload as never,
-      caption_seed: captionSeed,
-      rationale_template: rationaleTemplate,
-      ethics_reviewed_at: clean ? new Date().toISOString() : null,
-    });
-    if (error) {
-      failures.push({ id: entry.custom_id, because: `db: ${error.message.slice(0, 120)}` });
-      continue;
-    }
-    written += 1;
-    if (clean) reviewed += 1;
   }
+
+
+  // Ce qui reste dans le tampon après la dernière vidange.
+  await persist(entries.splice(0, entries.length));
 
   const costUsd = (sync ? syncCostUsd(usage) : batchCostUsd([usage])) + syncCostUsd(retryUsage);
 
