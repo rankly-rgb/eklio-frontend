@@ -809,7 +809,18 @@ function selectDeliverable<
   const dropped: Array<{ title: string; why: string }> = [];
 
   for (;;) {
-    const findings = checkMonth({ posts: chosen.map(asPost), direction, practiceName, identityAllowList: allowList });
+    const findings = checkMonth({
+      posts: chosen.map(asPost), direction, practiceName, identityAllowList: allowList,
+      /*
+       * ⚠ LE NOMBRE EST UN CONTRÔLE, PAS UNE LIGNE DE RAPPORT. Un mois de
+       * quinze posts est sorti « sans constat » le 2026-09-23 : le rapport
+       * disait bien « the bank had no more », mais rien ne refusait le mois.
+       * Aucun échange ne peut le réparer — s'il manque des posts, le banc est
+       * vide par construction — donc le constat sort du premier tour et le
+       * mois est refusé, ce qui est le bon verdict.
+       */
+      wanted,
+    });
     if (findings.length === 0) return { chosen, remaining: [], dropped };
     if (bench.length === 0) return { chosen, remaining: findings, dropped };
 

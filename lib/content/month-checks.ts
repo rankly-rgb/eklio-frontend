@@ -451,6 +451,19 @@ export type PostUnderCheck = {
 
 export type MonthUnderCheck = {
   posts: PostUnderCheck[];
+  /**
+   * Combien de posts le mois promet.
+   *
+   * ⚠ MESURÉ : UN MOIS DE QUINZE POSTS A ÉTÉ LIVRÉ SANS UN SEUL CONSTAT, le
+   * 2026-09-23, sur une banque à sec. Le rapport portait bien un `shortfall`
+   * — « statement: 5 of 18 (the bank had no more) » — mais c'était une ligne
+   * de rapport, pas un contrôle : rien ne refusait le mois.
+   *
+   * Un mois court n'est pas un mois imparfait, c'est la moitié de ce qui a
+   * été acheté. « Un mois qui échoue n'est jamais livré » vaut aussi quand ce
+   * qui échoue est le NOMBRE.
+   */
+  wanted?: number;
   direction: DirectionPalette;
   /** Le nom du cabinet, seul nom qu'une carte a le droit de porter. */
   practiceName?: string;
@@ -495,8 +508,17 @@ export function checkIdenticalPayloads(posts: PostUnderCheck[]): Finding[] {
   return out;
 }
 
+export function checkCount(count: number, wanted: number | undefined): Finding[] {
+  if (wanted === undefined || count >= wanted) return [];
+  return [{
+    check: "month.short",
+    detail: `${count} posts pour ${wanted} promis — la banque n'en portait pas assez`,
+  }];
+}
+
 export function checkMonth(month: MonthUnderCheck): Finding[] {
   const out: Finding[] = [];
+  out.push(...checkCount(month.posts.length, month.wanted));
   out.push(...checkMix(month.posts.map((p) => p.archetype)));
   out.push(...checkDuplicateTitles(month.posts.map((p) => p.cardLine || p.title)));
   out.push(...checkIdenticalPayloads(month.posts));
