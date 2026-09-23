@@ -22,6 +22,23 @@
  * les sujets. Les trois ensemble, ou rien — un mois supprimé dont les sujets
  * restent pris est le même défaut sous un autre nom.
  *
+ * ── ⚠ LES CRÉDITS, EUX, N'ONT PAS À ÊTRE RENDUS ICI ────────────────────
+ *
+ * Un remboursement a été écrit ici, puis retiré. Le livre impose UNE SEULE
+ * ISSUE par réservation — un règlement ou une restitution, jamais les deux —
+ * et cette contrainte est juste : une réservation à deux issues compterait
+ * deux fois.
+ *
+ * La bonne réponse était en amont. `20-month.ts` ne consomme le crédit qu'une
+ * fois le mois LIVRÉ, plus à l'insertion du post : un mois refusé rend donc
+ * ses crédits de lui-même, et il n'y a rien à défaire ici.
+ *
+ * ⚠ MESURÉ AVANT CETTE CORRECTION : le deuxième essai d'un compte n'a pu
+ * tirer que 2 posts sur 72, `credit_balances` disant encore `consumed = 29`
+ * sur 30 pour un mois dont plus aucun post n'existait. En production, une
+ * praticienne dont le mois échoue ses contrôles paierait deux fois pour en
+ * obtenir un, et après deux refus son mois ne serait plus achetable.
+ *
  *   npx tsx scripts/local-render/95-abandon-month.ts --email <compte> --confirm
  */
 import { admin, accountFor, untypedTable, MONTH } from "./lib";

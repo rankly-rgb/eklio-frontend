@@ -206,3 +206,46 @@ describe("aucun contrôle ne se nourrit de ce qu'il surveille", () => {
     expect(CHECKS).toContain("checkTints(post.svg, month.direction)");
   });
 });
+
+/*
+ * ── ⚠ LE CRÉDIT SE CONSOMME À LA LIVRAISON, PAS À L'INSERTION ──────────
+ *
+ * Mesuré le 2026-09-24 : dix mois refusés, dix mois abandonnés — sujets
+ * rendus, posts supprimés — et le deuxième essai sur les mêmes comptes n'a pu
+ * réserver que DEUX candidats sur soixante-douze. `credit_balances` disait
+ * `post_generation consumed = 29` sur 30, pour un mois dont plus aucun post
+ * n'existait.
+ *
+ * Le crédit était soldé à `true` dans la boucle d'écriture, donc AVANT le
+ * verdict. En production, une praticienne dont le mois échoue ses contrôles
+ * paierait deux fois pour en obtenir un, et après deux refus son mois ne
+ * serait plus achetable du tout.
+ *
+ * ⚠ ET LA RÉPONSE N'EST PAS UN REMBOURSEMENT. Le livre impose une seule issue
+ * par réservation — `credit_ledger_one_outcome_per_reservation` — et cette
+ * contrainte est juste. Une fonction de remboursement a été écrite, puis
+ * retirée quand l'index l'a refusée : c'est l'index qui avait raison. Même
+ * règle que le journal, qui ne s'efface qu'une fois le mois en base.
+ */
+describe("un mois refusé ne consomme pas ses crédits", () => {
+  it("le règlement vient après le verdict, pas dans la boucle d'écriture", () => {
+    const insertLoop = MONTH.indexOf("written += 1;");
+    const verdict = MONTH.indexOf("const monthPasses = selection.remaining.length === 0;");
+    expect(verdict, "le verdict ne décide pas des crédits").toBeGreaterThan(-1);
+    expect(insertLoop).toBeLessThan(verdict);
+  });
+
+  it("le verdict est ce qui décide `succeeded`", () => {
+    const at = MONTH.indexOf("const monthPasses = selection.remaining.length === 0;");
+    const block = MONTH.slice(at, at + 400);
+    expect(block).toContain("for (const candidate of delivered)");
+    expect(block).toContain("monthPasses");
+  });
+
+  /* Et rien ne solde plus à `true` en dur pendant l'écriture. */
+  it("aucun règlement inconditionnel ne subsiste dans la boucle", () => {
+    const start = MONTH.indexOf("for (const [index, post] of selection.chosen.entries())");
+    const end = MONTH.indexOf("clearJournal(journal);", start);
+    expect(MONTH.slice(start, end)).not.toContain("syncCostUsd(candidate.usage), true)");
+  });
+});

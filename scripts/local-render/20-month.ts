@@ -1080,6 +1080,8 @@ function selectDeliverable<
   const ethicsFlags: Array<{ topic: string; rule: string; excerpt: string }> = [];
   const checkinLeakFlags: Array<{ topic: string; quoted: string[] }> = [];
   let written = 0;
+  /** Les posts entrés en base : leur crédit attend le verdict du mois. */
+  const delivered: Candidate[] = [];
   let previousArchetype: Parameters<typeof chooseArchetype>[1] = null;
 
   /*
@@ -1272,7 +1274,27 @@ function selectDeliverable<
       continue;
     }
     written += 1;
-    await settle(candidate.reservationId, useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage), true);
+    /*
+     * ── ⚠ LE CRÉDIT SE CONSOMME À LA LIVRAISON, PAS À L'INSERTION ───────
+     *
+     * Il était soldé à `true` ICI, dans la boucle d'écriture, donc AVANT le
+     * verdict. Un mois refusé consommait ainsi ses trente crédits pour des
+     * posts qui restent en `proposed` et que personne ne recevra jamais.
+     *
+     * ⚠ MESURÉ : LE DEUXIÈME ESSAI D'UN COMPTE N'A PU TIRER QUE 2 POSTS SUR
+     * 72. Dix mois refusés, dix mois abandonnés — sujets rendus, posts
+     * supprimés — et `credit_balances` disait encore `consumed = 29` sur 30.
+     * En production, une praticienne dont le mois échoue ses contrôles
+     * paierait deux fois pour en obtenir un, et après deux refus son mois ne
+     * serait plus achetable du tout.
+     *
+     * ⚠ ET CE N'EST PAS UN REMBOURSEMENT. Le livre impose une seule issue par
+     * réservation — un règlement OU une restitution, jamais les deux — et
+     * cette contrainte est juste. La bonne réponse n'est pas de la contourner
+     * mais de ne consommer qu'à la livraison, comme le journal n'efface qu'une
+     * fois le mois en base. Même règle, même raison.
+     */
+    delivered.push(candidate);
   }
 
   /*
@@ -1365,6 +1387,20 @@ function selectDeliverable<
       }]
     : [];
   selection.remaining.push(...shortOnWrite);
+
+  /*
+   * ⚠ ET LE VERDICT DÉCIDE DES CRÉDITS. Livré : consommés, au coût réel.
+   * Refusé : rendus, le coût écrit — les jetons ont bien été dépensés chez le
+   * fournisseur, et ils ne doivent rien à la praticienne.
+   */
+  const monthPasses = selection.remaining.length === 0;
+  for (const candidate of delivered) {
+    await settle(
+      candidate.reservationId,
+      useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage),
+      monthPasses
+    );
+  }
 
   if (selection.remaining.length > 0) {
     console.log(JSON.stringify({
