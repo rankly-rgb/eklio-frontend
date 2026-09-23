@@ -53,6 +53,23 @@ export type Journal = {
   email: string;
   /** L'identifiant du lot, écrit dès sa création. */
   batchId: string | null;
+  /**
+   * Les sujets que ce lot porte, écrits avec lui.
+   *
+   * ⚠ UN IDENTIFIANT DE LOT SANS SA LISTE DE SUJETS NE SE REPREND PAS.
+   *
+   * Rencontré en vrai le 2026-09-23 : une reprise a rattaché le bon lot — déjà
+   * payé — puis a REFAIT SON TIRAGE. Les deux ensembles se sont trouvés
+   * identiques, et le mois est passé : `next_topic_for_kit` trie par
+   * `created_at desc, id`, donc deux tirages consécutifs sur la même banque
+   * rendent la même chose. **C'est une coïncidence d'ordonnancement, pas une
+   * garantie** — un sujet ajouté, expiré ou pris par une autre praticienne
+   * entre les deux, et la reprise paie un lot dont elle ne sait plus lire les
+   * réponses.
+   *
+   * La liste est donc écrite AVEC l'identifiant, dans la même écriture.
+   */
+  topicIds: string[];
   entries: Record<string, JournalEntry>;
 };
 
@@ -61,16 +78,20 @@ const path = (month: string, email: string) =>
 
 export function loadJournal(month: string, email: string): Journal {
   const file = path(month, email);
-  if (!existsSync(file)) return { month, email, batchId: null, entries: {} };
+  if (!existsSync(file)) return { month, email, batchId: null, topicIds: [], entries: {} };
   try {
-    return JSON.parse(readFileSync(file, "utf8")) as Journal;
+    const read = JSON.parse(readFileSync(file, "utf8")) as Partial<Journal>;
+    // ⚠ Un journal écrit avant que `topicIds` n'existe se relit sans lever :
+    // il n'a pas de liste, donc il ne prétend pas en avoir une.
+    return { month, email, batchId: read.batchId ?? null,
+             topicIds: read.topicIds ?? [], entries: read.entries ?? {} };
   } catch {
     /*
      * ⚠ UN JOURNAL ILLISIBLE EST UN JOURNAL VIDE, PAS UNE PANNE. Il n'est
      * qu'une optimisation de reprise : refuser de démarrer parce qu'il est
      * corrompu coûterait plus que de tout regénérer.
      */
-    return { month, email, batchId: null, entries: {} };
+    return { month, email, batchId: null, topicIds: [], entries: {} };
   }
 }
 
@@ -81,8 +102,10 @@ export function saveJournal(j: Journal): void {
 }
 
 /** Écrit l'identifiant du lot AVANT d'attendre quoi que ce soit. */
-export function rememberBatch(j: Journal, batchId: string): Journal {
-  const next = { ...j, batchId };
+export function rememberBatch(j: Journal, batchId: string, topicIds: string[]): Journal {
+  // ⚠ L'identifiant ET les sujets, dans la même écriture : un lot dont on a
+  // perdu la liste des sujets est un lot payé qu'on ne sait plus lire.
+  const next = { ...j, batchId, topicIds };
   saveJournal(next);
   return next;
 }
@@ -100,5 +123,5 @@ export function rememberResult(
 
 /** Un mois publié n'a plus de journal : il a une ligne en base. */
 export function clearJournal(j: Journal): void {
-  saveJournal({ ...j, batchId: null, entries: {} });
+  saveJournal({ ...j, batchId: null, topicIds: [], entries: {} });
 }

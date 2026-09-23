@@ -783,6 +783,39 @@ dix archétypes — et il manquait le format le plus important.
 composition livrée à la composition VISÉE. C'est la même leçon que F15, prise
 par un autre bout.
 
+## F23 — ⚠ UN IDENTIFIANT DE LOT SANS SA LISTE DE SUJETS NE SE REPREND PAS
+
+**Rencontré en vrai le 2026-09-23, pas imaginé.** Une commande interrompue a
+laissé un lot soumis — donc **payé** — et la reprise l'a bien rattaché. Puis
+elle a **refait son tirage**.
+
+Les deux ensembles se sont trouvés identiques, et le mois est passé. Pas par
+conception : `next_topic_for_kit` trie par `created_at desc, id`, donc deux
+tirages consécutifs sur la même banque rendent la même chose.
+
+⚠ **C'est une coïncidence d'ordonnancement, pas une garantie.** Un sujet
+ajouté par un remplissage, un sujet expiré, un sujet pris par une autre
+praticienne entre les deux — et la reprise aurait payé un lot dont elle ne
+savait plus lire les réponses. Le mois serait sorti vide en ayant tout dépensé.
+
+C'est le défaut de F17 d'un cran plus fin : **on avait sauvé ce qu'il fallait
+pour RETROUVER le travail payé, pas ce qu'il fallait pour le RECONNAÎTRE.**
+
+La liste des sujets part donc dans la **même écriture** que l'identifiant, et
+la reprise fait foi du lot :
+
+* les sujets du tirage frais qui n'y sont pas sont **rendus** à la banque —
+  sinon chaque reprise doublerait ce qui en sort ;
+* si un sujet du lot n'est plus tirable, la reprise **s'arrête** au lieu de
+  livrer un mois amputé. Effacer `.eklio-journal/` abandonne alors un lot déjà
+  payé : c'est une décision, et le message le dit.
+
+⚠ **Le même champ manque aux tables serveur de F17.** `content_generation_runs`
+porte `batch_id` ; `content_generation_results` porte une ligne par sujet,
+**écrite à l'arrivée** — donc vide pendant les vingt-cinq minutes où la
+question se pose. La migration doit écrire les lignes de `results` (sans
+`result`) **à la soumission**, en même temps que le `run`.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel

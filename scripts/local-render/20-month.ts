@@ -594,12 +594,44 @@ const SPARE_POOL = 6;
     const built = buildBatchRequests(brand, requests);
     let batch;
     if (journal.batchId) {
+      /*
+       * ── ⚠ ON REPREND LE LOT ET SES SUJETS, PAS LE LOT SEUL ────────────
+       *
+       * Rencontré en vrai le 2026-09-23 : une reprise a rattaché le bon lot
+       * — déjà payé — puis a refait son tirage. Les deux ensembles se sont
+       * trouvés identiques et le mois est passé, parce que
+       * `next_topic_for_kit` trie par `created_at desc, id` : deux tirages
+       * consécutifs sur la même banque rendent la même chose.
+       *
+       * ⚠ C'EST UNE COÏNCIDENCE D'ORDONNANCEMENT, PAS UNE GARANTIE. Un sujet
+       * ajouté, expiré, ou pris par une autre praticienne entre les deux, et
+       * la reprise aurait payé un lot dont elle ne savait plus lire les
+       * réponses. Les sujets du lot font foi ; le tirage frais est rendu.
+       */
+      const ofBatch = new Set(journal.topicIds);
+      if (ofBatch.size > 0) {
+        const stale = candidates.filter((c) => !ofBatch.has(c.topic.id)).map((c) => c.topic.id);
+        if (stale.length > 0) {
+          await untypedTable(db, "topic_assignments")
+            .delete().eq("brand_kit_id", kitId).in("topic_id", stale);
+          console.error(`▸ reprise : ${stale.length} sujets du tirage frais rendus`);
+        }
+        const missing = journal.topicIds.filter((id) => !candidates.some((c) => c.topic.id === id));
+        if (missing.length > 0) {
+          throw new Error(
+            `reprise impossible : ${missing.length} sujets du lot ${journal.batchId} ne sont plus tirables. ` +
+            `Effacer .eklio-journal/ abandonne ce lot déjà payé — c'est une décision, pas un nettoyage.`
+          );
+        }
+      }
       console.error(`▸ reprise du lot ${journal.batchId}`);
       batch = await client.messages.batches.retrieve(journal.batchId);
     } else {
       batch = await client.messages.batches.create({ requests: built });
-      // ⚠ ÉCRIT AVANT D'ATTENDRE. C'est la seule fenêtre où ça change quelque chose.
-      journal = rememberBatch(journal, batch.id);
+      // ⚠ ÉCRIT AVANT D'ATTENDRE. C'est la seule fenêtre où ça change quelque
+      // chose — et AVEC ses sujets : un identifiant sans sa liste est un lot
+      // payé dont une reprise ne sait plus lire les réponses.
+      journal = rememberBatch(journal, batch.id, asked.map((c) => c.topic.id));
       console.error(`▸ batch ${batch.id} · ${requests.length} candidates`);
     }
 
