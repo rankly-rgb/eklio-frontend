@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ethicsCheckSchema } from "@/lib/brand/shapes";
 import { generateDirectoryProfile, type DirectoryCall } from "@/lib/directory/generate";
 import { loadDirectoryProfile } from "@/lib/data/directory";

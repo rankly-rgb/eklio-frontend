@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { rmSync, existsSync } from "node:fs";
+import { rmSync, existsSync, writeFileSync } from "node:fs";
 import {
   loadJournal, saveJournal, rememberBatch, rememberResult, clearJournal,
 } from "@/scripts/local-render/journal";
@@ -45,8 +45,7 @@ describe("le journal survit à l'interruption", () => {
   });
 
   it("chaque résultat est relisible sans attendre les suivants", () => {
-    let j = loadJournal(MONTH, EMAIL);
-    j = rememberResult(j, "topic-1", { result: { ok: true }, usage, settled: false });
+    rememberResult(loadJournal(MONTH, EMAIL), "topic-1", { result: { ok: true }, usage, settled: false });
     // Une panne ici : un second processus relit ce qui a été payé.
     const reread = loadJournal(MONTH, EMAIL);
     expect(reread.entries["topic-1"].result).toEqual({ ok: true });
@@ -59,16 +58,14 @@ describe("le journal survit à l'interruption", () => {
    * résultat, en consommerait un autre pour un post déjà payé.
    */
   it("un crédit déjà soldé est marqué, et ne se solde pas deux fois", () => {
-    let j = loadJournal(MONTH, EMAIL);
-    j = rememberResult(j, "topic-1", { result: { ok: true }, usage, settled: false });
-    j = rememberResult(j, "topic-1", { ...j.entries["topic-1"], settled: true });
+    const first = rememberResult(loadJournal(MONTH, EMAIL), "topic-1", { result: { ok: true }, usage, settled: false });
+    rememberResult(first, "topic-1", { ...first.entries["topic-1"], settled: true });
     expect(loadJournal(MONTH, EMAIL).entries["topic-1"].settled).toBe(true);
   });
 
   it("un journal illisible s'ouvre vide plutôt que de bloquer le mois", () => {
     saveJournal({ month: MONTH, email: EMAIL, batchId: null, entries: {} });
     // Corrompu à la main, comme une écriture interrompue le ferait.
-    const { writeFileSync } = require("node:fs") as typeof import("node:fs");
     writeFileSync(FILE, "{ pas du json", "utf8");
     const j = loadJournal(MONTH, EMAIL);
     expect(j.entries).toEqual({});

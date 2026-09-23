@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { practitionerLines, identityAllowList, type PractitionerFacts } from "@/lib/content/practitioner";
+import {
+  practitionerLines, identityAllowList, bankPayloadFor, PRACTITIONER_ARCHETYPE,
+  type PractitionerFacts,
+} from "@/lib/content/practitioner";
 import { checkInventedIdentity } from "@/lib/content/month-checks";
 import { budgetErrors } from "@/lib/compose/budget";
 import {
@@ -205,5 +208,67 @@ describe("le filet, rejoué sur le mois d'Isla Thornbury", () => {
     const findings = checkInventedIdentity(diagram, FACTS.practiceName!, allowed);
     expect(findings.map((f) => f.check)).toContain("identity.practice");
     expect(findings.map((f) => f.check)).toContain("identity.contact");
+  });
+});
+
+/*
+ * ── ET LA BANQUE N'EN DÉTIENT PAS NON PLUS ─────────────────────────────
+ *
+ * ⚠ MESURÉ : 36 APPELS PAYÉS SUR 260 JETÉS EN SILENCE, LE 2026-09-23.
+ *
+ * L'interdiction d'écrire une identité avait été posée sur le chemin du MOIS
+ * et nulle part ailleurs. La banque, elle, continuait de demander au modèle
+ * les LIGNES d'une carte praticienne — et le validateur du script continuait
+ * de les exiger, alors que le prompt ne les demandait plus. Résultat mesuré
+ * sur un remplissage réel : 224 sujets écrits pour 260 appels, les 36
+ * manquants tous `practitioner_card`, et pas une ligne à l'écran pour le dire.
+ *
+ * Deux défauts d'un coup : de l'argent payé pour rien, et 39 sujets déjà en
+ * banque portant des phrases écrites par un modèle pour une praticienne qui
+ * n'existe pas — la matière même dont « Rowan Mercier Therapy » était faite.
+ */
+describe("la banque ne détient jamais les lignes d'une praticienne", () => {
+  it("le sujet d'une carte praticienne a un corps VIDE", () => {
+    expect(bankPayloadFor(PRACTITIONER_ARCHETYPE)).toEqual({});
+  });
+
+  it("tous les autres archétypes laissent le modèle écrire le corps", () => {
+    for (const key of MODEL_WRITTEN_ARCHETYPES) {
+      expect(bankPayloadFor(key)).toBeNull();
+    }
+  });
+
+  /*
+   * La règle de la banque et celle de la publication ne sont PAS la même, et
+   * c'est voulu : un sujet de banque n'a pas de corps, une carte publiée en a
+   * un. Ce qui relie les deux est que le corps publié vient du BRIEF — donc
+   * le mois ne lit jamais le payload du sujet pour une carte praticienne.
+   */
+  it("le mois compose la carte depuis le brief, pas depuis le sujet", () => {
+    const source = readFileSync("scripts/local-render/20-month.ts", "utf8");
+    const branch = source.slice(source.indexOf('candidate.topic.archetype_key === "practitioner_card"'));
+    const body = branch.slice(0, branch.indexOf("\n    }"));
+    expect(body).toContain("payload: practitionerPayload");
+    expect(body).not.toContain("candidate.topic.payload");
+  });
+
+  /* Et un brief qui ne porte pas assez de faits ne donne PAS de carte. */
+  it("sans assez de faits, il n'y a pas de carte du tout", () => {
+    expect(practitionerLines({ ...FACTS, city: null, state: null, modalities: [], takingClients: "no" }))
+      .toBeNull();
+  });
+
+  /*
+   * ⚠ LE PROMPT DE BANQUE NE DEMANDE PLUS DE PAYLOAD. C'est la moitié de la
+   * correction qui manquait : le prompt avait changé, le validateur non.
+   */
+  it("le prompt de banque ne réclame aucun corps pour la carte praticienne", () => {
+    const source = readFileSync("scripts/local-render/10-topic-bank.ts", "utf8");
+    const branch = source.slice(
+      source.indexOf('archetypeKey === "practitioner_card"'),
+      source.indexOf("archetypeInstruction(archetypeKey)")
+    );
+    expect(branch).toContain("Write ONLY the topic");
+    expect(branch).not.toMatch(/"payload"/);
   });
 });

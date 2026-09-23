@@ -24,6 +24,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { archetypeInstruction, massCopyModel, batchCostUsd, syncCostUsd } from "../../lib/content/generate/copy-batch";
 import { budgetErrors } from "../../lib/compose/budget";
 import { checkEthics } from "../../lib/ethics/rules";
+import { bankPayloadFor } from "../../lib/content/practitioner";
 import { admin, anthropicKeyOrDie, untypedTable, SESSION_CAP_USD } from "./lib";
 
 /*
@@ -394,12 +395,29 @@ async function main() {
    * lui est passé et ne relit rien. Deux appels ne peuvent pas écrire deux
    * fois le même sujet, parce qu'un sujet n'est dans le tampon qu'une fois.
    */
+  /*
+   * ⚠ UN ÉCHEC SE DIT À L'ÉCRAN, PAS AU BILAN. Les 36 cartes praticiennes
+   * jetées le 2026-09-23 l'ont été en silence pendant seize minutes, parce
+   * que `failures` n'était lu qu'après la dernière vidange — et le script a
+   * été interrompu avant. Le premier échec de chaque MOTIF est donc imprimé
+   * dès qu'il arrive ; les suivants restent comptés.
+   */
+  const seenReasons = new Set<string>();
+  function note(id: string, because: string) {
+    failures.push({ id, because });
+    const kind = `${id.split("-").slice(1, -2).join("-")}|${because.split(":")[0]}`;
+    if (!seenReasons.has(kind)) {
+      seenReasons.add(kind);
+      console.error(`  ⚠ premier échec « ${kind} » — ${because}`);
+    }
+  }
+
   async function persist(batch: Entry[]) {
     for (const entry of batch) {
       const job = jobs.find((j) => j.customId === entry.custom_id);
       if (!job) continue;
       if (entry.result.type !== "succeeded" || !entry.result.message) {
-        failures.push({ id: entry.custom_id, because: `batch:${entry.result.type}` });
+        note(entry.custom_id, `batch:${entry.result.type}`);
         continue;
       }
       const message = entry.result.message;
@@ -413,11 +431,31 @@ async function main() {
       try {
         parsed = JSON.parse(raw.trim().replace(/^```(?:json)?\n?|```$/g, ""));
       } catch {
-        failures.push({ id: entry.custom_id, because: "schema: not JSON" });
+        note(entry.custom_id, "schema: not JSON");
         continue;
       }
+      /*
+       * ── ⚠ UNE CARTE PRATICIENNE N'A PAS DE PAYLOAD, ET C'EST MESURÉ ────
+       *
+       * Le 2026-09-23, un remplissage a écrit 224 sujets pour 260 appels. Les
+       * 36 manquants étaient TOUS des `practitioner_card`, refusés ici sur
+       * « a required field is missing », et personne ne l'a vu : les échecs
+       * étaient comptés pour la fin, et la fin n'est jamais venue.
+       *
+       * La cause était une moitié de correction. On avait cessé de DEMANDER
+       * au modèle le contenu d'une carte praticienne — ses lignes viennent du
+       * brief à la composition — sans cesser de l'EXIGER de sa réponse. On
+       * payait donc des lignes qu'on refusait ensuite d'écrire.
+       *
+       * Le sujet reste légitime : un titre et une accroche qui ne nomment
+       * personne. Le corps est vide, et la banque le refuse s'il ne l'est pas
+       * (`content_topic_bank_payload_valid`).
+       */
+      const bankBody = bankPayloadFor(job.archetype);
+      if (bankBody) parsed.payload = bankBody;
+
       if (!parsed.title || !parsed.hook || !parsed.payload || !parsed.caption_seed || !parsed.rationale_template) {
-        failures.push({ id: entry.custom_id, because: "schema: a required field is missing" });
+        note(entry.custom_id, "schema: a required field is missing");
         continue;
       }
 
@@ -468,10 +506,7 @@ async function main() {
         }
       }
       if (over.length > 0) {
-        failures.push({
-          id: entry.custom_id,
-          because: `word budget: ${over.map((e) => `${e.path} said ${e.said}, allowed ${e.allowed}`).join("; ")}`,
-        });
+        note(entry.custom_id, `word budget: ${over.map((e) => `${e.path} said ${e.said}, allowed ${e.allowed}`).join("; ")}`);
         continue;
       }
 
@@ -484,7 +519,7 @@ async function main() {
       /* La relance a pu rendre un objet incomplet : on revérifie avant d'écrire. */
       const { title, hook, caption_seed: captionSeed, rationale_template: rationaleTemplate, payload } = parsed;
       if (!title || !hook || !captionSeed || !rationaleTemplate || !payload) {
-        failures.push({ id: entry.custom_id, because: "schema: a required field is missing after the retry" });
+        note(entry.custom_id, "schema: a required field is missing after the retry");
         continue;
       }
 
@@ -504,7 +539,7 @@ async function main() {
         ethics_reviewed_at: clean ? new Date().toISOString() : null,
       });
       if (error) {
-        failures.push({ id: entry.custom_id, because: `db: ${error.message.slice(0, 120)}` });
+        note(entry.custom_id, `db: ${error.message.slice(0, 120)}`);
         continue;
       }
       written += 1;

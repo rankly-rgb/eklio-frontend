@@ -98,3 +98,27 @@ export function identityAllowList(facts: PractitionerFacts): string[] {
     .filter((v): v is string => Boolean(v && v.trim()))
     .map((v) => v.trim());
 }
+
+/**
+ * Le corps qu'un sujet de banque porte pour cet archétype, ou `null` quand
+ * c'est au modèle de l'écrire.
+ *
+ * ⚠ MESURÉ : 36 APPELS PAYÉS SUR 260 ONT ÉTÉ JETÉS POUR CETTE RÈGLE MANQUANTE.
+ *
+ * Le 2026-09-23, un remplissage de banque a écrit 224 sujets pour 260 appels.
+ * Les 36 manquants étaient TOUS des `practitioner_card` : on avait cessé de
+ * DEMANDER au modèle le contenu d'une carte praticienne sans cesser de
+ * l'EXIGER de sa réponse. On payait des lignes qu'on refusait d'écrire.
+ *
+ * Une banque qui détient des lignes de praticienne est aussi une banque d'où
+ * une identité peut ressortir : les 39 sujets déjà en place portaient des
+ * phrases écrites par un modèle pour une praticienne qui n'existe pas. Le
+ * corps est donc VIDE, et `content_topic_bank_payload_valid` le vérifie en
+ * base.
+ */
+export function bankPayloadFor(archetypeKey: string): Record<string, never> | null {
+  return archetypeKey === PRACTITIONER_ARCHETYPE ? {} : null;
+}
+
+/** L'archétype dont le corps vient du brief, jamais d'un modèle. */
+export const PRACTITIONER_ARCHETYPE = "practitioner_card";

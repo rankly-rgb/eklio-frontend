@@ -539,6 +539,60 @@ tables ne sont pas en base, `CONTENT_GENERATION_ARMED` reste à `false`, parce
 qu'une génération mensuelle interrompue serait **intégralement reperdue et
 repayée**.
 
+## F18 — ⚠ LA BANQUE PAYAIT DES LIGNES QU'ELLE REFUSAIT D'ÉCRIRE
+
+**Mesuré le 2026-09-23 : 224 sujets écrits pour 260 appels payés.** Les 36
+manquants étaient **tous** des `practitioner_card`, tous refusés sur
+« schema: a required field is missing ».
+
+La cause est **une moitié de correction**. En interdisant au modèle d'inventer
+une identité (F16), on a cessé de lui DEMANDER le contenu d'une carte
+praticienne — ses lignes viennent du brief à la composition. On n'a pas cessé
+de l'EXIGER de sa réponse : le validateur du script et la contrainte
+`content_topics_payload_check` réclamaient toujours un `lines` de deux à
+quatre phrases. On payait donc des lignes pour les jeter.
+
+⚠ **Et rien ne le disait.** Le script comptait ses échecs pour le bilan final,
+et ce remplissage-là a été interrompu avant sa fin : seize minutes de refus en
+silence. Le premier échec de chaque MOTIF s'imprime désormais dès qu'il
+arrive.
+
+⚠ **Le défaut n'était pas que comptable.** Les 39 sujets déjà en banque
+portaient des phrases écrites par un modèle pour une praticienne qui n'existe
+pas — la matière même dont « Rowan Mercier Therapy » était faite. Une banque
+qui détient des lignes de praticienne est une banque d'où une identité peut
+ressortir. Elles ont été **vidées**, et
+`content_topic_bank_payload_valid` exige désormais `{}`.
+
+La contrainte de `content_items` **ne bouge pas** : une carte publiée sans ses
+lignes est une carte vide. Les deux tables partageaient un validateur et
+n'ont pas la même exigence ; elles en ont maintenant deux.
+
+*Migration : `20260923110000_the_bank_never_holds_a_practitioners_lines.sql`,
+rejouée en local, jamais appliquée à la production.*
+
+## F19 — ⚠ CHAQUE ESSAI REFUSÉ RENDAIT LE SUIVANT PLUS PAUVRE
+
+Trouvé le 2026-09-23 en lisant `20-month.ts` avant de compter les essais.
+
+Un mois refusé sortait en erreur — c'est voulu, « un mois qui échoue n'est
+jamais livré ». Mais le `throw` était placé **avant** le bloc qui rend à la
+banque les sujets sur-générés non publiés et solde leurs crédits. Un essai
+refusé gardait donc pour **quatre-vingt-dix jours** une vingtaine de sujets
+qu'il n'avait pas publiés, et ne soldait aucune de leurs réservations.
+
+⚠ **C'est F13 vu de l'intérieur.** On cherchait la cause de l'assèchement dans
+le tirage — un mois de 23 posts, puis un de 16 — et elle était dans **l'ordre
+de deux blocs**. Plus on réessayait, moins il restait pour réessayer.
+
+Aucune suite ne pouvait le voir : les deux blocs existaient, chacun était
+juste, et le script se terminait sur un `throw` attendu. Le test lit donc
+**l'ordre**, qui était la seule chose fausse
+(`scripts/local-render/__tests__/refused-gives-back.test.ts`).
+
+⚠ **La restitution ne dépend pas du verdict** : ce qui n'a pas été publié n'a
+rien coûté à la praticienne, qu'on livre ou qu'on refuse.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel

@@ -901,25 +901,22 @@ function selectDeliverable<
   }
 
   /*
-   * ⚠ UN MOIS QUI ÉCHOUE N'EST JAMAIS LIVRÉ. S'il reste un constat après la
-   * correction, le mois reste en `proposed` et le script SORT EN ERREUR : la
-   * preuve doit s'arrêter là plutôt que de produire une planche qu'on
-   * commenterait comme si elle était bonne.
+   * ── ⚠ ON REND AVANT DE REFUSER, ET L'ORDRE EST LE DÉFAUT ──────────────
+   *
+   * Ce bloc était APRÈS le refus, donc après un `throw`. Un mois refusé
+   * gardait alors pour quatre-vingt-dix jours les sujets sur-générés qu'il
+   * n'avait pas publiés — environ vingt-quatre par essai — et leurs crédits
+   * n'étaient jamais soldés.
+   *
+   * ⚠ CHAQUE ESSAI REFUSÉ RENDAIT DONC LE SUIVANT PLUS PAUVRE. C'est le
+   * mécanisme de F13 vu de l'intérieur : la banque s'asséchait à mesure qu'on
+   * réessayait, et le mois d'après sortait plus court — 23 posts, puis 16 —
+   * sans que rien ne dise pourquoi. On cherchait le défaut dans le tirage ; il
+   * était dans l'ordre de deux blocs.
+   *
+   * La restitution ne dépend pas du verdict : ce qui n'a pas été publié n'a
+   * rien coûté à la praticienne, qu'on livre ou qu'on refuse.
    */
-  if (selection.remaining.length > 0) {
-    console.log(JSON.stringify({
-      step: "month", refused: true, monthId: monthRow.id,
-      // ⚠ La taille du banc est dans le rapport : sans elle, « aucun post
-      // échangé » et « aucun remplaçant disponible » se ressemblent, et on
-      // cherche le défaut dans le sélecteur au lieu de la sur-génération.
-      prepared: readyPosts.length, wanted: WANTED, bench: readyPosts.length - WANTED,
-      findings: selection.remaining, dropped: selection.dropped,
-    }, null, 2));
-    throw new Error(
-      `le mois ne passe pas ses contrôles : ${selection.remaining.map((f: Finding) => f.check).join(", ")}`
-    );
-  }
-
   /*
    * ── LES CANDIDATS NON RETENUS ─────────────────────────────────────────
    *
@@ -945,6 +942,26 @@ function selectDeliverable<
   }
   for (const candidate of discarded) {
     await settle(candidate.reservationId, useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage), false);
+  }
+
+  /*
+   * ⚠ UN MOIS QUI ÉCHOUE N'EST JAMAIS LIVRÉ. S'il reste un constat après la
+   * correction, le mois reste en `proposed` et le script SORT EN ERREUR : la
+   * preuve doit s'arrêter là plutôt que de produire une planche qu'on
+   * commenterait comme si elle était bonne.
+   */
+  if (selection.remaining.length > 0) {
+    console.log(JSON.stringify({
+      step: "month", refused: true, monthId: monthRow.id,
+      // ⚠ La taille du banc est dans le rapport : sans elle, « aucun post
+      // échangé » et « aucun remplaçant disponible » se ressemblent, et on
+      // cherche le défaut dans le sélecteur au lieu de la sur-génération.
+      prepared: readyPosts.length, wanted: WANTED, bench: readyPosts.length - WANTED,
+      findings: selection.remaining, dropped: selection.dropped,
+    }, null, 2));
+    throw new Error(
+      `le mois ne passe pas ses contrôles : ${selection.remaining.map((f: Finding) => f.check).join(", ")}`
+    );
   }
 
   const batchCost = useBatch ? batchCostUsd([usage]) : 0;
