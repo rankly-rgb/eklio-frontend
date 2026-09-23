@@ -511,10 +511,33 @@ Il faut donc une **table durable** avant d'armer la génération mensuelle :
 4. une purge : un lot Anthropic reste lisible 29 jours, donc une ligne plus
    vieille que ça n'est plus rattachable et doit être close explicitement.
 
-⚠ **Rien de tout cela n'existe en base aujourd'hui.** `insight_runs` est la
-seule table de ce genre, et elle ne couvre pas la génération de contenu. Tant
-qu'elle n'existe pas, une génération mensuelle interrompue en production est
-**intégralement reperdue et repayée**.
+### La migration est écrite, et elle n'est pas appliquée
+
+`eklio-backend/supabase/migrations/20260923100000_a_paid_batch_survives_a_crash.sql`
+porte les deux tables, leur `enable row level security`, leurs policies et le
+`revoke all` — **dans le même fichier**, parce qu'une table créée dans une
+migration et protégée dans la suivante est ouverte entre les deux. Elle porte
+aussi `abandon_stale_generation_runs()` pour le point 4.
+
+Elle a été **rejouée sur la base locale de vérification, jamais sur la
+production** : elle part avec les autres à l'étape 3 de la mise en production.
+
+⚠ **Les deux verrous, et pas un seul.** `enable row level security` plus une
+policy qui refuse laisse le GRANT de table en place : `has_table_privilege`
+répondrait encore vrai. Le dépôt révoque explicitement sur `stripe_events`,
+`banned_phrases`, `comp_grants` et `on_demand_writes` pour cette raison, et
+seul le second verrou se lit dans un audit de privilèges. Ces tables portent
+des réponses de modèle non encore contrôlées et l'état d'un crédit : une
+cliente qui pourrait y écrire pourrait marquer `settled` sur un sujet qu'elle
+n'a pas payé.
+
+⚠ **Rien de tout cela n'existe EN BASE aujourd'hui**, et la migration écrite
+n'y change rien tant qu'elle n'est pas appliquée. `insight_runs` est la seule
+table de ce genre, et elle ne couvre pas la génération de contenu. C'est
+pourquoi **l'étape 7b de la mise en production est bloquante** : tant que ces
+tables ne sont pas en base, `CONTENT_GENERATION_ARMED` reste à `false`, parce
+qu'une génération mensuelle interrompue serait **intégralement reperdue et
+repayée**.
 
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
@@ -538,7 +561,7 @@ facturation.
 | 5 | **Variables d'environnement.** Voir le tableau ci-dessous. | agent pour les non-secrètes, **humain** pour les secrets |
 | 6 | **Créer `main`** depuis la branche validée. ⚠ Aujourd'hui `main` **n'existe pas** : les seules branches distantes sont `claude/gallant-lamport-mt20i0` et `claude/great-brahmagupta-za7qmx`. La branche source est celle que Naima a validée, nommée explicitement dans la demande — jamais « la dernière ». | **humain** décide laquelle ; agent exécute |
 | 7 | **Repointer Vercel** sur `main`, vérifier que les quatre `crons` de `vercel.json` (`anon-briefs` 05:00, `nudges` 14:00, `purge-deleted-kits` 06:00, `purge-events` 04:00) sont enregistrés et que `CRON_SECRET` les protège. | agent (jeton Vercel) |
-| 7b | **Créer les tables de reprise** (F17) avant d'armer la génération mensuelle : sans elles, tout lot interrompu est repayé en entier. | agent (migration) |
+| 7b | ⚠ **BLOQUANT — créer `content_generation_runs` et `content_generation_results` (F17) AVANT d'armer la génération mensuelle.** Ce n'est pas une amélioration à planifier : **tant que ces deux tables n'existent pas, une génération interrompue est repayée EN ENTIER**, et un lot Batch est facturé à la soumission, donc avant qu'une seule réponse existe. Vercel n'a pas de disque qui survive à l'invocation : le journal fichier (`.eklio-journal/`) est le chemin LOCAL, ces tables sont le chemin SERVEUR, et il n'y a pas de troisième chemin. ⚠ **`CONTENT_GENERATION_ARMED` reste à `false` tant que l'étape 1 du rejeu ne montre pas les deux tables présentes.** La migration est écrite et rejouée (`20260923100000_a_paid_batch_survives_a_crash.sql`, RLS et policies comprises) ; elle part avec les autres à l'étape 3. | agent (migration) |
 | 8 | **Générer la banque de production.** Voir F13 pour le dimensionnement : `N × 90 × 3` par segment, 0,00290 $ le sujet. ⚠ **Après** les migrations et **après** F12, sinon les segments n'existent pas. Un mois généré sur une banque à sec sort court sans que rien le signale. | agent (clé passée par commande) |
 | 9 | **Stripe.** ⚠ **Le test de bout en bout n'a jamais été confirmé** — ni en test, ni en production. Avant d'ouvrir : un paiement réel de bout en bout, un webhook reçu et vérifié, un remboursement, une annulation d'abonnement. | **humain** |
 | 10 | **Premier mois réel sur un compte témoin**, planche regardée par une personne avant d'ouvrir aux autres. ⚠ Le regard ne remplace pas la barrière et la barrière ne remplace pas le regard : le mois validé à l'œil le 2026-09-21 portait trois recopies de titre, un titre coupé et une identité inventée (F16) — tous invisibles à l'œil, tous refusés par `checkMonth`. | agent génère, **humain** regarde |
