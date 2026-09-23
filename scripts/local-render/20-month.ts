@@ -585,10 +585,40 @@ const SPARE_POOL = 6;
     const asked = candidates.filter(writtenByModel);
     for (const candidate of candidates) {
       if (writtenByModel(candidate)) continue;
+      candidate.reservationId = await reserve(`month ${MONTH}: ${candidate.topic.title.slice(0, 40)}`);
+      if (!candidate.reservationId) { funnel.quotaRefusals += 1; continue; }
       candidate.result = fromBrief(candidate);
       funnel.generated += 1;
       if (await settleCandidate(candidate)) usable.push(candidate);
     }
+
+    /*
+     * ── ⚠ LE CHEMIN BATCH NE RÉSERVAIT AUCUN CRÉDIT ──────────────────────
+     *
+     * Mesuré le 2026-09-23 : après dix mois générés dans la session,
+     * `credit_ledger` n'avait pas gagné UNE ligne. `reserve` n'était appelé
+     * que dans la branche synchrone. `quotaRefusals` valait 0 partout, non
+     * parce que le quota tenait, mais parce que personne ne le consultait.
+     *
+     * ⚠ ET C'EST LE CHEMIN DE PRODUCTION. Le synchrone ne sert qu'au PREMIER
+     * mois d'un compte — « une nouvelle abonnée n'attend pas trente minutes ».
+     * Tous les mois suivants passent par le lot. Le quota de trente crédits
+     * `post_generation` n'était donc appliqué qu'une fois par praticienne,
+     * jamais ensuite.
+     *
+     * La réservation se fait ICI, avant `batches.create` : le lot est facturé
+     * à la soumission, donc réserver après serait réserver pour une dépense
+     * déjà faite. Un refus de quota retire le candidat du lot plutôt que
+     * d'arrêter le mois — le lot part avec ce qui est payé.
+     */
+    const withinQuota: Candidate[] = [];
+    for (const candidate of asked) {
+      candidate.reservationId = await reserve(`month ${MONTH}: ${candidate.topic.title.slice(0, 40)}`);
+      if (!candidate.reservationId) { funnel.quotaRefusals += 1; continue; }
+      withinQuota.push(candidate);
+    }
+    asked.length = 0;
+    asked.push(...withinQuota);
 
     const requests = asked.map(asRequest);
     const built = buildBatchRequests(brand, requests);

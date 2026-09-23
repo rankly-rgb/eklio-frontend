@@ -870,6 +870,42 @@ coûté 0,72 $ et **300 sujets**, soit plus que ce qu'un remplissage à 0,42 $
 produit. C'est la banque qu'il faut dimensionner sur le nombre d'essais, pas le
 budget.
 
+## F25 — ⚠ LE CHEMIN BATCH NE RÉSERVAIT AUCUN CRÉDIT
+
+**Mesuré le 2026-09-23 en faisant les comptes de la session** : dix mois
+générés, trois cents posts écrits, et `credit_ledger` n'avait pas gagné **une
+seule ligne**.
+
+`reserve()` n'était appelé que dans la branche **synchrone**. La branche Batch
+composait, écrivait et livrait sans jamais consulter `credit_quotas`.
+`quotaRefusals` valait 0 dans les dix rapports — non parce que le quota tenait,
+mais parce que personne ne le consultait.
+
+⚠ **ET C'EST LE CHEMIN DE PRODUCTION.** Le synchrone ne sert qu'au **premier**
+mois d'un compte — « une nouvelle abonnée n'attend pas trente minutes ». Tous
+les mois suivants passent par le lot. Le quota de trente crédits
+`post_generation` n'était donc appliqué qu'**une fois par praticienne, à
+l'inscription, et jamais ensuite**.
+
+La réservation se fait avant `batches.create` : un lot est facturé à la
+soumission, donc réserver après serait réserver pour une dépense déjà faite. Un
+refus de quota **retire le candidat du lot** plutôt que d'arrêter le mois — on
+ne paie pas un appel pour un post qu'on n'a pas le droit de livrer.
+
+⚠ **Même famille que F18, F19, F21 et F23** : la grandeur existait, elle était
+juste, et elle n'était branchée que d'un côté. C'est le motif le plus fréquent
+de la session, et aucune suite ne le voyait, parce que chaque moitié était
+correcte prise seule.
+
+**À vérifier avant d'ouvrir la facturation** : que `credit_ledger` gagne trente
+lignes par mois généré, sur le chemin Batch comme sur le synchrone. La requête
+est d'une ligne, et elle n'avait jamais été posée.
+
+```sql
+select date_trunc('month', created_at) as mois, count(*)
+  from public.credit_ledger group by 1 order by 1 desc;
+```
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
