@@ -1,0 +1,35 @@
+═══ ÉTAPE 0 — ⚠ LE CORRECTIF DE RESTAURATION, SEUL, AVANT TOUT ═══
+  ✓ 20260924150000 appliquée seule sur la base à 133 migrations
+═══ ÉTAPE 1 — vérifications bloquantes ═══
+  ✓ 155 migrations sur la branche source
+  ✓ les 155 se rejouent sur une base neuve
+═══ ÉTAPE 2 — sauvegarde, et vérifier qu'elle se restaure ═══
+  ✓ sauvegarde prise (1.7M)
+  ✓ restauration sans erreur
+  ✓ section_types : 11 lignes de part et d'autre
+  ✓ site_pages : 4 lignes de part et d'autre
+  ✓ modalities :  lignes de part et d'autre
+  ✓ restauration vérifiée : 69 tables de part et d'autre
+═══ ÉTAPE 3 — appliquer les 21 nouvelles, dans l'ordre, arrêt au premier échec ═══
+  ✓ les 21 appliquées, dans l'ordre
+═══ ÉTAPE 4 — F12 : la matrice refuse tout tant qu'elle est vide ═══
+  ✓ les 240 lignes sont à NULL sur une base neuve
+  ✓ aucun État vendable : c'est la bonne réponse, pas une panne
+═══ ÉTAPE 7b — les deux tables de F17 existent ═══
+  ✓ content_generation_runs et content_generation_results
+═══ ÉTAPE 8 — la banque : les fonctions de tirage existent et répondent ═══
+  ✓ next_topic_for_kit
+  ✓ drawable_topics_for_kit
+  ✓ drawable_count_for_kit
+  ✓ release_stale_topic_assignments
+  ✓ assign_topic_to_kit
+  ✓ banque vide sur une base neuve — le remplissage est l'étape 8
+═══ ÉTAPE 8b — le crédit : le point d'étranglement et la vue d'audit ═══
+  ✓ reserve_credit
+  ✓ settle_credit
+  ✓ credit_month_audit
+  ✓ l'invariant un-seul-dénouement-par-réservation
+═══ ÉTAPE 8d — le juge : rien à vérifier en base, mais la clé doit être lue par la ROUTE ═══
+  ✓ (hors base — voir docs/production/B2-les-secrets.md)
+
+── 0 échec(s) sur les étapes jouables ──

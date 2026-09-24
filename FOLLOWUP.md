@@ -1702,6 +1702,104 @@ something to fix faster ». La forme est détectable — une liste de symptômes
 une attribution causale — mais le geste juste n'est pas de refuser : c'est
 d'**exiger la ligne d'orientation** dans le gabarit, comme en B.
 
+## F36 — LA RÉPÉTITION À BLANC : JOUABLE EN 37 SECONDES, ET ELLE A TROUVÉ QUE LA SAUVEGARDE NE SE RESTAURE PAS
+
+**La séquence de mise en production n'avait jamais été jouée.** Elle l'a été le
+2026-09-24 contre une copie locale de la base de production, reconstituée depuis
+les **133 migrations que `main` porte**, sans aucun accès à la production réelle.
+
+`docs/production/C-repetition-a-blanc.sh` la rejoue ; son résultat est dans
+`C-repetition-resultat.txt`.
+
+### ⚠ CE QU'ELLE A TROUVÉ : L'ÉTAPE 2 ÉCHOUE SUR LA PRODUCTION ACTUELLE
+
+L'étape 2 dit « sauvegarde de la base de production, et vérification qu'elle se
+restaure — une sauvegarde non restaurée n'est pas une sauvegarde ».
+
+```
+pg_restore: error: COPY failed for table "section_types":
+  violates check constraint "section_types_allowed_pages_check"
+```
+
+Mesuré sur la base réelle : `section_types` porte **onze** lignes et s'en
+restaure **zéro**. ⚠ Et la base restaurée paraît intacte — 89 tables, 301
+fonctions, 210 policies, identiques de part et d'autre. **Seul le compte de
+lignes d'une table de référence diffère, et personne ne le comptait.**
+
+**Le mécanisme** : une `CHECK` qui lit une AUTRE table.
+`section_types_allowed_pages_check` appelle `site_spec_page_keys()`, qui lit
+`site_pages`. Une `CHECK` est immédiate par construction — elle s'évalue ligne à
+ligne pendant le `COPY`, avant que la table qu'elle consulte soit chargée.
+
+⚠ **Et aucune invocation de `pg_restore` ne sauve ça** :
+
+| mode | résultat |
+|---|---|
+| par défaut | `section_types` restaure **0 sur 11**, en silence |
+| `--single-transaction` | la restauration **entière avorte**, base inutilisable |
+
+**Corrigé** (`20260924150000`) : le non-vide reste en `CHECK` — intra-ligne,
+donc restaurable — et l'appartenance aux pages devient un `CONSTRAINT TRIGGER
+DEFERRABLE INITIALLY DEFERRED`, vérifié au COMMIT. Mesuré après correction, sur
+la base réelle, dans les deux modes : **zéro erreur, 11 sur 11**.
+
+⚠ **ET ÇA CHANGE L'ORDRE DE LA LISTE.** Le correctif doit être appliqué **seul,
+AVANT la sauvegarde** — sinon la sauvegarde prise à l'étape 2 est celle de la
+production telle qu'elle est, et elle ne se restaure pas. Prouvé dans les deux
+sens :
+
+| | erreurs | `section_types` restauré |
+|---|---|---|
+| sauvegarde de la production telle quelle | 1 | **0 sur 11** |
+| correctif seul d'abord, puis sauvegarde | **0** | **11 sur 11** |
+
+⚠ **Et `content_items_payload_valid` est de la même classe** — elle appelle
+`content_topic_payload_valid`, qui lit `content_archetypes`. Elle survit
+aujourd'hui **par chance d'ordre alphabétique** : `content_archetypes` se copie
+avant `content_items`. Renommer l'une des deux tables suffirait à perdre tous
+les posts publiés d'une sauvegarde.
+
+### Ce qui a été joué, et ce qui ne peut pas l'être
+
+| étape | jouée ? | résultat |
+|---|---|---|
+| 0 — correctif de restauration, seul | ✅ | appliqué sur la base à 133 migrations |
+| 1 — vérifications bloquantes | ✅ | 155 migrations se rejouent sur une base neuve, 0 échec |
+| 2 — sauvegarde + restauration vérifiée | ✅ | 0 erreur, comptes de lignes identiques, 69 tables de part et d'autre |
+| 3 — appliquer les 22 nouvelles, dans l'ordre | ✅ | les 22 appliquées, arrêt au premier échec jamais atteint |
+| 4 — F12 | ✅ | 240 lignes à NULL, aucun État vendable — la bonne réponse, pas une panne |
+| 5 — variables d'environnement | ⚠ **non jouable** | Vercel. Préparée dans `docs/production/B2-les-secrets.md` |
+| 6 — la branche source | ⚠ **analysée, non jouée** | l'analyse est faite et prouvée (`B4`) ; le `push` est l'acte |
+| 7 — repointer Vercel, six `crons` | ⚠ **non jouable** | Vercel |
+| 7b — les deux tables de F17 | ✅ | présentes |
+| 8 — banque | ✅ partiellement | les cinq fonctions de tirage répondent ; le remplissage coûte de l'argent et n'est pas répété |
+| 8b — crédit sur le chemin produit | ✅ partiellement | `reserve_credit`, `settle_credit`, `credit_month_audit` et l'invariant sont là. ⚠ Que `runMonthForKit` les APPELLE reste à faire (étape bloquante) |
+| 8c — coût du kit au livre | ⚠ non joué | demande un appel payant |
+| 8d — clé du juge | ⚠ **non jouable** | hors base |
+| 9 — Stripe | ⚠ **non jouable** | demande des clés de test Stripe, absentes de cet environnement. Liste cochable dans `B5-stripe.md` |
+| 10 — coup d'œil sur la planche | ✅ | fait, deux fois, par notation indépendante (F34) |
+
+**Durée de la partie jouable : 37 secondes.** Ce qui prendra du temps le jour
+venu n'est aucune de ces étapes : c'est F12 (vingt minutes de lecture), Stripe
+(un achat réel et un remboursement) et le coup d'œil (quinze minutes).
+
+### ⚠ Ce qui reste incertain
+
+1. **Stripe n'a jamais été testé, et ne peut pas l'être ici.** C'est la seule
+   étape dont on ne sait rien du tout — pas « à revérifier », « jamais fait ».
+2. **Les migrations ne sont pas idempotentes.** Rejouer `20260921090000` sur une
+   base qui la porte déjà échoue — sur une contrainte ajoutée trois jours plus
+   tard par `20260924120000`. Le rejeu complet dans l'ordre fonctionne (155, 0
+   échec) ; la reprise d'une séquence interrompue se fait **à partir de la
+   migration qui a échoué**, jamais depuis le début.
+3. **La copie locale n'a pas les données de production.** Elle a le schéma et
+   les semences. Une contrainte que seules des données réelles violeraient ne
+   peut pas se voir ici — et c'est exactement ce qui vient d'être trouvé sur
+   `section_types`, avec onze lignes de semence.
+4. **`runMonthForKit` ne réserve toujours aucun crédit** (étape 8b). La
+   répétition montre que la plomberie SQL est là ; elle ne montre pas que
+   quelqu'un frappe à la porte.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
@@ -1718,7 +1816,8 @@ facturation.
 | # | étape | qui |
 |---|---|---|
 | 1 | **Vérifications bloquantes avant toute migration.** `npm run verify` vert sur la branche source ; `scripts/local-verify.sh` rejoue les 149 migrations sur une base neuve ; le rapport de dérive est lu, pas seulement lancé. | agent |
-| 2 | **Sauvegarde de la base de production**, et vérification qu'elle se restaure — une sauvegarde non restaurée n'est pas une sauvegarde. | agent (jeton Supabase) |
+| 1b | ⚠ **APPLIQUER `20260924150000` SEULE, AVANT LA SAUVEGARDE (F36).** Sans elle, la sauvegarde de l'étape 2 restaure `section_types` **vide** — onze lignes perdues en silence, dans une base qui paraît intacte. Prouvé dans les deux sens par la répétition à blanc. | agent (jeton Supabase) |
+| 2 | **Sauvegarde de la base de production**, et vérification qu'elle se restaure — une sauvegarde non restaurée n'est pas une sauvegarde. ⚠ **La vérification compare les COMPTES DE LIGNES**, pas seulement le nombre de tables : c'est le seul endroit où la perte se voyait. | agent (jeton Supabase) |
 | 3 | **Appliquer les 149 migrations** dans l'ordre, transaction par transaction, en s'arrêtant à la première erreur. | agent (jeton Supabase) |
 | 4 | **F12 — `license_type_states.verified_at`.** Sur une base neuve, les 240 lignes de la matrice sont à NULL et `project_state_is_sellable` refuse TOUT : `/api/briefs/[id]/generate` répond `409 We're not open in CA yet` dans les cinquante États. ⚠ **Ce n'est pas du code, c'est un acte** : quelqu'un lit le site du board de chaque État et pose la date. Un agent qui remplirait `verified_by` fabriquerait l'apparence d'une vérification professionnelle qui n'a pas eu lieu. | **humain** |
 | 5 | **Variables d'environnement.** Voir le tableau ci-dessous. | agent pour les non-secrètes, **humain** pour les secrets |
