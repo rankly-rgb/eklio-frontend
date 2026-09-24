@@ -911,11 +911,49 @@ const SPARE_POOL = 6;
       console.error(`▸ batch ${batch.id} · ${requests.length} candidates`);
     }
 
+    /*
+     * ── ⚠ L'ATTENTE N'AVAIT AUCUNE BORNE ─────────────────────────────────
+     *
+     * `while (status !== "ended")` toutes les quinze secondes, sans fin. Un lot
+     * qui n'aboutit jamais — compte suspendu, lot expiré côté fournisseur,
+     * identifiant rejoué qui n'existe plus — laissait le run tourner
+     * indéfiniment sans qu'aucune ligne ne le dise. Mesuré six fois : un lot
+     * met vingt-cinq à trente minutes ; quatre-vingt-dix est donc trois fois
+     * la durée observée, et ce qui dépasse n'est plus une attente.
+     *
+     * ⚠ ET LE JOURNAL PORTE L'IDENTIFIANT AVEC SES SUJETS, donc abandonner
+     * l'attente ne perd pas le lot : une reprise le relit (F23).
+     */
+    const BATCH_DEADLINE_MS = 90 * 60 * 1000;
+    const waitingSince = Date.now();
     let status = batch;
     while (status.processing_status !== "ended") {
+      if (Date.now() - waitingSince > BATCH_DEADLINE_MS) {
+        throw new Error(
+          `le lot ${batch.id} n'a pas abouti en 90 minutes (${status.processing_status}, ` +
+          `${JSON.stringify(status.request_counts)}) — il est payé et le journal le garde : reprendre avec --batch-id`
+        );
+      }
       await new Promise((r) => setTimeout(r, 15000));
       status = await client.messages.batches.retrieve(batch.id);
       console.error(`  … ${status.processing_status} ${JSON.stringify(status.request_counts)}`);
+    }
+
+    /*
+     * ── ⚠ UN LOT QUI SE TERMINE TOUT EN ERREUR N'EST PAS UN LOT DE RÉPONSES ──
+     *
+     * Mesuré : `{"succeeded":0,"errored":72}`, trois fois de suite, parce que
+     * le solde du compte fournisseur était épuisé. Le run a continué comme si
+     * de rien n'était, a écrit « le mois ne passe pas ses contrôles :
+     * month.short », et c'est ce qu'on a lu d'abord — un mois court, donc un
+     * défaut de génération. Il n'y avait pas eu de génération.
+     */
+    const counts = status.request_counts;
+    if (counts.succeeded === 0 && counts.errored > 0) {
+      console.error(
+        `\n✗ Le lot ${batch.id} s'est terminé SANS AUCUNE RÉPONSE : ${counts.errored} requêtes en erreur.\n` +
+        `  Ce n'est pas un défaut d'écriture. Vérifier le compte fournisseur (solde, limites) avant de relire quoi que ce soit.\n`
+      );
     }
 
     /*
@@ -1099,8 +1137,32 @@ const SPARE_POOL = 6;
     if (result.ok) { funnel.conformantFirstCall += 1; return true; }
 
     if (result.reason !== "over_budget" || !result.budget?.length || result.payload === undefined) {
+      /*
+       * ── ⚠ « schema » ÉTAIT LE MOTIF PAR DÉFAUT, ET IL A MENTI 216 FOIS ──
+       *
+       * Mesuré le 2026-09-24 : trois lots de 72 candidats sont revenus avec
+       * `"errored": 72` — le solde du compte fournisseur était épuisé, et
+       * AUCUNE réponse n'a été écrite. Le rapport a dit « schema » pour les
+       * deux cent seize, c'est-à-dire « le modèle a rendu une forme invalide ».
+       *
+       * ⚠ IL N'AVAIT RIEN RENDU DU TOUT. Le motif envoyait chercher un défaut
+       * de consigne, de payload ou de validation — trois endroits où il n'y
+       * avait rien — alors qu'aucun appel n'avait eu lieu. Un « sinon, schema »
+       * range sous le seul motif qu'on sait nommer tout ce qu'on ne sait pas
+       * nommer, y compris ce qui n'est pas de notre côté.
+       *
+       * Les motifs que `collectCopy` rend pour une entrée de lot non aboutie
+       * sont ceux du fournisseur — `errored`, `expired`, `canceled` — et ils
+       * n'ont rien à voir avec une forme.
+       */
+      const PROVIDER = new Set(["errored", "expired", "canceled"]);
+      const kind =
+        result.reason === "over_budget" ? "word budget"
+        : PROVIDER.has(result.reason ?? "") ? "provider"
+        : result.reason === "not_json" ? "not JSON"
+        : "schema";
       failures.push({
-        topic: candidate.topic.title, kind: result.reason === "over_budget" ? "word budget" : "schema",
+        topic: candidate.topic.title, kind,
         because: result.reason ?? "unknown",
       });
       return false;

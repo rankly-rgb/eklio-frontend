@@ -1378,6 +1378,82 @@ mais ici l'original tenait entier.
 l'effet de chaque changement se mesure seul. Trois changements dans la même
 session, et une note qui monte ne dit pas lequel a payé.
 
+## F33 — ⚠ LA MESURE N'A PAS PU AVOIR LIEU : LE SOLDE DU COMPTE FOURNISSEUR S'EST ÉPUISÉ
+
+**Ce n'est pas un plafond de session, et il ne faut pas le lire comme tel.** Le
+plafond de la demande était de 8 $ ; la dépense réelle de la session est
+d'environ **1,5 $**. Ce qui s'est arrêté est la facturation du compte
+Anthropic :
+
+```
+invalid_request_error: Your credit balance is too low to access the Anthropic API.
+```
+
+### Ce qui a tourné, et ce qui n'a pas pu
+
+| étape | état |
+|---|---|
+| remplissage de banque (490 sujets visés) | **250 écrits** (~0,72 $) puis coupure ; banque à 2 187 sujets, le plus bas archétype à 19 tirables |
+| bras 1a — Sonnet seul | lot soumis, **72 requêtes en erreur, 0 réponse** |
+| bras 1b — Sonnet + exemples | lot soumis, **72 en erreur, 0 réponse** |
+| bras 1c — Sonnet + exemples + révision | lot soumis, **72 en erreur, 0 réponse** |
+| mesure finale, dix mois | **pas lancée** — aucun appel ne passe |
+| notation indépendante | **pas faite** — il n'y a pas de planche à noter |
+
+⚠ **L'effet séparé de 1a, 1b et 1c n'est donc PAS mesuré.** Les trois
+commutateurs existent, ils sont testés, et le protocole est écrit — un bras par
+changement, même banque, même mois, lots en parallèle. Il ne manque que des
+appels qui aboutissent. **Écrire un chiffre ici serait l'inventer.**
+
+### ⚠ Ce que l'incident a appris, et qui vaut la dépense
+
+Trois mensonges se sont enchaînés, et c'est le troisième qu'on lit en premier.
+
+**1. Le motif d'échec : « schema », deux cent seize fois.** Le harnais rangeait
+toute réponse non conforme sous « schema » — « le modèle a rendu une forme
+invalide ». Il n'avait rien rendu du tout. ⚠ Un `sinon, schema` range sous le
+seul motif qu'on sait nommer **tout ce qu'on ne sait pas nommer**, y compris ce
+qui n'est pas de notre côté. Les motifs du fournisseur — `errored`, `expired`,
+`canceled` — portent maintenant leur nom, et `not_json` aussi.
+
+**2. Le verdict du mois : `month.short`.** Un mois court, donc un défaut de
+génération. Il n'y avait pas eu de génération. Un lot qui se termine
+`{"succeeded":0,"errored":72}` est maintenant signalé **à la fin du lot**, avant
+qu'on relise quoi que ce soit : « ce n'est pas un défaut d'écriture ».
+
+**3. L'attente d'un lot n'avait aucune borne.** `while (status !== "ended")`
+toutes les quinze secondes, sans fin. Un lot qui n'aboutit jamais — compte
+suspendu, lot expiré, identifiant rejoué — laissait le run tourner
+indéfiniment, sans qu'aucune ligne ne le dise. Borne à quatre-vingt-dix minutes,
+soit trois fois la durée observée sur six mesures, et l'erreur rappelle que le
+lot est payé et que le journal le garde (F23).
+
+### ⚠ Et deux défauts trouvés en préparant la mesure, qui l'auraient faussée
+
+**La quota est mensuelle et vit dans le ledger, pas dans `content_months`.**
+Deux essais ont été lancés sur des comptes « neufs » — aucun mois en base — dont
+la quota d'octobre était déjà consommée par une session précédente. Ils ont
+écrit **deux posts sur trente** et ont été refusés sur `month.short`. Choisir un
+compte d'essai se fait sur le LEDGER, ou sur un mois neuf.
+
+**Un essai refusé ne rapportait ni son entonnoir ni ses échecs.** Le chemin
+LIVRÉ imprimait les deux ; le chemin refusé — le plus fréquent — ne les
+imprimait pas. Donc ni la conformité au premier appel, qui est le chiffre que
+cette session devait mesurer, ni la raison des vingt-huit posts manquants. Il a
+fallu lire la base pour comprendre. ⚠ **Un essai refusé qui ne dit pas son
+entonnoir n'apprend rien**, et les essais refusés sont trois sur quatre.
+
+### Ce qu'il reste à faire, dès que le compte est rechargé
+
+1. finir le remplissage (240 sujets restants, ~0,70 $ en Haiku) ;
+2. trois bras, un par changement, sur trois comptes au ledger vierge pour le
+   mois visé : `CONTENT_EXAMPLES=off CONTENT_REVISION=off`, puis
+   `CONTENT_REVISION=off`, puis rien ;
+3. la mesure finale : dix essais en parallèle, contrôles gelés, à comparer terme
+   à terme avec F28 — **un mois livré pour quatre essais, 0,45 $ par mois livré,
+   écriture 1,6** ;
+4. la planche, puis une notation indépendante sans tour de correction.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
