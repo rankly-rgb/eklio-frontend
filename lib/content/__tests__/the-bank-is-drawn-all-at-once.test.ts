@@ -205,6 +205,29 @@ describe("le harnais compte la banque avant de tirer", () => {
     expect(SOURCE).toContain("throw new Error(`le remplissage a échoué");
   });
 
+  /*
+   * ⚠ LA COMMANDE CONSTRUITE DOIT ÊTRE UNE COMMANDE QUI MARCHE. Au premier
+   * déclenchement réel, le garde-fou a bien vu le manque, bien lancé le
+   * remplissage — et le remplissage a répondu « Refusing without --confirm »,
+   * puis le mois est tombé. Une commande écrite dans une chaîne que personne
+   * n'a lancée est une commande qui ne marche pas.
+   */
+  it("la commande de remplissage emporte `--confirm`", () => {
+    const at = SOURCE.indexOf("const fill = [");
+    expect(SOURCE.slice(at, at + 260)).toContain("--sync --confirm");
+  });
+
+  /*
+   * ⚠ ET LA BANQUE ÉCRIT SUR HAIKU. Elle n'écrit pas de posts mais des
+   * graines, et le dimensionnement pour un segment simultané en demande des
+   * milliers. Ce n'est pas « mesuré, aucun gain » : c'est « pas mesuré ».
+   */
+  it("le remplissage n'écrit pas sur le modèle de rédaction", () => {
+    const bank = readFileSync("scripts/local-render/10-topic-bank.ts", "utf8");
+    expect(bank).toContain("const BANK_MODEL = MASS_COPY_MODEL_FALLBACK;");
+    expect(bank).not.toContain("massCopyModel()");
+  });
+
   it("`--no-fill` refuse en nommant ce qui manque et la commande", () => {
     expect(SOURCE).toContain('process.argv.includes("--no-fill")');
     expect(SOURCE).toContain("Remplir d'abord : ${fill}");

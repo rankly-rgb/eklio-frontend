@@ -37,7 +37,16 @@ describe("un essai refusé ne s'appauvrit pas lui-même", () => {
   });
 
   it("le refus sort bien en erreur — la restitution ne l'adoucit pas", () => {
-    const tail = SOURCE.slice(refusal, refusal + 1600);
+    /*
+     * ⚠ JUSQU'À LA FIN DU BLOC, PAS SUR 1600 CARACTÈRES. La fenêtre fixe a
+     * cédé le jour où `funnel` et `failures` sont entrés dans le rapport de
+     * refus : le `throw` a glissé hors de la fenêtre, et le test a annoncé
+     * qu'un refus ne levait plus. Il levait. Ce qui avait changé était la
+     * longueur d'un commentaire.
+     */
+    const end = SOURCE.indexOf("const batchCost =", refusal);
+    expect(end).toBeGreaterThan(refusal);
+    const tail = SOURCE.slice(refusal, end);
     expect(tail).toContain("throw new Error(");
     expect(tail).toContain("refused: true");
   });

@@ -21,12 +21,33 @@
  *     npx tsx scripts/local-render/10-topic-bank.ts --confirm
  */
 import Anthropic from "@anthropic-ai/sdk";
-import { archetypeInstruction, massCopyModel, batchCostUsd, syncCostUsd } from "../../lib/content/generate/copy-batch";
+import {
+  archetypeInstruction, MASS_COPY_MODEL_FALLBACK, batchCostUsd, syncCostUsd,
+} from "../../lib/content/generate/copy-batch";
+
+/*
+ * ── ⚠ LA BANQUE RESTE SUR HAIKU, ET C'EST UNE DÉCISION DE BUDGET ────────
+ *
+ * La rédaction est passée sur Sonnet parce que c'est elle que la notation
+ * mesure. La banque, elle, n'écrit pas de posts : elle écrit des GRAINES —
+ * un titre, un hameçon, une intention — que la rédaction relit ensuite. Rien
+ * n'a été mesuré sur ce point.
+ *
+ * ⚠ ET CE N'EST PAS « mesuré, aucun gain », C'EST « pas mesuré ». Le
+ * dimensionnement pour un segment simultané demande 2 405 sujets à cinq
+ * praticiennes ; les écrire deux fois, sur deux modèles, pour comparer leurs
+ * notes, coûterait à soi seul plus que le plafond de la session qui pose la
+ * question. La comparaison honnête se fait à banque égale, sur deux mois
+ * générés depuis deux banques, et elle reste à faire.
+ */
+const BANK_MODEL = MASS_COPY_MODEL_FALLBACK;
 import { budgetErrors } from "../../lib/compose/budget";
 import { checkEthics } from "../../lib/ethics/rules";
 import { bankPayloadFor } from "../../lib/content/practitioner";
 import { bankTarget, WINDOW_ROUNDS } from "../../lib/content/bank";
-import { admin, anthropicKeyOrDie, untypedTable, SESSION_CAP_USD } from "./lib";
+import {
+  admin, anthropicKeyOrDie, untypedTable, SESSION_CAP_USD, noteSpend, runSpendUsd,
+} from "./lib";
 
 /*
  * ── 26 PAR SEGMENT, DANS LES PROPORTIONS QUE LE MOIS VEUT ───────────────
@@ -280,7 +301,7 @@ async function main() {
         requests.push({
           custom_id: customId,
           params: {
-            model: massCopyModel(),
+            model: BANK_MODEL,
             max_tokens: 1200,
             system: prefix(archetype, rules),
             messages: [{
@@ -300,7 +321,7 @@ async function main() {
     return;
   }
   console.error(`▸ ${requests.length} ideas across ${segments.length} segments, ${PER_SEGMENT.length} archetypes`);
-  console.error(`▸ model ${massCopyModel()} · Batch API · prompt caching on the archetype prefix`);
+  console.error(`▸ model ${BANK_MODEL} · Batch API · prompt caching on the archetype prefix`);
 
   /*
    * ⚠ `--sync` EXISTE PARCE QUE LE LOT MET VINGT-CINQ MINUTES. Mesuré six
@@ -312,6 +333,39 @@ async function main() {
   /* ── Ce que le lot a rendu ─────────────────────────────────────────── */
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   const failures: Array<{ id: string; because: string }> = [];
+
+  /*
+   * ── ⚠ LE GESTIONNAIRE D'ERREUR LEVAIT LUI-MÊME ────────────────────────
+   *
+   * `note` était déclaré APRÈS la boucle synchrone qui l'appelle, et il lit
+   * `seenReasons` : une zone morte temporelle. Tant que rien n'échouait, rien
+   * ne s'en apercevait ; au premier sujet refusé — le vingt-et-unième d'un
+   * remplissage de 498 — le script est tombé sur « Cannot access
+   * 'seenReasons' before initialization », et les 477 appels restants n'ont
+   * pas eu lieu.
+   *
+   * ⚠ C'EST LE DÉFAUT QUE `note` EXISTE POUR RÉPARER, une couche plus bas.
+   * Il a été écrit parce que des réponses jetées l'avaient été EN SILENCE
+   * pendant seize minutes ; il a remplacé le silence par un plantage. Les deux
+   * fois, on perdait la même chose : ce que le lot avait déjà payé.
+   */
+  /*
+   * ⚠ UN ÉCHEC SE DIT À L'ÉCRAN, PAS AU BILAN. Les 36 cartes praticiennes
+   * jetées le 2026-09-23 l'ont été en silence pendant seize minutes, parce
+   * que `failures` n'était lu qu'après la dernière vidange — et le script a
+   * été interrompu avant. Le premier échec de chaque MOTIF est donc imprimé
+   * dès qu'il arrive ; les suivants restent comptés.
+   */
+  const seenReasons = new Set<string>();
+  function note(id: string, because: string) {
+    failures.push({ id, because });
+    const kind = `${id.split("-").slice(1, -2).join("-")}|${because.split(":")[0]}`;
+    if (!seenReasons.has(kind)) {
+      seenReasons.add(kind);
+      console.error(`  ⚠ premier échec « ${kind} » — ${because}`);
+    }
+  }
+
   let written = 0;
   let reviewed = 0;
   let retries = 0;
@@ -386,23 +440,6 @@ async function main() {
    * lui est passé et ne relit rien. Deux appels ne peuvent pas écrire deux
    * fois le même sujet, parce qu'un sujet n'est dans le tampon qu'une fois.
    */
-  /*
-   * ⚠ UN ÉCHEC SE DIT À L'ÉCRAN, PAS AU BILAN. Les 36 cartes praticiennes
-   * jetées le 2026-09-23 l'ont été en silence pendant seize minutes, parce
-   * que `failures` n'était lu qu'après la dernière vidange — et le script a
-   * été interrompu avant. Le premier échec de chaque MOTIF est donc imprimé
-   * dès qu'il arrive ; les suivants restent comptés.
-   */
-  const seenReasons = new Set<string>();
-  function note(id: string, because: string) {
-    failures.push({ id, because });
-    const kind = `${id.split("-").slice(1, -2).join("-")}|${because.split(":")[0]}`;
-    if (!seenReasons.has(kind)) {
-      seenReasons.add(kind);
-      console.error(`  ⚠ premier échec « ${kind} » — ${because}`);
-    }
-  }
-
   async function persist(batch: Entry[]) {
     for (const entry of batch) {
       const job = jobs.find((j) => j.customId === entry.custom_id);
@@ -467,7 +504,7 @@ async function main() {
       if (over.length > 0) {
         const reproach = over.map((e) => `- ${e.path}: you wrote ${e.said} words, at most ${e.allowed} are allowed`).join("\n");
         const retry = await client.messages.create({
-          model: massCopyModel(),
+          model: BANK_MODEL,
           max_tokens: 1200,
           system: prefix(job.archetype, rules ?? []),
           messages: [
@@ -543,6 +580,14 @@ async function main() {
   await persist(entries.splice(0, entries.length));
 
   const costUsd = (sync ? syncCostUsd(usage) : batchCostUsd([usage])) + syncCostUsd(retryUsage);
+  /*
+   * ⚠ LE PLAFOND EST LU ICI AUSSI. `capUsd` figurait au bas de ce rapport sans
+   * que rien ne l'applique — le même défaut que dans `20-month.ts`, dans le
+   * même paragraphe de sortie. Il arrête le run suivant, pas celui-ci : un
+   * remplissage déclenché par le garde-fou d'un mois ne doit pas pouvoir
+   * s'enchaîner sans que quelqu'un le décide.
+   */
+  noteSpend(costUsd, "remplissage de banque");
 
   console.log(JSON.stringify({
     step: "topic-bank",
@@ -557,6 +602,7 @@ async function main() {
     retryUsage,
     costUsd: Number(costUsd.toFixed(5)),
     capUsd: SESSION_CAP_USD,
+    spentThisRunUsd: Number(runSpendUsd().toFixed(5)),
   }, null, 2));
 }
 

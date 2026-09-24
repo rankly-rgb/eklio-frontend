@@ -154,8 +154,19 @@ async function guardTheBank(db: ReturnType<typeof admin>, kitId: string): Promis
   }
 
   const said = short.map((s) => `${s.archetype} ${s.drawable}/${s.needed}`).join(", ");
+  /*
+   * ⚠ `--confirm` EN FAIT PARTIE, ET SON ABSENCE A FAIT ÉCHOUER LE PREMIER
+   * DÉCLENCHEMENT RÉEL. Le garde-fou a bien vu le manque, bien lancé le
+   * remplissage — et le remplissage a répondu « Refusing without --confirm »,
+   * puis le mois est tombé. Une commande construite dans une chaîne que
+   * personne n'a lancée est une commande qui ne marche pas.
+   *
+   * ⚠ ET LE CONFIRMER ICI EST LÉGITIME : l'opératrice a déjà confirmé une
+   * dépense pour CE mois, et le remplissage en fait partie. `--no-fill` reste
+   * la porte de sortie pour qui ne veut pas de cette dépense-là.
+   */
   const fill = [
-    "npx tsx scripts/local-render/10-topic-bank.ts --sync",
+    "npx tsx scripts/local-render/10-topic-bank.ts --sync --confirm",
     `--practitioners ${BANK_DEMAND.practitioners}`,
     `--attempts ${BANK_DEMAND.attempts}`,
     `--rounds ${BANK_DEMAND.rounds}`,
@@ -1693,12 +1704,23 @@ function selectDeliverable<
    * chercher le défaut du mauvais côté. Ce constat-ci ne parle que de ce qui
    * s'est perdu ENTRE la sélection et la base.
    */
+  /*
+   * ⚠ ET IL NE FAUT PAS NOMMER L'INSERT QUAND C'EST LA QUOTA QUI A ROMPU.
+   * Mesuré : « 28 insert(s) ont échoué » sur un essai où AUCUN insert n'avait
+   * été tenté — la boucle s'était arrêtée au deuxième post, faute de crédit,
+   * et les vingt-huit suivants n'ont jamais existé. Le constat envoyait
+   * chercher un défaut de base de données là où il y avait un compte à sec,
+   * ce que le commentaire juste au-dessus interdit explicitement de faire.
+   */
+  const missing = selection.chosen.length - written;
+  const why = funnel.quotaRefusals > 0
+    ? `la quota s'est épuisée après ${written}`
+    : `${missing} insert(s) ont échoué`;
   const shortOnWrite: Finding[] = written < selection.chosen.length
     ? [{
         check: "month.short",
         detail:
-          `${written} posts écrits pour ${selection.chosen.length} retenus — ` +
-          `${selection.chosen.length - written} insert(s) ont échoué`,
+          `${written} posts écrits pour ${selection.chosen.length} retenus — ${why}`,
       }]
     : [];
   selection.remaining.push(...shortOnWrite);
@@ -1738,6 +1760,21 @@ function selectDeliverable<
         ).toFixed(5)
       ),
       revision: { on: revisionOn(), rewritten: revision.revisions.length, refused: revision.refused.length },
+      /*
+       * ── ⚠ UN ESSAI REFUSÉ QUI NE DIT PAS SON ENTONNOIR N'APPREND RIEN ──
+       *
+       * Mesuré en mesurant : deux essais ont été refusés sur `month.short`, et
+       * le rapport ne portait ni `funnel` ni `failures` — donc ni la conformité
+       * au premier appel, qui est LE chiffre que la session mesure, ni la
+       * raison des vingt-huit posts manquants. Il a fallu lire la base pour
+       * apprendre que la quota du mois était déjà consommée par une session
+       * précédente, sur un compte qui n'avait pourtant aucun `content_months`.
+       *
+       * ⚠ C'EST ENCORE UNE GRANDEUR JUSTE, CALCULÉE, ET NON PUBLIÉE. Le
+       * chemin livré imprimait les deux ; le chemin refusé, qui est le plus
+       * fréquent, ne les imprimait pas.
+       */
+      funnel, failures,
       findings: selection.remaining, dropped: selection.dropped,
     }, null, 2));
     throw new Error(
