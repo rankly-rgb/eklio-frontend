@@ -1492,6 +1492,131 @@ session interrompue laissent leurs assignations en place, et le stock
    écriture 1,6** ;
 4. la planche, puis une notation indépendante sans tour de correction.
 
+## F34 — LA MESURE : 1 MOIS LIVRÉ POUR 1,12 ESSAI, ET L'ÉCRITURE PASSE DE 1,6 À 2,2
+
+Contrôles gelés, banque remplie avant de commencer, dix essais lancés en
+parallèle sur dix comptes neufs, mois 2027-01. Même protocole que F28, terme à
+terme.
+
+| | F28 — référence (Haiku) | F34 — cette session (Sonnet) |
+|---|---|---|
+| essais réellement tournés | 8 | **9** |
+| mois livrés | 2 | **8** |
+| **essais par mois livré** | **4,00** | **1,12** |
+| coût par essai | 0,089 $ | 0,362 $ |
+| **coût par mois livré** | **0,45 $** | **0,407 $** |
+| conformité au premier appel | non mesurée | **48,2 %** (314 / 652) |
+
+⚠ **Le coût par essai a quadruplé et le coût par mois livré a BAISSÉ.** C'est
+tout le pari de la session : le taux de passage est passé de un sur quatre à
+huit sur neuf, et il absorbe le surcoût du modèle.
+
+| essai | verdict | conforme 1er appel | coût |
+|---|---|---|---|
+| corin.aldhelm | **LIVRÉ** | 36/72 | 0,3376 $ |
+| dara.okonkwo | **LIVRÉ** | 34/72 | 0,3553 $ |
+| devon.marrable | **LIVRÉ** | 36/72 | 0,3509 $ |
+| edda.linnet | **LIVRÉ** | 36/72 | 0,3589 $ |
+| esme.varga | refusé (`text.unfinished`, `text.echo`) | 32/72 | 0,3894 $ |
+| fable.ostrow | **LIVRÉ** | 34/72 | 0,4204 $ |
+| fionn.brackenridge | **LIVRÉ** | 34/74 | 0,3471 $ |
+| gil.amaranth | **LIVRÉ** | 36/72 | 0,3469 $ |
+| hana.torvald | **LIVRÉ** | 36/74 | 0,3496 $ |
+| ilya.sandoval | **n'a pas démarré** — garde-fou | — | 0 $ |
+
+⚠ **`ilya.sandoval` EST UN RÉSULTAT, PAS UNE PANNE.** Les neuf autres avaient
+pris tout le `single_statement` tirable ; le garde-fou de banque a refusé
+**avant toute dépense** en nommant l'archétype et la commande de remplissage.
+Dans F28, le même cas — `sable.ingram`, `tova.lindgren` — produisait deux mois
+qui ne tiraient aucun candidat, et rien ne le disait.
+
+### ⚠ L'effet de 1a, 1b et 1c, séparément
+
+Trois bras, un mois chacun, même code, même banque, même mois calendaire, un
+commutateur de différence.
+
+| | 1a seul | 1a + 1b | 1a + 1b + 1c |
+|---|---|---|---|
+| verdict | livré | refusé (`clinicalClaim`, `echo`) | livré |
+| conformité 1er appel | 35/72 | 36/72 | 35/72 |
+| coût | 0,3432 $ | 0,3247 $ | 0,3341 $ |
+
+Et les notations indépendantes, sur les deux planches livrées :
+
+| critère | `pia` (F29, Haiku) | 1a seul | 1a+1b+1c |
+|---|---|---|---|
+| Élaboration | 2,20 | 1,8 | 2,0 |
+| Lisibilité à 390 px | 3,30 | 3,2 | 2,5 |
+| Variété visuelle | 2,10 | 1,5 | 1,8 |
+| Illustrations | 1,80 | 2,2 | 2,6 |
+| Typographie | 2,90 | 2,8 | 2,2 |
+| Couleur | 3,10 | 2,5 | 2,3 |
+| **Écriture** | **1,60** | **2,3** | **2,2** |
+
+**1a — le modèle. C'est lui, et lui seul, qui a bougé la note.** L'écriture
+passe de 1,6 à 2,2–2,3 sur les deux planches, et le taux de passage de 1 sur 4
+à 8 sur 9. Il coûte quatre fois plus par essai et moins par mois livré.
+
+**1b — les exemples. Rien de mesurable. RETIRÉ.** La conformité au premier
+appel vaut **48,6 %** sans eux (72 candidats) et **48,2 %** avec (652
+candidats, neuf mois) : c'est la seule grandeur dure dont on dispose, elle est
+bien échantillonnée du côté « avec », et elle ne bouge pas. Le mécanisme, ses
+fixtures et ses tests restent en place, éteints — `CONTENT_EXAMPLES=on` les
+rallume.
+
+**1c — la passe de révision. Rien de mesurable non plus, et GARDÉE.** C'est un
+jugement, pas une mesure, et il faut le lire comme tel. Elle réécrit deux à
+cinq posts par mois, et chaque réécriture nomme un vrai défaut — « comparison
+left incomplete in title », « duplicate labels EMDR work/The plan reused ». Or
+**les deux notations désignent la répétition d'une carte à l'autre comme le
+principal défaut d'écriture du mois**, et la passe est la seule chose du
+système qui regarde les posts ENSEMBLE : la retirer laisserait ce défaut sans
+propriétaire. Elle est sous-dimensionnée, pas inutile.
+
+### ⚠ CE QUE CETTE MESURE NE PEUT PAS TRANCHER
+
+Les deux notations ont été rendues par deux agents distincts. Sur des critères
+que **ni les exemples ni la révision ne peuvent toucher** — la typographie, la
+lisibilité, la couleur sortent toutes du moteur de composition, inchangé entre
+les deux bras — elles s'écartent de **0,6 à 0,8 point**. L'effet cherché sur
+l'écriture est de 0,1.
+
+⚠ **Le bruit du notateur dépasse l'effet mesuré.** Ce qui est solide : le
+passage de 1,6 à 2,2–2,3 contre la référence, qui est six fois plus grand que
+cet écart. Ce qui ne l'est pas : la comparaison de 1b et 1c entre eux. Un
+protocole capable de trancher demanderait plusieurs mois par bras et **le même
+notateur sur tous**, ce qui n'a pas été fait ici et doit être dit.
+
+### ⚠ ET UN MOIS VERT PORTAIT UNE PROMESSE D'EFFICACITÉ
+
+La notation de la planche complète a relevé, sur un mois livré sans un seul
+constat :
+
+> « Bilateral stimulation gives an overworked nervous system a way to power
+> down. »
+
+Le seul défaut que la notation ait qualifié de « ne doit pas sortir du
+bâtiment ». Les trois motifs de `checkClinicalClaim` attrapaient « X guérit
+Y », « X EST un diagnostic », « votre corps VA s'effondrer » — aucun
+n'attrapait une technique nommée sujet d'un verbe de résultat, qui est la forme
+la plus naturelle qu'un modèle produise quand on lui demande d'expliquer
+comment le travail marche.
+
+Le motif renforcé refuse l'affirmation NUE et laisse passer la nuancée : « EMDR
+can help » est ce qu'un ordre demande d'écrire, « EMDR helps » ce qu'il refuse.
+Calibré sur les 7 199 lignes écrites de la base — **29 refusées, 0,40 %**, et
+chacune est une vraie promesse.
+
+⚠ **Trois d'entre elles vivaient dans `month-pia`**, le mois vert de référence,
+**et deux avaient été retenues comme EXEMPLES à montrer au modèle.** On
+enseignait le défaut. C'est le meilleur argument contre 1b qu'on ait trouvé, et
+il ne vient pas d'un chiffre.
+
+### Les planches
+
+* `design/preview-2026-09-24a/` — bras 1a seul
+* `design/preview-2026-09-24b/` — bras 1a + 1b + 1c
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
