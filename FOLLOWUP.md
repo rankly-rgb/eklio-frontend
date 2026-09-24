@@ -1218,6 +1218,166 @@ avec les phrases inachevées, et elles sont **syntaxiquement complètes**. Ce qu
 leur manque est le SENS, et `text.unfinished` ne le mesure pas — c'est un
 critère de plus à écrire, pas un faux positif de la notation.
 
+## F30 — ⚠ LA BANDE DE SURTITRE : TROIS CAUSES, ET AUCUNE N'ÉTAIT CELLE QU'ON CROYAIT
+
+La notation indépendante relève quatre surtitres sur deux planches publiables :
+« CORRECTAMYTH », « BEHINDTHEPRACTICE », « ONLY ONE », « A SOFT INVITATION ».
+F29 en avait retrouvé une cause sur deux et laissé l'autre ouverte faute de
+budget. Les trois sont maintenant établies, et elles sont différentes.
+
+**1. « CORRECTAMYTH », « BEHINDTHEPRACTICE » — un code dans un champ de
+libellé.** `scripts/local-render/20-month.ts` passait `topic.intent` —
+`correct_a_myth`, `behind_the_practice` — dans un champ nommé `angleLabel`.
+Mise en capitales, la ponctuation tombe, le tiret bas avec, et les mots se
+collent. ⚠ **Le chemin PRODUIT lisait le bon champ depuis le début** :
+`content_item_json` joint `content_intents.label` et `lib/content/review.ts`
+le passe. Une même fonction de rendu, deux appelants, un seul juste — et c'est
+le harnais qui fabrique les planches qu'on note.
+
+**2. « ONLY ONE » — un libellé de six mots dans une bande qui en tient
+quatre.** ⚠ **Ce n'était pas un drapeau de pagination**, comme la notation
+l'a lu. `content_intents` porte « You are not the only one » pour `normalise` :
+six mots, vingt-quatre caractères. `eyebrowFor` retirait les mots outils —
+you, are, not, the — et gardait les trois premiers restants. Il restait un
+fragment **qui dit le contraire de la phrase dont il vient**, imprimé au-dessus
+d'un diagramme à quatre blocs, sur la carte d'une clinicienne.
+
+**3. « A SOFT INVITATION » n'était pas un défaut.** C'est le libellé `invite`,
+rendu correctement. Il est noté ici pour qu'on cesse de le chercher.
+
+### Trois verrous, parce qu'il y avait trois causes
+
+| où | ce qui change |
+|---|---|
+| base | `content_intents.label` de `normalise` raccourci en « Not the only one », et une contrainte `check` refuse tout libellé au-delà de 4 mots / 22 caractères — la borne du rendu |
+| rendu | `eyebrowFor` prend un libellé de catalogue **verbatim** s'il tient, et l'ABANDONNE s'il ne tient pas : refuser vaut mieux qu'imprimer un contresens |
+| harnais | il lit le catalogue une fois et passe le **libellé**, plus le code |
+| contrôle | `checkEyebrow` : 1 à 4 mots, 22 caractères, aucun identifiant interne, aucun mot collé, aucune valeur hors du catalogue |
+
+⚠ **`checkEyebrow` lit la valeur COMPOSÉE, pas ses entrées.** Un contrôle qui
+relirait `angleLabel` n'aurait jamais vu « CORRECTAMYTH », qui est ce que la
+clinicienne, elle, a vu.
+
+⚠ **Et sa référence vient de la base, pas des cartes.** Un contrôle qui
+tirerait la liste des libellés autorisés des valeurs observées les
+autoriserait toutes, « CORRECTAMYTH » compris (F16).
+
+⚠ **Un mot collé se reconnaît sans liste.** « CORRECTAMYTH » ne colle pas les
+mots du libellé (« Myth, gently corrected ») mais ceux du CODE : le contrôle
+découpe le mot avec le vocabulaire des libellés ET des identifiants, et un mot
+qui se découpe entièrement n'est pas un mot. C'est ce qui attrapera le prochain
+code, celui qui n'existe pas encore.
+
+⚠ **Un piège rencontré en l'écrivant** : comparer après avoir retiré les
+espaces faisait de « BEHIND THE PRACTICE » — le libellé, correctement rendu —
+le code `behind_the_practice`. Un code n'a pas d'espace ; c'est par là qu'on
+les distingue, et c'est justement ce qui rend « BEHINDTHEPRACTICE »
+reconnaissable.
+
+## F31 — ⚠ DIX BORNES DE MÉLANGE, ET UNE SEULE SAVAIT DIRE « PAS ASSEZ »
+
+`mix.dominant`, `mix.loneSentence`, `mix.identical` sont des PLAFONDS ;
+`mix.distinct` se contente de sept archétypes sur onze. Un format pouvait donc
+disparaître entièrement d'un mois livré sans déplacer un chiffre — et c'est
+arrivé deux fois, aux deux bouts :
+
+| date | ce qui manquait | ce qui l'a vu |
+|---|---|---|
+| 2026-09-23 | zéro carrousel sur soixante posts | rien — plancher `mix.carousel` ajouté après |
+| 2026-09-24 | zéro phrase seule sur trente posts | rien |
+
+⚠ **La seconde est la conséquence de la correction de la première.** L'ordre de
+tirage a été inversé pour sauver le carrousel, et la phrase seule, désormais
+tirée en dernier, a pris sa place dans le trou. Corriger format par format
+déplace le trou.
+
+### Le plancher est calculé, pas posé
+
+Trois familles, donc un tiers visé chacune par le tirage ; le plancher en est la
+moitié — **cinq sur trente**. Si une quatrième famille apparaît, la part visée
+tombe à un quart et le plancher suit.
+
+Mesuré sur les six mois enregistrés, et c'est la seule raison pour laquelle le
+seuil vaut un demi :
+
+| mois | statement | simple | varied |
+|---|---|---|---|
+| isla | 12 | 10 | 8 |
+| marlow | 10 | 11 | 9 |
+| perrin | 11 | 11 | 8 |
+| wren | 11 | 14 | **5** |
+| odile | 9 | 11 | 10 |
+| **pia** | **2** | 20 | 8 |
+
+Cinq sur six tiennent, `wren` **exactement** au plancher — le dépassement est
+donc strict, comme pour `mix.dominant` et pour la même raison. Le sixième est
+celui que ce plancher existe pour refuser.
+
+⚠ **`pia` était à la fois le seul mois vert enregistré et le défaut.** Le
+fichier qui affirmait « un bon mois passe encore » est devenu
+`the-month-that-should-not-have-passed` : le plancher le refuse, et **aucun
+autre contrôle n'a rien à dire**, ce qui est ce qui reste du garde-fou. Il
+reste à geler un mois vert.
+
+⚠ **Les familles vivent désormais du côté du contrôle, et le tirage les lit.**
+Deux listes tenues à la main auraient divergé au premier archétype ajouté, et
+le plancher aurait alors mesuré une composition que personne ne vise. Le poids
+double du carrousel reste au tirage, où il a un sens.
+
+## F32 — ⚠ LE MODÈLE N'AVAIT JAMAIS VU UN BON POST
+
+Le préfixe ne portait que des RÈGLES — trente caractères, pas de promesse de
+résultat, quatre mots par libellé, pas d'apostrophe droite — et une règle dit
+ce qu'il ne faut PAS faire. La notation met l'écriture à 1,6 sur 5, trois
+planches de suite, et les sept contrôles de F26 n'ont pas déplacé ce chiffre :
+ils ont supprimé les sept défauts qu'ils nomment, exactement, et rien d'autre.
+
+**Trois à quatre exemples par archétype**, choisis parmi les 701 posts de la
+base par `scripts/local-render/15-examples.ts`, qui n'en écrit aucun :
+
+1. les vingt-trois contrôles, entiers ;
+2. le juge de complétude sur les lignes que le lexique ne tranche pas ;
+3. aucune des formules que F29 a nommées ;
+4. pas deux exemples du même archétype qui partagent une chaîne ou deux
+   premiers mots.
+
+⚠ **Seule la normalisation typographique leur est appliquée** — ce que la
+chaîne applique à chaque post depuis. Tout le reste est écarté, jamais réparé :
+un exemple retouché enseignerait une conformité que la production n'a pas
+produite. Ce sont des **fixtures versionnées**, jamais livrées à personne, et
+un test les repasse aux contrôles pour qu'elles ne pourrissent pas.
+
+### ⚠ Deux défauts trouvés en les choisissant
+
+**`judgeCompleteness` plafonnait à 1500 jetons.** Sur des lots de quarante
+lignes la réponse dépassait, le JSON arrivait tronqué, `JSON.parse` levait — et
+le juge rendait un verdict **vide**, qui ne refuse rien. Trois lots sur quatre
+sont passés sans être jugés, **en silence**. ⚠ Le mutisme est le comportement
+voulu (un juge en panne ne doit pas faire tomber un mois), et c'est exactement
+ce qui rendait le défaut invisible.
+
+**Le comparateur de ressemblance prenait `archetype_key` pour du texte.** Tous
+les carrousels portent « single_statement » dans leur premier volet : le
+premier retenu bloquait les sept autres, et l'archétype le plus important du
+catalogue serait parti avec **un seul** exemple.
+
+### La passe de révision
+
+Elle relit les candidats **ensemble**, ce qu'aucun contrôle par post ne peut
+faire, et réécrit ce qu'un lecteur verrait. Elle ne juge pas la conformité — le
+code le fait, exactement, et son avis là-dessus est du bruit.
+
+⚠ **Avant la composition, pas après** : le SVG est dessiné une fois, et c'est
+lui qu'on publie. ⚠ **Avant le juge**, aussi, pour qu'il lise les lignes
+révisées. ⚠ **Chaque réécriture repasse `validateCopy`**, là où les autres
+réponses de modèle passent ; une ligne trop longue est écartée et non rognée —
+`clampCardLine` a raison à l'écriture, où une ligne coupée vaut mieux que rien,
+mais ici l'original tenait entier.
+
+⚠ **`CONTENT_EXAMPLES=off` et `CONTENT_REVISION=off`** existent pour que
+l'effet de chaque changement se mesure seul. Trois changements dans la même
+session, et une note qui monte ne dit pas lequel a payé.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
