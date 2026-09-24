@@ -585,3 +585,226 @@ export function checkAcronym(
   }
   return out;
 }
+
+/* ── 8. Ce qu'un audit du corpus a trouvé et qu'aucun contrôle ne voyait ── */
+
+/*
+ * ── ⚠ QUATRE CLASSES, TROUVÉES D'UN COUP AU LIEU D'UNE PAR NOTATION ─────
+ *
+ * Jusqu'ici chaque classe de défauts avait été découverte par une notation de
+ * planche, un défaut à la fois : F26 en a trouvé sept, F29 un, F34 un. C'est
+ * lent, et ça garantit qu'il en reste.
+ *
+ * Le 2026-09-24, le corpus entier — 5 381 lignes, 400 légendes, 399
+ * alternatifs — a été soumis à un audit mené À L'AVEUGLE : l'auditeur n'avait
+ * pas la liste des contrôles existants, seulement les règles de l'ACA et de
+ * l'APA. Il a rendu dix-sept catégories. Les quatre ci-dessous sont celles qui
+ * sont à la fois GRAVES et FORMULABLES ; les autres sont dans `FOLLOWUP.md`,
+ * soit parce qu'un contrôle les couvre déjà, soit parce qu'elles demandent un
+ * champ de brief qui n'existe pas, soit parce qu'elles ne se formulent pas.
+ */
+
+/**
+ * ⚠ DU CONTENU TIRÉ DE LA PATIENTÈLE RÉELLE, DANS UNE PUBLICITÉ.
+ *
+ * « Almost everyone who came in this month had just gone back to work after
+ * leave. » Soixante-seize légendes sur quatre cents portent cette forme, et
+ * trente-et-une la datent explicitement du mois.
+ *
+ * ⚠ CE N'EST PAS UNE ANECDOTE, C'EST UN AGRÉGAT DATÉ SUR UNE PETITE FILE.
+ * ACA B.1.c et B.4, APA 4.01 et 4.07 restreignent l'usage d'informations
+ * tirées de la patientèle à des fins promotionnelles. Sur un cabinet privé
+ * nommé, dans une ville nommée, « presque tout le monde ce mois-ci » est
+ * ré-identifiant : une personne qui est revenue de congé ce mois-là se
+ * reconnaît, et comprend que son matériel a servi à vendre.
+ *
+ * Deux légendes vont plus loin et mettent des mots à la première personne dans
+ * la bouche des patientes — ce qui n'est plus une paraphrase mais une citation.
+ */
+/*
+ * ⚠ « Many people come back to work and find… » N'EST PAS UNE DIVULGATION.
+ *
+ * Un premier motif prenait tout agrégat de personnes suivi d'un verbe de
+ * venue, et il refusait des propos généraux — « beaucoup de gens reprennent le
+ * travail et découvrent que… » — qui ne parlent de personne en particulier et
+ * sont de la psychoéducation ordinaire.
+ *
+ * Ce qui fait la divulgation est l'un de DEUX marqueurs, jamais l'agrégat seul :
+ *
+ *   le CADRE CLINIQUE   « came in », « walked in », « sat down », « in my
+ *                        office » — on parle de gens qui sont venues LÀ ;
+ *   la DATATION         « this month », « last week » — on parle de la file
+ *                        d'un moment, ce qui la rend dénombrable et donc
+ *                        ré-identifiable sur un petit cabinet.
+ */
+const AGGREGATE = String.raw`(?:almost )?every(?:one|body)|most (?:people|clients|patients)|several (?:people|clients|patients)|a lot of (?:people|clients)|a number of (?:people|clients)|many (?:people|clients)`;
+const SETTING = String.raw`came? in\b|comes in\b|walked in\b|walks in\b|sat down\b|came to see me\b|in my (?:office|practice|room)\b|on my couch\b`;
+const DATED = String.raw`th(?:is|e) (?:month|week)\b|last (?:month|week)\b`;
+
+const CASELOAD = new RegExp(
+  [
+    String.raw`\b(?:${AGGREGATE})\b[^.!?]{0,60}\b(?:${SETTING})`,
+    String.raw`\b(?:${AGGREGATE})\b[^.!?]{0,60}\b(?:${DATED})`,
+    String.raw`\b(?:${DATED})[^.!?]{0,60}\b(?:${SETTING})`,
+    String.raw`\bwe(?:'ve| have) had\b[^.!?]{0,40}\b(?:${DATED})`,
+    String.raw`\b(?:my|our) (?:clients|patients|caseload)\b`,
+  ].join("|"),
+  "i"
+);
+
+export function checkCaseload(
+  lines: Array<{ where: string; text: string }>
+): Finding[] {
+  const out: Finding[] = [];
+  for (const { where, text } of lines) {
+    if (CASELOAD.test(text)) {
+      out.push({
+        check: "text.caseload",
+        detail: `${where} parle de la patientèle réelle dans une publicité : « ${text.slice(0, 120)} »`,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * ⚠ UNE COMPARAISON D'EFFICACITÉ AVEC UN AUTRE TRAITEMENT.
+ *
+ * « The processing happens faster than talk alone. » « EMDR processes things
+ * that talk therapy alone sometimes can't touch. » Sept dans le corpus, et
+ * chacune est individuellement attaquable : une allégation comparative est la
+ * catégorie la plus lourdement encadrée par la FTC, et les règles de publicité
+ * des boards interdisent une supériorité non étayée. ACA C.6.d et APA 5.01
+ * ajoutent qu'on ne dénigre pas la modalité d'une consœur.
+ *
+ * ⚠ « faster » EST UNE GRANDEUR MESURABLE, et rien dans le corpus ne la
+ * mesure. C'est ce qui distingue cette classe d'une différence de nature
+ * (« EMDR works differently with identity than talk does » est descriptif) —
+ * mais la frontière est mince, et le motif retenu ne prend que la
+ * supériorité affirmée, jamais la différence.
+ */
+/**
+ * ⚠ LE COMPARATIF DOIT PORTER SUR UN TRAITEMENT, PAS SUR N'IMPORTE QUOI.
+ *
+ * Un premier motif acceptait `faster|deeper|better than` seul, et il a refusé
+ * deux phrases qui ne comparent aucun traitement : « what you've been moving
+ * faster than catches up » (une métaphore) et « the fatigue is deeper than
+ * tired » (une description de symptôme). Une allégation comparative suppose
+ * deux traitements ; sans l'un des deux nommé, il n'y a pas d'allégation.
+ */
+const RIVAL = String.raw`talk(?:ing)?(?: therapy)?|conversation|words|medication|meds|cbt|dbt|coaching|mindfulness|journal(?:ing)?`;
+
+const COMPARATIVE = new RegExp(
+  [
+    String.raw`\b(?:faster|quicker|better|deeper|more effective|more efficient)\s+than\s+(?:${RIVAL})\b`,
+    /*
+     * ⚠ UN ADVERBE PEUT S'INTERCALER, et il le faisait : « talk therapy alone
+     * SOMETIMES can't touch » passait entre les mailles d'un motif qui collait
+     * la négation au nom. Une fenêtre courte la laisse passer sans ouvrir la
+     * porte à deux phrases voisines recollées.
+     */
+    String.raw`\b(?:talk(?:ing)?(?: therapy)?|conversation|words?)\b[^.!?]{0,24}?(?:can(?:not|'t)?|could ?n[o']t|never)\s+(?:touch|reach|get to|do|fix)`,
+    String.raw`\b(?:can(?:not|'t)|could ?n[o']t)\s+be\s+(?:reached|touched)\s+by\s+(?:talk|words)`,
+    String.raw`\bworks?\s+better\s+than\s+(?:${RIVAL})\b`,
+    String.raw`\b(?:unlike|where)\s+talk(?:ing)?(?: therapy)?\b[^.!?]{0,30}\b(?:does ?n[o']t|fails?|stops?)\b`,
+  ].join("|"),
+  "i"
+);
+
+export function checkComparativeClaim(
+  lines: Array<{ where: string; text: string }>
+): Finding[] {
+  const out: Finding[] = [];
+  for (const { where, text } of lines) {
+    if (COMPARATIVE.test(text)) {
+      out.push({
+        check: "text.comparative",
+        detail: `${where} affirme une supériorité non étayée : « ${text.slice(0, 120)} »`,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * ⚠ UN MÉCANISME NEUROLOGIQUE FAUX, PAS SIMPLEMENT SIMPLIFIÉ.
+ *
+ * Trois formes reviennent, et ce sont des faussetés, non des raccourcis :
+ *
+ *   « working with both sides of your brain »   le récit hémisphérique de la
+ *                                              stimulation bilatérale est
+ *                                              discrédité, nommément ;
+ *   « the brain doesn't distinguish between
+ *     "I almost died" and "someone I love did" »  prémisse fabriquée, et elle
+ *                                              porte tout le raisonnement qui
+ *                                              étend un traitement du SSPT au
+ *                                              deuil ;
+ *   « Amygdala processes / Cortex rewires »     répartition anatomique fausse.
+ *
+ * ⚠ UNE FAUSSETÉ DANS UNE PUBLICITÉ PROFESSIONNELLE EST TROMPEUSE QUELLE QUE
+ * SOIT L'INTENTION, et ACA C.3.a demande l'exactitude des déclarations
+ * publiques. Le motif ne liste que les formes établies comme fausses : il ne
+ * juge pas la vulgarisation, qui est légitime.
+ */
+const FALSE_MECHANISM: Array<[RegExp, string]> = [
+  [/\bboth (?:sides|hemispheres) of (?:your|the) brain\b/i, "reprend le récit hémisphérique, discrédité"],
+  [/\b(?:the |your )?brain (?:does ?n[o']t|cannot|can't) (?:distinguish|tell the difference|know the difference)\b/i,
+   "affirme que le cerveau ne distingue pas, ce qui est faux et porte tout le raisonnement"],
+  [/\bamygdala\b[^.!?]{0,40}\b(?:processes?|rewires?|decides?)\b/i, "prête à l'amygdale une fonction qu'elle n'a pas"],
+  [/\bcortex\b[^.!?]{0,20}\brewires?\b/i, "prête au cortex une fonction qu'il n'a pas"],
+  [/\bleft brain\b|\bright brain\b/i, "reprend la latéralisation populaire, discréditée"],
+];
+
+export function checkFalseMechanism(
+  lines: Array<{ where: string; text: string }>
+): Finding[] {
+  const out: Finding[] = [];
+  for (const { where, text } of lines) {
+    for (const [pattern, why] of FALSE_MECHANISM) {
+      if (pattern.test(text)) {
+        out.push({
+          check: "text.falseMechanism",
+          detail: `${where} ${why} : « ${text.slice(0, 120)} »`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * ⚠ UN TRAIT ORDINAIRE REQUALIFIÉ EN PATHOLOGIE.
+ *
+ * « Relentless competence can be a trauma response, not a strength. »
+ * « Competence as a Trauma. » « Hyperproductivity as a trauma. »
+ *
+ * ⚠ DEUX TORTS D'UN COUP : c'est une affirmation clinique non étayée, et c'est
+ * un mécanisme de vente — il convertit une non-patiente en patiente en
+ * dévaluant un trait qui fonctionne. ACA E.5 et APA 9.01 interdisent un
+ * diagnostic sans examen, et la destinataire ici est une inconnue qui lit un
+ * fil.
+ *
+ * `checkClinicalClaim` attrapait déjà « X BECOMES a trauma response » ; il ne
+ * voyait pas la forme nominale « X AS a trauma », qui dit la même chose sans
+ * verbe.
+ */
+const PATHOLOGISED = new RegExp(
+  String.raw`\b(?:competence|productivity|hyperproductivity|efficiency|ambition|achievement|perfectionism|reliability|capability|drive)\b` +
+  String.raw`[^.!?]{0,30}\bas\s+(?:a\s+|an\s+)?(?:trauma|freeze|dissociation|disorder|pathology|symptom)\b`,
+  "i"
+);
+
+export function checkPathologised(
+  lines: Array<{ where: string; text: string }>
+): Finding[] {
+  const out: Finding[] = [];
+  for (const { where, text } of lines) {
+    if (PATHOLOGISED.test(text)) {
+      out.push({
+        check: "text.pathologised",
+        detail: `${where} requalifie un trait ordinaire en pathologie : « ${text.slice(0, 120)} »`,
+      });
+    }
+  }
+  return out;
+}

@@ -4,6 +4,7 @@ import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
 import {
   checkUnfinished, checkCarouselPanels, checkBorrowed, checkClinicalClaim,
   checkSellsSlots, checkStraightQuotes, checkAcronym,
+  checkCaseload, checkComparativeClaim, checkFalseMechanism, checkPathologised,
   type CompletenessVerdicts,
 } from "@/lib/content/writing-checks";
 
@@ -875,6 +876,25 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
   out.push(...checkSellsSlots(written));
   out.push(...checkStraightQuotes(written));
   out.push(...checkAcronym(month.posts, month.modalities ?? []));
+
+  /*
+   * ── LES QUATRE CLASSES DE L'AUDIT DU CORPUS ────────────────────────────
+   *
+   * ⚠ TROUVÉES D'UN COUP, PAS UNE PAR NOTATION. Jusqu'ici chaque classe avait
+   * été découverte par une notation de planche, un défaut à la fois : F26 en a
+   * trouvé sept, F29 un, F34 un. Le corpus entier — 5 381 lignes, 400 légendes,
+   * 399 alternatifs — a été soumis à un audit mené À L'AVEUGLE, sans la liste
+   * des contrôles existants, et il a rendu dix-sept catégories.
+   *
+   * Ces quatre-là sont celles qui sont à la fois graves et formulables. Les
+   * autres sont dans `FOLLOWUP.md` : soit un contrôle les couvre, soit elles
+   * demandent un champ de brief qui n'existe pas, soit elles ne se formulent
+   * pas.
+   */
+  out.push(...checkCaseload(written));
+  out.push(...checkComparativeClaim(written));
+  out.push(...checkFalseMechanism(written));
+  out.push(...checkPathologised(written));
 
   for (const post of month.posts) {
     const where = `« ${post.cardLine || post.title} »`;
