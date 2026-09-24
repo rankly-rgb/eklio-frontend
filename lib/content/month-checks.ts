@@ -6,6 +6,7 @@ import {
   checkUnfinished, checkCarouselPanels, checkBorrowed, checkClinicalClaim,
   checkSellsSlots, checkStraightQuotes, checkAcronym,
   checkCaseload, checkComparativeClaim, checkFalseMechanism, checkPathologised,
+  checkCrisisRoute,
   type CompletenessVerdicts,
 } from "@/lib/content/writing-checks";
 
@@ -914,6 +915,22 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
   out.push(...checkComparativeClaim(written));
   out.push(...checkFalseMechanism(written));
   out.push(...checkPathologised(written));
+
+  /*
+   * ⚠ LA ROUTE SE CHERCHE SUR LE POST ENTIER, PAS LIGNE À LIGNE. Une carte dit
+   * trois mots, la légende trois cents : exiger « 988 » dans le même champ que
+   * la ligne qui nomme le risque obligerait à l'écrire sur une carte de quatre
+   * mots. C'est le POST que la lectrice voit.
+   */
+  out.push(...checkCrisisRoute(month.posts.map((post) => ({
+    where: `« ${post.cardLine || post.title} »`,
+    texts: [
+      post.cardLine || post.title,
+      ...stringsIn(post.payload).map((x) => x.text),
+      post.caption ?? "",
+      post.altText ?? "",
+    ],
+  }))));
 
   for (const post of month.posts) {
     const where = `« ${post.cardLine || post.title} »`;

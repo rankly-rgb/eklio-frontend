@@ -808,3 +808,108 @@ export function checkPathologised(
   }
   return out;
 }
+
+/* ── 9. Une route vers de l'aide immédiate, quand le post la rend nécessaire ── */
+
+/*
+ * ── ⚠ CE QU'UNE PUBLICATION DOIT PORTER, ET À QUELLES CONDITIONS ────────
+ *
+ * L'audit du corpus (F35) relève : zéro mention de 988 ou d'une ligne
+ * d'écoute sur quatre cents posts, sur un contenu qui s'adresse à des
+ * lectrices en deuil, en dissociation, en effondrement.
+ *
+ * ⚠ ET LA RÉPONSE N'EST PAS « UNE MENTION SUR CHAQUE POST ». Aucun board
+ * d'État, ni l'ACA ni l'APA, n'exige une ligne de crise sur chaque publicité.
+ * En poser une sur quatre cents posts qui parlent de fatigue au retour de
+ * congé la rendrait invisible exactement là où elle compte — c'est le sort de
+ * toute mention universelle, et une mention qu'on ne lit plus ne protège
+ * personne.
+ *
+ * ⚠ CE QUI EST RÉELLEMENT ATTENDU tient en une phrase : **une lectrice à qui
+ * l'on parle de risque aigu ne doit pas rester sans route.** C'est le devoir
+ * de bienfaisance de l'ACA (section A) et le principe de non-malfaisance de
+ * l'APA, et c'est aussi ce que les plateformes appliquent d'elles-mêmes sur
+ * ce vocabulaire-là.
+ *
+ * La règle retenue est donc CONDITIONNELLE : un post dont le texte publié
+ * nomme le risque aigu porte une route vers de l'aide immédiate ; les autres
+ * non.
+ */
+
+/** Le vocabulaire du risque aigu. ⚠ Pas celui de la détresse ordinaire. */
+const ACUTE_RISK = new RegExp(
+  [
+    String.raw`\bsuicid(?:e|al)\b`,
+    String.raw`\bkill(?:ing)? (?:my|your|her|him)self\b`,
+    String.raw`\bend(?:ing)? (?:my|your|her|his|it) (?:own )?life\b`,
+    String.raw`\btake (?:my|your|her|his) own life\b`,
+    String.raw`\bself[- ]harm(?:ing)?\b`,
+    String.raw`\bcut(?:ting)? (?:my|your|her|him)self\b`,
+    String.raw`\bhurt(?:ing)? (?:my|your|her|him)self\b`,
+    String.raw`\bwant(?:ing)? to (?:die|disappear|not (?:be here|exist))\b`,
+    String.raw`\b(?:do ?n[o']t|does ?n[o']t) want to (?:be here|live|wake up)\b`,
+    String.raw`\boverdos(?:e|ing)\b`,
+    /*
+     * ⚠ « crisis » SEUL A ÉTÉ RETIRÉ, ET C'EST MESURÉ. Il faisait cinq refus
+     * sur 1 356 posts, et les cinq étaient faux : « in crisis mode », « in
+     * crisis, arousal has a job », « not in crisis, but in a kind of steady
+     * depletion ». Le mot décrit le système nerveux dans tout ce vocabulaire-
+     * là ; il ne nomme pas une lectrice en danger.
+     *
+     * Un contrôle déontologique qui refuse cinq fois à tort sur un corpus où
+     * il ne devrait rien refuser se fait désarmer au premier mois perdu — et
+     * il serait absent le jour où il compte.
+     */
+  ].join("|"),
+  "i"
+);
+
+/** Ce qui compte comme une route : un numéro, un nom de ligne, ou l'urgence. */
+const CRISIS_ROUTE = new RegExp(
+  [
+    String.raw`\b988\b`,
+    String.raw`\b911\b`,
+    String.raw`suicide (?:&|and) crisis lifeline`,
+    String.raw`\bcrisis (?:line|lifeline|text ?line|number|support)\b`,
+    String.raw`\btext HOME\b`,
+    String.raw`\bemergency (?:room|services|department)\b`,
+    String.raw`\bnearest emergency\b`,
+  ].join("|"),
+  "i"
+);
+
+export function namesAcuteRisk(text: string): boolean {
+  return ACUTE_RISK.test(text);
+}
+
+export function carriesCrisisRoute(text: string): boolean {
+  return CRISIS_ROUTE.test(text);
+}
+
+/**
+ * Un post qui nomme le risque aigu porte-t-il une route ?
+ *
+ * ⚠ LA ROUTE PEUT ÊTRE AILLEURS QUE DANS LA LIGNE QUI NOMME LE RISQUE. Une
+ * carte dit trois mots, la légende dit trois cents : exiger la route dans le
+ * MÊME champ obligerait à écrire « 988 » sur une carte de quatre mots. On
+ * regarde donc le post ENTIER, et c'est la bonne grandeur — c'est le post que
+ * la lectrice voit.
+ */
+export function checkCrisisRoute(
+  posts: Array<{ where: string; texts: string[] }>
+): Finding[] {
+  const out: Finding[] = [];
+  for (const { where, texts } of posts) {
+    const whole = texts.filter(Boolean).join("\n");
+    if (!namesAcuteRisk(whole)) continue;
+    if (carriesCrisisRoute(whole)) continue;
+    const named = texts.find((t) => t && namesAcuteRisk(t)) ?? "";
+    out.push({
+      check: "text.noCrisisRoute",
+      detail:
+        `${where} nomme un risque aigu sans route vers de l'aide immédiate : ` +
+        `« ${named.slice(0, 110)} »`,
+    });
+  }
+  return out;
+}
