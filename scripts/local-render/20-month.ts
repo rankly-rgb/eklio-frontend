@@ -40,6 +40,7 @@ import {
   type TopicRequest,
 } from "../../lib/content/generate/copy-batch";
 import { repairPayload } from "../../lib/content/generate/repair";
+import { reviseMonth, revisionOn } from "../../lib/content/generate/revise";
 import { chooseArchetype, scheduleDates } from "../../lib/content/generate/plan";
 import { anthropicContentModel } from "../../lib/content/generate/model";
 import { deriveThemes } from "../../lib/content/generate/themes";
@@ -689,6 +690,7 @@ async function main() {
    * la classe de défauts de F18 à F25, et elle ne recommence pas ici.
    */
   const judgeUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const reviseUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   const failures: Array<{ topic: string; kind: string; because: string }> = [];
 
   /*
@@ -1276,6 +1278,47 @@ function selectDeliverable<
     }).select("id").single();
   if (monthError || !monthRow) throw new Error(`could not write the month: ${monthError?.message}`);
 
+  /*
+   * ── ⚠ LA PASSE DE RÉVISION, AVANT LA COMPOSITION ──────────────────────
+   *
+   * Elle ne juge pas la conformité — vingt-trois contrôles le font, et mieux :
+   * ils comptent des caractères, des mots, des archétypes. Elle relit les
+   * candidats ENSEMBLE, ce qu'aucun contrôle par post ne peut faire, et
+   * réécrit ce qu'un lecteur verrait : une phrase qui ne dit rien, un libellé
+   * qui revient sur sept cartes, deux posts sur la même idée.
+   *
+   * ⚠ AVANT LA COMPOSITION, PAS APRÈS. Une réécriture appliquée après aurait
+   * laissé sur la carte le texte d'avant : le SVG est dessiné une fois, et
+   * c'est lui qu'on publie.
+   *
+   * ⚠ ET C'EST UN FRAIS GÉNÉRAL. La praticienne a acheté trente posts ; qu'il
+   * faille les relire est notre affaire, pas un post de moins pour elle.
+   */
+  const revision = (await overhead("revision pass", async () => {
+    const value = await reviseMonth(client, prepared.map((c) => ({
+      archetype: c.topic.archetype_key,
+      cardLine: c.result!.cardLine ?? c.topic.title,
+      payload: c.result!.payload,
+      caption: c.result!.caption ?? "",
+      altText: c.result!.altText ?? "",
+    })));
+    return { value, usage: { ...value.usage, cacheRead: 0, cacheWrite: 0 } };
+  })).value;
+  reviseUsage.input += revision.usage.input;
+  reviseUsage.output += revision.usage.output;
+  for (const r of revision.revisions) {
+    const result = prepared[r.index].result!;
+    result.cardLine = r.cardLine;
+    result.payload = r.payload;
+  }
+  console.error(
+    revisionOn()
+      ? `▸ révision : ${revision.revisions.length} réécrits, ${revision.refused.length} écartés sur ${prepared.length}`
+      : "▸ révision : ÉTEINTE (CONTENT_REVISION=off)"
+  );
+  for (const r of revision.revisions) console.error(`    #${r.index} — ${r.why}`);
+  for (const r of revision.refused) console.error(`    #${r.index} ÉCARTÉ — ${r.because}`);
+
   const registers = preferences.accepted_registers as ContentRegister[];
   const dates = scheduleDates(MONTH.slice(0, 7), [1, 2, 3, 4, 5, 6, 7], WANTED);
   const fallbacks: Array<{ topic: string; from: string; to: string; steps: string }> = [];
@@ -1681,9 +1724,11 @@ function selectDeliverable<
       costUsd: Number(
         (
           (useBatch ? batchCostUsd([usage]) : syncCostUsd(usage)) +
-          syncCostUsd(repairUsage) + syncCostUsd(judgeUsage) + syncCostUsd(themesUsage)
+          syncCostUsd(repairUsage) + syncCostUsd(judgeUsage) + syncCostUsd(themesUsage) +
+          syncCostUsd(reviseUsage)
         ).toFixed(5)
       ),
+      revision: { on: revisionOn(), rewritten: revision.revisions.length, refused: revision.refused.length },
       findings: selection.remaining, dropped: selection.dropped,
     }, null, 2));
     throw new Error(
@@ -1696,7 +1741,8 @@ function selectDeliverable<
   // ⚠ Le juge de complétude compris : un appel payant entre dans le total.
   const costUsd =
     batchCost + syncCost +
-    syncCostUsd(repairUsage) + syncCostUsd(judgeUsage) + syncCostUsd(themesUsage);
+    syncCostUsd(repairUsage) + syncCostUsd(judgeUsage) + syncCostUsd(themesUsage) +
+    syncCostUsd(reviseUsage);
   const elapsedSeconds = Math.round((Date.now() - started) / 1000);
 
   console.log(JSON.stringify({
@@ -1722,7 +1768,12 @@ function selectDeliverable<
     releasedTopics: released.length,
     rejectedAsRedundant: rejected,
     themes: { source: themes.source, themes: themes.themes },
-    usage, repairUsage, judgeUsage, themesUsage,
+    usage, repairUsage, judgeUsage, themesUsage, reviseUsage,
+    revision: {
+      on: revisionOn(),
+      rewritten: revision.revisions.map((r) => ({ index: r.index, why: r.why })),
+      refused: revision.refused,
+    },
     costUsd: Number(costUsd.toFixed(5)),
     capUsd: SESSION_CAP_USD,
   }, null, 2));
