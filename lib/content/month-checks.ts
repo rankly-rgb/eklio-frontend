@@ -1,5 +1,6 @@
 import { DANGLING } from "@/lib/content/generate/copy-batch";
 import type { DirectionPalette } from "@/lib/compose/palette";
+import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
 import {
   checkUnfinished, checkCarouselPanels, checkBorrowed, checkClinicalClaim,
   checkSellsSlots, checkStraightQuotes, checkAcronym,
@@ -485,6 +486,15 @@ export type PostUnderCheck = {
   payload: unknown;
   /** Le SVG livré, quand il a déjà été composé. */
   svg?: string;
+  /**
+   * La bande de surtitre, telle qu'elle sera imprimée.
+   *
+   * ⚠ C'EST LA VALEUR RENDUE, PAS CELLE D'OÙ ELLE VIENT. `eyebrowFor`
+   * met en capitales, retire la ponctuation et raccourcit ; un contrôle qui
+   * lirait l'entrée ne verrait pas « CORRECTAMYTH », qui est ce que la
+   * clinicienne, elle, a vu.
+   */
+  eyebrow?: string;
 };
 
 export type MonthUnderCheck = {
@@ -521,6 +531,20 @@ export type MonthUnderCheck = {
   practiceName?: string;
   /** Les autres chaînes du brief qu'une carte peut légitimement nommer. */
   identityAllowList?: string[];
+  /**
+   * Le catalogue `content_intents`, IDENTIFIANTS COMPRIS.
+   *
+   * ⚠ IL VIENT DE LA BASE, PAS DES POSTS. C'est la règle de F16 : un
+   * contrôle qui tirerait la liste des valeurs observées les autoriserait
+   * toutes, « CORRECTAMYTH » compris. Absent, le contrôle ne vérifie que la
+   * forme — une liste vide n'est pas une liste.
+   *
+   * ⚠ ET LES IDENTIFIANTS SONT LA MOITIÉ UTILE. « CORRECTAMYTH » ne colle
+   * pas les mots du libellé (« Myth, gently corrected ») mais ceux du CODE,
+   * `correct_a_myth`. Un contrôle qui ne connaîtrait que les libellés ne
+   * saurait pas lire le défaut qu'il est là pour lire.
+   */
+  eyebrowCatalogue?: Array<{ id: string; label: string }>;
 };
 
 /**
@@ -587,12 +611,136 @@ export function writtenLinesIn(posts: PostUnderCheck[]): Array<{ where: string; 
   return out;
 }
 
+/* ── 12. La bande de surtitre ───────────────────────────────── */
+
+/**
+ * Ce qu'une bande mono a le droit de porter.
+ *
+ * ── ⚠ QUATRE CODES INTERNES ONT ÉTÉ IMPRIMÉS SUR DES CARTES PUBLIABLES ──
+ *
+ * Une notation indépendante les a relevés sur deux planches : « CORRECTAMYTH »,
+ * « BEHINDTHEPRACTICE », « ONLY ONE », « A SOFT INVITATION ». Trois causes
+ * distinctes, et aucune n'était celle qu'on croyait.
+ *
+ * 1. « CORRECTAMYTH » / « BEHINDTHEPRACTICE » : le harnais passait
+ *    `topic.intent` — un identifiant — dans un champ nommé `angleLabel`. Mise
+ *    en capitales, la ponctuation tombe, le tiret bas avec : les mots se
+ *    collent. Le chemin produit lisait le bon champ depuis le début ; une même
+ *    fonction de rendu avait deux appelants dont un seul juste.
+ * 2. « ONLY ONE » : le catalogue porte « You are not the only one » pour
+ *    `normalise`. Six mots pour une bande qui en tient quatre — le rendu
+ *    retirait les mots outils (you, are, not, the) et gardait les trois
+ *    premiers restants. Il restait un fragment qui dit le CONTRAIRE de la
+ *    phrase dont il vient. Ce n'était pas un drapeau de pagination, comme la
+ *    notation l'a lu : c'était pire.
+ * 3. « A SOFT INVITATION » n'était pas un défaut. C'est le libellé `invite`,
+ *    rendu correctement. Il est ici pour qu'on cesse de le chercher.
+ *
+ * ⚠ CE CONTRÔLE NE RÉPARE AUCUNE DES TROIS. Le harnais passe maintenant le
+ * libellé, la base refuse un libellé trop long, et ce contrôle est le troisième
+ * verrou : celui qui refuse le mois si les deux premiers ont été contournés.
+ */
+export function checkEyebrow(
+  posts: PostUnderCheck[],
+  catalogue: Array<{ id: string; label: string }>,
+  practiceName?: string
+): Finding[] {
+  const out: Finding[] = [];
+  const normalise = (v: string) => v.trim().replace(/\s+/g, " ").toUpperCase();
+  const letters = (v: string) => v.replace(/[^a-z]/gi, "").toUpperCase();
+
+  /* Ce qu'une bande a le droit de porter : un libellé, ou le nom du cabinet. */
+  const allowed = new Set(
+    [...catalogue.map((c) => c.label), ...(practiceName ? [practiceName] : [])].map(normalise)
+  );
+  /* Ce qu'elle n'a le droit de porter sous aucune forme : un code interne. */
+  const codes = new Set(catalogue.map((c) => letters(c.id)));
+  /*
+   * Et le vocabulaire des deux, pour reconnaître un mot collé qu'aucune des
+   * deux listes ne nomme — le prochain code, celui qui n'existe pas encore.
+   */
+  const vocabulary = new Set(
+    catalogue
+      .flatMap((c) => [...c.id.split(/[^a-z]+/i), ...c.label.split(/[^a-z]+/i)])
+      .map((w) => w.toLowerCase())
+      .filter(Boolean)
+  );
+  const runsTogether = (token: string): boolean => {
+    const word = token.toLowerCase();
+    if (word.length < 8 || vocabulary.has(word)) return false;
+    /* Découpable en morceaux qui sont tous du vocabulaire. */
+    const reachable = new Array<boolean>(word.length + 1).fill(false);
+    reachable[0] = true;
+    for (let end = 1; end <= word.length; end += 1) {
+      for (let start = 0; start < end; start += 1) {
+        if (reachable[start] && vocabulary.has(word.slice(start, end))) {
+          reachable[end] = true;
+          break;
+        }
+      }
+    }
+    return reachable[word.length];
+  };
+
+  for (const post of posts) {
+    /* ⚠ Un surtitre non fourni n'est pas un surtitre fautif. */
+    if (post.eyebrow === undefined) continue;
+    const where = `« ${post.cardLine || post.title} »`;
+    const say = (check: string, detail: string) => out.push({ check, detail: `${where} : ${detail}` });
+
+    const value = post.eyebrow.trim();
+    if (!value) {
+      say("eyebrow.empty", "la bande de surtitre est vide");
+      continue;
+    }
+
+    const words = value.split(/\s+/).filter(Boolean);
+    if (words.length > EYEBROW_MAX_WORDS) {
+      say("eyebrow.length", `« ${value} » fait ${words.length} mots (${EYEBROW_MAX_WORDS} au plus)`);
+      continue;
+    }
+    if (value.length > EYEBROW_MAX_CHARS) {
+      say("eyebrow.length", `« ${value} » fait ${value.length} caractères (${EYEBROW_MAX_CHARS} au plus)`);
+      continue;
+    }
+
+    /*
+     * Un identifiant se reconnaît à sa couture — tiret bas, chiffre, casse
+     * mêlée — ou, une fois les capitales passées dessus, à ce qu'il EST.
+     */
+    /*
+     * ⚠ ET LA COMPARAISON NE TRAVERSE PAS UNE ESPACE. Retirer les espaces
+     * avant de comparer faisait de « BEHIND THE PRACTICE » — le libellé,
+     * correctement rendu — le code `behind_the_practice`. Un code n'a pas
+     * d'espace : c'est par là qu'on les distingue, et c'est justement ce qui
+     * rend « BEHINDTHEPRACTICE » reconnaissable.
+     */
+    const seamless = words.length === 1 && codes.has(letters(value));
+    if (/[_\d]/.test(value) || /[a-z][A-Z]/.test(value) || seamless) {
+      say("eyebrow.identifier", `« ${value} » est un identifiant interne`);
+      continue;
+    }
+
+    const glued = words.find(runsTogether);
+    if (glued) {
+      say("eyebrow.glued", `« ${glued} » est un mot collé, pas un mot`);
+      continue;
+    }
+
+    if (allowed.size > 0 && !allowed.has(normalise(value))) {
+      say("eyebrow.unlisted", `« ${value} » n'est pas un libellé autorisé`);
+    }
+  }
+  return out;
+}
+
 export function checkMonth(month: MonthUnderCheck): Finding[] {
   const out: Finding[] = [];
   out.push(...checkCount(month.posts.length, month.wanted));
   out.push(...checkMix(month.posts.map((p) => p.archetype)));
   out.push(...checkDuplicateTitles(month.posts.map((p) => p.cardLine || p.title)));
   out.push(...checkIdenticalPayloads(month.posts));
+  out.push(...checkEyebrow(month.posts, month.eyebrowCatalogue ?? [], month.practiceName));
 
   /*
    * ── LES SEPT CONTRÔLES D'ÉCRITURE (F26) ───────────────────────────────

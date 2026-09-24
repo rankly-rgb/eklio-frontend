@@ -948,6 +948,24 @@ export type Database = {
         }
         Relationships: []
       }
+      content_intents: {
+        Row: {
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          id: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       content_topics: {
         Row: {
           archetype_key: string

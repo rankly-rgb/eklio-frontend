@@ -283,6 +283,28 @@ async function main() {
   const directions = (kit?.directions ?? []) as Array<{ id: string; palette: never }>;
   const direction = directions.find((d) => d.id === kit?.selected_direction_id) ?? directions[0];
   const practiceName = brief.practice_name ?? "the practice";
+
+  /*
+   * ── ⚠ « CORRECTAMYTH » A ÉTÉ IMPRIMÉ SUR UNE CARTE PUBLIABLE ──────────
+   *
+   * Le champ s'appelle `angleLabel` et attend un LIBELLÉ. Cette ligne lui
+   * passait `topic.intent`, qui est un IDENTIFIANT : `correct_a_myth`,
+   * `behind_the_practice`. Le rendu met en capitales et retire la ponctuation,
+   * donc le tiret bas disparaissait et les mots se collaient — un code interne
+   * publié en haut d'une carte de clinicienne, en gras, en mono.
+   *
+   * Le chemin produit (`lib/content/review.ts`) lisait déjà `angle_label`. Le
+   * harnais, non. C'était la MÊME fonction de rendu avec deux appelants, dont
+   * un seul juste, et c'est le harnais qui fabrique les planches qu'on note.
+   *
+   * ⚠ LE CATALOGUE EST LU UNE FOIS, PAS PAR CARTE. Cinq lignes, trente
+   * cartes : une jointure par carte serait trente allers-retours pour une
+   * table qui ne bouge pas pendant un mois.
+   */
+  const { data: intentRows } = await db.from("content_intents").select("id, label");
+  const intentLabels = new Map(
+    (intentRows ?? []).map((r) => [r.id as string, r.label as string])
+  );
   /*
    * La ville et l'État viennent du brief, pas du bilan — mais ils fuitaient
    * sur les cartes de la même façon (« Oakland, California » en libellé de
@@ -1021,10 +1043,17 @@ type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ titl
 
 function selectDeliverable<
   T extends { cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
-              candidate: { topic: { title: string } } }
+              eyebrow: string; candidate: { topic: { title: string } } }
 >(
   prepared: T[], direction: DirectionPalette, wanted: number, practiceName: string,
   allowList: string[],
+  /**
+   * Le catalogue des intentions, pour le contrôle de surtitre.
+   *
+   * ⚠ IL VIENT DE LA BASE. Un contrôle qui tirerait la liste des libellés
+   * des cartes qu'il surveille les autoriserait toutes.
+   */
+  intentCatalogue: Array<{ id: string; label: string }>,
   /** Les modalités du brief, pour le contrôle de sigle (F26). */
   modalities: string[],
   /**
@@ -1042,6 +1071,7 @@ function selectDeliverable<
     cardLine: p.cardLine,
     payload: p.payload,
     svg: p.svg ?? undefined,
+    eyebrow: p.eyebrow,
   });
 
   let chosen = prepared.slice(0, wanted);
@@ -1051,7 +1081,7 @@ function selectDeliverable<
   for (;;) {
     const findings = checkMonth({
       posts: chosen.map(asPost), direction, practiceName, identityAllowList: allowList,
-      modalities, completeness,
+      modalities, completeness, eyebrowCatalogue: intentCatalogue,
       /*
        * ⚠ LE NOMBRE EST UN CONTRÔLE, PAS UNE LIGNE DE RAPPORT. Un mois de
        * quinze posts est sorti « sans constat » le 2026-09-23 : le rapport
@@ -1150,6 +1180,8 @@ function selectDeliverable<
     composeArchetype: string;
     payload: unknown;
     svg: string | null;
+    /** La bande de surtitre, telle qu'elle a été composée. */
+    eyebrow: string;
     register: ContentRegister;
     layout: Parameters<typeof chooseArchetype>[1];
     theme: string;
@@ -1244,6 +1276,20 @@ function selectDeliverable<
     let composeArchetype = candidate.topic.archetype_key;
     let payload = result.payload;
     let composedSvg: string | null = null;
+    /*
+     * ⚠ CALCULÉ ICI, PAS DANS L'APPEL. La valeur composée est celle que le
+     * contrôle doit lire : un contrôle qui relirait les ENTRÉES de
+     * `eyebrowFor` ne verrait jamais « CORRECTAMYTH », qui est ce que la
+     * clinicienne, elle, a vu.
+     */
+    const eyebrow = eyebrowFor(
+      {
+        angleLabel: intentLabels.get(candidate.topic.intent) ?? null,
+        title: cardLine,
+        theme: themes.themes[index % themes.themes.length],
+      },
+      practiceName
+    );
     try {
       const composed = composeWithFallback({
         archetype: candidate.topic.archetype_key,
@@ -1257,10 +1303,7 @@ function selectDeliverable<
          * étiquette d'un à quatre mots, tirée d'abord de ce qui est propre à
          * cette carte.
          */
-        eyebrow: eyebrowFor(
-          { angleLabel: candidate.topic.intent, title: cardLine, theme: themes.themes[index % themes.themes.length] },
-          practiceName
-        ),
+        eyebrow,
         headline: cardLine,
         footer: practiceName,
       }, cardLine);
@@ -1285,7 +1328,7 @@ function selectDeliverable<
 
     readyPosts.push({
       candidate, cardLine, composeArchetype, payload: deepTypographic(payload), svg: composedSvg,
-      register, layout, theme: themes.themes[index % themes.themes.length],
+      eyebrow, register, layout, theme: themes.themes[index % themes.themes.length],
     });
   }
 
@@ -1335,6 +1378,7 @@ function selectDeliverable<
 
   const selection = selectDeliverable(
     readyPosts, direction.palette as DirectionPalette, WANTED, practiceName, allowList,
+    [...intentLabels].map(([id, label]) => ({ id, label })),
     facts.modalities, judged.verdicts
   );
   const succeeded = selection.chosen.map((p: Prepared) => p.candidate);

@@ -39,12 +39,51 @@ export const EYEBROW_MAX_CHARS = 22;
  * thème, puis le nom du cabinet. Le résultat varie d'une carte à l'autre parce
  * que sa source varie avec elle.
  */
+/**
+ * Un libellé du catalogue, mis en capitales et rien d'autre.
+ *
+ * ── ⚠ « ONLY ONE » N'ÉTAIT PAS UN DRAPEAU INTERNE, C'ÉTAIT UN LIBELLÉ ──
+ *
+ * Une notation indépendante a relevé « ONLY ONE » imprimé au-dessus d'une
+ * carte à quatre blocs et l'a lu comme un indicateur de pagination. Ce n'en
+ * était pas un : `content_intents` porte « **You are not the only one** » pour
+ * `normalise`, et `eyebrowFor` en retirait les mots outils — you, are, not,
+ * the — puis gardait les trois premiers restants. Il restait « ONLY ONE »,
+ * qui dit le contraire de la phrase dont il vient.
+ *
+ * ⚠ UN LIBELLÉ DE CATALOGUE NE SE DÉRIVE PAS. L'extraction existe pour tirer
+ * une étiquette d'un TITRE ou d'un THÈME, qui sont des phrases. Un libellé est
+ * déjà une étiquette : quelqu'un l'a écrit pour cette bande, et le raboter
+ * produit un texte que personne n'a choisi.
+ *
+ * Un libellé qui ne tient pas dans la bande est donc refusé, pas raccourci —
+ * c'est au catalogue d'être juste, et `checkEyebrow` le vérifie.
+ */
+function fromCatalogue(label: string | null | undefined): string | null {
+  const text = label?.trim();
+  if (!text) return null;
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length > EYEBROW_MAX_WORDS) return null;
+  const upper = text.toUpperCase();
+  if (upper.length > EYEBROW_MAX_CHARS) return null;
+  return upper;
+}
+
 export function eyebrowFor(
   parts: { angleLabel?: string | null; title?: string | null; theme?: string | null },
   practiceName: string | null
 ): string {
   const fallback = practiceName?.trim() || "Eklio";
-  for (const source of [parts.angleLabel, parts.title, parts.theme]) {
+
+  /*
+   * ⚠ LE LIBELLÉ D'ANGLE PASSE PAR LE CATALOGUE, PAS PAR L'EXTRACTION. C'est
+   * la seule source qui est DÉJÀ une étiquette ; les deux autres sont des
+   * phrases dont il faut tirer quelque chose.
+   */
+  const catalogued = fromCatalogue(parts.angleLabel);
+  if (catalogued) return catalogued;
+
+  for (const source of [parts.title, parts.theme]) {
     const tag = tagFrom(source);
     if (tag) return tag;
   }
