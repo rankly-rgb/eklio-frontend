@@ -49,6 +49,7 @@ import { cardPalette } from "../../lib/compose/palette";
 import { checkEthics } from "../../lib/ethics/rules";
 import { checkinLeaks } from "../../lib/content/leakage";
 import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
+import { licenceMention, licenceMissingMessage } from "../../lib/content/licence";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
 import {
@@ -408,7 +409,7 @@ async function main() {
    */
   const { data: brief } = await db
     .from("project_briefs")
-    .select("practice_name, positioning, usp_statement, city, state, modality_ids")
+    .select("practice_name, positioning, usp_statement, city, state, modality_ids, license_type_id, license_number, license_state_code")
     .eq("project_id", projectId)
     .single();
   if (!preferences || !rules?.length || !brief) throw new Error("the account is not complete");
@@ -416,6 +417,40 @@ async function main() {
   const directions = (kit?.directions ?? []) as Array<{ id: string; palette: never }>;
   const direction = directions.find((d) => d.id === kit?.selected_direction_id) ?? directions[0];
   const practiceName = brief.practice_name ?? "the practice";
+
+  /*
+   * ── ⚠ UN MOIS NE PART PAS SANS LA MENTION DE LICENCE ──────────────────
+   *
+   * Quatre cents posts ont été produits sans une seule (F35). Californie B&P
+   * §4980.44, §4996.2 et §4999.80 l'exigent dans TOUTE publicité, et d'autres
+   * États imposent l'équivalent : c'étaient quatre cents infractions
+   * publicitaires, pas un défaut de style.
+   *
+   * ⚠ ET LE REFUS EST ICI, PAS DANS LE CONTRÔLE DE MOIS. Un contrôle qui
+   * refuserait le mois à la fin aurait laissé payer soixante-douze appels pour
+   * un mois qu'on savait irrecevable avant de commencer. Ce qui manque est un
+   * champ de brief : on le dit avant de dépenser, et on nomme le champ.
+   */
+  const { data: abbreviationRow } = await untypedTable<{ abbreviation: string | null }>(
+    db, "license_type_states"
+  )
+    .select("abbreviation")
+    .eq("license_type_id", brief.license_type_id ?? "")
+    .eq("state_code", (brief.license_state_code ?? brief.state ?? "").toUpperCase())
+    .maybeSingle();
+
+  const licence = {
+    licenseTypeId: brief.license_type_id,
+    licenseNumber: brief.license_number,
+    abbreviation: abbreviationRow?.abbreviation ?? null,
+  };
+  const licenceRefusal = licenceMissingMessage(licence);
+  if (licenceRefusal) {
+    console.error(`\n✗ ${licenceRefusal}\n`);
+    process.exit(1);
+  }
+  const mention = licenceMention(licence)!;
+  console.error(`▸ mention de licence : ${mention}`);
 
   /*
    * ── ⚠ « CORRECTAMYTH » A ÉTÉ IMPRIMÉ SUR UNE CARTE PUBLIABLE ──────────
@@ -1279,7 +1314,7 @@ type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ titl
 
 function selectDeliverable<
   T extends { cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
-              eyebrow: string;
+              eyebrow: string; footer: string;
               candidate: { topic: { title: string }; result?: { caption?: string; altText?: string } | null } }
 >(
   prepared: T[], direction: DirectionPalette, wanted: number, practiceName: string,
@@ -1291,6 +1326,8 @@ function selectDeliverable<
    * des cartes qu'il surveille les autoriserait toutes.
    */
   intentCatalogue: Array<{ id: string; label: string }>,
+  /** La mention de licence exigée sur chaque post. */
+  licenceMention: string,
   /** Les modalités du brief, pour le contrôle de sigle (F26). */
   modalities: string[],
   /**
@@ -1317,6 +1354,7 @@ function selectDeliverable<
      */
     caption: p.candidate.result?.caption ?? undefined,
     altText: p.candidate.result?.altText ?? undefined,
+    footer: p.footer,
   });
 
   let chosen = prepared.slice(0, wanted);
@@ -1327,6 +1365,7 @@ function selectDeliverable<
     const findings = checkMonth({
       posts: chosen.map(asPost), direction, practiceName, identityAllowList: allowList,
       modalities, completeness, eyebrowCatalogue: intentCatalogue,
+      licenceMention,
       /*
        * ⚠ LE NOMBRE EST UN CONTRÔLE, PAS UNE LIGNE DE RAPPORT. Un mois de
        * quinze posts est sorti « sans constat » le 2026-09-23 : le rapport
@@ -1499,6 +1538,8 @@ function selectDeliverable<
     svg: string | null;
     /** La bande de surtitre, telle qu'elle a été composée. */
     eyebrow: string;
+    /** Le pied composé, mention de licence comprise. */
+    footer: string;
     register: ContentRegister;
     layout: Parameters<typeof chooseArchetype>[1];
     theme: string;
@@ -1622,7 +1663,8 @@ function selectDeliverable<
          */
         eyebrow,
         headline: cardLine,
-        footer: practiceName,
+        // ⚠ La mention y est, sur les onze archétypes : c'est la seule bande partagée.
+        footer: `${practiceName} · ${mention}`,
       }, cardLine);
       composeArchetype = composed.archetype;
       payload = composed.payload;
@@ -1645,7 +1687,8 @@ function selectDeliverable<
 
     readyPosts.push({
       candidate, cardLine, composeArchetype, payload: deepTypographic(payload), svg: composedSvg,
-      eyebrow, register, layout, theme: themes.themes[index % themes.themes.length],
+      eyebrow, footer: `${practiceName} · ${mention}`,
+      register, layout, theme: themes.themes[index % themes.themes.length],
     });
   }
 
@@ -1695,7 +1738,7 @@ function selectDeliverable<
 
   const selection = selectDeliverable(
     readyPosts, direction.palette as DirectionPalette, WANTED, practiceName, allowList,
-    [...intentLabels].map(([id, label]) => ({ id, label })),
+    [...intentLabels].map(([id, label]) => ({ id, label })), mention,
     facts.modalities, judged.verdicts
   );
   const succeeded = selection.chosen.map((p: Prepared) => p.candidate);

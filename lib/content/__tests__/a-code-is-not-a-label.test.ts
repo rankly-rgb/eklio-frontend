@@ -185,7 +185,8 @@ describe("le harnais passe un libellé", () => {
 
   /* ⚠ Et la valeur contrôlée est celle qui est COMPOSÉE, pas son entrée. */
   it("la bande composée est retenue jusqu'au contrôle", () => {
-    expect(SOURCE).toContain("eyebrow, register, layout");
+    // ⚠ Le pied s'est intercalé le jour où il a porté la mention de licence.
+    expect(SOURCE).toContain("eyebrow, footer:");
     expect(SOURCE).toContain("eyebrow: p.eyebrow,");
   });
 });

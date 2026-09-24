@@ -2155,6 +2155,8 @@ export type Database = {
       }
       project_briefs: {
         Row: {
+          license_number: string | null
+          license_state_code: string | null
           builder_target_id: string | null
           city: string | null
           client_persona_ids: string[]
@@ -2193,6 +2195,8 @@ export type Database = {
           usp_statement: string | null
         }
         Insert: {
+          license_number?: string | null
+          license_state_code?: string | null
           builder_target_id?: string | null
           city?: string | null
           client_persona_ids?: string[]
@@ -2231,6 +2235,8 @@ export type Database = {
           usp_statement?: string | null
         }
         Update: {
+          license_number?: string | null
+          license_state_code?: string | null
           builder_target_id?: string | null
           city?: string | null
           client_persona_ids?: string[]

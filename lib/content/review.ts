@@ -36,7 +36,18 @@ export type ReviewCard = {
  */
 export function cardBands(
   item: Pick<ContentItem, "theme" | "title" | "topic">,
-  practiceName: string | null
+  practiceName: string | null,
+  /**
+   * La mention de licence, quand le brief la porte.
+   *
+   * ⚠ LE PIED EST L'ENDROIT JUSTE, et il n'y en a pas d'autre. Californie B&P
+   * §4980.44 exige le type et le numéro dans TOUTE publicité ; le pied est la
+   * seule bande présente sur les onze archétypes, déjà en mono, déjà petite,
+   * et elle porte déjà le nom du cabinet. Mettre la mention dans le surtitre
+   * la ferait entrer en concurrence avec le libellé d'intention ; dans le
+   * contenu, elle volerait la place du diagramme.
+   */
+  licence?: string | null
 ): { eyebrow: string; headline: string; footer: string } {
   const fallback = practiceName?.trim() || "Eklio";
   return {
@@ -56,7 +67,12 @@ export function cardBands(
     // la route d'image partagent — pas à l'écriture. Un mois déjà en base
     // s'affiche donc corrigé, sans migration de données.
     headline: capitaliseTitle(item.title?.trim() || fallback),
-    footer: fallback,
+    /*
+     * ⚠ SÉPARÉE PAR UN POINT MÉDIAN, PAS PAR UNE VIRGULE. « Willow Clinic,
+     * LMFT 12345 » se lit comme une adresse ; « Willow Clinic · LMFT 12345 »
+     * se lit comme deux informations, ce qu'elles sont.
+     */
+    footer: licence ? `${fallback} · ${licence}` : fallback,
   };
 }
 

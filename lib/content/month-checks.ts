@@ -1,6 +1,7 @@
 import { DANGLING } from "@/lib/content/generate/copy-batch";
 import type { DirectionPalette } from "@/lib/compose/palette";
 import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
+import { footerCarriesLicence } from "@/lib/content/licence";
 import {
   checkUnfinished, checkCarouselPanels, checkBorrowed, checkClinicalClaim,
   checkSellsSlots, checkStraightQuotes, checkAcronym,
@@ -589,6 +590,14 @@ export type PostUnderCheck = {
    */
   caption?: string;
   altText?: string;
+  /**
+   * Le pied de carte, tel qu'il sera imprimé.
+   *
+   * ⚠ IL PORTE LA MENTION DE LICENCE, et c'est la seule bande présente sur les
+   * onze archétypes. Sans lui dans `PostUnderCheck`, aucun contrôle ne peut
+   * dire si la mention exigée par les boards a été imprimée.
+   */
+  footer?: string;
   /** Le SVG livré, quand il a déjà été composé. */
   svg?: string;
   /**
@@ -636,6 +645,15 @@ export type MonthUnderCheck = {
   practiceName?: string;
   /** Les autres chaînes du brief qu'une carte peut légitimement nommer. */
   identityAllowList?: string[];
+  /**
+   * La mention de licence que chaque post doit porter.
+   *
+   * ⚠ ELLE VIENT DU BRIEF, PAS DES CARTES (F16). Absente, le contrôle se tait
+   * — mais la génération, elle, refuse de partir : c'est là que le manque se
+   * règle, avec un message qui nomme le champ.
+   */
+  licenceMention?: string;
+
   /**
    * Le catalogue `content_intents`, IDENTIFIANTS COMPRIS.
    *
@@ -860,6 +878,7 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
   out.push(...checkDuplicateTitles(month.posts.map((p) => p.cardLine || p.title)));
   out.push(...checkIdenticalPayloads(month.posts));
   out.push(...checkEyebrow(month.posts, month.eyebrowCatalogue ?? [], month.practiceName));
+  out.push(...checkLicence(month.posts, month.licenceMention));
 
   /*
    * ── LES SEPT CONTRÔLES D'ÉCRITURE (F26) ───────────────────────────────
@@ -991,4 +1010,35 @@ export function repeatedAcross(posts: PostUnderCheck[], minPosts = 2): Repeat[] 
  */
 export function repetitionScore(posts: PostUnderCheck[]): number {
   return repeatedAcross(posts).reduce((total, r) => total + (r.posts.length - 1), 0);
+}
+
+/* ── 14. La mention de licence ──────────────────────────────────────── */
+
+/**
+ * ⚠ CHAQUE POST PORTE LA MENTION, OU LE MOIS NE PART PAS.
+ *
+ * Quatre cents posts ont été produits sans une seule mention de licence
+ * (F35). Californie B&P §4980.44, §4996.2 et §4999.80 l'exigent dans **toute**
+ * publicité, et d'autres États imposent l'équivalent : ce n'était pas un défaut
+ * de style, c'était quatre cents infractions publicitaires.
+ *
+ * ⚠ ET LE CONTRÔLE NE PEUT PAS L'INVENTER. Sans `licenceMention` — donc sans
+ * `license_number` au brief — il se tait, parce qu'un contrôle qui refuserait
+ * tout faute de référence se ferait relâcher au premier mois. Le refus vit à
+ * la génération, qui ne part pas sans le champ et dit lequel il manque.
+ */
+export function checkLicence(posts: PostUnderCheck[], mention: string | undefined): Finding[] {
+  if (!mention) return [];
+  const out: Finding[] = [];
+  for (const post of posts) {
+    if (!footerCarriesLicence(post.footer, mention)) {
+      out.push({
+        check: "licence.missing",
+        detail:
+          `« ${post.cardLine || post.title} » ne porte pas « ${mention} » en pied de carte ` +
+          `(pied : « ${post.footer ?? "aucun"} »)`,
+      });
+    }
+  }
+  return out;
 }
