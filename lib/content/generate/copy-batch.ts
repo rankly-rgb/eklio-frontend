@@ -533,6 +533,43 @@ export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthrop
     `- "rationale" is one sentence, at most ${RATIONALE_MAX_WORDS} words, completing "Why this one:".`,
     ``,
     /*
+     * ── ⚠ TOUT CE QUI PRÉCÈDE SE LISAIT COMME PORTANT SUR LA CARTE ────────
+     *
+     * Mesuré le 2026-09-24, et c'est le plus gros défaut de consigne trouvé
+     * dans ce préfixe. La seule chose qui était dite de la légende était sa
+     * LONGUEUR ; les règles de déontologie, la liste des « NEVER » et tout le
+     * reste se lisaient comme des règles de carte.
+     *
+     * Le modèle a fait ce qu'on lui demandait : il a écrit des cartes propres
+     * et des légendes qui promettent. Une fois la légende contrôlée, CINQ mois
+     * sur cinq ont été refusés — trois sur une promesse d'efficacité dans la
+     * légende, deux sur une phrase empruntée.
+     *
+     * ⚠ ET CE N'ÉTAIT PAS UN DÉFAUT DE MODÈLE. La consigne ne le disait pas.
+     */
+    `⚠ "caption" AND "alt_text" ARE PUBLISHED TEXT UNDER HER LICENCE, and every`,
+    `rule above applies to them exactly as it applies to the card. The caption`,
+    `is the LONGEST thing a reader sees. It is not a place where the rules relax;`,
+    `it is where a board would look first. Five specific ways a caption fails:`,
+    ``,
+    `1. IT PROMISES A RESULT. "EMDR helps you integrate what happened" is an`,
+    `   efficacy claim stated as fact. Write "EMDR can help…", "some people`,
+    `   find…", "the work is designed to…" — the hedge is not softness, it is`,
+    `   the difference between a sentence she may publish and one she may not.`,
+    `2. IT TALKS ABOUT HER CLIENTS. "Almost everyone who came in this month had`,
+    `   just gone back to work" describes a real, small caseload in a named city:`,
+    `   a client recognises herself. Write about people in general, never about`,
+    `   who came in.`,
+    `3. IT COMPARES. "The processing happens faster than talk alone" is a`,
+    `   measurable claim with no measurement, and it disparages a colleague's`,
+    `   modality. Describe what the work does, never what it beats.`,
+    `4. IT BORROWS. "the body keeps the score" is the title of someone else's`,
+    `   book. Say it in her own words.`,
+    `5. IT SELLS A SLOT. "Two evening slots opening in October. They fill fast."`,
+    `   Availability lives in her brief, not in your sentence, and urgency aimed`,
+    `   at a distressed reader is the one kind of pressure this practice refuses.`,
+    ``,
+    /*
      * ⚠ CHAQUE CHIFFRE DE CE BLOC EST INTERPOLÉ, ET AUCUN N'EST ÉCRIT EN DUR.
      *
      * Il enseignait encore, trois corrections après le changement de règle,
