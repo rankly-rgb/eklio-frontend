@@ -2408,3 +2408,63 @@ décision à prendre, pas un détail d'outillage. Le brief du 2026-09-21
 l'accorde ; il n'a PAS été installé, parce qu'une dépendance ajoutée pour des
 captures qui ne peuvent pas être prises n'est qu'un diff de plus à relire.
 C'est la première commande à lancer le jour où la clef est là.
+
+---
+
+## F38 — Les deux niveaux déontologiques ne lisaient pas le même socle
+
+**Trouvé en payant.** Le 2026-09-24, `sable.ingram` a écrit 29 posts pour 30
+retenus. Les trente contrôles du mois étaient verts, les dix échanges de
+contenu avaient tous abouti, et c'est la GÂCHETTE SQL qui a refusé le
+trentième :
+
+```
+database · Advertising ethics: guarantee
+```
+
+Le mois est tombé sur `month.short`. 0,54 $, un banc consommé, rien de livré.
+
+**La cause n'est pas un motif manquant.** Les dix-neuf motifs existent des deux
+côtés, avec les mêmes identifiants — `parity.test.ts` le vérifiait et il avait
+raison. Ce qui diverge est une EXEMPTION, et une exemption n'a pas de nom dans
+un recensement : `lib/ethics/rules.ts` laisse passer un terme interdit
+immédiatement précédé d'une négation (`isProhibitiveMention`), et
+`public.ethics_patterns` ne connaît pas cette notion. Mesuré sur 21 sondes
+prohibitives, une par motif bloquant :
+
+| | code | base |
+|---|---|---|
+| sondes bloquées | 17 | 21 |
+| désaccords | — | 4 : les trois formes de `guarantee`, et `client reviews` |
+
+**Corrigé, dans le sens strict.** `checkEthics` prend une lecture ;
+`"as-database"` retire l'exemption, et tout ce qui écrit en base l'emploie
+désormais — onze chemins, avec un test dérivé de la source
+(`as-strict-as-the-database.test.ts`) qui fait tomber la vérification si un
+appel neuf repart en lecture indulgente. Deux exemptions nommées subsistent :
+la boîte de saisie de la clinicienne et le scan d'un prompt.
+
+**Et le socle est devenu un contrôle de mois.** `checkAdvertisingEthics` entre
+dans `checkMonth`, sur toutes les surfaces, pied de carte et surtitre compris.
+C'est la moitié importante de la correction : un constat de `checkMonth`
+déclenche un ÉCHANGE — le post fautif part, un remplaçant du banc prend sa
+place, le mois reste à trente. Un refus à l'`insert` n'a pas ce recours.
+
+### ⚠ Ce qui reste à décider, et qui ne se décide pas seule
+
+**La base a tort, et je l'ai suivie quand même.**
+
+> « There is no guarantee that six weeks will change anything. »
+
+est de la copy CONFORME : c'est l'anti-promesse, exactement ce que l'ACA C.3.a
+cherche à obtenir. La gâchette la refuse. Le motif juste est celui du code, et
+la correction juste serait d'ajouter l'exemption prohibitive à
+`public.ethics_patterns` — c'est-à-dire de relâcher un contrôle déontologique
+en production, sur une session sans relecture. Le garde-fou de la session
+l'interdit, et il a raison de l'interdire.
+
+Le pipeline perd donc une tournure honnête. Ça coûte du style et rien d'autre,
+et c'est le bon prix à payer en attendant une décision. **La question à
+trancher :** ajoute-t-on `exception_pattern` aux quatre motifs concernés, ou
+garde-t-on les deux niveaux stricts et assume-t-on que la copy générée ne nie
+jamais explicitement une promesse ?

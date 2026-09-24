@@ -167,15 +167,50 @@ describe("toute grandeur produite est CONSOMMÉE, pas seulement affichée", () =
    * catalogue.
    */
   it("une violation déontologique écarte le candidat", () => {
-    const at = MONTH.indexOf("const violations = checkEthics(scanned).violations;");
+    /*
+     * ⚠ ANCRÉ SUR L'APPEL, PAS SUR SA MISE EN FORME. La version précédente
+     * cherchait « const violations = checkEthics(scanned).violations; » en
+     * toutes lettres : ajouter un argument à l'appel faisait tomber un test qui
+     * ne parle pas des arguments.
+     */
+    const at = MONTH.search(/const violations = checkEthics\(\s*scanned/);
     expect(at).toBeGreaterThan(-1);
     const block = MONTH.slice(at, at + 1400);
     expect(block).toContain("if (violations.length > 0) {");
     expect(block).toContain("continue;");
   });
 
-  it("le scan déontologique lit la ligne de carte", () => {
-    expect(MONTH).toContain("const scanned = [cardLine, result.caption");
+  /*
+   * ── ⚠ LE SCAN LIT LES QUATRE COLONNES QUE LA GÂCHETTE LIT ─────────────
+   *
+   * `content_items_ethics_gate` lit `title, caption, on_image_text, alt_text`,
+   * et `content_items_payload_ethics_gate` descend dans le payload. Le scan du
+   * harnais n'en voyait que trois plus le payload : `on_image_text` — le
+   * crochet du sujet — n'était lu par personne côté code, et un refus sur cette
+   * colonne arrive à l'`insert`, donc après la dépense.
+   *
+   * La liste vit en toutes lettres des deux côtés, comme celle de
+   * `lib/ethics/__tests__/parity.test.ts` : le fichier à contrôler est dans
+   * l'autre dépôt, et une liste qui se lit elle-même ne contrôle rien.
+   *   eklio-backend/supabase/migrations — `*_ethics_gate`
+   */
+  it("le scan déontologique lit toutes les colonnes de la gâchette", () => {
+    const at = MONTH.indexOf("const scanned = [");
+    expect(at).toBeGreaterThan(-1);
+    const array = MONTH.slice(at, MONTH.indexOf("].join(", at));
+    for (const surface of ["cardLine", "result.caption", "result.altText", "candidate.topic.hook", "result.payload"]) {
+      expect(array, `${surface} est hors du scan déontologique`).toContain(surface);
+    }
+  });
+
+  /*
+   * ⚠ ET IL LIT COMME LA BASE LIT. L'exemption prohibitive du côté TS n'existe
+   * pas en base : sans cet argument, « there is no guarantee » passe ici et est
+   * refusé à l'`insert`. Voir lib/ethics/__tests__/as-strict-as-the-database.
+   */
+  it("le scan déontologique lit dans la lecture de la base", () => {
+    const at = MONTH.search(/const violations = checkEthics\(/);
+    expect(MONTH.slice(at, at + 200)).toContain('reading: "as-database"');
   });
 });
 

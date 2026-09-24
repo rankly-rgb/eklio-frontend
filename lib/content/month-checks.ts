@@ -1,4 +1,5 @@
-import { DANGLING } from "@/lib/content/generate/copy-batch";
+
+import { checkEthics } from "@/lib/ethics/rules";import { DANGLING } from "@/lib/content/generate/copy-batch";
 import type { DirectionPalette } from "@/lib/compose/palette";
 import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
 import { footerCarriesLicence } from "@/lib/content/licence";
@@ -880,6 +881,12 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
   out.push(...checkIdenticalPayloads(month.posts));
   out.push(...checkEyebrow(month.posts, month.eyebrowCatalogue ?? [], month.practiceName));
   out.push(...checkLicence(month.posts, month.licenceMention));
+  /*
+   * ⚠ LE SOCLE DÉONTOLOGIQUE EST UN CONTRÔLE DE MOIS, PAS UNE VÉRIFICATION
+   * D'INSERTION. Voir `checkAdvertisingEthics` : il était appliqué trop tard
+   * et sur trop peu de surfaces.
+   */
+  out.push(...checkAdvertisingEthics(month.posts));
 
   /*
    * ── LES SEPT CONTRÔLES D'ÉCRITURE (F26) ───────────────────────────────
@@ -1056,6 +1063,86 @@ export function checkLicence(posts: PostUnderCheck[], mention: string | undefine
           `(pied : « ${post.footer ?? "aucun"} »)`,
       });
     }
+  }
+  return out;
+}
+
+/* ── 20. La déontologie publicitaire, telle que la base la lit ─────────── */
+
+/**
+ * Chaque surface publiée, passée au socle déontologique dans la lecture
+ * `as-database`.
+ *
+ * ── ⚠ DIX-HUIT RÈGLES EXISTAIENT, ET LE JEU DE CONTRÔLES DU MOIS N'EN
+ *      PORTAIT AUCUNE ─────────────────────────────────────────────────────
+ *
+ * `checkEthics` était appelé — mais dans le harnais, une fois, juste avant
+ * l'`insert`, sur quatre champs choisis à la main. Il n'était PAS dans
+ * `checkMonth`, et cette absence a deux conséquences que l'on a payées :
+ *
+ * 1. UN POST FAUTIF NE POUVAIT PAS ÊTRE REMPLACÉ. Les constats de `checkMonth`
+ *    déclenchent un échange : le post part, un remplaçant du banc prend sa
+ *    place, le mois reste à trente. Un refus au moment de l'`insert` n'a pas
+ *    ce recours — le mois sort à vingt-neuf et `month.short` le refuse en
+ *    entier. C'est ce qui est arrivé à `sable.ingram` le 24 septembre 2026 :
+ *    dix échanges réussis sur des constats de contenu, puis un refus de la
+ *    base sur « guarantee », et 0,54 $ pour rien.
+ *
+ * 2. LA SURFACE ÉTAIT PARTIELLE. Le harnais scannait
+ *    `cardLine + caption + altText + payload` ; la gâchette lit en plus
+ *    `on_image_text`. Une colonne que la base lit et que le code ne lit pas
+ *    est une colonne où le refus arrive trop tard.
+ *
+ * ⚠ LE PIED ET LE SURTITRE SONT LUS ICI ALORS QU'AUCUN AUTRE CONTRÔLE
+ * D'ÉCRITURE NE LES LIT. `writtenLinesIn` les exempte pour de bonnes raisons
+ * (`checkLicence` et `checkEyebrow` ont leurs propres bornes), mais « toutes
+ * les surfaces » ne peut pas vouloir dire « toutes sauf deux » quand le sujet
+ * est une règle qu'un board d'État applique.
+ */
+export function checkAdvertisingEthics(posts: PostUnderCheck[]): Finding[] {
+  const out: Finding[] = [];
+  const seen = new Set<string>();
+
+  for (const line of surfacesForEthics(posts)) {
+    for (const violation of checkEthics(line.text, { reading: "as-database" }).violations) {
+      if (violation.severity !== "block") continue;
+      /*
+       * ⚠ UN CONSTAT PAR POST ET PAR RÈGLE. La même règle enfreinte dans la
+       * légende et dans l'alternatif d'un même post est UN défaut à réparer,
+       * pas deux ; les remonter deux fois ferait échanger deux posts pour un.
+       */
+      const key = `${line.post}\u0000${violation.ruleId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        check: "ethics.blocked",
+        detail: `${line.where} porte « ${violation.excerpt} » — ${violation.ruleId} : ${violation.reason}`,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Toutes les surfaces publiées d'un post, y compris celles que
+ * `writtenLinesIn` exempte.
+ *
+ * ⚠ CONSTRUITE PAR DÉLÉGATION, PAS RECOPIÉE. Une surface qui arrive dans
+ * `writtenLinesIn` arrive ici sans que personne y pense ; c'est ce que
+ * `every-check-on-every-surface.test.ts` vérifie sur la source.
+ */
+function surfacesForEthics(
+  posts: PostUnderCheck[]
+): Array<{ post: string; where: string; text: string }> {
+  const out = writtenLinesIn(posts).map((line) => ({
+    post: line.where.split(" — ")[0],
+    where: line.where,
+    text: line.text,
+  }));
+  for (const post of posts) {
+    const where = `« ${post.cardLine || post.title} »`;
+    if (post.footer) out.push({ post: where, where: `${where} — pied de carte`, text: post.footer });
+    if (post.eyebrow) out.push({ post: where, where: `${where} — surtitre`, text: post.eyebrow });
   }
   return out;
 }

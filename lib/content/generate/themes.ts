@@ -125,7 +125,7 @@ export function checkThemes(candidates: string[]): ThemeRejection | null {
    * it will not.
    */
   for (const theme of candidates) {
-    const violations = checkEthics(theme).violations;
+    const violations = checkEthics(theme, { reading: "as-database" }).violations;
     if (hasBlockingViolation(violations)) {
       const first = violations.find((violation) => violation.severity === "block")!;
       return {

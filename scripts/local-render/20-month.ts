@@ -1599,8 +1599,35 @@ function selectDeliverable<
      * aucune règle — et « Efficiency can become trauma », signée par une
      * clinicienne EMDR, est un titre (F26). Il entre dans le scan.
      */
-    const scanned = [cardLine, result.caption, result.altText, JSON.stringify(result.payload)].join("\n");
-    const violations = checkEthics(scanned).violations;
+    /*
+     * ── ⚠ CE SCAN LIT MAINTENANT CE QUE LA GÂCHETTE LIT, ET COMME ELLE ──
+     *
+     * Il manquait deux choses, et chacune a coûté un mois :
+     *
+     *   `on_image_text`  la gâchette `content_items_ethics_gate` lit quatre
+     *                    colonnes ; ce scan n'en voyait que trois. Le texte
+     *                    d'image vient du crochet de banque — contrôlé à son
+     *                    insertion, donc propre en principe, et « en principe »
+     *                    n'est pas un contrôle.
+     *
+     *   la lecture       `checkEthics` exempte par défaut les mentions
+     *                    prohibitives (« there is no guarantee ») ; la base ne
+     *                    les exempte pas. Quatre sondes sur vingt-une passaient
+     *                    ici et étaient refusées là-bas.
+     *
+     * ⚠ ET CE N'EST PLUS LE SEUL POINT DE CONTRÔLE. `checkMonth` porte
+     * désormais `checkAdvertisingEthics`, qui voit les mêmes règles sur toutes
+     * les surfaces AVANT la sélection — un post fautif y est échangé, au lieu
+     * d'être écarté ici et de laisser le mois à vingt-neuf.
+     */
+    const scanned = [
+      cardLine,
+      result.caption,
+      result.altText,
+      candidate.topic.hook,
+      JSON.stringify(result.payload),
+    ].join("\n");
+    const violations = checkEthics(scanned, { reading: "as-database" }).violations;
     for (const violation of violations) {
       ethicsFlags.push({ topic: candidate.topic.title, rule: violation.ruleId, excerpt: violation.excerpt.slice(0, 80) });
     }

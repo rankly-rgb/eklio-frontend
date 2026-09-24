@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { writtenLinesIn, type PostUnderCheck } from "@/lib/content/month-checks";
+import {
+  checkAdvertisingEthics,
+  writtenLinesIn,
+  type PostUnderCheck,
+} from "@/lib/content/month-checks";
 
 /*
  * ── ⚠ `checkSellsSlots` EXISTE DEPUIS F26 ET N'A JAMAIS REGARDÉ L'ENDROIT
@@ -165,6 +169,8 @@ describe("les contrôles de texte prennent tous `written`", () => {
     CarouselPanels: "compare les volets d'un même carrousel",
     Acronym: "a besoin de l'archétype pour juger un sigle",
     CrisisRoute: "regarde le POST entier, toutes surfaces réunies",
+    AdvertisingEthics:
+      "lit TOUTES les surfaces, y compris le pied et le surtitre que la liste commune exempte",
   };
 
   it("ceux qui prennent les posts regardent une structure, et le disent", () => {
@@ -173,5 +179,100 @@ describe("les contrôles de texte prennent tous `written`", () => {
       expect(STRUCTURAL, `check${name} prend les posts sans raison nommée`).toHaveProperty(name);
     }
     expect(onPosts.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+/*
+ * ── ⚠ LE SOCLE DÉONTOLOGIQUE, SURFACE PAR SURFACE ───────────────────────
+ *
+ * `checkAdvertisingEthics` est le contrôle le plus grave du jeu — dix-huit
+ * règles qu'un board d'État applique — et il est arrivé en dernier, parce que
+ * personne ne l'avait mis dans `checkMonth` : il ne vivait que dans le harnais,
+ * une fois, sur quatre champs choisis à la main.
+ *
+ * Ce bloc plante la même phrase interdite dans CHAQUE champ porteur de texte de
+ * `PostUnderCheck`, un à la fois, et exige un constat pour chacun. La liste des
+ * champs est lue dans le type, pas recopiée : un post qui gagne une surface
+ * gagne un cas de test.
+ */
+const FORBIDDEN = "Guaranteed relief from anxiety.";
+
+/** Les champs de `PostUnderCheck` qui portent du texte publié. */
+const TEXT_BEARING: Record<string, "string" | "payload" | "fallback" | "not-text"> = {
+  cardLine: "string",
+  // ⚠ LE TITRE DE BANQUE N'EST PAS IMPRIMÉ quand une ligne de carte existe :
+  // `writtenLinesIn` lit `cardLine || title`. Il est donc lu en SECOURS, et
+  // c'est comme secours qu'il est éprouvé.
+  title: "fallback",
+  caption: "string",
+  altText: "string",
+  footer: "string",
+  eyebrow: "string",
+  payload: "payload",
+  archetype: "not-text",
+  svg: "not-text",
+};
+
+function postWith(field: string): PostUnderCheck {
+  const base: PostUnderCheck = {
+    archetype: "single_statement",
+    title: "A quiet title",
+    cardLine: "A quiet line",
+    payload: { archetype_key: "single_statement", statement: "Something ordinary." },
+  } as PostUnderCheck;
+  if (TEXT_BEARING[field] === "payload") {
+    return { ...base, payload: { archetype_key: "single_statement", statement: FORBIDDEN } };
+  }
+  // Le secours ne se lit que si la surface qui le supplante est vide.
+  if (TEXT_BEARING[field] === "fallback") {
+    return { ...base, cardLine: "", [field]: FORBIDDEN } as PostUnderCheck;
+  }
+  return { ...base, [field]: FORBIDDEN } as PostUnderCheck;
+}
+
+describe("la déontologie publicitaire est lue sur chaque surface", () => {
+  const surfaces = surfacesOf();
+
+  it("chaque champ du type est classé", () => {
+    const unclassified = surfaces.filter((f) => !(f in TEXT_BEARING));
+    expect(
+      unclassified,
+      `champ(s) de PostUnderCheck non classé(s) — porte-t-il du texte publié ? ${unclassified.join(", ")}`
+    ).toEqual([]);
+  });
+
+  const bearing = Object.entries(TEXT_BEARING)
+    .filter(([, kind]) => kind !== "not-text")
+    .map(([field]) => field);
+
+  it.each(bearing)("un post interdit est relevé quand la faute est dans %s", (field) => {
+    const findings = checkAdvertisingEthics([postWith(field)]);
+    expect(
+      findings.map((f) => f.check),
+      `« ${FORBIDDEN} » dans ${field} n'a produit aucun constat`
+    ).toContain("ethics.blocked");
+  });
+
+  it("un post propre ne produit rien", () => {
+    expect(checkAdvertisingEthics([postWith("archetype")])).toEqual([]);
+  });
+
+  /*
+   * ⚠ ET LE CONTRÔLE EST BRANCHÉ. Il a existé hors de `checkMonth` pendant tout
+   * le temps où il ne servait à rien ; un contrôle qu'on n'appelle pas n'est pas
+   * un contrôle.
+   */
+  it("checkMonth l'appelle", () => {
+    const body = SOURCE.slice(SOURCE.indexOf("export function checkMonth("));
+    expect(body).toContain("checkAdvertisingEthics(month.posts)");
+  });
+
+  /*
+   * ⚠ UNE RÈGLE ENFREINTE DEUX FOIS DANS UN POST EST UN DÉFAUT, PAS DEUX. Sinon
+   * un post fautif consommerait deux remplaçants du banc pour une réparation.
+   */
+  it("la même règle dans deux surfaces d'un post ne compte qu'une fois", () => {
+    const post = { ...postWith("caption"), altText: FORBIDDEN } as PostUnderCheck;
+    expect(checkAdvertisingEthics([post])).toHaveLength(1);
   });
 });
