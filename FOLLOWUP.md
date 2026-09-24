@@ -1800,6 +1800,107 @@ venu n'est aucune de ces étapes : c'est F12 (vingt minutes de lecture), Stripe
    répétition montre que la plomberie SQL est là ; elle ne montre pas que
    quelqu'un frappe à la porte.
 
+## F37 — LES TROIS BLOCAGES D'OUVERTURE : LEVÉS, ET CE QU'ILS ONT APPRIS
+
+### A · la sauvegarde se restaure, et c'est prouvé
+
+| tentative | résultat |
+|---|---|
+| `pg_restore` nu | `section_types` restaure **0 sur 11**, en silence |
+| `pg_restore --single-transaction` | la restauration **entière avorte** |
+| **`docs/production/A-restaurer.sh`** | **0 écart sur 86 tables, contenu compris** |
+
+La procédure en trois temps — schéma, retrait des `CHECK` qui lisent une autre
+table, données, contraintes reposées **et validées**, post-data — fonctionne sur
+la production **telle qu'elle est**, sans migration préalable.
+
+⚠ **Les contraintes à retirer sont énumérées depuis le catalogue**, jamais
+écrites à la main : la prochaine de cette classe arriverait sans que personne la
+rajoute.
+
+⚠ **Et la vérification est le livrable.** Compter les tables, les fonctions et
+les policies ne voyait rien — les trois comptes étaient identiques pendant que
+onze lignes manquaient. L'étape 6 compare, table par table, le **nombre de
+lignes ET une empreinte md5 du contenu entier**. Elle est **sensible**, vérifié
+dans les deux sens : 0 écart sur la base à 1 086 posts, et une seule ligne
+retirée est détectée.
+
+⚠ **Un piège écarté en route** : pré-poser le schéma stub (`auth`, `storage`,
+`extensions`) produit **dix-sept écarts apparents pour zéro écart réel** — ces
+schémas sont DANS la sauvegarde. C'est le genre de bruit qui fait conclure que
+la procédure échoue alors qu'elle marche.
+
+### B · ce que portent désormais les posts
+
+**La licence.** `license_number` et `license_state_code` au brief, avec
+contrainte de forme. La mention — `LMFT 12345` — va au **pied de carte**, seule
+bande présente sur les onze archétypes, déjà en mono, et qui portait déjà le nom
+du cabinet.
+
+⚠ **Le refus vit à la génération, pas au contrôle de mois** : un contrôle qui
+refuserait à la fin aurait laissé payer soixante-douze appels pour un mois qu'on
+savait irrecevable. Le message nomme le champ.
+
+⚠ **La règle la plus stricte partout, pas cinquante règles.** Gérer cinquante
+variantes demanderait de vérifier cinquante boards **et** de maintenir la
+matrice ensuite ; appliquer la plus stricte demande un champ.
+
+⚠ **Et la RLS est prouvée, pas supposée.**
+`information_schema.column_privileges` ne distingue pas un droit de table
+énuméré d'un droit par colonne — elle rendait dix-huit lignes pour deux colonnes
+neuves. La migration lit `pg_attribute.attacl`, la seule grandeur juste, et
+**lève** si elle trouve quelque chose.
+
+**La crise.** Règle **conditionnelle**, et c'est la décision de fond : aucun
+board d'État, ni l'ACA ni l'APA, n'exige une ligne de crise sur chaque
+publicité, et en poser une sur quatre cents posts qui parlent de fatigue au
+retour de congé la rendrait invisible exactement là où elle compte.
+
+> **Une lectrice à qui l'on parle de risque aigu ne doit pas rester sans route
+> vers de l'aide immédiate.**
+
+⚠ **`crisis` seul a été retiré du vocabulaire, et c'est mesuré** : il faisait
+cinq refus sur 1 356 posts, et les cinq étaient faux — « in crisis mode », « not
+in crisis, but in a kind of steady depletion ». Un contrôle déontologique qui
+refuse cinq fois à tort sur un corpus où il ne devrait rien refuser se fait
+désarmer au premier mois perdu, et il serait **absent le jour où il compte**.
+
+⚠ **Il est dormant sur ce corpus : zéro refus sur 1 356 posts.** Il ne trouve
+rien parce qu'il n'y a rien, pas parce qu'il ne voit rien.
+
+### C · les surfaces, dérivées de la source
+
+`checkSellsSlots` existe depuis F26 et n'a jamais regardé l'endroit où l'on
+vend : **341 légendes sur 400** portaient une annonce de disponibilité. Le
+contrôle était juste, il était branché, il ne voyait pas la surface.
+
+`lib/content/__tests__/every-check-on-every-surface.test.ts` lit les champs de
+`PostUnderCheck` **dans le type lui-même** et exige que chacun soit lu par
+`writtenLinesIn` ou **exempté avec une raison nommée**. Une liste écrite à la
+main resterait exacte et fausse le jour où un post gagne un champ.
+
+Deux preuves plutôt qu'une : la source dit qu'une ligne existe, et un post dont
+chaque surface porte une chaîne unique prouve qu'elle **arrive**.
+
+⚠ **Les neuf contrôles de texte lisent la même liste** — assertion sur
+l'ensemble exact, pas sur un compte, parce qu'un seuil arbitraire ne prouve
+rien. Ceux qui prennent `month.posts` regardent une **structure** et le disent ;
+c'est la seule raison acceptable de ne pas lire la liste commune.
+
+### ⚠ CE QUE LA LÉGENDE A COÛTÉ, EN TAUX DE LIVRAISON
+
+| état du pipeline | livrés | essais |
+|---|---|---|
+| F34, la légende **non lue** | 8 | 9 |
+| la légende lue, consigne inchangée | **0** | 5 |
+| la légende lue, **consigne corrigée** | 1 | 4 |
+
+⚠ **Le taux de 8 sur 9 avait été mesuré la légende non lue**, et il faut le lire
+ainsi. La consigne du préfixe ne disait de la légende que sa LONGUEUR : les
+règles de déontologie et la liste des « NEVER » se lisaient comme des règles de
+carte. Le modèle a fait ce qu'on lui demandait — des cartes propres et des
+légendes qui promettent. **Ce n'était pas un défaut de modèle.**
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
