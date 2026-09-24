@@ -25,6 +25,7 @@ import { archetypeInstruction, massCopyModel, batchCostUsd, syncCostUsd } from "
 import { budgetErrors } from "../../lib/compose/budget";
 import { checkEthics } from "../../lib/ethics/rules";
 import { bankPayloadFor } from "../../lib/content/practitioner";
+import { bankTarget, WINDOW_ROUNDS } from "../../lib/content/bank";
 import { admin, anthropicKeyOrDie, untypedTable, SESSION_CAP_USD } from "./lib";
 
 /*
@@ -62,70 +63,60 @@ import { admin, anthropicKeyOrDie, untypedTable, SESSION_CAP_USD } from "./lib";
  * en stock. Le paramètre rend ce coût explicite au lieu de le laisser
  * apparaître comme une pénurie inexpliquée au tirage.
  */
-/** ⚠ `--scale` a été remplacé par `--months`, qui dit ce qu'on veut tenir. */
-const SCALE = 1;
 
 /*
- * ── ⚠ LE STOCK SUIT LE RYTHME DU TIRAGE, PAS CELUI DE LA PUBLICATION ────
+ * ── ⚠ LE STOCK SUIT LE RYTHME DU TIRAGE, ET LE TIRAGE EST SIMULTANÉ ─────
  *
- * Les cibles précédentes — 16 phrases seules pour 4 de chaque diagramme —
- * étaient calquées sur le MÉLANGE D'UN MOIS PUBLIÉ. C'est la mauvaise
- * grandeur, et le mois de `perrin.vale` l'a montré : cinq archétypes sur
- * onze, six icebergs identiques, alors que le total de la banque paraissait
- * sain.
+ * Deux corrections empilées, et la seconde annule l'hypothèse de la première.
  *
- * Ce qui vide la banque, c'est le TIRAGE. `20-month.ts` tire `CANDIDATES`
- * sujets répartis en trois familles à tour de rôle :
+ * 1. Les cibles ont d'abord été calquées sur le MÉLANGE D'UN MOIS PUBLIÉ.
+ *    Mauvaise grandeur : ce qui vide la banque est le TIRAGE, qui prend 72
+ *    candidats pour 30 posts et ne les prend pas dans les mêmes proportions.
+ * 2. Elles ont ensuite été posées à la main, pour « dix mois consécutifs ».
+ *    ⚠ LE PRODUIT NE FERA PAS DIX MOIS CONSÉCUTIFS : un `cron` mensuel génère
+ *    UN SEGMENT ENTIER LE MÊME JOUR, et la fenêtre de 90 jours interdit à
+ *    chaque praticienne ce que ses consœurs viennent de prendre — le même
+ *    matin, pas trois mois plus tard.
  *
- *   famille « statement »  2 archétypes → 18 / 2 = 9 tirés chacun par mois
- *   famille « simple »     5 archétypes → 18 / 5 ≈ 3,6 chacun
- *   famille « varied »     4 archétypes → 18 / 4 = 4,5 chacun
- *
- * Un diagramme de la famille « varied » est donc tiré 4,5 fois par mois pour
- * un stock de 5 : il est à sec au premier mois. Une phrase seule est tirée 9
- * fois pour un stock de 16. C'est ce rapport-là — et non le mélange publié —
- * qui explique pourquoi une banque « équilibrée » ne rend que des phrases
- * seules dès qu'elle se vide.
- *
- * Les cibles ci-dessous sont donc le TIRAGE MENSUEL MESURÉ, arrondi au
- * supérieur. `--months` dit combien de mois consécutifs la banque doit tenir ;
- * le cahier des charges en demande dix.
+ * ⚠ ET LA TABLE ÉCRITE À LA MAIN AVAIT VIEILLI SANS LE DIRE. Elle datait de
+ * `CANDIDATES = 54` et annonçait 9 `practitioner_card` par mois pour un
+ * plafond de 2, et 5 `carousel` pour un format tiré deux fois par tour. Trois
+ * chiffres faux sur onze, invisibles tant que personne ne refaisait le calcul.
+ * Les cibles sont donc CALCULÉES sur la boucle de tirage (`lib/content/bank`),
+ * et le calcul est testé.
  */
-const DRAWN_PER_MONTH: Array<[string, number]> = [
-  // famille « statement » — 9 tirés chacun
-  ["single_statement", 9],
-  ["practitioner_card", 9],
-  // famille « simple » — 3,6 tirés chacun, arrondi à 4
-  ["surface_and_beneath", 4],
-  ["comparison_pair", 4],
-  ["numbered_strategies", 4],
-  ["cycle", 4],
-  ["concentric_control", 4],
-  // famille « varied » — 4,5 tirés chacun, arrondi à 5
-  ["carousel", 5],
-  ["quadrant_model", 5],
-  ["annotated_curve", 5],
-  ["lettered_technique", 5],
-];
+
+/** Combien de praticiennes le segment sert, toutes générées le même jour. */
+const PRACTITIONERS = numberArg("--practitioners", 1);
 
 /**
- * Combien de mois consécutifs la banque doit tenir.
+ * Combien d'essais il faut pour un mois livré.
  *
- * ⚠ DIX EST LA CIBLE DU CAHIER DES CHARGES, et elle coûte ce qu'elle coûte :
- * 580 sujets par segment. `--months` permet d'en remplir moins quand un
- * plafond de dépense l'impose — ce qui est alors une décision à écrire, pas un
- * réglage à deviner.
+ * ⚠ QUATRE, MESURÉ — pas un, espéré. À contrôles gelés, deux mois livrés sur
+ * dix essais (F28). Un mois refusé garde ses trente sujets quatre-vingt-dix
+ * jours comme un mois livré : l'essai est l'unité qui vide la banque.
  */
-const MONTHS = (() => {
-  const i = process.argv.indexOf("--months");
-  const n = i === -1 ? 10 : Number(process.argv[i + 1]);
-  return Number.isFinite(n) && n >= 1 ? n : 10;
-})();
+const ATTEMPTS = numberArg("--attempts", 4);
 
-const PER_SEGMENT: Array<[string, number]> = DRAWN_PER_MONTH.map(([key, perMonth]) => [
-  key,
-  Math.ceil(perMonth * MONTHS),
-]);
+/**
+ * Combien de tours de génération restent bloqués en même temps.
+ *
+ * ⚠ TROIS POUR LE PRODUIT — la fenêtre dure 90 jours. Mais dix mois générés
+ * dans la même journée, ce que fait la mesure, en bloquent DIX : la fenêtre ne
+ * s'ouvre pas entre deux essais lancés à dix minutes d'intervalle.
+ */
+const ROUNDS = numberArg("--rounds", WINDOW_ROUNDS);
+
+function numberArg(flag: string, fallback: number): number {
+  const i = process.argv.indexOf(flag);
+  const n = i === -1 ? fallback : Number(process.argv[i + 1]);
+  return Number.isFinite(n) && n >= 1 ? n : fallback;
+}
+
+const PER_SEGMENT: Array<[string, number]> = Object.entries(
+  bankTarget({ practitioners: PRACTITIONERS, attempts: ATTEMPTS, rounds: ROUNDS })
+).filter(([, target]) => target > 0);
+
 const INTENTS = ["normalise", "educate", "correct_a_myth", "invite", "behind_the_practice"];
 
 type Seg = { id: string; modality_id: string; persona_id: string; state_code: string | null };
@@ -276,7 +267,7 @@ async function main() {
     let angle = 0;
     for (const [archetype, target] of PER_SEGMENT) {
       const already = heldCount.get(`${seg.id}|${archetype}`) ?? 0;
-      const count = Math.ceil(target * SCALE);
+      const count = target;
       for (let i = already; i < count; i += 1) {
         const intent = INTENTS[angle % INTENTS.length];
         const customId = `${seg.persona_id}-${archetype}-${i}-${Date.now().toString(36)}`;

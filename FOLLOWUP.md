@@ -1492,6 +1492,75 @@ already at target » sur une banque intégralement bloquée. Corrigé par
 `--scale`, mais le fond reste : *exister* et *être tirable* sont deux choses,
 et c'est la seconde qui fait un mois.
 
+### ⚠ 2026-09-24 — TOUT CE QUI PRÉCÈDE DIMENSIONNE DIX MOIS QUI SE SUIVENT. LE `cron` N'EN FERA PAS UN.
+
+**Bloquant avant d'armer le `cron` mensuel.**
+
+Les chiffres ci-dessus supposent une praticienne qui tire son mois, puis la
+suivante le mois d'après. Ce n'est pas ce que le produit fera : **un `cron`
+mensuel génère un segment entier le même jour**. Dix consœurs EMDR de
+Californie tirent en parallèle, et la fenêtre de 90 jours interdit à chacune ce
+que les neuf autres viennent de prendre — le même matin, pas trois mois plus
+tard.
+
+Le modèle est désormais dans le code (`lib/content/bank.ts`), calculé sur la
+boucle de tirage et testé, au lieu d'être une table recopiée :
+
+```
+stock(archétype) = tours × N × essais × retenus(archétype)   ← bloqué 90 jours
+                 + N × tirés(archétype) ÷ (1 − 40 %)          ← le pic simultané
+```
+
+⚠ **Le second terme est celui qu'on oublie, et c'est lui qui a coûté le
+quatrième essai du 2026-09-23** : 88 sujets libres au total, `cycle` et
+`numbered_strategies` à cinq pour un tirage de cinq, 18 candidats tirés sur 54.
+Il faut qu'un sujet soit là pour que le dédoublonnage le refuse.
+
+| situation | sujets / segment | coût (Haiku, sync) |
+|---|---|---|
+| `cron` mensuel · 5 praticiennes · 4 essais | 2 405 | 6,97 $ |
+| `cron` mensuel · 10 praticiennes | 4 806 | 13,94 $ |
+| `cron` mensuel · 20 praticiennes | 9 605 | 27,85 $ |
+| mesure : 10 mois le même jour · 4 essais | 1 325 | 3,84 $ |
+| mesure : 10 mois le même jour · 2 essais | 728 | 2,11 $ |
+
+⚠ **Dix mois générés dans la même journée bloquent DIX tours, pas trois** : la
+fenêtre ne s'ouvre pas entre deux essais lancés à dix minutes d'intervalle.
+C'est le même modèle, et seul `--rounds` les distingue.
+
+#### ⚠ Trois chiffres sur onze étaient faux, et rien ne pouvait le dire
+
+La table `DRAWN_PER_MONTH` de `10-topic-bank.ts` datait de `CANDIDATES = 54`.
+Elle annonçait **9 `practitioner_card` par mois pour un plafond de 2**, et **5
+`carousel` pour un format tiré deux fois par tour** (il en faut 10). Elle est
+supprimée : les cibles se calculent sur la boucle de tirage.
+
+| archétype | tiré / essai (calculé) | table écrite à la main |
+|---|---|---|
+| `single_statement` | 22 | 9 |
+| `practitioner_card` | **2** | **9** |
+| `carousel` | **10** | **5** |
+| `concentric_control`, `lettered_technique` | 4 | 4 / 5 |
+| les six autres | 5 | 4 / 5 |
+
+#### Le garde-fou : le remplissage part AVANT la génération
+
+`20-month.ts` compte le stock tirable **par archétype** avant de tirer, et
+remplit de lui-même s'il manque (`--no-fill` refuse en nommant ce qui manque et
+la commande). Jusqu'ici la banque était remplie **après l'échec** — c'est-à-dire
+après avoir payé l'écriture d'un mois qui ne pouvait pas sortir.
+
+⚠ **Et il compte avec la requête qui TIRE.** La requête de surveillance
+publiée plus haut compte les sujets « non assignés » ; le tirage écarte en plus
+ce que ce kit a déjà pris, ce qu'une consœur du même État a pris dans les 90
+jours, les sujets non relus, les expirés, et les segments qui ne correspondent
+pas. Deux questions différentes, une seule qui décide si le mois sort — et la
+surveillance rassurait sur un stock que le tirage ne voyait pas. La migration
+`20260924130000` fait de `next_topic_for_kit` un `limit 1` posé sur
+`drawable_topics_for_kit`, et de `drawable_count_for_kit` un `group by` sur la
+même liste : elles ne peuvent plus répondre différemment, et le fichier le
+vérifie sur vingt-cinq kits à l'application.
+
 ## F14 — ⚠ LA GÉNÉRATION DE KIT N'EST INSCRITE DANS AUCUN LEDGER
 
 `credit_ledger` enregistre `post_generation` et `regeneration` avec leur coût

@@ -21,6 +21,7 @@
  *   ANTHROPIC_API_KEY="$EKLIO_ANTHROPIC_API_KEY" \
  *     npx tsx scripts/local-render/20-month.ts --confirm [--email <compte>]
  */
+import { spawnSync } from "node:child_process";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   cachedPrefix,
@@ -49,6 +50,9 @@ import { checkinLeaks } from "../../lib/content/leakage";
 import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
+import {
+  bankShortfall, CANDIDATES_PER_ATTEMPT, WINDOW_ROUNDS, type BankDemand,
+} from "../../lib/content/bank";
 import {
   checkMonth, writtenLinesIn, FORMAT_FAMILIES, familyOf, type Finding,
 } from "../../lib/content/month-checks";
@@ -91,7 +95,81 @@ const ZERO = (): { input: number; output: number; cacheRead: number; cacheWrite:
  * candidat. Soixante-douze en rend une quarantaine : trente posés, dix au
  * banc.
  */
-const CANDIDATES = 72;
+const CANDIDATES = CANDIDATES_PER_ATTEMPT;
+
+/*
+ * ── ⚠ LE REMPLISSAGE PART AVANT LA GÉNÉRATION, PAS APRÈS L'ÉCHEC ────────
+ *
+ * Le 2026-09-23, le quatrième essai n'a tiré que 18 candidats sur 54. Rien ne
+ * l'avait annoncé : la banque portait 88 sujets libres, et le total n'est pas
+ * la grandeur qui décide. `cycle` et `numbered_strategies` en avaient cinq
+ * chacun, et un mois ne se compose pas avec ça.
+ *
+ * La banque était donc remplie APRÈS l'échec — c'est-à-dire après avoir payé
+ * l'écriture d'un mois qui ne pouvait pas sortir. Le stock tirable est
+ * maintenant compté AVANT le tirage, par archétype, avec la requête qui tire
+ * (`drawable_count_for_kit`), et le remplissage part de lui-même s'il manque.
+ *
+ * ⚠ `--no-fill` REFUSE AU LIEU DE REMPLIR, en nommant ce qui manque et la
+ * commande qui le corrige. Un remplissage est un appel payant : il doit
+ * pouvoir se déclencher tout seul dans un `cron`, et jamais par surprise sous
+ * la main de quelqu'un qui regardait ailleurs.
+ */
+const BANK_DEMAND: BankDemand = {
+  practitioners: numberFlag("--practitioners", 1),
+  attempts: numberFlag("--attempts", 4),
+  rounds: numberFlag("--rounds", WINDOW_ROUNDS),
+};
+
+function numberFlag(flag: string, fallback: number): number {
+  const i = process.argv.indexOf(flag);
+  const n = i === -1 ? fallback : Number(process.argv[i + 1]);
+  return Number.isFinite(n) && n >= 1 ? n : fallback;
+}
+
+/**
+ * Compte ce que le tirage verra, et remplit s'il manque.
+ *
+ * ⚠ IL NE REND PAS LA MAIN TANT QUE LE REMPLISSAGE N'A PAS FINI. Lancer la
+ * génération pendant que le lot de sujets tourne reviendrait à tirer dans la
+ * banque d'avant — donc exactement au défaut qu'on répare.
+ */
+async function guardTheBank(db: ReturnType<typeof admin>, kitId: string): Promise<void> {
+  const { data, error } = await (db.rpc as unknown as (
+    n: string, a: Record<string, unknown>
+  ) => Promise<{ data: Array<{ archetype_key: string; drawable: number }> | null; error: { message: string } | null }>)(
+    "drawable_count_for_kit", { p_brand_kit_id: kitId }
+  );
+  if (error) throw new Error(`drawable_count_for_kit: ${error.message}`);
+  const drawable = Object.fromEntries((data ?? []).map((r) => [r.archetype_key, Number(r.drawable)]));
+  const short = bankShortfall(drawable, { ...BANK_DEMAND, attempts: 1, rounds: 1 });
+  if (short.length === 0) {
+    const thinnest = Object.entries(drawable).sort((a, b) => a[1] - b[1])[0];
+    console.error(`▸ banque : ${thinnest?.[0]} au plus bas avec ${thinnest?.[1]} tirables — le tour passe`);
+    return;
+  }
+
+  const said = short.map((s) => `${s.archetype} ${s.drawable}/${s.needed}`).join(", ");
+  const fill = [
+    "npx tsx scripts/local-render/10-topic-bank.ts --sync",
+    `--practitioners ${BANK_DEMAND.practitioners}`,
+    `--attempts ${BANK_DEMAND.attempts}`,
+    `--rounds ${BANK_DEMAND.rounds}`,
+  ].join(" ");
+
+  if (process.argv.includes("--no-fill")) {
+    throw new Error(
+      `la banque ne porte pas de quoi composer ce mois — ${said}. Remplir d'abord : ${fill}`
+    );
+  }
+
+  console.error(`▸ banque sous le seuil (${said}) — remplissage AVANT la génération`);
+  const [command, ...args] = fill.split(" ");
+  const filled = spawnSync(command, args, { stdio: "inherit", env: process.env });
+  if (filled.status !== 0) {
+    throw new Error(`le remplissage a échoué (code ${filled.status}) — ${said}`);
+  }
+}
 
 /*
  * ── LE MÉLANGE DU MOIS ──────────────────────────────────────────────────
@@ -379,6 +457,8 @@ async function main() {
   })).value;
   console.error(`▸ themes (${themes.source}): ${themes.themes.join(" · ")}`);
   console.error(`▸ ${firstMonth ? "FIRST month → synchronous" : "a later month"} · ${useBatch ? "Batch API" : "sync calls"}`);
+
+  await guardTheBank(db, kitId);
 
   /* ── Les candidats, tirés par famille ──────────────────────────────── */
   const perFamily = Math.ceil(CANDIDATES / 3);
