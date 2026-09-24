@@ -1604,6 +1604,43 @@ nombre d'abonnées d'un segment, et qu'il n'est dimensionné nulle part.
 2. qui remplit la banque, et quand. Aucun travail de fond ne la remplit
    aujourd'hui : `10-topic-bank.ts` est un script de harnais, pas un `cron` ;
 
+### ⚠ LA CONSOMMATION NETTE DÉPEND DE LA RESTITUTION, PAS DU TIRAGE
+
+**Tout ce qui suit compte ce qu'un essai CONSOMME, et suppose que le reste
+revient. Ça ne revient que si quelqu'un le rend.**
+
+Mesuré le 2026-09-24 : **915 sujets** assignés à vingt-six kits **sans un seul
+post** — 858 sur 2026-11 par vingt-quatre kits, 57 sur 2026-10 par deux. Le
+résidu de toutes les exécutions interrompues : un run tué, un lot en erreur,
+une session coupée. La fenêtre anti-collision les retirait à **tout le
+segment** pendant quatre-vingt-dix jours, pour des posts que personne n'a
+jamais écrits.
+
+⚠ **Et on s'apprêtait à racheter ce qu'on possédait déjà.** Le garde-fou voyait
+la banque basse et aurait déclenché un remplissage ; après libération, les onze
+archétypes passaient le seuil de dix essais simultanés sans écrire un sujet de
+plus. En production, le stock s'érode à chaque incident et la facture de banque
+grossit sans qu'aucun sujet n'ait servi.
+
+**Corrigé le 2026-09-24** (`20260924140000`), par deux verrous :
+
+| verrou | ce qu'il fait |
+|---|---|
+| `topic_assignment_holds` | une assignation ne retient que si elle a produit un `content_item`, ou si elle est encore dans son **délai de grâce** (3 h). Posé dans `drawable_topics_for_kit`, donc valable pour le tirage, le compteur et `next_topic_for_kit` d'un coup. ⚠ Il tient **sans balai** |
+| `release_stale_topic_assignments()` | efface les périmées et **rend le nombre**. La génération l'appelle avant de compter le stock |
+
+⚠ **Le délai de grâce doit excéder une génération entière** : un lot met
+vingt-cinq à trente minutes et le harnais abandonne à quatre-vingt-dix. Trois
+heures laissent une génération légitime finir sans se faire voler les sujets
+qu'elle est en train d'écrire, et rendent un incident **au tour suivant** plutôt
+qu'au trimestre suivant.
+
+**Conséquence sur le dimensionnement** : les tableaux ci-dessous restent justes
+pour un régime SANS incident. Avec incidents et sans restitution, la
+consommation nette tend vers le TIRAGE entier (72 par essai) et non vers les 30
+retenus — soit **2,4 fois** le stock calculé. C'est la restitution qui fait
+tenir le chiffre, pas le tirage.
+
 ### Le dimensionnement, chiffré
 
 `stock = N × 90 × 3` — `N` praticiennes du segment, 90 jours de fenêtre

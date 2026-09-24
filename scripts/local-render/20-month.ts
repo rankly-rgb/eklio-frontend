@@ -139,6 +139,31 @@ function numberFlag(flag: string, fallback: number): number {
  * banque d'avant — donc exactement au défaut qu'on répare.
  */
 async function guardTheBank(db: ReturnType<typeof admin>, kitId: string): Promise<void> {
+  /*
+   * ── ⚠ ON REND CE QU'ON TIENT POUR RIEN, AVANT DE COMPTER CE QU'IL RESTE ──
+   *
+   * Mesuré le 2026-09-24 : **915 sujets** assignés à vingt-six kits sans un
+   * seul post — le résidu de runs tués, de lots en erreur, de sessions
+   * coupées — retirés à tout le segment pendant quatre-vingt-dix jours.
+   *
+   * ⚠ ET ON S'APPRÊTAIT À RACHETER CE QU'ON POSSÉDAIT DÉJÀ : le garde-fou
+   * aurait vu la banque basse et déclenché un remplissage. Le stock manquant
+   * était là, tenu par des exécutions qui n'avaient rien produit.
+   *
+   * Le tirage les ignore déjà (la fonction SQL le fait), mais le balai rend le
+   * NOMBRE visible : sans lui, la banque « se répare » en silence et personne
+   * n'apprend qu'un run a été tué.
+   */
+  const { data: released, error: sweepError } = await (db.rpc as unknown as (
+    n: string, a: Record<string, unknown>
+  ) => Promise<{ data: number | null; error: { message: string } | null }>)(
+    "release_stale_topic_assignments", {}
+  );
+  if (sweepError) throw new Error(`release_stale_topic_assignments: ${sweepError.message}`);
+  if ((released ?? 0) > 0) {
+    console.error(`▸ ${released} assignations rendues — des exécutions qui n'ont rien livré`);
+  }
+
   const { data, error } = await (db.rpc as unknown as (
     n: string, a: Record<string, unknown>
   ) => Promise<{ data: Array<{ archetype_key: string; drawable: number }> | null; error: { message: string } | null }>)(
@@ -694,9 +719,28 @@ async function main() {
     title: c.topic.title, hook: c.topic.hook, intent: c.topic.intent, checkin: checkinLine,
   });
 
+  /*
+   * ── ⚠ « REFUSÉ » ET « JAMAIS TENTÉ » NE SONT PAS LE MÊME CHIFFRE ──────
+   *
+   * L'entonnoir comptait `generated` — « les candidats qui ont un résultat » —
+   * et un résultat d'échec en est un. Le 2026-09-24, trois lots sont revenus
+   * `{"succeeded":0,"errored":72}` faute de solde chez le fournisseur, et
+   * l'entonnoir a annoncé **72 générés, 0 conformes** : un taux de conformité
+   * de zéro pour cent, sur une écriture qui n'avait pas eu lieu.
+   *
+   * ⚠ C'EST LE CHIFFRE QUE CETTE SESSION MESURE, et il était faux dans le
+   * sens qui fait conclure au défaut d'écriture. Une réponse qui n'existe pas
+   * ne se compare à rien : `answered` est le dénominateur, et
+   * `neverAnswered` sort de la mesure.
+   */
   const funnel = {
     candidates: candidates.length,
-    generated: 0,
+    /** Ceux pour qui le modèle a rendu du texte. ⚠ Le seul dénominateur juste. */
+    answered: 0,
+    /** Ceux pour qui le fournisseur n'a rien rendu — solde, quota, lot expiré. */
+    neverAnswered: 0,
+    /** Ceux dont la réponse est arrivée et qu'on n'a pas su lire. */
+    technicalFailures: 0,
     conformantFirstCall: 0,
     repaired: 0,
     refusedAfterRepair: 0,
@@ -841,7 +885,7 @@ const SPARE_POOL = 6;
       // qu'elle n'est pas livrée. Son crédit se prend plus bas, à l'écriture.
       candidate.reservationId = null;
       candidate.result = fromBrief(candidate);
-      funnel.generated += 1;
+      funnel.answered += 1;
       if (await settleCandidate(candidate)) usable.push(candidate);
     }
 
@@ -950,9 +994,22 @@ const SPARE_POOL = 6;
      */
     const counts = status.request_counts;
     if (counts.succeeded === 0 && counts.errored > 0) {
-      console.error(
-        `\n✗ Le lot ${batch.id} s'est terminé SANS AUCUNE RÉPONSE : ${counts.errored} requêtes en erreur.\n` +
-        `  Ce n'est pas un défaut d'écriture. Vérifier le compte fournisseur (solde, limites) avant de relire quoi que ce soit.\n`
+      /*
+       * ⚠ ET ON S'ARRÊTE LÀ, plutôt que de continuer et d'être refusé sur
+       * `month.short`. Poursuivre produisait un verdict de CONTENU — « un
+       * mois court, donc un défaut de génération » — pour une écriture qui
+       * n'avait pas eu lieu, et c'est ce verdict-là qu'on lit en premier.
+       * Un essai sans réponse du modèle n'est pas un essai refusé : il ne
+       * compte dans aucun taux, et il ne se relit pas.
+       */
+      console.log(JSON.stringify({
+        step: "month", refused: false, neverRan: true,
+        batchId: batch.id, requestCounts: counts,
+        note: "aucune réponse du modèle — ce n'est pas un défaut d'écriture",
+      }, null, 2));
+      throw new Error(
+        `le lot ${batch.id} s'est terminé SANS AUCUNE RÉPONSE (${counts.errored} en erreur) — ` +
+        `vérifier le compte fournisseur (solde, limites). Aucun essai n'a eu lieu : rien à relire.`
       );
     }
 
@@ -985,7 +1042,18 @@ const SPARE_POOL = 6;
       const candidate = asked.find((c) => c.topic.id === result.topicId);
       if (candidate) candidate.result = result;
     }
-    funnel.generated = candidates.filter((c) => c.result).length;
+    /*
+     * ⚠ COMPTÉ PAR FAMILLE, PAS PAR PRÉSENCE D'UN RÉSULTAT. Un candidat dont
+     * le lot a erré porte un résultat — d'échec — et le compter comme
+     * « généré » est exactement ce qui a fait lire une panne de facturation
+     * comme un taux de conformité nul.
+     */
+    for (const c of candidates) {
+      if (!c.result) continue;
+      if (c.result.family === "unavailable") funnel.neverAnswered += 1;
+      else if (c.result.family === "technical") funnel.technicalFailures += 1;
+      else funnel.answered += 1;
+    }
     for (const candidate of asked) {
       if (candidate.result?.usage) candidate.usage = candidate.result.usage;
       if (usable.length >= WANTED + SPARE_POOL) break;
@@ -1037,7 +1105,7 @@ const SPARE_POOL = 6;
        */
       if (!writtenByModel(candidate)) {
         candidate.result = fromBrief(candidate);
-        funnel.generated += 1;
+        funnel.answered += 1;
         funnel.conformantFirstCall += 1;
         if (await settleCandidate(candidate)) usable.push(candidate);
         continue;
@@ -1053,7 +1121,7 @@ const SPARE_POOL = 6;
       if (already?.result) {
         candidate.result = already.result as typeof candidate.result;
         candidate.usage = already.usage;
-        funnel.generated += 1;
+        funnel.answered += 1;
         if (already.settled) {
           usable.push(candidate);
         } else if (await settleCandidate(candidate)) {
@@ -1071,7 +1139,7 @@ const SPARE_POOL = 6;
         output_config: { effort: copyEffort() },
         messages: [{ role: "user", content: variablePart(request) }],
       });
-      funnel.generated += 1;
+      funnel.answered += 1;
       usage.input += message.usage.input_tokens;
       usage.output += message.usage.output_tokens;
       usage.cacheRead += message.usage.cache_read_input_tokens ?? 0;
@@ -1138,28 +1206,23 @@ const SPARE_POOL = 6;
 
     if (result.reason !== "over_budget" || !result.budget?.length || result.payload === undefined) {
       /*
-       * ── ⚠ « schema » ÉTAIT LE MOTIF PAR DÉFAUT, ET IL A MENTI 216 FOIS ──
+       * ── ⚠ LE MOTIF VIENT DE LA SOURCE, IL NE SE DEVINE PAS ICI ────────
        *
-       * Mesuré le 2026-09-24 : trois lots de 72 candidats sont revenus avec
-       * `"errored": 72` — le solde du compte fournisseur était épuisé, et
-       * AUCUNE réponse n'a été écrite. Le rapport a dit « schema » pour les
-       * deux cent seize, c'est-à-dire « le modèle a rendu une forme invalide ».
+       * « schema » était le motif par défaut, et il a menti 216 fois : trois
+       * lots revenus `{"succeeded":0,"errored":72}` faute de solde chez le
+       * fournisseur ont été rapportés comme « le modèle a rendu une forme
+       * invalide ». Il n'avait rien rendu du tout.
        *
-       * ⚠ IL N'AVAIT RIEN RENDU DU TOUT. Le motif envoyait chercher un défaut
-       * de consigne, de payload ou de validation — trois endroits où il n'y
-       * avait rien — alors qu'aucun appel n'avait eu lieu. Un « sinon, schema »
-       * range sous le seul motif qu'on sait nommer tout ce qu'on ne sait pas
-       * nommer, y compris ce qui n'est pas de notre côté.
-       *
-       * Les motifs que `collectCopy` rend pour une entrée de lot non aboutie
-       * sont ceux du fournisseur — `errored`, `expired`, `canceled` — et ils
-       * n'ont rien à voir avec une forme.
+       * ⚠ UN « sinon, schema » RANGE SOUS LE SEUL MOTIF QU'ON SAIT NOMMER
+       * tout ce qu'on ne sait pas nommer — y compris ce qui n'est pas de
+       * notre côté. La famille est posée par `collectCopy` et `validateCopy`,
+       * qui sont les seuls endroits à savoir si une réponse est arrivée.
        */
-      const PROVIDER = new Set(["errored", "expired", "canceled"]);
+      const family = result.family ?? "refused";
       const kind =
-        result.reason === "over_budget" ? "word budget"
-        : PROVIDER.has(result.reason ?? "") ? "provider"
-        : result.reason === "not_json" ? "not JSON"
+        family === "unavailable" ? "fournisseur"
+        : family === "technical" ? "technique"
+        : result.reason === "over_budget" ? "word budget"
         : "schema";
       failures.push({
         topic: candidate.topic.title, kind,

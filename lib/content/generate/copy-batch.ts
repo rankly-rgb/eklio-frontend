@@ -619,9 +619,63 @@ export function buildBatchRequests(
   }));
 }
 
+/*
+ * ── ⚠ UNE PANNE DE FACTURATION S'EST LUE 216 FOIS COMME « schema » ──────
+ *
+ * Le 2026-09-24, le solde du compte fournisseur s'est épuisé pendant une
+ * mesure. Trois lots de 72 candidats sont revenus `{"succeeded":0,
+ * "errored":72}`, et le rapport a dit « schema » — « le modèle a rendu une
+ * forme invalide » — deux cent seize fois. Il n'avait rien rendu du tout.
+ *
+ * ⚠ ET LE MOIS A ÉTÉ REFUSÉ SUR `month.short`, c'est-à-dire « un mois court,
+ * donc un défaut de génération », alors qu'il n'y avait pas eu de génération.
+ * C'est ce verdict-là qu'on lit en premier, et il envoie chercher le défaut
+ * dans la consigne, le payload et la validation — trois endroits où il n'y
+ * avait rien.
+ *
+ * Trois familles, distinguées À LA SOURCE, parce qu'elles appellent trois
+ * gestes différents :
+ *
+ *   `unavailable`  le fournisseur n'a pas répondu — solde, quota d'API,
+ *                  surcharge, lot expiré. ⚠ RIEN N'A ÉTÉ TENTÉ. Ce n'est ni
+ *                  un essai refusé ni une ligne à relire : c'est un geste
+ *                  d'exploitation, et aucun chiffre de qualité n'en sort.
+ *   `technical`    une réponse est arrivée et on n'a pas su la lire — JSON
+ *                  illisible, sujet inconnu. Le défaut est de notre côté.
+ *   `refused`      le modèle a écrit, et ce qu'il a écrit ne passe pas —
+ *                  budget de mots, forme de payload, légende trop longue.
+ *                  C'est le seul cas qui mesure quelque chose sur l'écriture.
+ */
+export type FailureFamily = "unavailable" | "technical" | "refused";
+
+/** Ce que le fournisseur rend pour une entrée de lot qui n'a pas abouti. */
+const UNAVAILABLE = new Set(["errored", "expired", "canceled", "overloaded", "rate_limited", "no_credit"]);
+const TECHNICAL = new Set(["not_json", "unknown_topic", "unknown_archetype", "no_message"]);
+
+/**
+ * À quelle famille appartient un motif d'échec.
+ *
+ * ⚠ LE DÉFAUT EST `refused`, ET C'EST VOULU DANS CE SENS-LÀ. Un motif inconnu
+ * décrit une réponse qu'on a reçue et jugée ; le ranger en `unavailable`
+ * effacerait un essai réel de la mesure, ce qui est le pire des deux.
+ */
+export function failureFamily(reason: string | undefined): FailureFamily {
+  if (!reason) return "refused";
+  if (UNAVAILABLE.has(reason)) return "unavailable";
+  if (TECHNICAL.has(reason)) return "technical";
+  return "refused";
+}
+
 export type CopyResult = {
   topicId: string;
   ok: boolean;
+  /**
+   * ⚠ POSÉE À LA SOURCE, JAMAIS DEVINÉE PLUS LOIN. Un appelant qui
+   * reclasserait un motif par sa forme referait l'erreur de septembre : le
+   * seul endroit qui SAIT si le modèle a répondu est celui qui lit la
+   * réponse.
+   */
+  family?: FailureFamily;
   payload?: unknown;
   /**
    * La ligne imprimée en haut de la carte, au plus 30 caractères.
@@ -648,7 +702,22 @@ export type CopyResult = {
  * items pour en faire un quadrant produirait une carte que personne n'a écrite,
  * et personne ne saurait qu'elle a été fabriquée ici.
  */
+/**
+ * Valide une réponse du modèle, et range son échec dans sa famille.
+ *
+ * ⚠ LA FAMILLE EST POSÉE ICI, PAS PAR L'APPELANT. `validateCopy` ne voit que
+ * des réponses REÇUES : tout ce qu'elle refuse est du texte que le modèle a
+ * écrit, donc `refused` ou `technical`, jamais `unavailable`. Laisser
+ * l'appelant deviner est exactement ce qui a rangé deux cent seize pannes de
+ * facturation sous « schema ».
+ */
 export function validateCopy(archetypeKey: string, raw: string): CopyResult {
+  const verdict = validateCopyResponse(archetypeKey, raw);
+  if (verdict.ok || verdict.family) return verdict;
+  return { ...verdict, family: failureFamily(verdict.reason) };
+}
+
+function validateCopyResponse(archetypeKey: string, raw: string): CopyResult {
   const base = { topicId: "", ok: false as const };
 
   let parsed: unknown;
@@ -933,7 +1002,14 @@ export function collectCopy(
 ): CopyResult[] {
   return entries.map((entry) => {
     if (entry.result.type !== "succeeded" || !entry.result.message) {
-      return { topicId: entry.custom_id, ok: false, reason: entry.result.type };
+      /*
+       * ⚠ `type` EST LE MOT DU FOURNISSEUR — `errored`, `expired`,
+       * `canceled` — et il dit que rien n'a été écrit. Une entrée qui a
+       * abouti mais dont le message manque est un défaut de notre lecture,
+       * pas du fournisseur : les deux ne se confondent pas.
+       */
+      const reason = entry.result.type === "succeeded" ? "no_message" : entry.result.type;
+      return { topicId: entry.custom_id, ok: false, reason, family: failureFamily(reason) };
     }
 
     const message = entry.result.message;
@@ -944,7 +1020,7 @@ export function collectCopy(
 
     const archetypeKey = archetypeByTopic.get(entry.custom_id);
     if (!archetypeKey) {
-      return { topicId: entry.custom_id, ok: false, reason: "unknown_topic" };
+      return { topicId: entry.custom_id, ok: false, reason: "unknown_topic", family: "technical" };
     }
 
     const usage = {
