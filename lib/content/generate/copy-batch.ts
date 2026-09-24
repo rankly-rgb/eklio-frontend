@@ -1,3 +1,4 @@
+import CONFORMING_EXAMPLES from "./fixtures/conforming-examples.json";
 import type Anthropic from "@anthropic-ai/sdk";
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { budgetErrors, type BudgetError } from "@/lib/compose/budget";
@@ -413,6 +414,53 @@ export function archetypeInstruction(archetypeKey: string): string {
  * de compteur. Le check-in du mois non plus — il change chaque mois, et il
  * réécrirait le cache à chaque fois.
  */
+/*
+ * ── ⚠ LE MODÈLE N'A JAMAIS VU UN BON POST ──────────────────────────────
+ *
+ * Tout ce qui précède est une RÈGLE, et une règle dit ce qu'il ne faut pas
+ * faire. Trente caractères au plus. Pas de promesse de résultat. Quatre mots
+ * par libellé. Pas d'apostrophe droite. Aucune ne montre ce qu'il FAUT faire.
+ *
+ * La notation indépendante met l'écriture à 1,6 sur 5, trois planches de
+ * suite. Les sept contrôles de F26 n'ont pas déplacé ce chiffre : ils ont
+ * supprimé les sept défauts qu'ils nomment, exactement, et rien d'autre. Un
+ * contrôle refuse, il n'améliore pas — ce qu'on sait formuler, on l'attrape ;
+ * le reste, non.
+ *
+ * ── CE QUE CES EXEMPLES SONT ───────────────────────────────────────────
+ *
+ * Des posts RÉELLEMENT PRODUITS, choisis parmi les 701 de la base par
+ * `scripts/local-render/15-examples.ts` : ils passent les vingt-trois
+ * contrôles entiers, le juge de complétude sur les lignes que le lexique ne
+ * tranche pas, et aucun ne porte les formules que F29 a nommées. Aucun n'a été
+ * écrit pour l'occasion, aucun n'a été retouché — seule la normalisation
+ * typographique de la chaîne leur a été appliquée.
+ *
+ * ⚠ CE SONT DES FIXTURES, PAS DU CONTENU. Elles vivent dans `fixtures/`,
+ * elles sont versionnées, et elles ne sont jamais livrées à personne. Le jour
+ * où un mois meilleur sort, on rejoue le script et elles changent.
+ */
+function examplesFor(archetypeKey: string): string[] {
+  const examples = (CONFORMING_EXAMPLES as Record<string, Example[]>)[archetypeKey];
+  if (!examples?.length) return [];
+  return [
+    ``,
+    `EXAMPLES — ${examples.length} posts of this shape that were accepted. The topic`,
+    `each one was written from is above its answer. Read what makes them work:`,
+    `the line uses the width it has, the labels do not repeat each other, and`,
+    `nothing is explained twice in two sizes.`,
+    ...examples.flatMap((e) => [
+      ``,
+      `TOPIC: ${e.topic}`,
+      JSON.stringify({ card_line: e.cardLine, payload: e.payload }),
+    ]),
+    ``,
+    `⚠ DO NOT REUSE THEIR WORDS. They are here for their shape and their`,
+    `restraint, not their content — a month that repeats them is a month of`,
+    `duplicates, and duplicates are refused.`,
+  ];
+}
+
 export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthropic.TextBlockParam[] {
   // ⚠ TRIÉES. La base ne promet aucun ordre, et six règles rendues dans un
   // ordre différent d'un run à l'autre suffisent à ne jamais rien cacher.
@@ -492,6 +540,7 @@ export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthrop
     `rather than rephrase it.`,
     ``,
     archetypeInstruction(archetypeKey),
+    ...examplesFor(archetypeKey),
   ].join("\n");
 
   return [{ type: "text", text, cache_control: { type: "ephemeral" } }];
@@ -527,6 +576,8 @@ export function variablePart(topic: TopicRequest): string {
  * est refusé par un 400 sur Sonnet 5 : la borne de raisonnement se règle par
  * l'effort et par rien d'autre.
  */
+type Example = { topic: string; intent: string; cardLine: string; payload: unknown };
+
 export type CopyEffort = "low" | "medium" | "high" | "xhigh" | "max";
 
 export function copyEffort(): CopyEffort {

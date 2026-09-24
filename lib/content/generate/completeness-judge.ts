@@ -84,7 +84,19 @@ export async function judgeCompleteness(
   try {
     const message = await client.messages.create({
       model: massCopyModel(),
-      max_tokens: 1500,
+      /*
+       * ⚠ 1500 ÉTAIT UNE CONSTANTE, ET ELLE A FAIT TAIRE LE JUGE. Mesuré en
+       * choisissant les exemples : sur des lots de quarante lignes, la réponse
+       * dépassait le plafond, le JSON arrivait tronqué, `JSON.parse` levait, et
+       * le juge rendait un verdict VIDE — qui ne refuse rien. Trois lots sur
+       * quatre sont passés sans être jugés, en silence.
+       *
+       * ⚠ LE SILENCE EST LE COMPORTEMENT VOULU (un juge en panne ne doit pas
+       * faire tomber un mois), ET C'EST CE QUI REND LE DÉFAUT INVISIBLE. Le
+       * plafond suit donc le nombre de lignes : une ligne rendue coûte une
+       * clé et un booléen, soit une soixantaine de jetons avec sa ponctuation.
+       */
+      max_tokens: Math.min(16000, 400 + lines.length * 60),
       system: PROMPT,
       messages: [{ role: "user", content: lines.map((l) => `- ${l}`).join("\n") }],
     });

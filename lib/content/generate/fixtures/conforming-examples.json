@@ -1,0 +1,884 @@
+{
+  "single_statement": [
+    {
+      "topic": "When your body still lives in the old story",
+      "intent": "behind_the_practice",
+      "cardLine": "Your body remembers longer",
+      "payload": {
+        "statement": "Your nervous system keeps living a story your mind has already closed."
+      }
+    },
+    {
+      "topic": "High performance masking distress signals",
+      "intent": "educate",
+      "cardLine": "Competence can muffle rest",
+      "payload": {
+        "statement": "Your body sends signals when it needs to rest. Competence can muffle those signals into silence."
+      }
+    },
+    {
+      "topic": "When your life script got rewritten overnight",
+      "intent": "invite",
+      "cardLine": "When the script rewrites",
+      "payload": {
+        "statement": "Your nervous system may still be living in the life you had before the change."
+      }
+    },
+    {
+      "topic": "EMDR beyond trauma: Life transitions",
+      "intent": "correct_a_myth",
+      "cardLine": "What’s stuck moves",
+      "payload": {
+        "statement": "EMDR processes what’s stuck, not just what happened."
+      }
+    }
+  ],
+  "comparison_pair": [
+    {
+      "topic": "EMDR is not for trauma only",
+      "intent": "correct_a_myth",
+      "cardLine": "Life interruption leaves marks",
+      "payload": {
+        "left": [
+          {
+            "gloss": "processes what gets stuck",
+            "label": "EMDR"
+          },
+          {
+            "gloss": "one kind of stuck",
+            "label": "Trauma"
+          }
+        ],
+        "right": [
+          {
+            "gloss": "another kind of stuck",
+            "label": "Burnout"
+          },
+          {
+            "gloss": "another kind of stuck",
+            "label": "Transition"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "EMDR for the life you didn't plan",
+      "intent": "invite",
+      "cardLine": "When the script changes",
+      "payload": {
+        "left": [
+          {
+            "gloss": "organized the next chapter",
+            "label": "Planned ahead"
+          },
+          {
+            "gloss": "the actual day arrived different",
+            "label": "Then it shifted"
+          }
+        ],
+        "right": [
+          {
+            "gloss": "nervous system in the old story",
+            "label": "Body stayed back"
+          },
+          {
+            "gloss": "processes what actually happened",
+            "label": "EMDR moves trauma"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "EMDR and the Plans That Belonged to Someone Else",
+      "intent": "educate",
+      "cardLine": "Grief for a plan",
+      "payload": {
+        "left": [
+          {
+            "gloss": "knew what came next",
+            "label": "Had a plan"
+          },
+          {
+            "gloss": "body said no, life changed",
+            "label": "Plan dissolved"
+          }
+        ],
+        "right": [
+          {
+            "gloss": "real loss, real work",
+            "label": "Grieve the plan"
+          },
+          {
+            "gloss": "from where you are now",
+            "label": "Start fresh"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "High-functioning performance masks nervous system cost",
+      "intent": "normalise",
+      "cardLine": "High-functioning performance",
+      "payload": {
+        "left": [
+          {
+            "gloss": "Showing up, delivering",
+            "label": "Meeting deadlines"
+          },
+          {
+            "gloss": "Still functioning day to day",
+            "label": "Sleeping less"
+          },
+          {
+            "gloss": "No one sees the cost",
+            "label": "Holding it together"
+          }
+        ],
+        "right": [
+          {
+            "gloss": "Not the same thing",
+            "label": "Nervous system fine"
+          },
+          {
+            "gloss": "Ordinary Tuesday undoes you",
+            "label": "Rest then collapse"
+          },
+          {
+            "gloss": "Performance hides what’s left",
+            "label": "Capacity has limits"
+          }
+        ]
+      }
+    }
+  ],
+  "numbered_strategies": [
+    {
+      "topic": "EMDR for identity shifts after involuntary change",
+      "intent": "behind_the_practice",
+      "cardLine": "When your life rewrites itself",
+      "payload": {
+        "items": [
+          {
+            "gloss": "your body knows before your mind",
+            "label": "Track what shifted"
+          },
+          {
+            "gloss": "EMDR lets the nervous system lead",
+            "label": "Your pace"
+          },
+          {
+            "gloss": "who you are now, not before",
+            "label": "Rebuild from there"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "EMDR for the life that ended unexpectedly",
+      "intent": "invite",
+      "cardLine": "When the future stops existing",
+      "payload": {
+        "items": [
+          {
+            "gloss": "name the loss without fixing it",
+            "label": "Hold what happened"
+          },
+          {
+            "gloss": "it knows something your mind skipped",
+            "label": "Body work"
+          },
+          {
+            "gloss": "sensation, not solution, comes first",
+            "label": "Let it move"
+          },
+          {
+            "gloss": "not erase. the weight changes shape.",
+            "label": "Time will shift"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "When efficiency becomes a trauma response",
+      "intent": "educate",
+      "cardLine": "When productivity is a reflex",
+      "payload": {
+        "items": [
+          {
+            "gloss": "is it drive or dread",
+            "label": "Notice the pace"
+          },
+          {
+            "gloss": "when stillness feels like danger",
+            "label": "Rest becomes harder"
+          },
+          {
+            "gloss": "what your mind calls efficiency",
+            "label": "Your body knows"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "EMDR Beyond Trauma: Processing Unwanted Life Transitions",
+      "intent": "correct_a_myth",
+      "cardLine": "When a door closes",
+      "payload": {
+        "items": [
+          {
+            "gloss": "the life you had before",
+            "label": "What stopped"
+          },
+          {
+            "gloss": "separate from what you think",
+            "label": "Body knows"
+          },
+          {
+            "gloss": "processing, not just naming it",
+            "label": "What comes next"
+          }
+        ]
+      }
+    }
+  ],
+  "cycle": [
+    {
+      "topic": "When EMDR Meets Unplanned Reinvention",
+      "intent": "educate",
+      "cardLine": "Process loss before rebuild",
+      "payload": {
+        "nodes": [
+          {
+            "gloss": "what your body knows",
+            "label": "Process the loss"
+          },
+          {
+            "gloss": "from what’s actually there",
+            "label": "Then rebuild"
+          },
+          {
+            "gloss": "and that’s the point",
+            "label": "Different person"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "When the plan ends mid-sentence",
+      "intent": "invite",
+      "cardLine": "When the plan ends",
+      "payload": {
+        "nodes": [
+          {
+            "gloss": "your body keeps running",
+            "label": "The plan stops"
+          },
+          {
+            "gloss": "that never arrives",
+            "label": "Braced for next"
+          },
+          {
+            "gloss": "the nervous system disagrees",
+            "label": "Desk dread"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "When identity outlives the role that built it",
+      "intent": "normalise",
+      "cardLine": "The shape stays after the role",
+      "payload": {
+        "nodes": [
+          {
+            "gloss": "it shaped how you moved",
+            "label": "You were role"
+          },
+          {
+            "gloss": "the shape stays in your body",
+            "label": "The role ends"
+          },
+          {
+            "gloss": "who you are without it",
+            "label": "You learn again"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "The cost of looking unaffected at work",
+      "intent": "behind_the_practice",
+      "cardLine": "Competence masks what shows up",
+      "payload": {
+        "nodes": [
+          {
+            "gloss": "nervous system says otherwise",
+            "label": "Look composed"
+          },
+          {
+            "gloss": "body knew before you did",
+            "label": "Failure’s reading"
+          },
+          {
+            "gloss": "what your system actually needs",
+            "label": "Therapy starts there"
+          }
+        ]
+      }
+    }
+  ],
+  "carousel": [
+    {
+      "topic": "EMDR for high-functioning burnout",
+      "intent": "behind_the_practice",
+      "cardLine": "The nervous system keeps score",
+      "payload": {
+        "cards": [
+          {
+            "payload": {
+              "statement": "Encoding — how stress stores in the body"
+            },
+            "archetype_key": "single_statement"
+          },
+          {
+            "payload": {
+              "statement": "Movement — bilateral work processes what’s held"
+            },
+            "archetype_key": "single_statement"
+          },
+          {
+            "payload": {
+              "statement": "Desensitize — the nervous system learns to settle"
+            },
+            "archetype_key": "single_statement"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "The Productive Nervous System That Never Rests",
+      "intent": "educate",
+      "cardLine": "The Tuesday Nobody Saw Coming",
+      "payload": {
+        "cards": [
+          {
+            "payload": {
+              "statement": "Last day off — body finally stops holding"
+            },
+            "archetype_key": "single_statement"
+          },
+          {
+            "payload": {
+              "statement": "First Tuesday — ordinary Tuesday breaks you"
+            },
+            "archetype_key": "single_statement"
+          },
+          {
+            "payload": {
+              "statement": "Week two — the cost becomes clear"
+            },
+            "archetype_key": "single_statement"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "When the Plan Stops Working",
+      "intent": "normalise",
+      "cardLine": "When the Plan Stops Working",
+      "payload": {
+        "cards": [
+          {
+            "payload": {
+              "statement": "Unwanted change rewires how your brain processes what comes next."
+            },
+            "archetype_key": "single_statement"
+          },
+          {
+            "payload": {
+              "beneath": {
+                "gloss": "the plan stopped working",
+                "label": "The ordinary Tuesday"
+              },
+              "surface": {
+                "gloss": "you knew what to do",
+                "label": "The hard year"
+              }
+            },
+            "archetype_key": "surface_and_beneath"
+          },
+          {
+            "payload": {
+              "statement": "Crisis makes sense. Routine doesn’t always."
+            },
+            "archetype_key": "single_statement"
+          },
+          {
+            "payload": {
+              "statement": "That feeling is not weakness. It is your nervous system recalibrating."
+            },
+            "archetype_key": "single_statement"
+          }
+        ]
+      }
+    }
+  ],
+  "surface_and_beneath": [
+    {
+      "topic": "The Performer's Nervous System",
+      "intent": "normalise",
+      "cardLine": "The Performer’s Nervous System",
+      "payload": {
+        "beneath": {
+          "gloss": "Your nervous system is still running",
+          "label": "Exhaustion"
+        },
+        "surface": {
+          "gloss": "You do the work well",
+          "label": "Competence"
+        }
+      }
+    },
+    {
+      "topic": "When the old map stops working",
+      "intent": "invite",
+      "cardLine": "When the old map stops working",
+      "payload": {
+        "beneath": {
+          "gloss": "mind catches up slower",
+          "label": "Body knows first"
+        },
+        "surface": {
+          "gloss": "your compass hasn’t",
+          "label": "Life shifted"
+        }
+      }
+    },
+    {
+      "topic": "EMDR and the grief before moving forward",
+      "intent": "educate",
+      "cardLine": "What you thought would happen",
+      "payload": {
+        "beneath": {
+          "gloss": "the before-plan arrives. grief shows.",
+          "label": "When it stops"
+        },
+        "surface": {
+          "gloss": "you move. you solve. you survive.",
+          "label": "During crisis"
+        }
+      }
+    },
+    {
+      "topic": "EMDR and the Unmourned Loss",
+      "intent": "correct_a_myth",
+      "cardLine": "Reprocessing isn’t forgetting",
+      "payload": {
+        "beneath": {
+          "gloss": "your body learns to carry it",
+          "label": "Making space"
+        },
+        "surface": {
+          "gloss": "holding what was lost",
+          "label": "Reprocessing grief"
+        }
+      }
+    }
+  ],
+  "concentric_control": [
+    {
+      "topic": "EMDR and the Unplanned Plot Twist",
+      "intent": "educate",
+      "cardLine": "When life rewrites mid-chapter",
+      "payload": {
+        "rings": [
+          {
+            "gloss": "your mind moved on",
+            "label": "The plot twist"
+          },
+          {
+            "gloss": "still reading the old story",
+            "label": "Your nervous system"
+          },
+          {
+            "gloss": "helps them turn the page",
+            "label": "EMDR work"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "The high-functioning nervous system trap",
+      "intent": "normalise",
+      "cardLine": "Competence masks the signal",
+      "payload": {
+        "rings": [
+          {
+            "gloss": "masks what your body says",
+            "label": "The competence"
+          },
+          {
+            "gloss": "arrives after you’re back",
+            "label": "The burnout"
+          },
+          {
+            "gloss": "starts when you stop",
+            "label": "The listening"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "When Your Script Got Rewritten Overnight",
+      "intent": "invite",
+      "cardLine": "When the script got rewritten",
+      "payload": {
+        "rings": [
+          {
+            "gloss": "suddenly looks different",
+            "label": "Planned life"
+          },
+          {
+            "gloss": "is not the same as before",
+            "label": "The body’s answer"
+          },
+          {
+            "gloss": "is something we work out",
+            "label": "What comes next"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "EMDR and the nervous system's stuck narrative",
+      "intent": "educate",
+      "cardLine": "Your body and mind disagree",
+      "payload": {
+        "rings": [
+          {
+            "gloss": "your body still lives there",
+            "label": "The before"
+          },
+          {
+            "gloss": "your mind knows you’re here",
+            "label": "The now"
+          },
+          {
+            "gloss": "EMDR can help them meet",
+            "label": "The gap"
+          }
+        ]
+      }
+    }
+  ],
+  "annotated_curve": [
+    {
+      "topic": "EMDR and the high-functioning freeze response",
+      "intent": "educate",
+      "cardLine": "Functioning isn’t feeling",
+      "payload": {
+        "axis_x": "outward appearance",
+        "axis_y": "internal state",
+        "points": [
+          {
+            "gloss": "nervous system in freeze",
+            "label": "On time, always"
+          },
+          {
+            "gloss": "body holding old fear",
+            "label": "Nothing dropped"
+          },
+          {
+            "gloss": "exhaustion underneath",
+            "label": "Looks fine"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "EMDR is not just for trauma",
+      "intent": "correct_a_myth",
+      "cardLine": "Grief about lost plans",
+      "payload": {
+        "axis_x": "time since loss",
+        "axis_y": "forward motion",
+        "points": [
+          {
+            "gloss": "shock holds you still",
+            "label": "Right after"
+          },
+          {
+            "gloss": "grief loops back often",
+            "label": "Months in"
+          },
+          {
+            "gloss": "old plans still block new ones",
+            "label": "Much later"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "Why EMDR helps when identity shifts overnight",
+      "intent": "behind_the_practice",
+      "cardLine": "When identity shifts overnight",
+      "payload": {
+        "axis_x": "after the shift",
+        "axis_y": "nervous system",
+        "points": [
+          {
+            "gloss": "body stays braced",
+            "label": "Plan changes"
+          },
+          {
+            "gloss": "old pace feels wrong",
+            "label": "Return happens"
+          },
+          {
+            "gloss": "EMDR moves what words don’t",
+            "label": "Talk alone stalls"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "The performance that outlasts the nervous system",
+      "intent": "invite",
+      "cardLine": "When efficiency stops working",
+      "payload": {
+        "axis_x": "weeks back",
+        "axis_y": "effort required",
+        "points": [
+          {
+            "gloss": "efficiency works fine",
+            "label": "First week"
+          },
+          {
+            "gloss": "efficiency stops working",
+            "label": "Week three"
+          },
+          {
+            "gloss": "body still protecting you",
+            "label": "Week six"
+          }
+        ]
+      }
+    }
+  ],
+  "quadrant_model": [
+    {
+      "topic": "EMDR and the body's map of before",
+      "intent": "educate",
+      "cardLine": "Your body’s map of before",
+      "payload": {
+        "items": [
+          {
+            "gloss": "the old demand was safe",
+            "label": "Body remembers"
+          },
+          {
+            "gloss": "the map stayed put",
+            "label": "Shift happened"
+          },
+          {
+            "gloss": "EMDR lets the nervous system know",
+            "label": "Map updating"
+          },
+          {
+            "gloss": "orientation shifts with you",
+            "label": "Body agrees"
+          }
+        ],
+        "axis_x": "then",
+        "axis_y": "now"
+      }
+    },
+    {
+      "topic": "EMDR and the Unplanned Plot Twist",
+      "intent": "invite",
+      "cardLine": "When life rewrites mid-chapter",
+      "payload": {
+        "items": [
+          {
+            "gloss": "mind says yes",
+            "label": "Plan held"
+          },
+          {
+            "gloss": "body still braced",
+            "label": "Plan shifts"
+          },
+          {
+            "gloss": "nervous system learns",
+            "label": "Body catches up"
+          },
+          {
+            "gloss": "aligned again",
+            "label": "New chapter"
+          }
+        ],
+        "axis_x": "expected",
+        "axis_y": "body’s reading"
+      }
+    },
+    {
+      "topic": "The nervous system cost of perfect execution",
+      "intent": "behind_the_practice",
+      "cardLine": "Deadlines met. Body disagrees.",
+      "payload": {
+        "items": [
+          {
+            "gloss": "nervous system still running",
+            "label": "Deadline met"
+          },
+          {
+            "gloss": "chest tight anyway",
+            "label": "All done"
+          },
+          {
+            "gloss": "body keeps bracing",
+            "label": "Nothing left"
+          },
+          {
+            "gloss": "the signal never landed",
+            "label": "Rest allowed"
+          }
+        ],
+        "axis_x": "task complete",
+        "axis_y": "body settled"
+      }
+    },
+    {
+      "topic": "EMDR and the productive freeze response",
+      "intent": "correct_a_myth",
+      "cardLine": "Focus and freezing feel alike",
+      "payload": {
+        "items": [
+          {
+            "gloss": "body ready, mind clear",
+            "label": "Sharp focus"
+          },
+          {
+            "gloss": "braced, mistaken for focus",
+            "label": "Frozen sharp"
+          },
+          {
+            "gloss": "braced, nothing happens",
+            "label": "Frozen dull"
+          },
+          {
+            "gloss": "body revving, mind spinning",
+            "label": "Scattered alert"
+          }
+        ],
+        "axis_x": "alert",
+        "axis_y": "moving"
+      }
+    }
+  ],
+  "lettered_technique": [
+    {
+      "topic": "EMDR for life transitions, not trauma recovery",
+      "intent": "correct_a_myth",
+      "cardLine": "Change lands in the body first",
+      "payload": {
+        "items": [
+          {
+            "gloss": "the body’s response to change",
+            "label": "Feel what arrives"
+          },
+          {
+            "gloss": "without hurrying past",
+            "label": "Attend to it"
+          },
+          {
+            "gloss": "what this shift is stirring",
+            "label": "Connect the threads"
+          },
+          {
+            "gloss": "at the pace that fits",
+            "label": "Ease forward"
+          }
+        ],
+        "acronym": "FACE"
+      }
+    },
+    {
+      "topic": "EMDR for high-functioning exhaustion",
+      "intent": "normalise",
+      "cardLine": "Competence masks the cost",
+      "payload": {
+        "items": [
+          {
+            "gloss": "what does your body say",
+            "label": "How you move"
+          },
+          {
+            "gloss": "the cost of staying steady",
+            "label": "Autopilot running"
+          },
+          {
+            "gloss": "what competence can hide",
+            "label": "Left unsaid"
+          },
+          {
+            "gloss": "your body knows what it needs",
+            "label": "Time to land"
+          }
+        ],
+        "acronym": "HALT"
+      }
+    },
+    {
+      "topic": "EMDR and the Imposed Transition: Reprocessing Unwanted Change",
+      "intent": "behind_the_practice",
+      "cardLine": "When life rewrites itself",
+      "payload": {
+        "items": [
+          {
+            "gloss": "what the body is holding",
+            "label": "Recognize"
+          },
+          {
+            "gloss": "it to be there",
+            "label": "Allow"
+          },
+          {
+            "gloss": "with gentleness and curiosity",
+            "label": "Investigate"
+          },
+          {
+            "gloss": "yourself through the shift",
+            "label": "Nurture"
+          }
+        ],
+        "acronym": "RAIN"
+      }
+    },
+    {
+      "topic": "EMDR and the Driven Professional's Nervous System",
+      "intent": "correct_a_myth",
+      "cardLine": "High functioning isn’t safe",
+      "payload": {
+        "items": [
+          {
+            "gloss": "long enough to notice",
+            "label": "Stop the pace"
+          },
+          {
+            "gloss": "tension, fatigue, dread",
+            "label": "Track what shows"
+          },
+          {
+            "gloss": "between doing and feeling",
+            "label": "Observe the gap"
+          },
+          {
+            "gloss": "with someone trained",
+            "label": "Process that mismatch"
+          }
+        ],
+        "acronym": "STOP"
+      }
+    }
+  ]
+}
