@@ -115,7 +115,49 @@ export async function testKit(db: ReturnType<typeof admin>) {
 
 /* ── Le plafond, en dollars, lu avant chaque appel et jamais après ────── */
 
-export const SESSION_CAP_USD = 2;
+/**
+ * Ce qu'un run a le droit de dépenser.
+ *
+ * ⚠ IL ÉTAIT IMPRIMÉ DANS CHAQUE RAPPORT ET N'ARRÊTAIT RIEN. `capUsd: 2`
+ * figurait au bas de tous les rapports de mois et de banque depuis le premier
+ * jour, à côté du coût réel, et rien ne le lisait : une valeur juste, publiée
+ * au bon endroit, branchée d'un seul côté — la classe de F27, dans le fichier
+ * qui la recense.
+ *
+ * ⚠ ET IL NE PEUT PAS SE MESURER SUR LE LEDGER. `spentSoFarUsd` somme TOUT
+ * l'historique — 10,82 $ au 2026-09-24 — donc un plafond de session comparé à
+ * lui refuserait tout, pour toujours. La grandeur juste est ce que CE run
+ * dépense.
+ */
+export const SESSION_CAP_USD = (() => {
+  const asked = Number(process.env.CONTENT_SESSION_CAP_USD);
+  return Number.isFinite(asked) && asked > 0 ? asked : 2;
+})();
+
+let spentThisRun = 0;
+
+/** Ce que ce run a dépensé jusqu'ici. */
+export function runSpendUsd(): number {
+  return spentThisRun;
+}
+
+/**
+ * Inscrit une dépense, et arrête le run si le plafond est franchi.
+ *
+ * ⚠ IL ARRÊTE APRÈS, PAS AVANT, et c'est assumé : le coût d'un appel n'est
+ * connu qu'une fois l'appel fait. Ce qu'il empêche est le SUIVANT — un run qui
+ * boucle, un lot relancé, dix mois lancés d'affilée. Un plafond qui prétendrait
+ * arrêter la première dépense mentirait sur ce qu'il sait.
+ */
+export function noteSpend(usd: number, what: string): void {
+  spentThisRun += usd;
+  if (spentThisRun > SESSION_CAP_USD) {
+    throw new Error(
+      `plafond de dépense franchi : ${spentThisRun.toFixed(4)} $ > ${SESSION_CAP_USD} $ ` +
+      `(dernier poste : ${what}). Relever CONTENT_SESSION_CAP_USD, en connaissance de cause.`
+    );
+  }
+}
 
 export async function spentSoFarUsd(db: ReturnType<typeof admin>): Promise<number> {
   const { data } = await db

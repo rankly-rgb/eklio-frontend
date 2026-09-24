@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import EXAMPLES from "@/lib/content/generate/fixtures/conforming-examples.json";
-import { cachedPrefix, MODEL_WRITTEN_ARCHETYPES, CARD_LINE_MAX } from "@/lib/content/generate/copy-batch";
+import {
+  cachedPrefix, MODEL_WRITTEN_ARCHETYPES, CARD_LINE_MAX, examplesOn,
+} from "@/lib/content/generate/copy-batch";
 import { checkMonth, type PostUnderCheck } from "@/lib/content/month-checks";
 import type { DirectionPalette } from "@/lib/compose/palette";
 
@@ -125,5 +127,23 @@ describe("le préfixe les porte", () => {
    */
   it("il est dit de ne pas les recopier", () => {
     expect(cachedPrefix(BRAND, "cycle")[0].text).toContain("DO NOT REUSE THEIR WORDS");
+  });
+
+  /*
+   * ⚠ ET ON PEUT LES RETIRER, ce qui est la seule façon de mesurer ce qu'ils
+   * apportent. Trois changements dans la même session — le modèle, les
+   * exemples, la révision — et une note qui monte ne dit pas lequel a payé.
+   */
+  it("`CONTENT_EXAMPLES=off` rend le préfixe d'avant", () => {
+    expect(examplesOn()).toBe(true);
+    process.env.CONTENT_EXAMPLES = "off";
+    try {
+      expect(examplesOn()).toBe(false);
+      const text = cachedPrefix(BRAND, "cycle")[0].text;
+      expect(text).not.toContain("EXAMPLES —");
+      expect(text).toContain("ADVERTISING ETHICS");
+    } finally {
+      delete process.env.CONTENT_EXAMPLES;
+    }
   });
 });

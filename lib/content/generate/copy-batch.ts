@@ -440,7 +440,18 @@ export function archetypeInstruction(archetypeKey: string): string {
  * elles sont versionnées, et elles ne sont jamais livrées à personne. Le jour
  * où un mois meilleur sort, on rejoue le script et elles changent.
  */
+export function examplesOn(): boolean {
+  return process.env.CONTENT_EXAMPLES !== "off";
+}
+
 function examplesFor(archetypeKey: string): string[] {
+  /*
+   * ⚠ `CONTENT_EXAMPLES=off` LES RETIRE, et c'est ce qui rend leur effet
+   * mesurable. Trois changements dans la même session — le modèle, les
+   * exemples, la passe de révision — et une note qui monte ne dit pas lequel a
+   * payé. Un commutateur par changement, ou la mesure ne mesure rien.
+   */
+  if (!examplesOn()) return [];
   const examples = (CONFORMING_EXAMPLES as Record<string, Example[]>)[archetypeKey];
   if (!examples?.length) return [];
   return [

@@ -65,7 +65,10 @@ import {
 } from "../../lib/content/practitioner";
 import { loadJournal, rememberBatch, rememberResult, clearJournal } from "./journal";
 import type { DirectionPalette } from "../../lib/compose/palette";
-import { admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD } from "./lib";
+import {
+  admin, anthropicKeyOrDie, accountFor, untypedTable, MONTH, SESSION_CAP_USD,
+  noteSpend, runSpendUsd,
+} from "./lib";
 import { withOverhead, type CreditPort } from "../../lib/credits/paid-call";
 
 const WANTED = 30;
@@ -290,6 +293,12 @@ async function main() {
       return row?.ok === true ? (row.reservation_id ?? null) : null;
     },
     async settle(reservationId, costUsd, succeeded) {
+      /*
+       * ⚠ LE SEUL GOULOT OÙ PASSE CHAQUE DOLLAR. Frais généraux et crédits de
+       * post se soldent ici, tous les deux : compter ailleurs aurait compté la
+       * moitié, ce qui est la façon dont un plafond devient décoratif.
+       */
+      noteSpend(costUsd, `${MONTH} · ${succeeded ? "réglé" : "relâché"}`);
       await db.rpc("settle_credit", {
         p_reservation_id: reservationId,
         p_actual_cost_usd: Number(costUsd.toFixed(6)),
@@ -1776,6 +1785,7 @@ function selectDeliverable<
     },
     costUsd: Number(costUsd.toFixed(5)),
     capUsd: SESSION_CAP_USD,
+    spentThisRunUsd: Number(runSpendUsd().toFixed(5)),
   }, null, 2));
 }
 
