@@ -30,6 +30,7 @@ import {
   collectCopy,
   batchCostUsd,
   clampCardLine,
+  copyEffort,
   typographicQuotes,
   deepTypographic,
   syncCostUsd,
@@ -896,6 +897,7 @@ const SPARE_POOL = 6;
         model: massCopyModel(),
         max_tokens: 2000,
         system: cachedPrefix(brand, candidate.topic.archetype_key),
+        output_config: { effort: copyEffort() },
         messages: [{ role: "user", content: variablePart(request) }],
       });
       funnel.generated += 1;

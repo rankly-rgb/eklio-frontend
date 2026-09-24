@@ -45,8 +45,22 @@ import { CANVAS, CONTENT_MIN_AT_CANVAS, THUMB, TYPE } from "@/lib/compose/consta
  * variable et non un déploiement.
  */
 
-/** Le modèle de rédaction de masse. Identifiant daté, voir la note ci-dessus. */
-export const MASS_COPY_MODEL_DEFAULT = "claude-haiku-4-5-20251001";
+/**
+ * Le modèle de rédaction de masse.
+ *
+ * ── ⚠ SONNET PAR DÉFAUT DEPUIS LE 2026-09-24, ET C'EST UNE DÉCISION ────
+ *
+ * Les sept contrôles de F26 ont supprimé exactement les sept défauts qu'ils
+ * nomment, et la note d'écriture est passée de 1,4 à 1,6 sur 5. **Un contrôle
+ * refuse, il n'améliore pas.** Ce qui écrit doit changer.
+ *
+ * Le repli est Haiku, par la même variable : `CONTENT_COPY_MODEL=claude-haiku-4-5`
+ * remet l'ancien comportement sans redéploiement.
+ */
+export const MASS_COPY_MODEL_DEFAULT = "claude-sonnet-5";
+
+/** Le repli, quand la dépense l'impose. */
+export const MASS_COPY_MODEL_FALLBACK = "claude-haiku-4-5-20251001";
 
 /**
  * ⚠ UNE FONCTION, PAS UNE CONSTANTE DE MODULE. Même raison que pour le modèle
@@ -66,9 +80,7 @@ export function massCopyModel(): string {
  * `estimated_cost_usd` et `actual_cost_usd` dans deux colonnes distinctes
  * précisément pour que l'écart soit mesurable.
  */
-export const HAIKU_PRICE = {
-  inputPerMTok: 1.0,
-  outputPerMTok: 5.0,
+const RATE_SHAPE = {
   /** Batch: -50 % sur l'entrée comme sur la sortie. */
   batchMultiplier: 0.5,
   /** Un token lu depuis le cache coûte ~10 % d'un token d'entrée. */
@@ -76,6 +88,51 @@ export const HAIKU_PRICE = {
   /** L'écrire coûte ~25 % de plus qu'un token d'entrée ordinaire. */
   cacheWriteMultiplier: 1.25,
 } as const;
+
+/**
+ * Les tarifs par modèle, en dollars par million de tokens.
+ *
+ * ── ⚠ LE TARIF SUIT LE MODÈLE, SINON TOUT CHIFFRE DE COÛT EST FAUX ─────
+ *
+ * `HAIKU_PRICE` était une constante, et `massCopyModel()` une variable
+ * d'environnement. Basculer sur Sonnet sans toucher au tarif aurait rendu un
+ * coût **divisé par deux** — les deux moitiés justes, la jonction fausse.
+ * C'est exactement la classe de F27, et elle ne recommence pas sur la seule
+ * grandeur dont cette session doit mesurer la variation.
+ */
+export const MODEL_RATES: Record<string, { inputPerMTok: number; outputPerMTok: number }> = {
+  "claude-sonnet-5": { inputPerMTok: 2.0, outputPerMTok: 10.0 },
+  "claude-haiku-4-5": { inputPerMTok: 1.0, outputPerMTok: 5.0 },
+  "claude-haiku-4-5-20251001": { inputPerMTok: 1.0, outputPerMTok: 5.0 },
+  "claude-opus-5": { inputPerMTok: 5.0, outputPerMTok: 25.0 },
+};
+
+/**
+ * ⚠ UN MODÈLE SANS TARIF PREND LE PLUS CHER CONNU, JAMAIS ZÉRO.
+ *
+ * Un tarif manquant qui rendrait 0 ferait apparaître un modèle inconnu comme
+ * gratuit — et un plafond de session se lit sur ce chiffre-là. L'erreur penche
+ * vers la surestimation : on préfère s'arrêter trop tôt que dépenser sans le
+ * voir.
+ */
+export function rateFor(model: string): { inputPerMTok: number; outputPerMTok: number } {
+  const known = MODEL_RATES[model];
+  if (known) return known;
+  const dearest = Object.values(MODEL_RATES).reduce((a, b) =>
+    b.outputPerMTok > a.outputPerMTok ? b : a
+  );
+  return dearest;
+}
+
+/**
+ * Tarifs, en dollars par million de tokens, pour l'estimation de coût.
+ *
+ * ⚠ CE SONT DES ESTIMATIONS, ET `settle_credit` ÉCRIT LE COÛT RÉEL. Elles
+ * servent à réserver avant l'appel, jamais à facturer : le ledger porte
+ * `estimated_cost_usd` et `actual_cost_usd` dans deux colonnes distinctes
+ * précisément pour que l'écart soit mesurable.
+ */
+export const HAIKU_PRICE = { ...RATE_SHAPE, ...MODEL_RATES["claude-haiku-4-5"] } as const;
 
 export type BrandContext = {
   practiceName: string;
@@ -452,6 +509,32 @@ export function variablePart(topic: TopicRequest): string {
 
 /* ── Le batch ────────────────────────────────────────────────────────── */
 
+/**
+ * L'effort de raisonnement des appels de rédaction.
+ *
+ * ── ⚠ SONNET PENSE PAR DÉFAUT, ET CE N'EST PAS CE QU'ON VEUT ICI ───────
+ *
+ * Sur Sonnet 5, omettre `thinking` lance le raisonnement adaptatif : le modèle
+ * réfléchit avant d'écrire, et la sortie facturée gonfle. Pour trente payloads
+ * de carte de moins de trente mots, ce raisonnement coûte plus que ce qu'il
+ * écrit.
+ *
+ * `low` garde le raisonnement — le désactiver a ses propres défauts — et le
+ * borne. La variable existe pour que la mesure puisse le faire varier sans
+ * redéploiement, comme le modèle lui-même.
+ *
+ * ⚠ ET C'EST `output_config`, PAS UN CHAMP DE PREMIER NIVEAU. `budget_tokens`
+ * est refusé par un 400 sur Sonnet 5 : la borne de raisonnement se règle par
+ * l'effort et par rien d'autre.
+ */
+export type CopyEffort = "low" | "medium" | "high" | "xhigh" | "max";
+
+export function copyEffort(): CopyEffort {
+  const asked = process.env.CONTENT_COPY_EFFORT;
+  const allowed: CopyEffort[] = ["low", "medium", "high", "xhigh", "max"];
+  return allowed.includes(asked as CopyEffort) ? (asked as CopyEffort) : "low";
+}
+
 export function buildBatchRequests(
   brand: BrandContext,
   topics: TopicRequest[]
@@ -468,6 +551,7 @@ export function buildBatchRequests(
        * qui pourrait bouger — et il faudrait alors cacher les deux.
        */
       system: cachedPrefix(brand, topic.archetypeKey),
+      output_config: { effort: copyEffort() },
       messages: [{ role: "user" as const, content: variablePart(topic) }],
     },
   }));
@@ -733,15 +817,14 @@ export function clampCardLine(line: string): string {
 export function batchCostUsd(
   usages: Array<{ input: number; output: number; cacheRead: number; cacheWrite: number }>
 ): number {
-  const m = HAIKU_PRICE.batchMultiplier;
+  const rate = rateFor(massCopyModel());
+  const m = RATE_SHAPE.batchMultiplier;
   let total = 0;
   for (const u of usages) {
-    total += (u.input / 1e6) * HAIKU_PRICE.inputPerMTok * m;
-    total += (u.output / 1e6) * HAIKU_PRICE.outputPerMTok * m;
-    total +=
-      (u.cacheRead / 1e6) * HAIKU_PRICE.inputPerMTok * HAIKU_PRICE.cacheReadMultiplier * m;
-    total +=
-      (u.cacheWrite / 1e6) * HAIKU_PRICE.inputPerMTok * HAIKU_PRICE.cacheWriteMultiplier * m;
+    total += (u.input / 1e6) * rate.inputPerMTok * m;
+    total += (u.output / 1e6) * rate.outputPerMTok * m;
+    total += (u.cacheRead / 1e6) * rate.inputPerMTok * RATE_SHAPE.cacheReadMultiplier * m;
+    total += (u.cacheWrite / 1e6) * rate.inputPerMTok * RATE_SHAPE.cacheWriteMultiplier * m;
   }
   return total;
 }
@@ -762,11 +845,12 @@ export function batchCostUsd(
 export function syncCostUsd(
   usage: { input: number; output: number; cacheRead: number; cacheWrite: number }
 ): number {
+  const rate = rateFor(massCopyModel());
   return (
-    (usage.input / 1e6) * HAIKU_PRICE.inputPerMTok +
-    (usage.output / 1e6) * HAIKU_PRICE.outputPerMTok +
-    (usage.cacheRead / 1e6) * HAIKU_PRICE.inputPerMTok * HAIKU_PRICE.cacheReadMultiplier +
-    (usage.cacheWrite / 1e6) * HAIKU_PRICE.inputPerMTok * HAIKU_PRICE.cacheWriteMultiplier
+    (usage.input / 1e6) * rate.inputPerMTok +
+    (usage.output / 1e6) * rate.outputPerMTok +
+    (usage.cacheRead / 1e6) * rate.inputPerMTok * RATE_SHAPE.cacheReadMultiplier +
+    (usage.cacheWrite / 1e6) * rate.inputPerMTok * RATE_SHAPE.cacheWriteMultiplier
   );
 }
 

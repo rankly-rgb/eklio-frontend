@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import {
   cachedPrefix,
   massCopyModel,
+  copyEffort,
   validateCopy,
   variablePart,
   type BrandContext,
@@ -108,6 +109,7 @@ export async function writeOnePost(
     // L'ordre de rendu est tools → system → messages ; déplacer le préfixe
     // invaliderait le cache que le mois vient de remplir.
     system: cachedPrefix(brand, topic.archetypeKey),
+    output_config: { effort: copyEffort() },
     messages: [{ role: "user", content: variablePart(topic) }],
   };
 

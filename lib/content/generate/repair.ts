@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { budgetErrors, words, type BudgetError } from "@/lib/compose/budget";
-import { massCopyModel } from "@/lib/content/generate/copy-batch";
+import { copyEffort, massCopyModel } from "@/lib/content/generate/copy-batch";
 
 /*
  * ── RÉÉCRIRE LE CHAMP QUI DÉPASSE, ET RIEN D'AUTRE ──────────────────────
@@ -151,6 +151,9 @@ export async function repairPayload(
         const message = await port({
           model: massCopyModel(),
           max_tokens: 80,
+          // ⚠ MÊME EFFORT QUE LA RÉDACTION. Une réparation qui raisonnerait
+          // plus que l'écriture qu'elle répare coûterait plus qu'elle.
+          output_config: { effort: copyEffort() },
           system: SYSTEM,
           messages: [{ role: "user", content: ask(error.path, text, error.allowed, error.said) }],
         });

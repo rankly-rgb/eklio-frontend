@@ -269,14 +269,32 @@ describe("results are read by custom_id, never by position", () => {
   });
 });
 
+/*
+ * ⚠ CES CAS ÉPINGLENT LE MODÈLE, ET C'EST NOUVEAU. Ils lisaient le tarif
+ * Haiku pendant que `massCopyModel()` lisait une variable d'environnement :
+ * le jour où la rédaction est passée sur Sonnet, ils ont mesuré un tarif
+ * contre un autre. Un cas de coût qui ne dit pas de quel modèle il parle ne
+ * mesure rien.
+ */
 describe("cost", () => {
-  it("multiplies the batch discount and the cache discount together", () => {
-    const cost = batchCostUsd([{ input: 1e6, output: 0, cacheRead: 0, cacheWrite: 0 }]);
-    expect(cost).toBeCloseTo(HAIKU_PRICE.inputPerMTok * 0.5, 6);
+  const onHaiku = (run: () => void) => {
+    const before = process.env.CONTENT_COPY_MODEL;
+    process.env.CONTENT_COPY_MODEL = "claude-haiku-4-5";
+    try { run(); } finally {
+      if (before === undefined) delete process.env.CONTENT_COPY_MODEL;
+      else process.env.CONTENT_COPY_MODEL = before;
+    }
+  };
 
-    const cached = batchCostUsd([{ input: 0, output: 0, cacheRead: 1e6, cacheWrite: 0 }]);
-    // A cached token is a tenth of an input token, then half again for batch.
-    expect(cached).toBeCloseTo(HAIKU_PRICE.inputPerMTok * 0.1 * 0.5, 6);
+  it("multiplies the batch discount and the cache discount together", () => {
+    onHaiku(() => {
+      const cost = batchCostUsd([{ input: 1e6, output: 0, cacheRead: 0, cacheWrite: 0 }]);
+      expect(cost).toBeCloseTo(HAIKU_PRICE.inputPerMTok * 0.5, 6);
+
+      const cached = batchCostUsd([{ input: 0, output: 0, cacheRead: 1e6, cacheWrite: 0 }]);
+      // A cached token is a tenth of an input token, then half again for batch.
+      expect(cached).toBeCloseTo(HAIKU_PRICE.inputPerMTok * 0.1 * 0.5, 6);
+    });
   });
 
   it("a cached month costs a fraction of an uncached one", () => {
