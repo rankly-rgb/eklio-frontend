@@ -17,7 +17,52 @@ import { PRACTITIONER_CARDS_PER_MONTH } from "@/lib/content/practitioner";
  */
 
 /** Combien de candidats un essai tire. */
-export const CANDIDATES_PER_ATTEMPT = 72;
+/*
+ * ── ⚠ LE BANC ÉTAIT VIDE DANS LES CINQ ESSAIS, PAR ARITHMÉTIQUE ──────────
+ *
+ * Mesuré le 2026-09-24, cinq essais, contrôles gelés : **zéro mois livré**, et
+ * les cinq avaient ÉPUISÉ leur banc — `retirés == banc` dans les cinq, à 4, 4,
+ * 5, 5 et 6. Le sélecteur avait échangé tout ce qu'il avait.
+ *
+ * ⚠ ET CE N'ÉTAIT PAS LA SÉVÉRITÉ DES CONTRÔLES. Chaque mois n'échouait que
+ * sur un à quatre constats, ce qu'un banc suffisant répare par échange. Ce qui
+ * manquait était le banc.
+ *
+ * Les deux bornes tombaient au même point, et c'est ce qui rendait le défaut
+ * invisible :
+ *
+ *   rendement de préparation   174 candidats utilisables sur 363 = **47,9 %**
+ *   72 tirés × 47,9 %          ≈ 34,5 utilisables
+ *   `WANTED + SPARE_POOL`      30 + 6 = **36**
+ *
+ * Relever l'un sans l'autre ne donne rien : à 72 tirés le rendement borne, et à
+ * `SPARE_POOL = 6` le plafond borne. Il faut les deux.
+ *
+ * ── ⚠ ET LE NOMBRE DE CONSTATS A MONTÉ, LUI AUSSI ───────────────────────
+ *
+ * Le banc de 6 avait été dimensionné quand vingt-trois contrôles lisaient la
+ * CARTE. Ils sont désormais trente et ils lisent toutes les surfaces publiées,
+ * légende comprise : plus de surfaces, plus de constats, plus d'échanges. Un
+ * banc de six était juste pour un jeu de contrôles qui n'existe plus.
+ *
+ * Pour un banc de dix-huit : `(30 + 18) / 0,479 ≈ 100` candidats.
+ *
+ * ⚠ ET CENT DEUX, PAS CENT. La boucle tire `ceil(CANDIDATES / 3)` par famille :
+ * à cent elle en tire cent deux, et la somme ne vaut plus ce qu'on a demandé.
+ * Un nombre qui ne divise pas par trois fait mentir tout le dimensionnement
+ * d'un ou deux sujets par archétype — assez pour qu'une cible de banque soit
+ * fausse sans que personne voie où.
+ */
+export const CANDIDATES_PER_ATTEMPT = 102;
+
+/**
+ * Le rendement mesuré entre le tirage et la préparation.
+ *
+ * ⚠ IL NE SE DEVINE PAS. Budget de mots, schéma, déontologie, et depuis F35 la
+ * légende : un candidat sur deux n'arrive pas. Le chiffre vient de cinq essais
+ * réels, pas d'une estimation.
+ */
+export const PREPARATION_YIELD = 0.479;
 
 /** Combien de posts un mois livre. */
 export const POSTS_PER_MONTH = 30;

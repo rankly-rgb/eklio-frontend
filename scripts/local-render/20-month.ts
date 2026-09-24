@@ -819,7 +819,22 @@ async function main() {
  * vingt-neuf posts. Six de rab coûtent un cinquième du mois et donnent au
  * sélecteur de quoi échanger.
  */
-const SPARE_POOL = 6;
+/*
+ * ── ⚠ SIX ÉTAIT LE BANC D'UN JEU DE CONTRÔLES QUI N'EXISTE PLUS ─────────
+ *
+ * Mesuré le 2026-09-24 : cinq essais, zéro mois livré, et les cinq avaient
+ * épuisé leur banc — `retirés == banc` dans les cinq. Chaque mois n'échouait
+ * que sur un à quatre constats, ce qu'un banc suffisant répare par échange.
+ *
+ * ⚠ CE PLAFOND-CI EST LA MOITIÉ DU PROBLÈME, l'autre étant le nombre de
+ * candidats tirés : `30 + 6 = 36` et `72 × 47,9 % ≈ 34,5` tombaient au même
+ * point, donc relever l'un sans l'autre ne donnait rien.
+ *
+ * ⚠ ET LES CANDIDATS DU BANC SONT DÉJÀ PAYÉS. Le lot facture ses cent
+ * réponses à la soumission : en collecter quarante-huit utilisables au lieu de
+ * trente-six ne coûte que les réparations, pas les appels.
+ */
+const SPARE_POOL = 18;
 
   /*
    * ── ⚠ LA CARTE PRATICIENNE NE PASSE PAR AUCUN MODÈLE ──────────────────
