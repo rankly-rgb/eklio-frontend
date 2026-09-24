@@ -1279,7 +1279,8 @@ type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ titl
 
 function selectDeliverable<
   T extends { cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
-              eyebrow: string; candidate: { topic: { title: string } } }
+              eyebrow: string;
+              candidate: { topic: { title: string }; result?: { caption?: string; altText?: string } | null } }
 >(
   prepared: T[], direction: DirectionPalette, wanted: number, practiceName: string,
   allowList: string[],
@@ -1308,6 +1309,14 @@ function selectDeliverable<
     payload: p.payload,
     svg: p.svg ?? undefined,
     eyebrow: p.eyebrow,
+    /*
+     * ⚠ LA LÉGENDE ET L'ALTERNATIF PARTENT AU CONTRÔLE. Ils ne partaient pas,
+     * et c'est le plus gros trou trouvé par l'audit du corpus : la légende est
+     * le texte publié le plus LONG, et elle portait 341 annonces de
+     * disponibilité sur 400 alors que `checkSellsSlots` existe depuis F26.
+     */
+    caption: p.candidate.result?.caption ?? undefined,
+    altText: p.candidate.result?.altText ?? undefined,
   });
 
   let chosen = prepared.slice(0, wanted);

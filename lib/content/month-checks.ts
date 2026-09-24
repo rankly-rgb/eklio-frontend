@@ -563,6 +563,31 @@ export type PostUnderCheck = {
   title: string;
   cardLine: string;
   payload: unknown;
+  /**
+   * La légende publiée sous l'image, et le texte alternatif.
+   *
+   * ── ⚠ AUCUN CONTRÔLE D'ÉCRITURE NE LES LISAIT ─────────────────────────
+   *
+   * Trouvé le 2026-09-24 par un audit du corpus mené à l'aveugle, sans la
+   * liste des contrôles existants. `writtenLinesIn` rendait la ligne de carte
+   * et les chaînes du payload — c'est-à-dire ce qui est DESSINÉ — et rien
+   * d'autre. Or la légende est le texte publié le plus LONG, et c'est là que
+   * vivent :
+   *
+   *   341 légendes sur 400   une annonce de disponibilité (« two evening
+   *                          slots ») — `checkSellsSlots` existe depuis F26 et
+   *                          n'a jamais regardé l'endroit où l'on vend
+   *    76 légendes sur 400   « Almost everyone who came in this month… », soit
+   *                          du contenu tiré de la patientèle réelle
+   *     7 légendes           une comparaison d'efficacité avec la thérapie
+   *                          par la parole
+   *
+   * ⚠ SEUL `checkEthics` LES VOYAIT, et il ne porte que les six règles du
+   * brief. Les vingt-trois contrôles d'écriture regardaient la carte pendant
+   * que le paragraphe en dessous disait ce qu'il voulait.
+   */
+  caption?: string;
+  altText?: string;
   /** Le SVG livré, quand il a déjà été composé. */
   svg?: string;
   /**
@@ -678,13 +703,27 @@ export function checkCount(count: number, wanted: number | undefined): Finding[]
  * recevait `caption + altText + payload` : le TITRE n'était lu par aucune
  * règle déontologique. « Efficiency can become trauma » est un titre.
  */
-export function writtenLinesIn(posts: PostUnderCheck[]): Array<{ where: string; text: string; archetype: string }> {
-  const out: Array<{ where: string; text: string; archetype: string }> = [];
+export function writtenLinesIn(
+  posts: PostUnderCheck[]
+): Array<{ where: string; text: string; archetype: string; kind?: "prose" }> {
+  const out: Array<{ where: string; text: string; archetype: string; kind?: "prose" }> = [];
   for (const post of posts) {
     const where = `« ${post.cardLine || post.title} »`;
     out.push({ where: `${where} — ligne de carte`, text: post.cardLine || post.title, archetype: post.archetype });
     for (const s of stringsIn(post.payload)) {
       out.push({ where: `${where} — ${s.where}`, text: s.text, archetype: post.archetype });
+    }
+    /*
+     * ⚠ LA LÉGENDE EST DU TEXTE PUBLIÉ, ET C'EST LE PLUS LONG. Elle est lue
+     * ici, avec l'alternatif, parce que « ce qui est écrit » ne peut pas
+     * vouloir dire « ce qui est dessiné » : la phrase qu'une lectrice lit en
+     * entier est celle du paragraphe, pas celle de la carte.
+     */
+    if (post.caption) {
+      out.push({ where: `${where} — légende`, text: post.caption, archetype: post.archetype, kind: "prose" });
+    }
+    if (post.altText) {
+      out.push({ where: `${where} — alternatif`, text: post.altText, archetype: post.archetype, kind: "prose" });
     }
   }
   return out;

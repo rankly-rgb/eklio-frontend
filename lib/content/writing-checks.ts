@@ -146,8 +146,16 @@ export function completenessOf(text: string): Completeness {
  * ⚠ C'EST CE QU'ON ENVOIE AU JUGE, ET RIEN D'AUTRE. Les certitudes lexicales
  * ne coûtent pas un appel, et les lignes répétées n'en coûtent qu'un seul.
  */
-export function undecidedIn(lines: Array<{ where: string; text: string }>): string[] {
-  return [...new Set(lines.filter((l) => completenessOf(l.text) === "undecided").map((l) => l.text))];
+export function undecidedIn(lines: Array<{ where: string; text: string; kind?: string }>): string[] {
+  /*
+   * ⚠ LA PROSE N'EST PAS SOUMISE AU JUGE. Envoyer les trente légendes d'un
+   * mois au juge de complétude coûterait quatre fois l'appel — une légende
+   * fait deux mille caractères, une ligne de carte trente — pour une question
+   * qui n'a pas de sens sur un paragraphe.
+   */
+  return [...new Set(
+    lines.filter((l) => !isProse(l.kind) && completenessOf(l.text) === "undecided").map((l) => l.text)
+  )];
 }
 
 /** Ce que le juge rend : par ligne, finie ou non. */
@@ -165,12 +173,37 @@ export type CompletenessVerdicts = Record<string, boolean>;
  * pas un verdict : un juge muet, en panne ou hors budget ne doit pas refuser
  * un mois entier. L'erreur penche vers le permissif, comme partout ici.
  */
+/*
+ * ── ⚠ UN CONTRÔLE DE LIGNE N'EST PAS UN CONTRÔLE DE PROSE ───────────────
+ *
+ * `checkUnfinished` et `checkDangling` existent parce qu'une LIGNE DE CARTE se
+ * lit seule : rien ne la précède, rien ne la suit, et si elle s'arrête avant
+ * son sens la lectrice n'a aucun moyen de la finir. Une légende est un
+ * paragraphe de trois à six phrases : sa dernière phrase se lit après les
+ * autres, et la question « cette ligne se tient-elle seule ? » n'a pas de sens
+ * pour elle.
+ *
+ * ⚠ MESURÉ LE JOUR OÙ LES LÉGENDES SONT ENTRÉES DANS LES CONTRÔLES : appliqué
+ * à de la prose, `checkUnfinished` a refusé une légende qui se terminait par
+ * une phrase complète, parce qu'elle regardait le dernier mot d'un paragraphe
+ * comme s'il était le dernier mot d'un titre.
+ *
+ * Ce n'est pas un contrôle relâché : c'est chaque contrôle appliqué à la
+ * grandeur qu'il mesure. La légende reste lue par tous les autres — promesse
+ * d'efficacité, vente de créneau, citation non attribuée, apostrophe droite,
+ * sigle inventé — qui sont des contrôles de TEXTE et non de ligne.
+ */
+export function isProse(kind: string | undefined): boolean {
+  return kind === "prose";
+}
+
 export function checkUnfinished(
-  lines: Array<{ where: string; text: string }>,
+  lines: Array<{ where: string; text: string; kind?: string }>,
   verdicts: CompletenessVerdicts = {}
 ): Finding[] {
   const out: Finding[] = [];
-  for (const { where, text } of lines) {
+  for (const { where, text, kind } of lines) {
+    if (isProse(kind)) continue;
     const verdict = completenessOf(text);
     const unfinished = verdict === "unfinished" || (verdict === "undecided" && verdicts[text] === false);
     if (unfinished) {
@@ -422,7 +455,14 @@ export function checkClinicalClaim(
  */
 const SELLS = new RegExp(
   [
-    String.raw`\b(?:slots?|openings?|waitlist)\b`,
+    /*
+     * ⚠ « openings » AU PLURIEL SEULEMENT, ET C'EST MESURÉ. `openings?`
+     * attrapait le GÉRONDIF : « EMDR can work with what closed, not only
+     * what's opening ahead » a été refusée comme une vente de créneau, sur une
+     * légende qui parle d'un avenir. Le pluriel est un nom de rendez-vous ; le
+     * singulier est un verbe une fois sur deux.
+     */
+    String.raw`\b(?:slots?|openings|waitlist)\b`,
     String.raw`\b(?:spots?|places?)\b\s+(?:open|available|free|left|remaining)\b`,
     String.raw`\b(?:a few|two|three|limited)\s+(?:spots?|places?)\b`,
     String.raw`\b(?:book|booking|dm me|message me)\s+(?:a|your|an|now)\b`,

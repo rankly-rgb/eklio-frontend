@@ -5,7 +5,9 @@
   "cardLine": "The body waits for plans",
   "payload": {
    "statement": "An ending your mind accepts can still leave your body waiting for what was supposed to happen."
-  }
+  },
+  "caption": "Endings that arrive without warning don’t always register the same way in the body as they do in the mind.\n\nYou can understand a change completely and still find your body braced for a version of life that stopped happening. That gap is not confusion. It is timing.\n\nThis work makes room for that gap.",
+  "altText": "Card with the line ’The body waits for plans’ printed at the top in large type, on a plain background, no imagery, practice name below in smaller type."
  },
  {
   "archetype": "surface_and_beneath",
@@ -20,7 +22,9 @@
     "gloss": "every task, every day",
     "label": "Getting it done"
    }
-  }
+  },
+  "caption": "Functioning and feeling alive are not the same thing.\n\nYou can meet every deadline, answer every message, hold every role together, and still feel far away from your own life.\n\nThis gap is common. It does not mean something is wrong with you. It means the system that gets you through the day and the part of you that wants to feel present are not always talking to each other.\n\nTherapy is one place to look at that gap, without needing to explain why it’s there.",
+  "altText": "A card with two sections: ’Surface: Getting it done, every task, every day’ above ’Beneath: Running on empty, little left to feel.’"
  },
  {
   "archetype": "single_statement",
@@ -28,7 +32,9 @@
   "cardLine": "When the plan stops working",
   "payload": {
    "statement": "The plan you built can stop fitting the life you now have to live."
-  }
+  },
+  "caption": "Change doesn’t always ask first. Sometimes the life you planned and the life you’re living stop matching, and you’re left standing between the two.\n\nThat gap is a hard place to live. It’s also a place worth naming out loud, with someone else in the room.\n\nCorin Aldhelm Therapy",
+  "altText": "A plain card with the line ’When the plan stops working’ printed across the top in large type, beneath it a short statement about a plan no longer fitting a changed life."
  },
  {
   "archetype": "comparison_pair",
@@ -55,7 +61,9 @@
      "label": "Signals persist"
     }
    ]
-  }
+  },
+  "caption": "Function is not the same as ease. A person can meet every deadline and still carry the day in their shoulders. Composure on the outside doesn’t mean the nervous system has finished with what it took in. Sometimes the work is what happens after the performing stops.",
+  "altText": "Comparison card with two columns. Left side: Stays composed, handles the day without pause; Keeps pace, meets each task on time. Right side: System still active, working underneath the surface; Signals persist, tension holds after each day."
  },
  {
   "archetype": "quadrant_model",
@@ -82,7 +90,9 @@
    ],
    "axis_x": "output",
    "axis_y": "presence"
-  }
+  },
+  "caption": "High function can look like ease. Every task lands. Every deadline holds. And still, something in the room feels far away.\n\nThis kind of absence doesn’t show up on a calendar. It shows up after, in the quiet, when the work is done and the feeling of having done it doesn’t arrive.\n\nSome people carry this for years without a name for it. The body performs. The rest of it waits somewhere else.\n\nTherapy can be a place to notice where that gap lives, and what it’s been protecting.",
+  "altText": "A quadrant chart with axes output and presence. Four labeled points: Task done (body stays absent), Box checked (no one home inside), Praise arrives (feels like static), Alone after (the day disappears)."
  },
  {
   "archetype": "single_statement",
@@ -90,7 +100,9 @@
   "cardLine": "When the body protests",
   "payload": {
    "statement": "The body can keep protesting an ending long after the mind has accepted it."
-  }
+  },
+  "caption": "Endings arrive on their own schedule. The mind can accept a loss and still the body stays braced, waiting for something to reverse. That gap between knowing and feeling is not a failure. It’s where the work happens.",
+  "altText": "A plain card with the line ’When the body protests’ at the top and a short statement below about the body protesting an ending after the mind has accepted it."
  },
  {
   "archetype": "surface_and_beneath",
@@ -105,7 +117,9 @@
     "gloss": "still feels more real",
     "label": "The old plan"
    }
-  }
+  },
+  "caption": "Some plans don’t end. They just stop matching what happened.\n\nThe mind can keep living inside the version that made sense — the one with the shape you expected, the timeline you trusted. Life moves on without asking permission, and the gap between the plan and the day you’re actually in can feel disorienting long after the change itself.\n\nThis isn’t a failure to adjust. It’s what happens when reality moves faster than the story you were telling yourself about it.\n\nCorin Aldhelm Therapy",
+  "altText": "A card with two contrasts: ’The old plan / still feels more real’ above ’What happened / hasn’t caught up yet.’"
  },
  {
   "archetype": "carousel",
@@ -139,7 +153,9 @@
      "archetype_key": "single_statement"
     }
    ]
-  }
+  },
+  "caption": "High performance can look like calm mastery from the outside.\n\nOften it runs on the same circuit as hypervigilance — the part of the nervous system built to scan for threat.\n\nBoth states share wiring. Alertness and achievement can come from the same place as fear.\n\nThe body does not always separate the two. It just knows to stay switched on.\n\nUnderstanding that circuit is part of the work.",
+  "altText": "Three-card carousel. First: sharp focus and constant alarm can share one nervous system circuit. Second: a surface/beneath diagram contrasting ’Sharp and ready’ with ’Wired shut.’ Third: the body cannot always tell drive from danger."
  },
  {
   "archetype": "single_statement",
@@ -147,7 +163,9 @@
   "cardLine": "When the future shifts fast",
   "payload": {
    "statement": "Sudden change can leave the body still bracing for a future that no longer exists."
-  }
+  },
+  "caption": "Change can happen in a single day. The body takes longer to catch up.\n\nA sense of what comes next isn’t just a thought. It’s something the nervous system builds over time, quietly, through repetition. When that gets interrupted without warning, the body can keep bracing for a future that isn’t coming.\n\nThis work makes room for that lag. For the gap between what happened and what the body still expects.\n\nCorin Aldhelm Therapy sees adults navigating unexpected life change.",
+  "altText": "A plain card with the line ’When the future shifts fast’ in large type, centered on a soft neutral background."
  },
  {
   "archetype": "cycle",
@@ -168,7 +186,9 @@
      "label": "No slowdown"
     }
    ]
-  }
+  },
+  "caption": "Success at work can look seamless. Meetings land, deadlines close, praise comes in. None of that tells you what the nervous system is carrying underneath.\n\nHigh performers often learn to keep functioning past the point where their body would rather stop. The system adapts. It gets efficient at overriding its own signals.\n\nThis isn’t about burnout as a single event. It’s about a pattern that can run for years without looking like a problem from the outside.\n\nTherapy doesn’t ask you to perform less. It asks what your body has been tracking the whole time.",
+  "altText": "A three-step cycle card. Node one: Perform well, system flags it anyway. Node two: Praise lands, body stays braced. Node three: No slowdown, nothing built to stop."
  },
  {
   "archetype": "annotated_curve",
@@ -191,7 +211,9 @@
      "label": "Week eight"
     }
    ]
-  }
+  },
+  "caption": "Deadlines met is not the same as fine.\n\nA person can keep every commitment and still be running on nothing underneath. The output stays steady. The reserve doesn’t.\n\nEMDR works with what the body carries after long stretches of push-through, not just single events. It’s one way to look at what’s underneath the performance.\n\nCorin Aldhelm Therapy",
+  "altText": "A line graph titled ’weeks under load’ by ’reserve left’ showing three points: Week one with deadlines met easily, Week four still meeting them but running dry, and Week eight with output steady but tank empty."
  },
  {
   "archetype": "single_statement",
@@ -199,7 +221,9 @@
   "cardLine": "More than shock",
   "payload": {
    "statement": "EMDR is not only for shock. Loss and change can lodge in the body too."
-  }
+  },
+  "caption": "EMDR gets framed as a treatment for the dramatic and sudden. That is only part of it.\n\nLoss and unwanted change can lodge in the nervous system the same way a single frightening moment can. A move, an ending, a diagnosis, a door closing that you didn’t choose.\n\nEMDR works with what got stuck, not just what happened. The stuck part can be a shock. It can also be a slow unraveling.\n\nCorin Aldhelm Therapy",
+  "altText": "Text card reading ’More than shock’ with a statement below explaining EMDR addresses loss and change, not only shock, followed by the practice name Corin Aldhelm Therapy."
  },
  {
   "archetype": "concentric_control",
@@ -220,7 +244,9 @@
      "label": "The noticing"
     }
    ]
-  }
+  },
+  "caption": "Competence is not the same as capacity. A person can keep functioning long after the reserves are gone. Meetings get made. Deadlines get met. Underneath, something is running thin.\n\nThis work starts with noticing what coping has been covering.",
+  "altText": "A concentric circle graphic. Outer ring: The coping, works until it doesn’t. Middle ring: The fumes, no one else can see. Inner ring: The noticing, where it starts."
  },
  {
   "archetype": "lettered_technique",
@@ -246,7 +272,9 @@
     }
    ],
    "acronym": "CALM"
-  }
+  },
+  "caption": "Productivity systems are built for tasks. The nervous system isn’t a task. It doesn’t respond to better scheduling or a cleaner to-do list.\n\nWhen the body senses threat, it acts first and explains later. No app catches that in time.\n\nCALM is a way to notice what’s underneath the doing:\n\nCatch the signal before it turns into a plan.\nAcknowledge the body is on alert.\nLocate where it lives in you.\nMove at the pace trust allows.\n\nThis isn’t about optimizing. It’s about noticing what optimizing has been covering for.\n\nCorin Aldhelm Therapy — private practice.",
+  "altText": "A card titled ’Systems can’t outrun threat’ lists CALM: Catch the signal before it turns into a plan, Acknowledge the body is on alert, Locate where it lives in you, Move at the pace trust allows."
  },
  {
   "archetype": "single_statement",
@@ -254,7 +282,9 @@
   "cardLine": "When the path disappears",
   "payload": {
    "statement": "EMDR can work with the grief of a path that no longer exists."
-  }
+  },
+  "caption": "Identity often forms around direction. A career, a role, a plan.\n\nWhen that path ends without warning, the self built around it can feel unmoored.\n\nEMDR does not replace a lost direction. It works with the nervous system’s response to that loss, so the ground can feel steadier again.\n\nCorin Aldhelm Therapy",
+  "altText": "Card with the line ’When the path disappears’ above a statement about EMDR working with grief for a lost direction."
  },
  {
   "archetype": "surface_and_beneath",
@@ -269,7 +299,9 @@
     "gloss": "still on the wall",
     "label": "Yesterday’s blueprint"
    }
-  }
+  },
+  "caption": "Sometimes the life you built stops matching the life you’re living. Not because something broke. Because you grew, and the shape you were holding didn’t grow with you.\n\nThis work makes room to notice the gap. Not to rush to close it. Just to see it clearly, and figure out what comes next.\n\nCorin Aldhelm Therapy",
+  "altText": "A card with the line ’When you outgrew your own life.’ Below, two labeled sections: ’The plan’ with the gloss ’still on the wall,’ and ’The life’ with the gloss ’already moved elsewhere.’"
  },
  {
   "archetype": "carousel",
@@ -303,7 +335,9 @@
      "archetype_key": "single_statement"
     }
    ]
-  }
+  },
+  "caption": "High function can look like ease from the outside. Inside, a nervous system can still be running on alert, long after the reason for it has passed.\n\nThe work is not always about a crisis. Sometimes it’s about a body that never got the memo the danger passed.\n\nCorin Aldhelm Therapy",
+  "altText": "Three-card carousel. Card one: ’Competence and calm are not always the same thing.’ Card two shows a surface/beneath contrast: ’Steady at work — answers every email’ above ’Braced body — still waiting for the next hit.’ Card three: ’A body can perform fight mode and stillness in the same hour.’"
  },
  {
   "archetype": "single_statement",
@@ -311,7 +345,9 @@
   "cardLine": "Endings need processing too",
   "payload": {
    "statement": "Endings ask to be processed too, not just skipped for what comes next."
-  }
+  },
+  "caption": "A transition you didn’t choose still needs an ending, not just a beginning.\n\nEMDR can work with what closed, not only what’s opening ahead.\n\nCorin Aldhelm Therapy",
+  "altText": "Text card reading ’Endings need processing too’ in large type, practice name below."
  },
  {
   "archetype": "concentric_control",
@@ -332,7 +368,9 @@
      "label": "EMDR work"
     }
    ]
-  }
+  },
+  "caption": "Some transitions arrive uninvited. A job ends, a relationship shifts, a diagnosis lands somewhere else in the family, a plan you built on dissolves. Nobody signed up for it, but the mark it leaves is real.\n\nEMDR work is one way to meet what shifted. Not to erase it. Not to rush the landing. Just to help the parts of you still catching up find steadier ground.\n\nCorin Aldhelm Therapy works with adults navigating change they didn’t choose.",
+  "altText": "A concentric circle graphic with three rings. Outer ring: ’The old plan, gone before you agreed.’ Middle ring: ’The landing, still finding its shape.’ Inner ring: ’EMDR work, meets what shifted.’"
  },
  {
   "archetype": "annotated_curve",
@@ -355,7 +393,9 @@
      "label": "Still stuck"
     }
    ]
-  }
+  },
+  "caption": "EMDR is often described as trauma work. It also applies to grief.\n\nLoss can settle into the same kind of loop that trauma does: a memory that keeps returning at full strength, long after the event itself has passed.\n\nThe method doesn’t ask what caused the stuck point. It works with how the memory is held now.\n\nCorin Aldhelm Therapy",
+  "altText": "Line chart titled ’Grief can get stuck too’ plotting processing against time since loss, with three points: Early on (memory stays raw), Months later (same loop returns), Still stuck (not just trauma work)."
  },
  {
   "archetype": "single_statement",
@@ -363,7 +403,9 @@
   "cardLine": "When the plan stops",
   "payload": {
    "statement": "The nervous system can keep orienting toward a future that no longer exists."
-  }
+  },
+  "caption": "A plan can end mid-sentence. The mind knows. The body takes longer to catch up.\n\nSomething in the nervous system can keep reaching toward a future that already changed shape. That reaching can feel like unrest, or restlessness, or nothing you can name.\n\nTherapy is one place to slow that reaching down and let it meet where things actually stand now.\n\nCorin Aldhelm Therapy takes new clients by inquiry.",
+  "altText": "Card with the line ’When the plan stops’ at top, beneath it a statement about the nervous system orienting toward a future that no longer exists."
  },
  {
   "archetype": "surface_and_beneath",
@@ -378,7 +420,9 @@
     "gloss": "next step, then the next",
     "label": "Keeping going"
    }
-  }
+  },
+  "caption": "A plan can end overnight. The steps you knew stop making sense. Some part of you keeps moving anyway, because that’s what it learned to do. Underneath, there’s no map yet — just the space where one used to be. Therapy is one place to sit with that space before you rush to fill it. Corin Aldhelm Therapy — a room for what comes after the plan.",
+  "altText": "A card with two contrasts: ’Keeping going’ with gloss ’next step, then the next’ above, and ’No ground yet’ with gloss ’the old plan is gone’ below."
  },
  {
   "archetype": "carousel",
@@ -418,7 +462,9 @@
      "archetype_key": "single_statement"
     }
    ]
-  }
+  },
+  "caption": "Competence is often mistaken for ease. Meeting every deadline, holding every plan together — none of it tells you what the body has kept from earlier strain.\n\nBilateral processing is one way to work with what stayed stored, even when the surface looks steady.\n\nThis space is open to talk about that, without needing to prove how much it has cost you.",
+  "altText": "Four-card carousel: a statement on competence versus being unaffected, a surface/beneath comparison of managing well versus still holding, a statement on bilateral processing, and an invitation to talk without proof of cost."
  },
  {
   "archetype": "single_statement",
@@ -426,7 +472,9 @@
   "cardLine": "Healing isn’t wanting",
   "payload": {
    "statement": "Healing does not mean you wanted what happened. It means what happened no longer runs the show."
-  }
+  },
+  "caption": "Healing gets misunderstood as agreement. It isn’t.\n\nEMDR doesn’t ask you to be grateful for a plot twist you never chose. It works with what got stuck after that twist, so the past has less grip on the present.\n\nGrief can sit alongside healing. They aren’t opposites.",
+  "altText": "Card reads: Healing isn’t wanting this. Below it, a statement clarifies that healing does not require wanting what happened, only that it stop running the show."
  },
  {
   "archetype": "comparison_pair",
@@ -453,7 +501,9 @@
      "label": "Body stays braced"
     }
    ]
-  }
+  },
+  "caption": "Performance and rest are not the same system.\n\nSomeone can meet every deadline and still carry a body that won’t unclench. The two can live in the same person, at the same time, without contradiction.\n\nThis work isn’t about doing less. It’s about what’s underneath the doing — the parts of the nervous system that never got the message it’s safe to stop.\n\nIf that sounds familiar, there’s room to talk about it.",
+  "altText": "A two-column comparison card. Left column, headed by the card line: ’Meets every deadline’ with gloss ’on time, every time’, and ’Answers the room’ with gloss ’says the right thing’. Right column: ’Mind won’t quiet’ with gloss ’runs long after hours’, and ’Body stays braced’ with gloss ’even on the good days’."
  },
  {
   "archetype": "quadrant_model",
@@ -480,7 +530,9 @@
    ],
    "axis_x": "output",
    "axis_y": "system state"
-  }
+  },
+  "caption": "Some productivity looks like drive. It can also be a system that never learned how to stop running.\n\nEMDR works with the nervous system directly, not only with the story told about it. The talking can happen. Something else can shift alongside it.\n\nThis is for people whose output never seems to bring quiet with it.\n\nCorin Aldhelm Therapy",
+  "altText": "A four-quadrant chart plotting output against system state, with labels describing the gap between finishing tasks and the body settling."
  },
  {
   "archetype": "numbered_strategies",
@@ -501,7 +553,9 @@
      "label": "Pause on purpose"
     }
    ]
-  }
+  },
+  "caption": "High performers often move fast. The body tends to speak last, after the doing has already started.\n\nCorin Aldhelm Therapy works with the pace itself — not to slow you down for its own sake, but to notice what the speed might be covering.\n\nIf you’re curious what your body has been saying underneath the schedule, there’s room to look at that together.",
+  "altText": "A card with the heading ’When busy is a cover’ above three short strategies: Notice the drive, Check the body, Pause on purpose, each with a brief description."
  },
  {
   "archetype": "carousel",
@@ -541,7 +595,9 @@
      "archetype_key": "single_statement"
     }
    ]
-  }
+  },
+  "caption": "Some nervous systems learn to run on schedule no matter what. Meetings get made. Deadlines get met. The body adapts, and adapting looks like strength from the outside.\n\nBut adaptation and processing are not the same thing. A body can stay efficient while something underneath stays exactly where it landed.\n\nEMDR is one way of working with what the body has stored, alongside the parts of a person that already function well. It doesn’t require things to fall apart first.\n\nCorin Aldhelm Therapy",
+  "altText": "A four-card carousel on EMDR and high-functioning nervous systems. Cards read: efficiency can mask what the body holds; a surface of ’staying capable’ over a beneath of ’still holding’; EMDR works with the record, not around it; you can function well and still carry something unprocessed."
  },
  {
   "archetype": "surface_and_beneath",
@@ -556,7 +612,9 @@
     "gloss": "life mapped out ahead",
     "label": "Prior map"
    }
-  }
+  },
+  "caption": "A future can stop existing in a single day. The plan was clear. The next chapter was already written in your head.\n\nThen it wasn’t.\n\nWhat’s left isn’t just grief for what was lost. It’s the quieter question underneath: who are you now, without the story you were living toward?\n\nIdentity isn’t only built from what happens to us. It’s built from what we expected to happen. When that expectation ends, the self built around it has to find new ground.\n\nThis is slow work. It has no set shape.",
+  "altText": "A card with two contrasting text blocks. Top: ’The plan’ with gloss ’life mapped out ahead.’ Bottom: ’No map now’ with gloss ’who you are, unwritten.’"
  },
  {
   "archetype": "cycle",
@@ -577,6 +635,8 @@
      "label": "Nothing resolves"
     }
    ]
-  }
+  },
+  "caption": "Efficiency is a good cover. Tasks get done. Inbox clears. Nothing looks wrong.\n\nUnderneath, the nervous system keeps its own count. It doesn’t track output. It tracks threat, and it doesn’t stop tracking just because the calendar is full.\n\nEMDR works with what the body has stored, not what the schedule shows. It doesn’t ask you to explain yourself in words first. It works with what’s already there.\n\nLooking fine and feeling fine are not the same report.",
+  "altText": "A three-part cycle card: Stay efficient, output looks steady; Alarm underneath, body flags what’s ignored; Nothing resolves, system keeps the record."
  }
 ]

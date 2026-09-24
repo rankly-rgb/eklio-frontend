@@ -796,11 +796,22 @@ function validateCopyResponse(archetypeKey: string, raw: string): CopyResult {
      * ne doit pouvoir l'écrire en base sans être passé par une réparation
      * qui le fait rentrer dans les bornes.
      */
-    return { ...base, reason: "over_budget", budget, payload: payload,
-             caption: typeof o.caption === "string" ? o.caption : undefined,
-             altText: typeof o.alt_text === "string" ? o.alt_text : undefined,
-             rationale: typeof o.rationale === "string" ? o.rationale : undefined,
-             cardLine: typeof o.card_line === "string" ? clampCardLine(o.card_line) : undefined };
+    /*
+     * ⚠ ET IL NORMALISE, COMME LE CHEMIN QUI RÉUSSIT. Mesuré le 2026-09-24 :
+     * dix-huit champs publiés portaient encore une apostrophe droite dans les
+     * neuf mois livrés de F34, tous sur des posts RÉPARÉS. Le retour de
+     * succès, vingt lignes plus bas, appelait `typographicQuotes` ; celui-ci
+     * rendait le texte brut, et la réparation le reprenait tel quel.
+     *
+     * ⚠ C'EST LA CLASSE DE F27, dans la fonction qui la nomme : deux sorties
+     * de la même fonction, une seule normalisée, et le défaut ne se voit que
+     * sur les posts passés par l'autre.
+     */
+    return { ...base, reason: "over_budget", budget, payload: deepTypographic(payload),
+             caption: typeof o.caption === "string" ? typographicQuotes(o.caption) : undefined,
+             altText: typeof o.alt_text === "string" ? typographicQuotes(o.alt_text) : undefined,
+             rationale: typeof o.rationale === "string" ? typographicQuotes(o.rationale) : undefined,
+             cardLine: typeof o.card_line === "string" ? typographicQuotes(clampCardLine(o.card_line)) : undefined };
   }
 
   return {

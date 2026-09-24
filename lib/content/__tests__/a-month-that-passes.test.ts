@@ -55,6 +55,21 @@ describe("le mois livré le 2027-01 passe, et doit continuer à passer", () => {
   });
 
   /*
+   * ── ⚠ LÉGENDE ET ALTERNATIF COMPRIS ────────────────────────────────────
+   *
+   * La fixture les porte, et c'est nouveau. Jusqu'au 2026-09-24 aucun des
+   * vingt-trois contrôles d'écriture ne lisait la légende — le texte publié le
+   * plus LONG — et sept des neuf mois livrés de F34 la voient refuser une fois
+   * qu'elle est lue. Celui-ci passe avec elle.
+   */
+  it("il porte sa légende et son alternatif, et ils sont contrôlés", () => {
+    expect(posts.every((p) => (p.caption ?? "").length > 0)).toBe(true);
+    expect(posts.every((p) => (p.altText ?? "").length > 0)).toBe(true);
+    const written = posts.flatMap((p) => [p.caption, p.altText]);
+    expect(written).toHaveLength(60);
+  });
+
+  /*
    * ⚠ ET IL PORTE CE QUE `pia` N'AVAIT PAS. Le plancher par format existe
    * parce qu'un mois livré est sorti avec ZÉRO phrase seule sans qu'un chiffre
    * bouge ; celui-ci en porte neuf, et chaque famille tient son plancher.
