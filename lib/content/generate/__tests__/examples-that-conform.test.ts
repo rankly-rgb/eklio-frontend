@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import EXAMPLES from "@/lib/content/generate/fixtures/conforming-examples.json";
 import {
   cachedPrefix, MODEL_WRITTEN_ARCHETYPES, CARD_LINE_MAX, examplesOn,
@@ -95,7 +95,16 @@ describe("ce que la sélection garantit", () => {
   });
 });
 
-describe("le préfixe les porte", () => {
+describe("le préfixe les porte, quand ils sont allumés", () => {
+  /*
+   * ⚠ ÉTEINTS PAR DÉFAUT DEPUIS LA MESURE : la conformité au premier appel
+   * vaut 48,6 % sans eux et 48,2 % avec, sur six cent cinquante-deux
+   * candidats. Le mécanisme est gardé et testé — ce qui a été mesuré est
+   * « aucun gain à ce protocole-là », pas « l'idée est fausse ».
+   */
+  beforeEach(() => { process.env.CONTENT_EXAMPLES = "on"; });
+  afterEach(() => { delete process.env.CONTENT_EXAMPLES; });
+
   it("chaque archétype écrit par le modèle reçoit les siens", () => {
     for (const archetype of MODEL_WRITTEN_ARCHETYPES) {
       const text = cachedPrefix(BRAND, archetype)[0].text;
@@ -134,16 +143,11 @@ describe("le préfixe les porte", () => {
    * apportent. Trois changements dans la même session — le modèle, les
    * exemples, la révision — et une note qui monte ne dit pas lequel a payé.
    */
-  it("`CONTENT_EXAMPLES=off` rend le préfixe d'avant", () => {
-    expect(examplesOn()).toBe(true);
-    process.env.CONTENT_EXAMPLES = "off";
-    try {
-      expect(examplesOn()).toBe(false);
-      const text = cachedPrefix(BRAND, "cycle")[0].text;
-      expect(text).not.toContain("EXAMPLES —");
-      expect(text).toContain("ADVERTISING ETHICS");
-    } finally {
-      delete process.env.CONTENT_EXAMPLES;
-    }
+  it("éteints, le préfixe est celui d'avant", () => {
+    delete process.env.CONTENT_EXAMPLES;
+    expect(examplesOn()).toBe(false);
+    const text = cachedPrefix(BRAND, "cycle")[0].text;
+    expect(text).not.toContain("EXAMPLES —");
+    expect(text).toContain("ADVERTISING ETHICS");
   });
 });

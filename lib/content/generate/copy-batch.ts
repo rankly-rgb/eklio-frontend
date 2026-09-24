@@ -440,8 +440,33 @@ export function archetypeInstruction(archetypeKey: string): string {
  * elles sont versionnées, et elles ne sont jamais livrées à personne. Le jour
  * où un mois meilleur sort, on rejoue le script et elles changent.
  */
+/*
+ * ── ⚠ MESURÉ, ET RETIRÉ : LES EXEMPLES N'ONT RIEN APPORTÉ ───────────────
+ *
+ * Deux mois, même code, même banque, même mois calendaire, un seul
+ * commutateur de différence :
+ *
+ *   conformité au premier appel, sans exemples   35 / 72  = 48,6 %
+ *   conformité au premier appel, avec            314 / 652 = 48,2 %
+ *
+ * Le second chiffre porte sur neuf mois et six cent cinquante-deux candidats :
+ * il est bien échantillonné, et il ne bouge pas. ⚠ C'EST LA SEULE GRANDEUR
+ * DURE DONT ON DISPOSE, et elle dit non.
+ *
+ * Les deux notations indépendantes donnent l'écriture à 2,3 sans exemples et
+ * 2,2 avec — mais elles ne tranchent rien : sur des critères que ni les
+ * exemples ni la révision ne peuvent toucher (typographie, lisibilité), les
+ * deux notations s'écartent de 0,6. Le bruit du notateur dépasse l'effet
+ * cherché.
+ *
+ * ⚠ LE MÉCANISME RESTE, ÉTEINT. `scripts/local-render/15-examples.ts`, les
+ * fixtures et leurs tests sont intacts : `CONTENT_EXAMPLES=on` les rallume.
+ * Ce qui a été mesuré est « aucun gain à ce protocole-là », pas « l'idée est
+ * fausse » — et un protocole capable de trancher demanderait plusieurs mois
+ * par bras et un même notateur sur les deux.
+ */
 export function examplesOn(): boolean {
-  return process.env.CONTENT_EXAMPLES !== "off";
+  return process.env.CONTENT_EXAMPLES === "on";
 }
 
 function examplesFor(archetypeKey: string): string[] {

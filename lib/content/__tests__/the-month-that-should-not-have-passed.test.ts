@@ -42,7 +42,7 @@ const DIRECTION: DirectionPalette = {
 const findings = () =>
   checkMonth({ posts, direction: DIRECTION, wanted: 30, modalities: ["EMDR"] });
 
-describe("le mois livré le 2026-09-24 est refusé, et sur ce seul motif", () => {
+describe("le mois livré le 2026-09-24 est refusé, et sur quatre motifs", () => {
   it("il porte bien trente posts", () => {
     expect(posts).toHaveLength(30);
   });
@@ -66,8 +66,29 @@ describe("le mois livré le 2026-09-24 est refusé, et sur ce seul motif", () =>
    * un autre contrôle se met à parler ici, c'est lui qu'il faut regarder
    * d'abord, pas le mois.
    */
-  it("et aucun autre contrôle n'a rien à dire", () => {
-    expect(findings().map((f) => f.check)).toEqual(["mix.floor.statement"]);
+  /*
+   * ── ⚠ ET IL EN PORTAIT TROIS DE PLUS QUE PERSONNE N'AVAIT VUES ────────
+   *
+   * Ajoutées le 2026-09-24, après qu'une notation indépendante a relevé une
+   * promesse d'efficacité sur un AUTRE mois vert. Le motif renforcé les
+   * trouve ici aussi :
+   *
+   *   « EMDR lets the nervous system lead »
+   *   « EMDR lets the nervous system know »
+   *   « Therapy helps you… »
+   *
+   * Trois affirmations d'efficacité clinique sans nuance, dans un mois livré
+   * à contrôles gelés, sous le nom d'une licenciée. ⚠ Deux d'entre elles
+   * avaient été retenues comme EXEMPLES à montrer au modèle : on enseignait
+   * le défaut.
+   */
+  it("et les trois promesses d'efficacité que personne n'avait vues", () => {
+    expect(findings().map((f) => f.check).sort()).toEqual([
+      "mix.floor.statement",
+      "text.clinicalClaim",
+      "text.clinicalClaim",
+      "text.clinicalClaim",
+    ]);
   });
 
   /*

@@ -832,7 +832,7 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
   out.push(...checkUnfinished(written, month.completeness));
   out.push(...checkCarouselPanels(month.posts));
   out.push(...checkBorrowed(written));
-  out.push(...checkClinicalClaim(written));
+  out.push(...checkClinicalClaim(written, month.modalities ?? []));
   out.push(...checkSellsSlots(written));
   out.push(...checkStraightQuotes(written));
   out.push(...checkAcronym(month.posts, month.modalities ?? []));

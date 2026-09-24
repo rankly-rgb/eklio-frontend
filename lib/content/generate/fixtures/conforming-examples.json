@@ -153,27 +153,6 @@
   ],
   "numbered_strategies": [
     {
-      "topic": "EMDR for identity shifts after involuntary change",
-      "intent": "behind_the_practice",
-      "cardLine": "When your life rewrites itself",
-      "payload": {
-        "items": [
-          {
-            "gloss": "your body knows before your mind",
-            "label": "Track what shifted"
-          },
-          {
-            "gloss": "EMDR lets the nervous system lead",
-            "label": "Your pace"
-          },
-          {
-            "gloss": "who you are now, not before",
-            "label": "Rebuild from there"
-          }
-        ]
-      }
-    },
-    {
       "topic": "EMDR for the life that ended unexpectedly",
       "intent": "invite",
       "cardLine": "When the future stops existing",
@@ -236,6 +215,27 @@
           {
             "gloss": "processing, not just naming it",
             "label": "What comes next"
+          }
+        ]
+      }
+    },
+    {
+      "topic": "EMDR and the identity gap when life changes course",
+      "intent": "behind_the_practice",
+      "cardLine": "When life changes, you change.",
+      "payload": {
+        "items": [
+          {
+            "gloss": "your body knows before your mind",
+            "label": "Notice the signal"
+          },
+          {
+            "gloss": "not what you thought would hold",
+            "label": "What shifted"
+          },
+          {
+            "gloss": "not from who you were",
+            "label": "Build from here"
           }
         ]
       }
@@ -356,26 +356,39 @@
       }
     },
     {
-      "topic": "The Productive Nervous System That Never Rests",
-      "intent": "educate",
-      "cardLine": "The Tuesday Nobody Saw Coming",
+      "topic": "EMDR and the myth of processing speed",
+      "intent": "correct_a_myth",
+      "cardLine": "Fast Is Not The Same As Healed",
       "payload": {
         "cards": [
           {
             "payload": {
-              "statement": "Last day off — body finally stops holding"
+              "statement": "EMDR can move quickly through a memory without making the feeling around it disappear."
             },
             "archetype_key": "single_statement"
           },
           {
             "payload": {
-              "statement": "First Tuesday — ordinary Tuesday breaks you"
+              "beneath": {
+                "gloss": "meaning still settling in",
+                "label": "Slow integration"
+              },
+              "surface": {
+                "gloss": "memory feels less vivid",
+                "label": "Quick session"
+              }
+            },
+            "archetype_key": "surface_and_beneath"
+          },
+          {
+            "payload": {
+              "statement": "Healing has its own timeline, separate from how fast the brain reprocesses an image."
             },
             "archetype_key": "single_statement"
           },
           {
             "payload": {
-              "statement": "Week two — the cost becomes clear"
+              "statement": "Speed inside a session is not a measure of how deep the work goes."
             },
             "archetype_key": "single_statement"
           }
@@ -383,39 +396,33 @@
       }
     },
     {
-      "topic": "When the Plan Stops Working",
-      "intent": "normalise",
-      "cardLine": "When the Plan Stops Working",
+      "topic": "The gap between done and settled",
+      "intent": "invite",
+      "cardLine": "When done doesn’t feel settled",
       "payload": {
         "cards": [
           {
             "payload": {
-              "statement": "Unwanted change rewires how your brain processes what comes next."
+              "statement": "Finishing something and feeling finished are not the same."
             },
             "archetype_key": "single_statement"
           },
           {
             "payload": {
               "beneath": {
-                "gloss": "the plan stopped working",
-                "label": "The ordinary Tuesday"
+                "gloss": "still bracing for more",
+                "label": "Body unsure"
               },
               "surface": {
-                "gloss": "you knew what to do",
-                "label": "The hard year"
+                "gloss": "the list is clear",
+                "label": "Task closed"
               }
             },
             "archetype_key": "surface_and_beneath"
           },
           {
             "payload": {
-              "statement": "Crisis makes sense. Routine doesn’t always."
-            },
-            "archetype_key": "single_statement"
-          },
-          {
-            "payload": {
-              "statement": "That feeling is not weakness. It is your nervous system recalibrating."
+              "statement": "Settling can take longer than the task ever did."
             },
             "archetype_key": "single_statement"
           }
@@ -455,6 +462,21 @@
       }
     },
     {
+      "topic": "When your identity and your circumstance diverged",
+      "intent": "behind_the_practice",
+      "cardLine": "When you outgrew your own life",
+      "payload": {
+        "beneath": {
+          "gloss": "already moved elsewhere",
+          "label": "The life"
+        },
+        "surface": {
+          "gloss": "still on the wall",
+          "label": "Yesterday’s blueprint"
+        }
+      }
+    },
+    {
       "topic": "EMDR and the grief before moving forward",
       "intent": "educate",
       "cardLine": "What you thought would happen",
@@ -466,21 +488,6 @@
         "surface": {
           "gloss": "you move. you solve. you survive.",
           "label": "During crisis"
-        }
-      }
-    },
-    {
-      "topic": "EMDR and the Unmourned Loss",
-      "intent": "correct_a_myth",
-      "cardLine": "Reprocessing isn’t forgetting",
-      "payload": {
-        "beneath": {
-          "gloss": "your body learns to carry it",
-          "label": "Making space"
-        },
-        "surface": {
-          "gloss": "holding what was lost",
-          "label": "Reprocessing grief"
         }
       }
     }
@@ -529,6 +536,27 @@
       }
     },
     {
+      "topic": "The cost of looking steady under strain",
+      "intent": "behind_the_practice",
+      "cardLine": "Steady is not the same as fine",
+      "payload": {
+        "rings": [
+          {
+            "gloss": "keeps everyone else calm",
+            "label": "The steadiness"
+          },
+          {
+            "gloss": "does its work underneath",
+            "label": "The strain"
+          },
+          {
+            "gloss": "where the work begins",
+            "label": "The noticing"
+          }
+        ]
+      }
+    },
+    {
       "topic": "When Your Script Got Rewritten Overnight",
       "intent": "invite",
       "cardLine": "When the script got rewritten",
@@ -545,27 +573,6 @@
           {
             "gloss": "is something we work out",
             "label": "What comes next"
-          }
-        ]
-      }
-    },
-    {
-      "topic": "EMDR and the nervous system's stuck narrative",
-      "intent": "educate",
-      "cardLine": "Your body and mind disagree",
-      "payload": {
-        "rings": [
-          {
-            "gloss": "your body still lives there",
-            "label": "The before"
-          },
-          {
-            "gloss": "your mind knows you’re here",
-            "label": "The now"
-          },
-          {
-            "gloss": "EMDR can help them meet",
-            "label": "The gap"
           }
         ]
       }
@@ -642,57 +649,30 @@
       }
     },
     {
-      "topic": "The performance that outlasts the nervous system",
+      "topic": "When your life script got rewritten overnight",
       "intent": "invite",
-      "cardLine": "When efficiency stops working",
+      "cardLine": "When the script gets rewritten",
       "payload": {
-        "axis_x": "weeks back",
-        "axis_y": "effort required",
+        "axis_x": "time since change",
+        "axis_y": "sense of self",
         "points": [
           {
-            "gloss": "efficiency works fine",
-            "label": "First week"
+            "gloss": "the script stops mid-sentence",
+            "label": "The event"
           },
           {
-            "gloss": "efficiency stops working",
-            "label": "Week three"
+            "gloss": "old roles no longer fit",
+            "label": "Weeks after"
           },
           {
-            "gloss": "body still protecting you",
-            "label": "Week six"
+            "gloss": "writing a new line",
+            "label": "Now"
           }
         ]
       }
     }
   ],
   "quadrant_model": [
-    {
-      "topic": "EMDR and the body's map of before",
-      "intent": "educate",
-      "cardLine": "Your body’s map of before",
-      "payload": {
-        "items": [
-          {
-            "gloss": "the old demand was safe",
-            "label": "Body remembers"
-          },
-          {
-            "gloss": "the map stayed put",
-            "label": "Shift happened"
-          },
-          {
-            "gloss": "EMDR lets the nervous system know",
-            "label": "Map updating"
-          },
-          {
-            "gloss": "orientation shifts with you",
-            "label": "Body agrees"
-          }
-        ],
-        "axis_x": "then",
-        "axis_y": "now"
-      }
-    },
     {
       "topic": "EMDR and the Unplanned Plot Twist",
       "intent": "invite",
@@ -748,30 +728,57 @@
       }
     },
     {
-      "topic": "EMDR and the productive freeze response",
+      "topic": "EMDR as stabilization, not cure",
       "intent": "correct_a_myth",
-      "cardLine": "Focus and freezing feel alike",
+      "cardLine": "It doesn’t erase what happened",
       "payload": {
         "items": [
           {
-            "gloss": "body ready, mind clear",
-            "label": "Sharp focus"
+            "gloss": "still happened, still true",
+            "label": "Fact stays"
           },
           {
-            "gloss": "braced, mistaken for focus",
-            "label": "Frozen sharp"
+            "gloss": "less voltage on recall",
+            "label": "Charge drops"
           },
           {
-            "gloss": "braced, nothing happens",
-            "label": "Frozen dull"
+            "gloss": "not erased, just moved",
+            "label": "Memory stored"
           },
           {
-            "gloss": "body revving, mind spinning",
-            "label": "Scattered alert"
+            "gloss": "past stops running present",
+            "label": "Now settles"
           }
         ],
-        "axis_x": "alert",
-        "axis_y": "moving"
+        "axis_x": "the event",
+        "axis_y": "the charge"
+      }
+    },
+    {
+      "topic": "EMDR and the body's vote on change",
+      "intent": "educate",
+      "cardLine": "Mind votes yes. Body abstains.",
+      "payload": {
+        "items": [
+          {
+            "gloss": "the mind moves on",
+            "label": "Decision made"
+          },
+          {
+            "gloss": "still counting votes",
+            "label": "Body pauses"
+          },
+          {
+            "gloss": "still on the ballot",
+            "label": "Old alarm"
+          },
+          {
+            "gloss": "body finally agrees",
+            "label": "Consensus reached"
+          }
+        ],
+        "axis_x": "mind",
+        "axis_y": "body"
       }
     }
   ],
@@ -803,81 +810,81 @@
       }
     },
     {
-      "topic": "EMDR for high-functioning exhaustion",
-      "intent": "normalise",
-      "cardLine": "Competence masks the cost",
+      "topic": "When your nervous system outpaces your choices",
+      "intent": "educate",
+      "cardLine": "Reason arrives after the body",
       "payload": {
         "items": [
           {
-            "gloss": "what does your body say",
-            "label": "How you move"
+            "gloss": "cold water, fast reset",
+            "label": "Temperature shift"
           },
           {
-            "gloss": "the cost of staying steady",
-            "label": "Autopilot running"
+            "gloss": "burn off the surge",
+            "label": "Intense movement"
           },
           {
-            "gloss": "what competence can hide",
-            "label": "Left unsaid"
+            "gloss": "slow exhale, longer than inhale",
+            "label": "Paced breathing"
           },
           {
-            "gloss": "your body knows what it needs",
-            "label": "Time to land"
+            "gloss": "tense then release muscles",
+            "label": "Paired relaxation"
           }
         ],
-        "acronym": "HALT"
+        "acronym": "TIPP"
       }
     },
     {
-      "topic": "EMDR and the Imposed Transition: Reprocessing Unwanted Change",
-      "intent": "behind_the_practice",
-      "cardLine": "When life rewrites itself",
+      "topic": "EMDR for high-functioning overwhelm",
+      "intent": "invite",
+      "cardLine": "Fumes still count as running",
       "payload": {
         "items": [
           {
-            "gloss": "what the body is holding",
+            "gloss": "with what the body carries",
+            "label": "Check in"
+          },
+          {
+            "gloss": "to slow, briefly",
+            "label": "Allow the pace"
+          },
+          {
+            "gloss": "to what fatigue is saying",
+            "label": "Listen closer"
+          },
+          {
+            "gloss": "without pushing past it",
+            "label": "Meet your limit"
+          }
+        ],
+        "acronym": "CALM"
+      }
+    },
+    {
+      "topic": "Adaptive capacity after unwanted life change",
+      "intent": "normalise",
+      "cardLine": "The body finds its footing",
+      "payload": {
+        "items": [
+          {
+            "gloss": "in what is here now",
+            "label": "Ground"
+          },
+          {
+            "gloss": "what shifted underneath",
             "label": "Recognize"
           },
           {
-            "gloss": "it to be there",
-            "label": "Allow"
+            "gloss": "toward the present moment",
+            "label": "Orient"
           },
           {
-            "gloss": "with gentleness and curiosity",
-            "label": "Investigate"
-          },
-          {
-            "gloss": "yourself through the shift",
-            "label": "Nurture"
+            "gloss": "the view, slowly",
+            "label": "Widen"
           }
         ],
-        "acronym": "RAIN"
-      }
-    },
-    {
-      "topic": "EMDR and the Driven Professional's Nervous System",
-      "intent": "correct_a_myth",
-      "cardLine": "High functioning isn’t safe",
-      "payload": {
-        "items": [
-          {
-            "gloss": "long enough to notice",
-            "label": "Stop the pace"
-          },
-          {
-            "gloss": "tension, fatigue, dread",
-            "label": "Track what shows"
-          },
-          {
-            "gloss": "between doing and feeling",
-            "label": "Observe the gap"
-          },
-          {
-            "gloss": "with someone trained",
-            "label": "Process that mismatch"
-          }
-        ],
-        "acronym": "STOP"
+        "acronym": "GROW"
       }
     }
   ]

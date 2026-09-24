@@ -297,6 +297,56 @@ export function checkBorrowed(lines: Array<{ where: string; text: string }>): Fi
 const DIAGNOSES =
   "trauma|ptsd|depression|anxiety|burnout|dissociation|addiction|psychosis|a disorder";
 
+/*
+ * ── ⚠ UN MOIS VERT PORTAIT UNE PROMESSE D'EFFICACITÉ, ET AUCUN CONTRÔLE
+ *      NE L'A VUE ────────────────────────────────────────────────────────
+ *
+ * Relevée par une notation indépendante sur le mois du 2026-12 de
+ * `cleo.nightingale`, livré sans un constat :
+ *
+ *   « Bilateral stimulation gives an overworked nervous system a way to
+ *     power down. »
+ *
+ * ⚠ C'EST LE SEUL DÉFAUT DE LA PLANCHE QUE LA NOTATION AIT DIT « ne doit pas
+ * sortir du bâtiment ». Tout le reste était du métier ; celle-ci est une
+ * affirmation d'efficacité clinique, sans nuance, sous le nom d'une licenciée.
+ *
+ * Les trois motifs existants attrapent « X guérit Y », « X EST un
+ * diagnostic », « votre corps VA s'effondrer ». Aucun n'attrape une TECHNIQUE
+ * SUJET d'un verbe de résultat — et c'est la forme la plus naturelle qu'un
+ * modèle produise quand on lui demande d'expliquer comment le travail marche.
+ *
+ * ── ⚠ ET LA NUANCE EST LA FRONTIÈRE, PAS LE SUJET ──────────────────────
+ *
+ * « EMDR CAN help the nervous system settle » est la phrase que les ordres
+ * professionnels demandent d'écrire ; « EMDR helps » est celle qu'ils
+ * refusent. Un contrôle qui interdirait le sujet interdirait l'intention
+ * `educate` tout entière — un cinquième de la banque — et se ferait relâcher
+ * au premier mois refusé à tort. Il ne refuse donc que l'affirmation NUE.
+ */
+const HEDGES = String.raw`can|could|may|might|often|sometimes|for some|is designed|aims|intends|tends|helps some`;
+
+/** Les verbes par lesquels on promet un résultat. */
+const OUTCOME = String.raw`gives?|lets?|allows?|enables?|helps?|restores?|rewires?|resets?|calms?|quiets?|stops?|removes?|reduces?|repairs?|unlocks?|releases?`;
+
+/**
+ * Ce dont une phrase parle quand elle promet : une technique nommée, ou la
+ * modalité de la praticienne.
+ *
+ * ⚠ LES MODALITÉS VIENNENT DU BRIEF, PAS DU TEXTE. C'est la règle de F16 :
+ * aucun contrôle ne tire sa référence de la source qu'il surveille.
+ */
+function claimSubjects(modalities: string[]): string {
+  const named = [
+    "bilateral stimulation", "eye movement", "reprocessing", "somatic work",
+    "grounding", "breathwork", "the protocol", "the technique", "therapy",
+    ...modalities.map((m) => m.trim()).filter(Boolean),
+  ];
+  return named
+    .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+}
+
 const CLINICAL_CLAIM: Array<[RegExp, string]> = [
   [
     new RegExp(`\\b(?:is|are|becomes?|can become|turns into|means)\\s+(?:a\\s+|an\\s+)?(?:${DIAGNOSES})\\b`, "i"),
@@ -312,13 +362,38 @@ const CLINICAL_CLAIM: Array<[RegExp, string]> = [
   ],
 ];
 
-export function checkClinicalClaim(lines: Array<{ where: string; text: string }>): Finding[] {
+export function checkClinicalClaim(
+  lines: Array<{ where: string; text: string }>,
+  modalities: string[] = []
+): Finding[] {
   const out: Finding[] = [];
+  /*
+   * ⚠ CONSTRUITE UNE FOIS, PAS PAR LIGNE. Une expression recompilée trente
+   * fois par mois sur une liste qui ne bouge pas est du temps pour rien.
+   */
+  const promise = new RegExp(
+    String.raw`\b(?:${claimSubjects(modalities)})\b[^.!?]{0,40}?\b(?:${OUTCOME})\b`,
+    "i"
+  );
+  const hedged = new RegExp(String.raw`\b(?:${HEDGES})\b`, "i");
+
   for (const { where, text } of lines) {
     for (const [pattern, why] of CLINICAL_CLAIM) {
       if (pattern.test(text)) {
         out.push({ check: "text.clinicalClaim", detail: `${where} ${why} : « ${text} »` });
       }
+    }
+    /*
+     * ⚠ LA NUANCE SAUVE LA PHRASE, ET C'EST VOULU. « EMDR can help the
+     * nervous system settle » est ce qu'un ordre professionnel demande
+     * d'écrire ; « EMDR helps » est ce qu'il refuse. Le contrôle ne refuse
+     * que l'affirmation nue.
+     */
+    if (promise.test(text) && !hedged.test(text)) {
+      out.push({
+        check: "text.clinicalClaim",
+        detail: `${where} promet un résultat sans nuance : « ${text} »`,
+      });
     }
   }
   return out;
