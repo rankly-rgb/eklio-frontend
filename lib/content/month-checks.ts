@@ -913,3 +913,82 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
   }
   return out;
 }
+
+/* ── 13. Ce qui se répète d'une carte à l'autre ──────────────────────── */
+
+/*
+ * ── ⚠ LES DEUX NOTATIONS INDÉPENDANTES DÉSIGNENT LE MÊME PREMIER DÉFAUT ──
+ *
+ * « "Body says no" sur sept cartes différentes. » « "The cost" sur les cartes
+ * 20, 30 et 36. » « Six titres bâtis sur "cost". » « News lands / Loss lands
+ * est la même tuile dans deux posts. » Les deux planches de F34, notées
+ * séparément, nomment la répétition d'une carte à l'autre avant tout le reste.
+ *
+ * ⚠ AUCUN CONTRÔLE PAR POST NE PEUT LA VOIR, par construction : elle n'existe
+ * qu'entre les posts. `checkDuplicateTitles` compare les titres,
+ * `checkIdenticalPayloads` compare les payloads entiers — la répétition d'un
+ * LIBELLÉ à l'intérieur de deux payloads différents passe entre les deux.
+ *
+ * ── ⚠ ET ON LA CALCULE, ON NE LA CHERCHE PAS ────────────────────────────
+ *
+ * La passe de révision lisait les trente posts et en réécrivait deux à cinq.
+ * Lui demander de REPÉRER les répétitions est un problème de recherche sur
+ * quarante payloads ; lui donner la liste exacte est un problème de
+ * réécriture. Ce qui se compte se compte.
+ */
+
+/** Un libellé ou une glose, avec le post d'où il vient. */
+/**
+ * ⚠ `archetype_key` N'EST PAS DU TEXTE, et le prendre pour tel a déjà coûté
+ * sept carrousels sur huit dans le choix des exemples. Ici il aurait coûté la
+ * mesure entière : les deux « répétitions » les plus fréquentes de chaque mois
+ * étaient `single_statement` et `surface_and_beneath`, c'est-à-dire les noms
+ * des archétypes imbriqués dans les carrousels. Un comparateur qui compare des
+ * noms de champ compare les mêmes choses partout.
+ */
+const STRUCTURAL = /\barchetype_key\b|\bkind\b|\btype\b/;
+
+function fieldsOf(post: PostUnderCheck, index: number): Array<{ index: number; text: string }> {
+  return stringsIn(post.payload)
+    .filter((s) => !STRUCTURAL.test(s.where))
+    .map((s) => s.text)
+    .filter((t) => typeof t === "string" && t.trim().length > 0)
+    .map((text) => ({ index, text: text.trim() }));
+}
+
+export type Repeat = { text: string; posts: number[] };
+
+/**
+ * Les chaînes qui paraissent sur au moins deux posts différents.
+ *
+ * ⚠ SUR DEUX POSTS DIFFÉRENTS, PAS DEUX FOIS. Un diagramme peut répéter un mot
+ * entre ses propres tuiles sans que ce soit un défaut — c'est la même carte,
+ * et la lectrice la lit d'un coup. Le défaut est de retrouver la même phrase
+ * en faisant défiler.
+ */
+export function repeatedAcross(posts: PostUnderCheck[], minPosts = 2): Repeat[] {
+  const where = new Map<string, Set<number>>();
+  for (const [i, post] of posts.entries()) {
+    for (const { text } of fieldsOf(post, i)) {
+      const key = text.toLowerCase();
+      if (!where.has(key)) where.set(key, new Set());
+      where.get(key)!.add(i);
+    }
+  }
+  const out: Repeat[] = [];
+  for (const [key, set] of where) {
+    if (set.size >= minPosts) out.push({ text: key, posts: [...set].sort((a, b) => a - b) });
+  }
+  return out.sort((a, b) => b.posts.length - a.posts.length || a.text.localeCompare(b.text));
+}
+
+/**
+ * Combien de fois, au total, une chaîne réapparaît sur une carte de plus.
+ *
+ * ⚠ C'EST LA GRANDEUR QU'ON MESURE AVANT ET APRÈS. Compter les chaînes
+ * répétées confondrait « une phrase sur sept cartes » et « sept phrases sur
+ * deux cartes » ; compter les réapparitions distingue les deux.
+ */
+export function repetitionScore(posts: PostUnderCheck[]): number {
+  return repeatedAcross(posts).reduce((total, r) => total + (r.posts.length - 1), 0);
+}

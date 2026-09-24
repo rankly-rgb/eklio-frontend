@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import {
   massCopyModel, copyEffort, validateCopy, CARD_LINE_MAX, type CopyResult,
 } from "@/lib/content/generate/copy-batch";
+import { repeatedAcross } from "@/lib/content/month-checks";
 
 /*
  * ── LA PASSE DE RÉVISION ────────────────────────────────────────────────
@@ -48,8 +49,10 @@ const PROMPT = [
   `  has been told nothing;`,
   `- a line stops before its meaning: a transitive verb with no object, a`,
   `  comparison with nothing compared;`,
-  `- the same label or gloss appears on several posts of this month: one month`,
-  `  had "Body says no" on seven different cards;`,
+  `- a string listed under REPEATED BELOW appears on more than one post. ⚠ THAT`,
+  `  LIST IS COMPUTED, NOT GUESSED: each entry is a label or gloss that really`,
+  `  does sit on two or more different cards of this month. Rewrite all but one`,
+  `  occurrence of each. One month had "Body says no" on seven cards;`,
   `- two posts serve the same idea under different titles: one month had three`,
   `  posts built on "X is not failure, it's information";`,
   `- a title is empty of its post: it could sit on any of the thirty.`,
@@ -127,6 +130,31 @@ export async function reviseMonth(
     .map((p, i) => `#${i} (${p.archetype})\n${JSON.stringify({ card_line: p.cardLine, payload: p.payload })}`)
     .join("\n\n");
 
+  /*
+   * ── ⚠ CE QUI SE COMPTE SE COMPTE ───────────────────────────────────────
+   *
+   * Les deux notations indépendantes de F34 désignent la répétition d'une
+   * carte à l'autre comme le premier défaut d'écriture du mois, et la passe
+   * n'en attrapait que deux à cinq. Lui demander de REPÉRER les répétitions
+   * est un problème de recherche sur quarante payloads ; lui donner la liste
+   * exacte est un problème de réécriture.
+   *
+   * ⚠ ET ON NE LUI DEMANDE PAS DE TOUT RÉÉCRIRE : une occurrence reste. Ce
+   * qu'on veut n'est pas que la phrase disparaisse, c'est qu'elle ne revienne
+   * pas.
+   */
+  const repeats = repeatedAcross(
+    posts.map((p) => ({ archetype: p.archetype, title: "", cardLine: p.cardLine, payload: p.payload }))
+  );
+  const repeated = repeats.length === 0
+    ? ["", "REPEATED: nothing repeats across posts this month. Leave them alone."]
+    : [
+        "",
+        `REPEATED — ${repeats.length} string(s) sit on more than one card of this month.`,
+        `Keep ONE occurrence of each and rewrite the others:`,
+        ...repeats.slice(0, 30).map((r) => `  "${r.text}" — on posts ${r.posts.map((n) => `#${n}`).join(", ")}`),
+      ];
+
   let message: Anthropic.Message;
   try {
     message = await client.messages.create({
@@ -134,7 +162,7 @@ export async function reviseMonth(
       max_tokens: Math.min(16000, 2000 + posts.length * 200),
       output_config: { effort: copyEffort() },
       system: PROMPT,
-      messages: [{ role: "user", content: listing }],
+      messages: [{ role: "user", content: [listing, ...repeated].join("\n") }],
     });
   } catch {
     return empty;
