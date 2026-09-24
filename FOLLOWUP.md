@@ -1443,9 +1443,47 @@ cette session devait mesurer, ni la raison des vingt-huit posts manquants. Il a
 fallu lire la base pour comprendre. ⚠ **Un essai refusé qui ne dit pas son
 entonnoir n'apprend rien**, et les essais refusés sont trois sur quatre.
 
+### ⚠ LA BANQUE EST PRÊTE, ET CE N'EST PAS LE REMPLISSAGE QUI L'A FAITE
+
+Le remplissage s'est arrêté à 250 sujets sur 490. Ce sont les **assignations
+orphelines** qui ont rendu la banque — `98-release-orphans.ts`, sur les deux
+mois visés :
+
+| mois | kits orphelins | sujets rendus |
+|---|---|---|
+| 2026-10-01 | 2 | 57 |
+| 2026-11-01 | **24** | **858** |
+
+⚠ **Neuf cent quinze sujets étaient assignés à des kits sans un seul post** —
+le résidu de toutes les sessions d'essais précédentes, y compris les lots que
+la coupure de facturation a laissés en plan. Personne ne les comptait, et ils
+étaient retirés à tout le segment pendant quatre-vingt-dix jours.
+
+Résultat, mesuré après le nettoyage, contre le seuil de **dix essais
+simultanés** :
+
+| archétype | tirables | seuil (N=10) |
+|---|---|---|
+| `concentric_control` | 127 | 67 |
+| `surface_and_beneath` | 131 | 84 |
+| `cycle` | 133 | 84 |
+| `carousel` | 191 | 167 |
+| `single_statement` | 530 | 367 |
+| les six autres | 136 à 241 | 34 à 84 |
+
+**Les onze passent.** La mesure finale à dix essais peut donc partir sans
+remplissage — le coût de la banque, pour cette mesure-là, est nul.
+
+⚠ **Et c'est une leçon de dimensionnement, pas seulement de ménage** : F13
+compte ce qu'un essai CONSOMME, et suppose que ce qu'il n'utilise pas revient.
+Ça ne revient que si quelqu'un le rend. Un run tué, un lot en erreur, une
+session interrompue laissent leurs assignations en place, et le stock
+« manquant » qu'on s'apprête à racheter est déjà là.
+
 ### Ce qu'il reste à faire, dès que le compte est rechargé
 
-1. finir le remplissage (240 sujets restants, ~0,70 $ en Haiku) ;
+1. ~~finir le remplissage~~ — **inutile** : la banque passe le seuil pour dix
+   essais simultanés sur les onze archétypes (voir ci-dessus) ;
 2. trois bras, un par changement, sur trois comptes au ledger vierge pour le
    mois visé : `CONTENT_EXAMPLES=off CONTENT_REVISION=off`, puis
    `CONTENT_REVISION=off`, puis rien ;
