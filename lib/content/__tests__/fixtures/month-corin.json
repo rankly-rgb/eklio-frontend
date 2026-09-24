@@ -1,0 +1,582 @@
+[
+ {
+  "archetype": "single_statement",
+  "title": "The body waits for plans",
+  "cardLine": "The body waits for plans",
+  "payload": {
+   "statement": "An ending your mind accepts can still leave your body waiting for what was supposed to happen."
+  }
+ },
+ {
+  "archetype": "surface_and_beneath",
+  "title": "Working well, feeling nothing",
+  "cardLine": "Working well, feeling nothing",
+  "payload": {
+   "beneath": {
+    "gloss": "little left to feel",
+    "label": "Running on empty"
+   },
+   "surface": {
+    "gloss": "every task, every day",
+    "label": "Getting it done"
+   }
+  }
+ },
+ {
+  "archetype": "single_statement",
+  "title": "When the plan stops working",
+  "cardLine": "When the plan stops working",
+  "payload": {
+   "statement": "The plan you built can stop fitting the life you now have to live."
+  }
+ },
+ {
+  "archetype": "comparison_pair",
+  "title": "Performing and processing",
+  "cardLine": "Performing and processing",
+  "payload": {
+   "left": [
+    {
+     "gloss": "handles the day without pause",
+     "label": "Stays composed"
+    },
+    {
+     "gloss": "meets each task on time",
+     "label": "Keeps pace"
+    }
+   ],
+   "right": [
+    {
+     "gloss": "working underneath the surface",
+     "label": "System still active"
+    },
+    {
+     "gloss": "tension holds after each day",
+     "label": "Signals persist"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "quadrant_model",
+  "title": "Deadlines met. Nobody home.",
+  "cardLine": "Deadlines met. Nobody home.",
+  "payload": {
+   "items": [
+    {
+     "gloss": "body stays absent",
+     "label": "Task done"
+    },
+    {
+     "gloss": "no one home inside",
+     "label": "Box checked"
+    },
+    {
+     "gloss": "feels like static",
+     "label": "Praise arrives"
+    },
+    {
+     "gloss": "the day disappears",
+     "label": "Alone after"
+    }
+   ],
+   "axis_x": "output",
+   "axis_y": "presence"
+  }
+ },
+ {
+  "archetype": "single_statement",
+  "title": "When the body protests",
+  "cardLine": "When the body protests",
+  "payload": {
+   "statement": "The body can keep protesting an ending long after the mind has accepted it."
+  }
+ },
+ {
+  "archetype": "surface_and_beneath",
+  "title": "When life rewrites itself",
+  "cardLine": "When life rewrites itself",
+  "payload": {
+   "beneath": {
+    "gloss": "hasn’t caught up yet",
+    "label": "What happened"
+   },
+   "surface": {
+    "gloss": "still feels more real",
+    "label": "The old plan"
+   }
+  }
+ },
+ {
+  "archetype": "carousel",
+  "title": "One Circuit, Two Signals",
+  "cardLine": "One Circuit, Two Signals",
+  "payload": {
+   "cards": [
+    {
+     "payload": {
+      "statement": "Sharp focus and constant alarm can share one nervous system circuit."
+     },
+     "archetype_key": "single_statement"
+    },
+    {
+     "payload": {
+      "beneath": {
+       "gloss": "no signal for off",
+       "label": "Wired shut"
+      },
+      "surface": {
+       "gloss": "always one step ahead",
+       "label": "Sharp and ready"
+      }
+     },
+     "archetype_key": "surface_and_beneath"
+    },
+    {
+     "payload": {
+      "statement": "The body cannot always tell drive from danger."
+     },
+     "archetype_key": "single_statement"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "single_statement",
+  "title": "When the future shifts fast",
+  "cardLine": "When the future shifts fast",
+  "payload": {
+   "statement": "Sudden change can leave the body still bracing for a future that no longer exists."
+  }
+ },
+ {
+  "archetype": "cycle",
+  "title": "Competence outruns the body",
+  "cardLine": "Competence outruns the body",
+  "payload": {
+   "nodes": [
+    {
+     "gloss": "system flags it anyway",
+     "label": "Perform well"
+    },
+    {
+     "gloss": "body stays braced",
+     "label": "Praise lands"
+    },
+    {
+     "gloss": "nothing built to stop",
+     "label": "No slowdown"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "annotated_curve",
+  "title": "Fumes still get you there",
+  "cardLine": "Fumes still get you there",
+  "payload": {
+   "axis_x": "weeks under load",
+   "axis_y": "reserve left",
+   "points": [
+    {
+     "gloss": "deadlines met easily",
+     "label": "Week one"
+    },
+    {
+     "gloss": "still meeting them, running dry",
+     "label": "Week four"
+    },
+    {
+     "gloss": "output steady, tank empty",
+     "label": "Week eight"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "single_statement",
+  "title": "More than shock",
+  "cardLine": "More than shock",
+  "payload": {
+   "statement": "EMDR is not only for shock. Loss and change can lodge in the body too."
+  }
+ },
+ {
+  "archetype": "concentric_control",
+  "title": "Running well on empty",
+  "cardLine": "Running well on empty",
+  "payload": {
+   "rings": [
+    {
+     "gloss": "works until it doesn’t",
+     "label": "The coping"
+    },
+    {
+     "gloss": "no one else can see",
+     "label": "The fumes"
+    },
+    {
+     "gloss": "where it starts",
+     "label": "The noticing"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "lettered_technique",
+  "title": "Systems can’t outrun threat",
+  "cardLine": "Systems can’t outrun threat",
+  "payload": {
+   "items": [
+    {
+     "gloss": "before it turns into a plan",
+     "label": "Catch the signal"
+    },
+    {
+     "gloss": "the body is on alert",
+     "label": "Acknowledge"
+    },
+    {
+     "gloss": "where it lives in you",
+     "label": "Locate"
+    },
+    {
+     "gloss": "at the pace trust allows",
+     "label": "Move"
+    }
+   ],
+   "acronym": "CALM"
+  }
+ },
+ {
+  "archetype": "single_statement",
+  "title": "When the path disappears",
+  "cardLine": "When the path disappears",
+  "payload": {
+   "statement": "EMDR can work with the grief of a path that no longer exists."
+  }
+ },
+ {
+  "archetype": "surface_and_beneath",
+  "title": "When you outgrew your own life",
+  "cardLine": "When you outgrew your own life",
+  "payload": {
+   "beneath": {
+    "gloss": "already moved elsewhere",
+    "label": "The life"
+   },
+   "surface": {
+    "gloss": "still on the wall",
+    "label": "Yesterday’s blueprint"
+   }
+  }
+ },
+ {
+  "archetype": "carousel",
+  "title": "The Body Stays On Shift",
+  "cardLine": "The Body Stays On Shift",
+  "payload": {
+   "cards": [
+    {
+     "payload": {
+      "statement": "Competence and calm are not always the same thing."
+     },
+     "archetype_key": "single_statement"
+    },
+    {
+     "payload": {
+      "beneath": {
+       "gloss": "still waiting for the next hit",
+       "label": "Braced body"
+      },
+      "surface": {
+       "gloss": "answers every email",
+       "label": "Steady at work"
+      }
+     },
+     "archetype_key": "surface_and_beneath"
+    },
+    {
+     "payload": {
+      "statement": "A body can perform fight mode and stillness in the same hour."
+     },
+     "archetype_key": "single_statement"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "single_statement",
+  "title": "Endings need processing too",
+  "cardLine": "Endings need processing too",
+  "payload": {
+   "statement": "Endings ask to be processed too, not just skipped for what comes next."
+  }
+ },
+ {
+  "archetype": "concentric_control",
+  "title": "When the plan breaks",
+  "cardLine": "When the plan breaks",
+  "payload": {
+   "rings": [
+    {
+     "gloss": "gone before you agreed",
+     "label": "The old plan"
+    },
+    {
+     "gloss": "still finding its shape",
+     "label": "The landing"
+    },
+    {
+     "gloss": "meets what shifted",
+     "label": "EMDR work"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "annotated_curve",
+  "title": "Grief can get stuck too",
+  "cardLine": "Grief can get stuck too",
+  "payload": {
+   "axis_x": "time since loss",
+   "axis_y": "processing",
+   "points": [
+    {
+     "gloss": "memory stays raw",
+     "label": "Early on"
+    },
+    {
+     "gloss": "same loop returns",
+     "label": "Months later"
+    },
+    {
+     "gloss": "not just trauma work",
+     "label": "Still stuck"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "single_statement",
+  "title": "When the plan stops",
+  "cardLine": "When the plan stops",
+  "payload": {
+   "statement": "The nervous system can keep orienting toward a future that no longer exists."
+  }
+ },
+ {
+  "archetype": "surface_and_beneath",
+  "title": "When the plan dissolves",
+  "cardLine": "When the plan dissolves",
+  "payload": {
+   "beneath": {
+    "gloss": "the old plan is gone",
+    "label": "No ground yet"
+   },
+   "surface": {
+    "gloss": "next step, then the next",
+    "label": "Keeping going"
+   }
+  }
+ },
+ {
+  "archetype": "carousel",
+  "title": "Competence Hides What Remains",
+  "cardLine": "Competence Hides What Remains",
+  "payload": {
+   "cards": [
+    {
+     "payload": {
+      "statement": "Being capable and being unaffected are not the same thing."
+     },
+     "archetype_key": "single_statement"
+    },
+    {
+     "payload": {
+      "beneath": {
+       "gloss": "what the body remembers",
+       "label": "Still holding"
+      },
+      "surface": {
+       "gloss": "meeting every deadline",
+       "label": "Managing well"
+      }
+     },
+     "archetype_key": "surface_and_beneath"
+    },
+    {
+     "payload": {
+      "statement": "Bilateral processing gives the nervous system a way to work through what stayed stored."
+     },
+     "archetype_key": "single_statement"
+    },
+    {
+     "payload": {
+      "statement": "You can talk about this without proof of how much it costs you."
+     },
+     "archetype_key": "single_statement"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "single_statement",
+  "title": "Healing isn’t wanting",
+  "cardLine": "Healing isn’t wanting",
+  "payload": {
+   "statement": "Healing does not mean you wanted what happened. It means what happened no longer runs the show."
+  }
+ },
+ {
+  "archetype": "comparison_pair",
+  "title": "Steady on the outside",
+  "cardLine": "Steady on the outside",
+  "payload": {
+   "left": [
+    {
+     "gloss": "on time, every time",
+     "label": "Meets every deadline"
+    },
+    {
+     "gloss": "says the right thing",
+     "label": "Answers the room"
+    }
+   ],
+   "right": [
+    {
+     "gloss": "runs long after hours",
+     "label": "Mind won’t quiet"
+    },
+    {
+     "gloss": "even on the good days",
+     "label": "Body stays braced"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "quadrant_model",
+  "title": "Busy isn’t always motivation",
+  "cardLine": "Busy isn’t always motivation",
+  "payload": {
+   "items": [
+    {
+     "gloss": "chest stays tight",
+     "label": "Tasks clear"
+    },
+    {
+     "gloss": "body won’t stand down",
+     "label": "List empty"
+    },
+    {
+     "gloss": "the running continues inside",
+     "label": "Motion stops"
+    },
+    {
+     "gloss": "signal finally reaches the body",
+     "label": "Stillness lands"
+    }
+   ],
+   "axis_x": "output",
+   "axis_y": "system state"
+  }
+ },
+ {
+  "archetype": "numbered_strategies",
+  "title": "When busy is a cover",
+  "cardLine": "When busy is a cover",
+  "payload": {
+   "items": [
+    {
+     "gloss": "is it choice or reflex",
+     "label": "Notice the drive"
+    },
+    {
+     "gloss": "signals arrive last, not never",
+     "label": "Check the body"
+    },
+    {
+     "gloss": "before the day decides for you",
+     "label": "Pause on purpose"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "carousel",
+  "title": "What Efficiency Doesn’t Show",
+  "cardLine": "What Efficiency Doesn’t Show",
+  "payload": {
+   "cards": [
+    {
+     "payload": {
+      "statement": "Efficiency can mask what the body still holds."
+     },
+     "archetype_key": "single_statement"
+    },
+    {
+     "payload": {
+      "beneath": {
+       "gloss": "the body keeps its own record",
+       "label": "Still holding"
+      },
+      "surface": {
+       "gloss": "everything handled, on time",
+       "label": "Staying capable"
+      }
+     },
+     "archetype_key": "surface_and_beneath"
+    },
+    {
+     "payload": {
+      "statement": "EMDR works with that record, not around it."
+     },
+     "archetype_key": "single_statement"
+    },
+    {
+     "payload": {
+      "statement": "You can function well and still carry something unprocessed."
+     },
+     "archetype_key": "single_statement"
+    }
+   ]
+  }
+ },
+ {
+  "archetype": "surface_and_beneath",
+  "title": "The story changed overnight",
+  "cardLine": "The story changed overnight",
+  "payload": {
+   "beneath": {
+    "gloss": "who you are, unwritten",
+    "label": "No map now"
+   },
+   "surface": {
+    "gloss": "life mapped out ahead",
+    "label": "Prior map"
+   }
+  }
+ },
+ {
+  "archetype": "cycle",
+  "title": "Efficiency masks the alarm",
+  "cardLine": "Efficiency masks the alarm",
+  "payload": {
+   "nodes": [
+    {
+     "gloss": "output looks steady",
+     "label": "Stay efficient"
+    },
+    {
+     "gloss": "body flags what’s ignored",
+     "label": "Alarm underneath"
+    },
+    {
+     "gloss": "system keeps the record",
+     "label": "Nothing resolves"
+    }
+   ]
+  }
+ }
+]
