@@ -107,7 +107,62 @@ export const MONTH_LIMITS = {
    * l'identique le mois suivant sans que le chiffre bouge.
    */
   minCarousels: 2,
+  /**
+   * ⚠ LA PART D'UNE FAMILLE SOUS LAQUELLE LE MOIS N'EST PLUS LE MOIS VISÉ.
+   *
+   * Exprimée en fraction de la part VISÉE, pas du mois : le tirage demande
+   * `ceil(CANDIDATES / 3)` par famille, donc un tiers chacune, et le plancher
+   * en est la moitié. Sur trente posts : un sixième, soit cinq.
+   *
+   * ⚠ MESURÉ SUR LES SIX MOIS ENREGISTRÉS, et c'est la seule raison pour
+   * laquelle il vaut un demi et pas autre chose :
+   *
+   *   isla    12 / 10 /  8      marlow  10 / 11 /  9
+   *   perrin  11 / 11 /  8      wren    11 / 14 /  5
+   *   odile    9 / 11 / 10      pia      2 / 20 /  8
+   *
+   * Cinq mois sur six tiennent, `wren` exactement au plancher — le
+   * dépassement est donc STRICT, comme pour `mix.dominant` et pour la même
+   * raison. Le sixième, `pia`, est celui que ce plancher existe pour refuser :
+   * ZÉRO PHRASE SEULE sur trente posts, livré sans un constat. L'ordre de
+   * tirage avait été inversé pour sauver le carrousel (F22), et la phrase
+   * seule a pris sa place dans le trou — le même défaut, l'autre bout.
+   */
+  minFamilyOfTarget: 0.5,
 } as const;
+
+/**
+ * Les trois familles de format, et ce que chacune porte.
+ *
+ * ⚠ ELLE VIT ICI, PAS DANS LE HARNAIS, parce que c'est le contrôle qui a
+ * besoin d'elle. Le harnais en tire son ordre de tirage et ses poids — il
+ * compte `carousel` deux fois, qui est un poids de tirage et non une
+ * composition — mais la liste des formats d'une famille est la même des deux
+ * côtés, et une seule des deux copies aurait vieilli.
+ */
+export const FORMAT_FAMILIES: Record<string, readonly string[]> = {
+  statement: ["single_statement", "practitioner_card"],
+  simple: ["surface_and_beneath", "comparison_pair", "numbered_strategies", "cycle", "concentric_control"],
+  varied: ["carousel", "quadrant_model", "annotated_curve", "lettered_technique"],
+};
+
+/** La famille d'un archétype, ou `null` s'il n'en a pas. */
+export function familyOf(archetype: string): string | null {
+  return Object.entries(FORMAT_FAMILIES).find(([, keys]) => keys.includes(archetype))?.[0] ?? null;
+}
+
+/**
+ * Le plancher d'une famille sur un mois de `n` posts.
+ *
+ * ⚠ CALCULÉ SUR LA COMPOSITION VISÉE, PAS POSÉ À LA MAIN. Si une quatrième
+ * famille apparaît, la part visée tombe à un quart et le plancher suit : un
+ * seuil écrit en dur aurait exigé d'un mois à quatre familles ce qu'on
+ * demandait à un mois à trois.
+ */
+export function familyFloor(n: number): number {
+  const target = n / Object.keys(FORMAT_FAMILIES).length;
+  return Math.floor(target * MONTH_LIMITS.minFamilyOfTarget);
+}
 
 /** Le nombre de posts sous lequel les proportions ne veulent plus rien dire. */
 const MIX_APPLIES_FROM = 10;
@@ -153,6 +208,30 @@ export function checkMix(archetypes: string[]): Finding[] {
    * `mix.distinct` se contente de sept archétypes sur onze, donc l'absence du
    * format le plus important ne déplaçait aucun chiffre.
    */
+  /*
+   * ── ⚠ UN FORMAT ATTENDU PEUT DISPARAÎTRE SANS DÉPLACER UN CHIFFRE ───
+   *
+   * Le mois du 2026-09-24 est sorti avec ZÉRO PHRASE SEULE sur trente posts,
+   * et aucun contrôle ne l'a vu : `mix.distinct` se contente de sept
+   * archétypes sur onze, `mix.dominant` et `mix.loneSentence` sont des
+   * PLAFONDS. Tout ce jeu de bornes ne sait dire que « trop », jamais « pas
+   * assez » — et le carrousel était le seul format à avoir un plancher.
+   *
+   * Chaque famille en a un maintenant, tiré de la part que le tirage lui
+   * vise. Un mois où une famille passe sous la moitié de sa part n'est pas un
+   * mélange qui penche : c'est un autre mois que celui qui a été acheté.
+   */
+  const floor = familyFloor(n);
+  for (const [family, keys] of Object.entries(FORMAT_FAMILIES)) {
+    const held = keys.reduce((sum, key) => sum + (counts.get(key) ?? 0), 0);
+    if (held < floor) {
+      out.push({
+        check: `mix.floor.${family}`,
+        detail: `la famille ${family} ne porte que ${held} post(s) sur ${n}, plancher ${floor} (${keys.join(", ")})`,
+      });
+    }
+  }
+
   const carousels = counts.get(CAROUSEL) ?? 0;
   if (carousels < MONTH_LIMITS.minCarousels) {
     out.push({

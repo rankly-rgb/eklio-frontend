@@ -49,7 +49,9 @@ import { checkinLeaks } from "../../lib/content/leakage";
 import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
-import { checkMonth, writtenLinesIn, type Finding } from "../../lib/content/month-checks";
+import {
+  checkMonth, writtenLinesIn, FORMAT_FAMILIES, familyOf, type Finding,
+} from "../../lib/content/month-checks";
 import { undecidedIn, type CompletenessVerdicts } from "../../lib/content/writing-checks";
 import { judgeCompleteness } from "../../lib/content/generate/completeness-judge";
 import {
@@ -130,18 +132,25 @@ const CANDIDATES = 72;
  * carrousel. L'objet garde son ordre d'écriture pour que la lecture reste
  * celle du mélange publié ; c'est `DRAW_ORDER` qui décide du tirage.
  */
-const FAMILIES: Record<string, string[]> = {
-  statement: ["single_statement", "practitioner_card"],
-  simple: ["surface_and_beneath", "comparison_pair", "numbered_strategies", "cycle", "concentric_control"],
-  /*
-   * ⚠ `carousel` Y FIGURE DEUX FOIS, ET C'EST MESURÉ. Le mélange en exige au
-   * moins deux par mois (F22) ; sur huit essais gelés, trois n'en ont livré
-   * qu'UN. Le carrousel empile trois à six payloads : il se perd à la
-   * validation plus souvent que les autres, et un tirage à égalité n'en
-   * laisse pas deux debout. Deux tours sur quatre, donc.
-   */
-  varied: ["carousel", "quadrant_model", "carousel", "annotated_curve", "lettered_technique"],
-};
+/*
+ * ⚠ LES FAMILLES VIENNENT DU CONTRÔLE, PAS L'INVERSE. Le plancher par format
+ * se calcule sur la part visée par CE tirage : deux listes tenues à la main
+ * auraient divergé au premier archétype ajouté, et le plancher aurait alors
+ * mesuré une composition que personne ne vise.
+ *
+ * ⚠ CE QUI RESTE PROPRE AU TIRAGE EST LE POIDS. `carousel` figure deux fois,
+ * et c'est mesuré : le mélange en exige au moins deux par mois (F22) ; sur
+ * huit essais gelés, trois n'en ont livré qu'UN. Le carrousel empile trois à
+ * six payloads, il se perd à la validation plus souvent que les autres, et un
+ * tirage à égalité n'en laisse pas deux debout. Deux tours sur quatre, donc —
+ * un poids de tirage, jamais une composition.
+ */
+const FAMILIES: Record<string, string[]> = Object.fromEntries(
+  Object.entries(FORMAT_FAMILIES).map(([family, keys]) => [
+    family,
+    family === "varied" ? [keys[0], keys[1], keys[0], ...keys.slice(2)] : [...keys],
+  ])
+);
 
 /** Du format le plus large au plus souple : qui affronte le moins de titres déjà pris. */
 const DRAW_ORDER = ["varied", "simple", "statement"] as const;
@@ -1122,6 +1131,37 @@ function selectDeliverable<
       for (const p of chosen) counts.set(p.composeArchetype, (counts.get(p.composeArchetype) ?? 0) + 1);
       const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
       const out = chosen.map((p) => p.composeArchetype).lastIndexOf(dominant ?? "");
+      if (out === -1) return { chosen, remaining: findings, dropped };
+      dropped.push({ title: chosen[out].cardLine, why: `${finding.check} — ${finding.detail}` });
+      const [replacement] = bench.splice(spare, 1);
+      chosen = [...chosen.slice(0, out), ...chosen.slice(out + 1), replacement];
+      continue;
+    }
+
+    /*
+     * ── ⚠ UN PLANCHER DIT QU'IL MANQUE, PAS QU'IL Y EN A DE TROP ────────
+     *
+     * Même piège que `mix.carousel`, et pour la même raison : traiter un
+     * plancher comme les autres constats de mélange ferait retirer le post le
+     * plus représenté pour le remplacer par le premier du banc — qui n'est pas
+     * de la famille qui manque — puis recommencer, en dégradant le mois à
+     * chaque tour jusqu'à vider le banc.
+     *
+     * On échange donc CONTRE un post de la famille affamée, s'il en reste un.
+     * Sinon le mois est refusé tout de suite, ce qui est le bon verdict et
+     * coûte zéro tour.
+     */
+    if (finding.check.startsWith("mix.floor.")) {
+      const starved = finding.check.slice("mix.floor.".length);
+      const spare = bench.findIndex((p) => familyOf(p.composeArchetype) === starved);
+      if (spare === -1) return { chosen, remaining: findings, dropped };
+      const counts = new Map<string, number>();
+      for (const p of chosen) {
+        const family = familyOf(p.composeArchetype);
+        if (family) counts.set(family, (counts.get(family) ?? 0) + 1);
+      }
+      const fattest = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      const out = chosen.map((p) => familyOf(p.composeArchetype)).lastIndexOf(fattest ?? "");
       if (out === -1) return { chosen, remaining: findings, dropped };
       dropped.push({ title: chosen[out].cardLine, why: `${finding.check} — ${finding.detail}` });
       const [replacement] = bench.splice(spare, 1);

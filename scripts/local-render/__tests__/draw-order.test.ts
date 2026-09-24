@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { FORMAT_FAMILIES } from "@/lib/content/month-checks";
 
 /*
  * ── ⚠ L'ORDRE DES FAMILLES DÉCIDE QUELS FORMATS UN MOIS PEUT PORTER ────
@@ -41,14 +42,38 @@ describe("le tirage ne condamne pas un format par son rang", () => {
    * silencieusement un tiers du mélange.
    */
   it("aucune famille ne sort de l'ordre de tirage", () => {
-    const families = [...SOURCE.slice(
-      SOURCE.indexOf("const FAMILIES: Record<string, string[]> = {"),
-      SOURCE.indexOf("/** Du format le plus large")
-    ).matchAll(/^ {2}(\w+):/gm)].map((m) => m[1]);
     const order = SOURCE.slice(SOURCE.indexOf("const DRAW_ORDER = ["));
     const line = order.slice(0, order.indexOf(";"));
+    const families = Object.keys(FORMAT_FAMILIES);
     expect(families).toHaveLength(3);
     for (const f of families) expect(line).toContain(`"${f}"`);
+  });
+
+  /*
+   * ── ⚠ LE TIRAGE ET LE PLANCHER LISENT LA MÊME LISTE ───────────────────
+   *
+   * Le plancher par format se calcule sur la part que le tirage VISE. Deux
+   * listes de familles tenues à la main auraient divergé au premier archétype
+   * ajouté, et le plancher aurait alors mesuré une composition que personne ne
+   * vise — un contrôle qui refuse un mois conforme, ou qui en laisse passer un
+   * qui ne l'est pas.
+   */
+  it("les poids de tirage ne portent que les formats de leur famille", () => {
+    expect(SOURCE).toContain("Object.entries(FORMAT_FAMILIES).map(([family, keys])");
+    for (const [family, keys] of Object.entries(FORMAT_FAMILIES)) {
+      const drawn = family === "varied" ? [keys[0], keys[1], keys[0], ...keys.slice(2)] : [...keys];
+      expect(new Set(drawn), family).toEqual(new Set(keys));
+    }
+  });
+
+  /*
+   * ⚠ ET LE POIDS DOUBLE DU CARROUSEL RESTE UN POIDS. Il est tiré deux fois
+   * par tour parce qu'il se perd à la validation plus souvent que les autres —
+   * il ne compte pas double dans la composition, que `FORMAT_FAMILIES` dit.
+   */
+  it("le carrousel pèse double au tirage, pas dans la composition", () => {
+    expect(FORMAT_FAMILIES.varied.filter((k) => k === "carousel")).toHaveLength(1);
+    expect(SOURCE).toContain('family === "varied" ? [keys[0], keys[1], keys[0], ...keys.slice(2)]');
   });
 
   it("le motif de rejet nomme l'archétype", () => {
