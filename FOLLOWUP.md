@@ -1617,6 +1617,91 @@ il ne vient pas d'un chiffre.
 * `design/preview-2026-09-24a/` — bras 1a seul
 * `design/preview-2026-09-24b/` — bras 1a + 1b + 1c
 
+## F35 — ⚠ L'AUDIT DU CORPUS : DIX-SEPT CLASSES D'UN COUP, ET LE PLUS GROS TROU DU JEU DE CONTRÔLES
+
+Jusqu'ici chaque classe de défauts avait été découverte par une **notation de
+planche**, un défaut à la fois : F26 en a trouvé sept, F29 un, F34 un. C'est
+lent, et ça garantit qu'il en reste.
+
+Le 2026-09-24, le corpus entier — **5 381 lignes de carte, 400 légendes, 399
+alternatifs** — a été soumis à un audit mené **à l'aveugle** : l'auditeur
+n'avait pas la liste des contrôles existants, seulement les règles de publicité
+de l'ACA et de l'APA et l'instruction de classer par exposition. Il a rendu
+dix-sept catégories.
+
+### ⚠ LE CONSTAT CENTRAL : AUCUN CONTRÔLE D'ÉCRITURE NE LISAIT LA LÉGENDE
+
+`writtenLinesIn` rendait la ligne de carte et les chaînes du payload — ce qui
+est **dessiné** — et rien d'autre. Or la légende est le texte publié le plus
+**long**, et c'est là que vivaient :
+
+| dans la légende | compté |
+|---|---|
+| une annonce de disponibilité (« two evening slots ») | **341 / 400** |
+| du contenu tiré de la patientèle réelle | **76 / 400** |
+| une comparaison d'efficacité avec la thérapie par la parole | 7 |
+
+⚠ **`checkSellsSlots` existe depuis F26 et n'a jamais regardé l'endroit où l'on
+vend.** Seul `checkEthics` voyait la légende, et il ne porte que les six règles
+du brief : les vingt-trois contrôles d'écriture regardaient la carte pendant que
+le paragraphe en dessous disait ce qu'il voulait.
+
+**Mesuré après branchement, sur les neuf mois livrés de F34 : SEPT sont
+refusés**, tous sur des affirmations d'efficacité dans la légende. ⚠ **Le taux
+de livraison de 8 sur 9 avait été mesuré la légende non lue**, et il faut le
+lire ainsi.
+
+### Le sort des dix-sept classes
+
+| # | classe | disposition |
+|---|---|---|
+| 1 | identité / titre / juridiction contradictoires | ⚠ **artefact du corpus** — il mélange 43 comptes d'essai. `checkInventedIdentity` couvre l'intérieur d'un mois, et les mois de F34 passent |
+| 2 | **aucun numéro de licence dans 400 publicités** | ⚠ **LIMITE CONNUE, BLOQUANTE** — voir ci-dessous |
+| 3 | contenu tiré de la patientèle | ✅ `text.caseload`, 0,78 % |
+| 4 | EMDR au-delà de sa base de preuves | ⚠ **partiellement** — `text.clinicalClaim` prend la promesse nue ; « EMDR for burnout » en titre reste ouvert |
+| 5 | symptômes physiques attribués au psychique, sans orientation médicale | ⚠ **LIMITE CONNUE** — voir ci-dessous |
+| 6 | **aucune ressource de crise, aucun avertissement** | ⚠ **LIMITE CONNUE, BLOQUANTE** |
+| 7 | pseudo-diagnostic à distance, trait requalifié | ✅ `text.pathologised` (forme nominale) + `text.clinicalClaim` (verbale) |
+| 8 | comparaison d'efficacité | ✅ `text.comparative`, 0,02 % |
+| 9 | mécanisme neurologique faux | ✅ `text.falseMechanism`, 0,10 % |
+| 10 | rareté fabriquée, disponibilité périmée | ✅ `checkSellsSlots`, **désormais sur la légende** |
+| 11 | résultats implicites tirés de l'expérience patiente | ⚠ limite connue — « Some people find that… their body stops bracing » demande un jugement |
+| 12 | van der Kolk non attribué | ✅ `checkBorrowed` + `99-purge-borrowed.ts` |
+| 13 | contradictions internes, négations tombées | ⚠ **non formulable** — « EMDR works with memory. It does not work with loss. » contredit six autres lignes du même corpus. Un regex ne trouve pas une négation tombée |
+| 14 | alternatif qui retient l'information | ⚠ limite connue — 109 alternatifs sur 399 paraphrasent au lieu de citer (WCAG 1.1.1) |
+| 15 | titres tronqués | ✅ `checkUnfinished` + juge |
+| 16 | saturation de gabarit | ⚠ partiellement — passe de révision, `checkDuplicateTitles`, `checkEcho` |
+| 17 | orthographe britannique | ⚠ limite connue, 13 occurrences contre 29 américaines |
+
+### ⚠ TROIS LIMITES CONNUES, ET DEUX SONT BLOQUANTES
+
+**A. Aucun numéro de licence, dans aucune des 400 publicités.** Californie
+B&P §4980.44(c) et §4999.80 exigent le type ET le numéro de licence dans
+**toute** publicité ; la Virginie et l'Oregon ont l'équivalent. ⚠ **Le produit
+n'a pas de champ pour ça** : `project_briefs` ne porte ni type ni numéro de
+licence, donc aucun contrôle ne peut exiger ce qu'il n'y a pas à mettre. Il faut
+la colonne, le champ de brief, et la ligne sur la carte praticienne —
+**avant** d'ouvrir.
+
+**B. Aucune ressource de crise, aucun avertissement de portée, dans aucun
+post.** Ce corpus s'adresse explicitement à des personnes en détresse — deuil,
+dissociation, effondrement — et les invite à s'identifier à une liste de
+symptômes. Zéro mention de 988 ou d'une ligne d'écoute sur 400 posts, et jamais
+la phrase qui dit que lire un post ne crée pas de relation thérapeutique. ⚠ **Ce
+n'est pas un défaut de contrôle, c'est un manque de gabarit** : la légende n'a
+pas de pied. Il se pose une fois, dans le gabarit, et il se contrôle ensuite.
+
+**C. Symptômes physiques attribués à une cause psychique, sans un mot
+d'orientation médicale.** Dix-huit légendes portent un faisceau somatique —
+oppression thoracique, insomnie, tachycardie, fatigue que le repos ne touche pas
+— avec une attribution causale au système nerveux. ⚠ **Zéro occurrence de
+« médecin », « bilan », « écarter une cause médicale » dans les 5 180 unités du
+corpus.** Ce sont les mêmes symptômes qu'une apnée du sommeil, une anémie, une
+thyroïdite ou un trouble du rythme, et deux légendes ajoutent « this is not
+something to fix faster ». La forme est détectable — une liste de symptômes plus
+une attribution causale — mais le geste juste n'est pas de refuser : c'est
+d'**exiger la ligne d'orientation** dans le gabarit, comme en B.
+
 ## MISE EN PRODUCTION — la liste, dans l'ordre
 
 ⚠ **Rien de ceci n'a été fait.** `main` n'existe pas, aucune variable Vercel
@@ -1641,6 +1726,8 @@ facturation.
 | 7 | **Repointer Vercel** sur `main`, vérifier que les quatre `crons` de `vercel.json` (`anon-briefs` 05:00, `nudges` 14:00, `purge-deleted-kits` 06:00, `purge-events` 04:00) sont enregistrés et que `CRON_SECRET` les protège. | agent (jeton Vercel) |
 | 7b | ⚠ **BLOQUANT — créer `content_generation_runs` et `content_generation_results` (F17) AVANT d'armer la génération mensuelle.** Ce n'est pas une amélioration à planifier : **tant que ces deux tables n'existent pas, une génération interrompue est repayée EN ENTIER**, et un lot Batch est facturé à la soumission, donc avant qu'une seule réponse existe. Vercel n'a pas de disque qui survive à l'invocation : le journal fichier (`.eklio-journal/`) est le chemin LOCAL, ces tables sont le chemin SERVEUR, et il n'y a pas de troisième chemin. ⚠ **`CONTENT_GENERATION_ARMED` reste à `false` tant que l'étape 1 du rejeu ne montre pas les deux tables présentes.** La migration est écrite et rejouée (`20260923100000_a_paid_batch_survives_a_crash.sql`, RLS et policies comprises) ; elle part avec les autres à l'étape 3. | agent (migration) |
 | 8 | **Générer la banque de production.** Voir F13 pour le dimensionnement : `N × 90 × 3` par segment, 0,00290 $ le sujet. ⚠ **Après** les migrations et **après** F12, sinon les segments n'existent pas. Un mois généré sur une banque à sec sort court sans que rien le signale. | agent (clé passée par commande) |
+| 4b | ⚠ **BLOQUANT — le numéro de licence n'existe nulle part (F35).** Californie B&P §4980.44(c) et §4999.80 exigent le type ET le numéro de licence dans **toute** publicité ; la Virginie et l'Oregon ont l'équivalent. Sur les 400 posts du corpus, **zéro numéro**. ⚠ Ce n'est pas un défaut de contrôle : `project_briefs` n'a pas de colonne pour ça, donc aucun contrôle ne peut exiger ce qu'il n'y a rien à mettre. Il faut la colonne, le champ de brief, la ligne sur la carte praticienne, et un contrôle qui refuse un mois sans elle. **Avant la première vente**, parce que chacun des posts déjà produits est une infraction publicitaire en l'état. | agent (migration + champ), **humain** pour le numéro |
+| 4c | ⚠ **BLOQUANT — aucune ressource de crise, aucun avertissement de portée (F35).** Zéro mention de 988 ou d'une ligne d'écoute sur 400 posts, et jamais la phrase disant que lire un post ne crée pas de relation thérapeutique — sur un contenu qui s'adresse explicitement à des personnes en deuil, en dissociation, en effondrement. ⚠ Et zéro mot d'orientation médicale, alors que dix-huit légendes attribuent un faisceau somatique (oppression thoracique, insomnie, fatigue que le repos ne touche pas) à une cause psychique. Le geste est un **pied de légende dans le gabarit**, posé une fois, contrôlé ensuite. | agent |
 | 8a | ⚠ **BLOQUANT — la banque doit être dimensionnée pour un SEGMENT SIMULTANÉ avant d'armer le `cron` mensuel.** Tout le dimensionnement de F13 suppose une praticienne qui tire son mois, puis la suivante le mois d'après. Le `cron` fera l'inverse : **un segment entier le même jour**, et la fenêtre de 90 jours interdit à chacune ce que ses consœurs viennent de prendre — le même matin. Le modèle est dans `lib/content/bank.ts`, calculé sur la boucle de tirage et testé : `tours × N × essais × retenus + N × tirés ÷ (1 − 40 %)`. À cinq praticiennes et quatre essais, **2 405 sujets par segment (6,97 $)**, contre 580 dans le dimensionnement précédent. ⚠ Et le garde-fou de `20-month.ts` doit rester en place : il compte le stock tirable **par archétype** avec la requête qui tire, et déclenche le remplissage AVANT la génération. Sans lui, la banque est remplie après l'échec — c'est-à-dire après avoir payé l'écriture d'un mois qui ne pouvait pas sortir. | agent |
 | 8b | ⚠ **BLOQUANT — brancher la réservation de crédit sur le chemin PRODUIT, puis vérifier que `credit_ledger` grossit** (F25, F27). ⚠ **Aucun chemin produit n'appelle `reserve_credit` pour une génération mensuelle** : `runMonthForKit` ne réserve rien, et le seul appelant du dépôt est le harnais. Le point d'étranglement SQL est juste et le plafond est tenu — personne ne frappe à la porte. Tant que ce n'est pas fait, le quota de trente posts n'existe que pour le harnais. La vérification ensuite : `select kind, reservations, cost_usd from credit_month_audit where user_id = … and month = …` doit montrer **trente réservations `post_generation`** pour un mois généré. ⚠ **Avant l'étape 9**, sinon on ouvre la facturation sur un compteur que rien n'incrémente. | agent |
 | 8c | **Vérifier le coût du kit au livre.** `bookKitCost` écrit une ligne `overhead` par kit généré. Mesuré en local : dix kits, dix lignes, **0,2618 $**, soit 0,026 $ le kit. C'était la seule ligne d'un total de session qu'on ne savait pas prouver. | agent |
