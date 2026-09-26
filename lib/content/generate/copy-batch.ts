@@ -1,5 +1,6 @@
 import CONFORMING_EXAMPLES from "./fixtures/conforming-examples.json";
 import type Anthropic from "@anthropic-ai/sdk";
+import { anthropicBody, type CopyCall } from "@/lib/content/generate/provider";
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { budgetErrors, type BudgetError } from "@/lib/compose/budget";
 import { CANVAS, CONTENT_MIN_AT_CANVAS, THUMB, TYPE } from "@/lib/compose/constants";
@@ -519,6 +520,18 @@ function examplesFor(archetypeKey: string): string[] {
 }
 
 export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthropic.TextBlockParam[] {
+  return [{ type: "text", text: cachedPrefixText(brand, archetypeKey), cache_control: { type: "ephemeral" } }];
+}
+
+/**
+ * Le préfixe, en texte nu.
+ *
+ * ⚠ C'EST LA FORME NEUTRE, ET ELLE EXISTE PARCE QU'IL Y A DEUX FOURNISSEURS.
+ * Anthropic veut un bloc marqué `cache_control` ; OpenAI veut une chaîne dans
+ * `instructions` et cache le préfixe commun tout seul. Le préfixe lui-même est
+ * le même texte, et il ne doit être écrit qu'une fois.
+ */
+export function cachedPrefixText(brand: BrandContext, archetypeKey: string): string {
   // ⚠ TRIÉES. La base ne promet aucun ordre, et six règles rendues dans un
   // ordre différent d'un run à l'autre suffisent à ne jamais rien cacher.
   const rules = [...brand.ethicsRules]
@@ -710,7 +723,7 @@ export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthrop
     ...examplesFor(archetypeKey),
   ].join("\n");
 
-  return [{ type: "text", text, cache_control: { type: "ephemeral" } }];
+  return text;
 }
 
 /** La partie variable. Après le dernier `cache_control`, toujours. */
@@ -753,25 +766,40 @@ export function copyEffort(): CopyEffort {
   return allowed.includes(asked as CopyEffort) ? (asked as CopyEffort) : "low";
 }
 
+/**
+ * Le plafond de sortie d'un appel de rédaction.
+ *
+ * ⚠ IL ÉTAIT ÉCRIT DEUX FOIS, en littéral, ici et dans `write-one.ts` — les
+ * deux à 2000, et rien n'aurait dit lequel avait bougé.
+ */
+export const COPY_MAX_TOKENS = 2000;
+
+/**
+ * L'appel de rédaction, dit sans vocabulaire de fournisseur.
+ *
+ * ⚠ LE SEUL ENDROIT QUI ASSEMBLE UN APPEL. Le mois (par lot) et « Write it »
+ * (synchrone) construisaient les mêmes paramètres à deux endroits, chacun avec
+ * son littéral de plafond et sa propre lecture du préfixe. Les deux passent
+ * maintenant par ici, puis par la traduction du fournisseur retenu.
+ */
+export function copyCallFor(brand: BrandContext, topic: TopicRequest): CopyCall {
+  return {
+    model: massCopyModel(),
+    prefix: cachedPrefixText(brand, topic.archetypeKey),
+    variable: variablePart(topic),
+    maxTokens: COPY_MAX_TOKENS,
+    effort: copyEffort(),
+    archetypeKey: topic.archetypeKey,
+  };
+}
+
 export function buildBatchRequests(
   brand: BrandContext,
   topics: TopicRequest[]
 ): Anthropic.Messages.Batches.BatchCreateParams["requests"] {
   return topics.map((topic) => ({
     custom_id: topic.topicId,
-    params: {
-      model: massCopyModel(),
-      max_tokens: 2000,
-      /*
-       * ⚠ LE PRÉFIXE EST DANS `system`, PAS DANS `messages`. L'ordre de rendu
-       * est tools → system → messages : un préfixe placé dans le premier
-       * message d'utilisateur serait précédé, dans le rendu, par un `system`
-       * qui pourrait bouger — et il faudrait alors cacher les deux.
-       */
-      system: cachedPrefix(brand, topic.archetypeKey),
-      output_config: { effort: copyEffort() },
-      messages: [{ role: "user" as const, content: variablePart(topic) }],
-    },
+    params: anthropicBody(copyCallFor(brand, topic)),
   }));
 }
 

@@ -1,15 +1,13 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import {
-  cachedPrefix,
-  massCopyModel,
-  copyEffort,
+  copyCallFor,
   validateCopy,
-  variablePart,
   type BrandContext,
   type CopyResult,
   type TopicRequest,
 } from "@/lib/content/generate/copy-batch";
 import { ARCHETYPE_KEYS } from "@/lib/compose/archetypes/index";
+import { anthropicBody } from "@/lib/content/generate/provider";
 
 /*
  * ── ÉCRIRE UN SEUL POST, MAINTENANT ─────────────────────────────────────
@@ -101,17 +99,15 @@ export async function writeOnePost(
       retried: false,
     };
   }
-
-  const params: Anthropic.Messages.MessageCreateParamsNonStreaming = {
-    model: massCopyModel(),
-    max_tokens: 2000,
-    // ⚠ MÊME PLACE QUE DANS LE BATCH : `system`, pas le premier message.
-    // L'ordre de rendu est tools → system → messages ; déplacer le préfixe
-    // invaliderait le cache que le mois vient de remplir.
-    system: cachedPrefix(brand, topic.archetypeKey),
-    output_config: { effort: copyEffort() },
-    messages: [{ role: "user", content: variablePart(topic) }],
-  };
+  /*
+   * ⚠ LA MÊME COUTURE QUE LE MOIS. Ces paramètres étaient construits ici, avec
+   * leur propre littéral de plafond et leur propre lecture du préfixe, alors que
+   * l'en-tête de ce fichier promet « même préfixe, même partie variable, même
+   * validateur ». Deux assemblages tenaient cette promesse par convention ; un
+   * seul la tient par construction — et c'est lui qui rend le fournisseur
+   * interchangeable.
+   */
+  const params = anthropicBody(copyCallFor(brand, topic));
 
   const first = await port.create(params);
   const firstUsage = usageOf(first);
