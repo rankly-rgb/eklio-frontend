@@ -29,6 +29,7 @@ import {
   validateCopy,
   buildBatchRequests,
   collectCopy,
+  prefixBaselineMode,
   batchCostUsd,
   clampCardLine,
   copyEffort,
@@ -458,6 +459,22 @@ async function main() {
   }
   const mention = licenceMention(licence)!;
   console.error(`▸ mention de licence : ${mention}`);
+  /*
+   * ── ⚠ LE MODE TÉMOIN SE CRIE, IL NE SE DEVINE PAS ─────────────────────
+   *
+   * `CONTENT_PREFIX_BASELINE=1` retire les trois consignes du 2026-09-26 pour
+   * séparer leur effet de celui du portillon. Un run fait dans ce mode n'est PAS
+   * comparable aux autres, et son rapport le porte (`prefixBaseline`). Sans ce
+   * cri, une variable oubliée dans un shell ferait passer un mois témoin pour un
+   * mois de référence, et la mesure suivante partirait d'un chiffre faux.
+   */
+  if (prefixBaselineMode()) {
+    console.error(
+      "\n⚠⚠ MODE TÉMOIN — les trois consignes de classes sont RETIRÉES du préfixe.\n" +
+      "   Ce mois sert à séparer l'effet du portillon de celui des consignes.\n" +
+      "   Aucun contrôle n'est relâché : il sera refusé plus souvent, jamais moins.\n"
+    );
+  }
 
   /*
    * ── ⚠ « CORRECTAMYTH » A ÉTÉ IMPRIMÉ SUR UNE CARTE PUBLIABLE ──────────
@@ -2222,6 +2239,11 @@ function selectDeliverable<
      * conformité au premier appel PAR CLASSE — la seule grandeur qui répond à
      * « est-ce que la consigne a marché ».
      */
+    /*
+     * ⚠ UN RUN TÉMOIN S'IDENTIFIE DANS SON RAPPORT. C'est ce qui permet à un
+     * dépouillement de refuser de le mélanger avec les autres.
+     */
+    prefixBaseline: prefixBaselineMode(),
     gate: {
       arrived: readyPosts.length,
       passedAlone: clean.length,

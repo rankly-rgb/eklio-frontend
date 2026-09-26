@@ -519,6 +519,112 @@ function examplesFor(archetypeKey: string): string[] {
   ];
 }
 
+
+/**
+ * Les trois consignes ajoutées le 2026-09-26 pour les trois classes de refus.
+ *
+ * ── ⚠ ISOLÉES POUR ÊTRE MESURABLES, PAS POUR ÊTRE OPTIONNELLES ──────────
+ *
+ * Le portillon par post et ces trois consignes sont entrés dans le MÊME run.
+ * Le coût par mois livré est passé de 3,22 $ à 0,574 $ et le taux de 2/16 à
+ * 2/2 — sans qu'on puisse dire ce que chacun apporte. L'essai qui les sépare
+ * est « portillon activé, ancien préfixe », et il tient en un appel.
+ *
+ * `CONTENT_PREFIX_BASELINE=1` les retire. C'est un INTERRUPTEUR DE MESURE :
+ *
+ *   * il n'est actif que sur la valeur exacte « 1 » ;
+ *   * le harnais le crie au démarrage et l'inscrit dans son rapport, pour qu'un
+ *     run fait avec lui ne puisse jamais passer pour un run normal ;
+ *   * un test exige que le préfixe par défaut les porte toutes les trois.
+ *
+ * ⚠ ET IL NE RELÂCHE AUCUN CONTRÔLE. Les trente contrôles du mois, les
+ * dix-huit règles déontologiques et le portillon restent exactement les mêmes :
+ * ce qui change est ce que le modèle SAIT avant d'écrire, pas ce qu'on accepte
+ * de lui. Un mois passé en mode témoin sera refusé plus souvent, jamais moins.
+ */
+export function prefixBaselineMode(): boolean {
+  return process.env.CONTENT_PREFIX_BASELINE === "1";
+}
+
+function threeClassBlocks(): string[] {
+  if (prefixBaselineMode()) return [];
+  return [
+    /*
+     * ── ⚠ TROIS CLASSES FAISAIENT LE GROS DES REFUS, ET LES CONSIGNES
+     *      EXISTAIENT — MAL PORTÉES ───────────────────────────────────────
+     *
+     * Mesuré sur seize essais (2026-09-24/25), conformité au premier appel
+     * 46/102. Les constats résiduels ne sont pas dispersés :
+     *
+     *   text.unfinished     62 constats · ligne de carte et libellés de payload
+     *   carousel.samePanel  14 constats · dont 9 « 2 volets sans énoncé propre »
+     *   text.clinicalClaim  10 constats · alternatif, ligne de carte, énoncés
+     *
+     * ⚠ AUCUNE DES TROIS N'ÉTAIT UNE RÈGLE MANQUANTE. Chacune était écrite
+     * quelque part et portait sur la mauvaise surface :
+     *
+     *   * la complétude n'était exigée que de `card_line`, alors que le
+     *     contrôle lit CHAQUE ligne écrite du payload ;
+     *   * la règle du carrousel — un seul volet peut hériter du titre —
+     *     n'était nulle part, seulement suggérée par l'exemple ;
+     *   * la nuance clinique était dans le bloc LÉGENDE, donc lue comme une
+     *     règle de légende, alors que le contrôle lit toutes les surfaces.
+     *
+     * Ce bloc les sort de leur surface d'origine et les dit pour toutes.
+     */
+    `⚠ EVERY WRITTEN LINE MUST BE FINISHED — not just "card_line". The check`,
+    `reads each line you write: "card_line", every label, statement, gloss and`,
+    `panel line inside "payload". A line is unfinished when its last word DEMANDS`,
+    `A COMPLEMENT that never comes. This is not about function words; these are`,
+    `real refusals, and every one of them ends on a content word:`,
+    ``,
+    `   refused                        why                    write instead`,
+    `   "The cost of unshakeable"      unshakeable WHAT       "The cost of never wavering"`,
+    `   "Function isn't the same"      the same AS WHAT       "Function is not recovery"`,
+    `   "Stuck between one chapter"    between one AND WHAT   "Stuck between two chapters"`,
+    `   "When your life script"        script DOES WHAT       "When the old script runs"`,
+    ``,
+    `Comparatives and relational words are the trap: "the same", "more than",`,
+    `"as … as", "between", "the cost of", "instead of", "closer to". Each one`,
+    `opens a slot. Fill it, or choose a phrase that opens none.`,
+    ``,
+    `⚠ THE CLINICAL NUANCE APPLIES TO EVERY SURFACE, not only the caption. A`,
+    `card line of four words is read under her licence exactly as a caption of`,
+    `three hundred is. Two forms, side by side:`,
+    ``,
+    `   may not publish              may publish`,
+    `   "EMDR helps"                 "EMDR can help"`,
+    `   "Bilateral stimulation       "Bilateral stimulation is designed to give`,
+    `    gives a nervous system       an overworked nervous system a way to`,
+    `    a way to power down"         settle"`,
+    `   "Reprocessing lets a         "Reprocessing may let a memory settle"`,
+    `    memory settle"`,
+    ``,
+    `The hedge — can, may, often, sometimes, for some, is designed to, aims to —`,
+    `is the whole difference. A named technique as the SUBJECT of a result verb,`,
+    `with no hedge, is the single most common way this copy fails.`,
+    ``,
+    /*
+     * ⚠ CETTE DERNIÈRE CONSIGNE CONTOURNE UN FAUX POSITIF, ET CE N'EST PAS LÀ
+     * QUE LA CORRECTION DEVRAIT ÊTRE.
+     *
+     * `checkClinicalClaim` refuse « Not all change is trauma » — une phrase
+     * DÉ-pathologisante, exactement ce que le contrôle prétend protéger — et
+     * accepte « Change is not always trauma », qui dit la même chose. Mesuré :
+     * 2 des 10 constats de cette classe sont de cette forme. C'est la même
+     * classe que F38, dans un autre contrôle, et la corriger est une décision
+     * de contrôle déontologique que cette session n'a pas le droit de prendre
+     * seule (voir F39). En attendant, le modèle est prévenu.
+     */
+    `⚠ WHEN YOU SAY SOMETHING IS *NOT* A DIAGNOSIS, put the negation inside the`,
+    `verb phrase, never in front of the sentence. "Not all change is trauma" and`,
+    `"Change is not always trauma" mean the same thing; the first is refused and`,
+    `the second is not. Write "X is not trauma", "Grief is not a disorder",`,
+    `"Overwork is not burnout" — never "Not every X is Y".`,
+    ``,
+  ];
+}
+
 export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthropic.TextBlockParam[] {
   return [{ type: "text", text: cachedPrefixText(brand, archetypeKey), cache_control: { type: "ephemeral" } }];
 }
@@ -617,79 +723,7 @@ export function cachedPrefixText(brand: BrandContext, archetypeKey: string): str
      * maintenant des constantes ; il ne peut plus diverger sans qu'un test le
      * voie (voir `prompt-constants.test.ts`).
      */
-    /*
-     * ── ⚠ TROIS CLASSES FAISAIENT LE GROS DES REFUS, ET LES CONSIGNES
-     *      EXISTAIENT — MAL PORTÉES ───────────────────────────────────────
-     *
-     * Mesuré sur seize essais (2026-09-24/25), conformité au premier appel
-     * 46/102. Les constats résiduels ne sont pas dispersés :
-     *
-     *   text.unfinished     62 constats · ligne de carte et libellés de payload
-     *   carousel.samePanel  14 constats · dont 9 « 2 volets sans énoncé propre »
-     *   text.clinicalClaim  10 constats · alternatif, ligne de carte, énoncés
-     *
-     * ⚠ AUCUNE DES TROIS N'ÉTAIT UNE RÈGLE MANQUANTE. Chacune était écrite
-     * quelque part et portait sur la mauvaise surface :
-     *
-     *   * la complétude n'était exigée que de `card_line`, alors que le
-     *     contrôle lit CHAQUE ligne écrite du payload ;
-     *   * la règle du carrousel — un seul volet peut hériter du titre —
-     *     n'était nulle part, seulement suggérée par l'exemple ;
-     *   * la nuance clinique était dans le bloc LÉGENDE, donc lue comme une
-     *     règle de légende, alors que le contrôle lit toutes les surfaces.
-     *
-     * Ce bloc les sort de leur surface d'origine et les dit pour toutes.
-     */
-    `⚠ EVERY WRITTEN LINE MUST BE FINISHED — not just "card_line". The check`,
-    `reads each line you write: "card_line", every label, statement, gloss and`,
-    `panel line inside "payload". A line is unfinished when its last word DEMANDS`,
-    `A COMPLEMENT that never comes. This is not about function words; these are`,
-    `real refusals, and every one of them ends on a content word:`,
-    ``,
-    `   refused                        why                    write instead`,
-    `   "The cost of unshakeable"      unshakeable WHAT       "The cost of never wavering"`,
-    `   "Function isn't the same"      the same AS WHAT       "Function is not recovery"`,
-    `   "Stuck between one chapter"    between one AND WHAT   "Stuck between two chapters"`,
-    `   "When your life script"        script DOES WHAT       "When the old script runs"`,
-    ``,
-    `Comparatives and relational words are the trap: "the same", "more than",`,
-    `"as … as", "between", "the cost of", "instead of", "closer to". Each one`,
-    `opens a slot. Fill it, or choose a phrase that opens none.`,
-    ``,
-    `⚠ THE CLINICAL NUANCE APPLIES TO EVERY SURFACE, not only the caption. A`,
-    `card line of four words is read under her licence exactly as a caption of`,
-    `three hundred is. Two forms, side by side:`,
-    ``,
-    `   may not publish              may publish`,
-    `   "EMDR helps"                 "EMDR can help"`,
-    `   "Bilateral stimulation       "Bilateral stimulation is designed to give`,
-    `    gives a nervous system       an overworked nervous system a way to`,
-    `    a way to power down"         settle"`,
-    `   "Reprocessing lets a         "Reprocessing may let a memory settle"`,
-    `    memory settle"`,
-    ``,
-    `The hedge — can, may, often, sometimes, for some, is designed to, aims to —`,
-    `is the whole difference. A named technique as the SUBJECT of a result verb,`,
-    `with no hedge, is the single most common way this copy fails.`,
-    ``,
-    /*
-     * ⚠ CETTE DERNIÈRE CONSIGNE CONTOURNE UN FAUX POSITIF, ET CE N'EST PAS LÀ
-     * QUE LA CORRECTION DEVRAIT ÊTRE.
-     *
-     * `checkClinicalClaim` refuse « Not all change is trauma » — une phrase
-     * DÉ-pathologisante, exactement ce que le contrôle prétend protéger — et
-     * accepte « Change is not always trauma », qui dit la même chose. Mesuré :
-     * 2 des 10 constats de cette classe sont de cette forme. C'est la même
-     * classe que F38, dans un autre contrôle, et la corriger est une décision
-     * de contrôle déontologique que cette session n'a pas le droit de prendre
-     * seule (voir F39). En attendant, le modèle est prévenu.
-     */
-    `⚠ WHEN YOU SAY SOMETHING IS *NOT* A DIAGNOSIS, put the negation inside the`,
-    `verb phrase, never in front of the sentence. "Not all change is trauma" and`,
-    `"Change is not always trauma" mean the same thing; the first is refused and`,
-    `the second is not. Write "X is not trauma", "Grief is not a disorder",`,
-    `"Overwork is not burnout" — never "Not every X is Y".`,
-    ``,
+    ...threeClassBlocks(),
     `⚠ WHY "card_line" IS ${CARD_LINE_MAX} CHARACTERS AND NOT A TITLE. The card sets`,
     `that line as large as it fits, and every other size on the card is derived`,
     `from it — a label may never exceed 1/${TYPE.minTitleToLabelRatio} of it. At ${CARD_LINE_MAX} characters`,
