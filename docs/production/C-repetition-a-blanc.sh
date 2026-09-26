@@ -189,12 +189,53 @@ stale=$($Q -c "select public.topic_assignment_holds('00000000-0000-0000-0000-000
 [ "$stale" = "f" ] && ok "une assignation passée du délai est RENDUE" || ko "le délai de grâce ne s'épuise jamais"
 echo "      délai de grâce : $($Q -c "select public.topic_assignment_grace()")"
 
+echo "═══ ÉTAPE 12b — LA TÂCHE PLANIFIÉE DE LIBÉRATION EST ENREGISTRÉE ═══"
+# ⚠ UNE ROUTE `cron` ABSENTE DE `vercel.json` NE TOURNE JAMAIS, et rien ne le
+# dit : elle répond correctement quand on l'appelle à la main. Au démarrage
+# d'une génération, le balai ne répare la banque que pour CETTE génération ;
+# une exécution tuée à 3 h bloquait le segment jusqu'à la suivante.
+FE=${EKLIO_FRONTEND:-/home/user/eklio-frontend}
+if [ -f "$FE/vercel.json" ]; then
+  grep -q '"/api/cron/release-topics"' "$FE/vercel.json" \
+    && ok "/api/cron/release-topics est planifiée" \
+    || ko "la route de libération n'est PAS dans vercel.json — elle ne tournera jamais"
+  [ -f "$FE/app/api/cron/release-topics/route.ts" ] \
+    && ok "et la route existe" || ko "la route de libération est absente du dépôt"
+else
+  ko "vercel.json introuvable en $FE (poser EKLIO_FRONTEND)"
+fi
+
+echo "═══ ÉTAPE 12c — CE QU'UN ACHAT STRIPE ÉCRIT (voir B5) ═══"
+# ⚠ SEPT OBJETS, DONT DEUX ÉCRITS PAR LA MÊME RPC. Une allocation à moitié posée
+# — `plan_grants` sans `generation_credits.has_paid` — est le cas qu'on ne pense
+# pas à vérifier, et la fiche B5 le fait vérifier explicitement.
+for t in stripe_events purchases purchase_status_events subscriptions plan_grants generation_credits; do
+  c=$($Q -c "select count(*) from information_schema.tables where table_name='$t'")
+  [ "$c" = "1" ] && ok "$t" || ko "$t absente"
+done
+c=$($Q -c "select count(*) from pg_proc where proname='grant_plan_allowance'")
+[ "$c" != "0" ] && ok "grant_plan_allowance()" || ko "grant_plan_allowance() absente"
+# ⚠ LE VERROU D'IDEMPOTENCE EST UNE CLÉ, PAS UN `if`. Stripe rejoue tant qu'il
+# n'a pas reçu de 2xx ; un traitement non gardé facture deux fois.
+k=$($Q -c "select count(*) from pg_constraint where conrelid='public.stripe_events'::regclass and contype='p'")
+[ "$k" = "1" ] && ok "stripe_events porte sa clé primaire — le verrou de rejeu" || ko "aucune clé primaire sur stripe_events"
+g=$($Q -c "select count(*) from pg_constraint where conrelid='public.plan_grants'::regclass and contype='u'")
+[ "$g" -ge 1 ] && ok "plan_grants porte une contrainte d'unicité — le verrou d'allocation" || ko "plan_grants sans unicité : un rejeu ouvrirait deux fois le palier"
+
 echo "═══ ÉTAPE 13 — CE QUI NE SE JOUE PAS EN BASE, ET POURQUOI ═══"
 # ⚠ CES TROIS-LÀ N'ONT AUCUN OBJET EN BASE. Les dire ici évite de les croire
 # vérifiés parce que la répétition est verte.
 ok "(hors base) le portillon par post — code, couvert par lib/content/__tests__/a-post-is-judged-alone"
 ok "(hors base) le contrôle de crise — code, couvert par a-route-when-the-post-names-danger"
 ok "(hors base) la mention de licence sur chaque post — code, couvert par a-licence-number-in-every-advertisement"
+# ── ⚠ ET CE QUI NE SE JOUE PAS DU TOUT, PARCE QUE LE PRODUIT NE L'A PAS ──
+# Recensé le 2026-09-26 (F45) : sur la chaîne produit entière, AUCUN des vingt
+# mécanismes du harnais n'est présent. La cause n'est pas un oubli mais DEUX
+# GÉNÉRATEURS — le chemin produit écrit une ligne et une légende par post,
+# dessine des fonds photographiques, ne produit aucun payload d'archétype, et
+# rend `ethicsCheck: passed: true` en dur. Les trois lignes ci-dessus sont donc
+# couvertes DANS LE HARNAIS, et nulle part ailleurs.
+echo "      ⚠ les trois ci-dessus ne valent QUE pour le harnais — voir F45"
 
 echo
 echo "── $FAILED échec(s) sur les étapes jouables ──"

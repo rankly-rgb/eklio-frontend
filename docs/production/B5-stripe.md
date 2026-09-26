@@ -258,3 +258,18 @@ le crédit — voir F45. Ne pas chercher du côté de Stripe ce qui n'y est pas.
 ⚠ **En réel, la seule chose qui change est la clé.** Si le parcours de test est
 vert, un échec en réel est presque toujours une variable posée en portée
 `Preview` au lieu de `Production` — voir `B2-les-secrets.md`.
+
+---
+
+## ⚠ Ce que cette fiche ne couvre pas, et qu'il faut savoir avant de la jouer
+
+Stripe encaisse. Il n'ouvre pas un mois de contenu.
+
+Le recensement de F45 a montré que le chemin produit de génération n'est pas le
+générateur mesuré : un achat réussi ouvre le palier (`plan_grants`,
+`generation_credits.has_paid`) et **rien de plus**. Le mois qu'une cliente
+attend ensuite ne se génère aujourd'hui que par le harnais, à la main.
+
+Donc : cette fiche verte veut dire « l'argent rentre et le droit s'ouvre ». Elle
+ne veut pas dire « la cliente reçoit son mois ». Les deux sont nécessaires pour
+ouvrir ; ils ne sont pas le même chantier.

@@ -87,3 +87,34 @@ de sujets mais **994 assignations orphelines** tenues par des essais interrompus
 sous le seuil. La libération tourne en tête de génération dans le harnais — **pas
 sur le chemin produit non plus.** C'est le même trou, et il en porte maintenant
 deux choses.
+
+---
+
+## ⚠ Mise à jour du 2026-09-26 (seconde passe) — la condition 4 n'est pas une vérification
+
+La fiche présente la condition 4 — « générer un mois par le PRODUIT » — comme une
+case à cocher. Le recensement de F45 montre qu'elle n'en est pas une.
+
+**Le chemin produit n'est pas le même générateur.** Sur sa chaîne entière, aucun
+des vingt mécanismes du harnais n'est présent : ni les trente contrôles de mois,
+ni le portillon par post, ni la mention de licence, ni la banque, ni le crédit de
+contenu. Il écrit une ligne et une légende par post, dessine des fonds
+photographiques, ne produit aucun payload d'archétype, et rend
+`ethicsCheck: { passed: true }` en dur.
+
+⚠ **Armer la route aujourd'hui rend un 501, et c'est une chance.** Le balayage
+mensuel n'est pas écrit. Armer une route qui appellerait `generateMonth`
+mettrait en vente **des mois sans mention de licence et sans aucun des trente
+contrôles** — ce que la Californie interdit dans toute publicité.
+
+La condition 4 devient donc : **choisir lequel des deux générateurs survit.**
+F45 pose les deux options et dit pourquoi la troisième — armer « pour voir » —
+est mauvaise.
+
+## Ce qui a quand même avancé côté produit
+
+| | |
+|---|---|
+| ✓ | la libération des assignations tourne enfin sans génération : `/api/cron/release-topics`, planifiée |
+| ✓ | la décision du garde-fou est extraite dans `lib/content/bank-guard.ts`, prête |
+| ✗ | mais elle ne garde rien : le chemin produit ne tire pas de la banque |

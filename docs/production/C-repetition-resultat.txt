@@ -1,22 +1,9 @@
-RÉPÉTITION À BLANC DE LA MISE EN PRODUCTION — 2026-09-26
-════════════════════════════════════════════════════════
+RÉPÉTITION À BLANC DE LA MISE EN PRODUCTION — 2026-09-26 (seconde passe)
+═══════════════════════════════════════════════════════════════════════
 0 échec sur les étapes jouables.
 
-Rejouée depuis zéro : la copie de production est reconstruite à chaque
-lancement depuis les 133 migrations que `main` porte, puis les 24 nouvelles
-sont appliquées dans l'ordre.
-
-⚠ DEUX DÉFAUTS DE LA RÉPÉTITION ELLE-MÊME, CORRIGÉS CE JOUR
-  · Les chemins étaient relatifs. `scripts/local-verify-stub-schema.sql` et
-    `supabase/migrations/` vivent dans eklio-backend ; lancée depuis
-    eklio-frontend, la répétition rendait 31 échecs dont AUCUN n'était un
-    défaut de migration — l'amorce n'avait pas été trouvée. Une répétition de
-    mise en production qui ne tourne que depuis un répertoire non écrit
-    quelque part est une répétition qu'on rate le jour où on en a besoin.
-  · La base n'était pas reconstruite. Elle restait dans l'état où la
-    répétition précédente l'avait mise, donc l'étape 3 n'appliquait plus rien
-    et annonçait « les 21 appliquées » en n'en appliquant zéro.
-  · Le compte de migrations était un littéral (155). Il se dérive du dépôt.
+Reconstruite depuis zéro à chaque lancement : 133 migrations de production,
+puis les 24 nouvelles dans l'ordre. Lançable depuis n'importe quel répertoire.
 
 ÉTAPES
   −1  copie de production reconstruite      133 migrations rejouées
@@ -33,20 +20,26 @@ sont appliquées dans l'ordre.
   10  F38                                   immédiate passe, à distance bloque
   11  18 motifs + 5 gâchettes armées        toutes
   12  libération des assignations           délai de grâce 3 h, éprouvé des 2 côtés
+ 12b  la tâche planifiée de libération      route présente ET dans vercel.json
+ 12c  ce qu'un achat Stripe écrit           7 objets, 2 verrous d'idempotence
   13  ce qui ne se joue pas en base         portillon, crise, mention de licence
+
+AJOUTÉ CETTE PASSE
+  · 12b — une route `cron` absente de vercel.json ne tourne jamais, et rien ne
+    le dit : elle répond correctement quand on l'appelle à la main.
+  · 12c — les sept objets qu'un achat écrit, et les DEUX verrous d'idempotence :
+    la clé primaire de `stripe_events` (le rejeu de Stripe) et l'unicité de
+    `plan_grants` (l'allocation). Un rejeu non gardé facture deux fois.
 
 PROCÉDURE DE RESTAURATION, VÉRIFIÉE À PART
   86 tables identiques ligne à ligne, contenu compris — 0 écart.
-  Et elle a retiré une contrainte QUI N'EXISTAIT PAS à son écriture
-  (`content_items_payload_valid`), parce qu'elle énumère depuis le catalogue
-  au lieu de porter une liste.
 
-CE QUI NE PEUT PAS ÊTRE JOUÉ À BLANC
-  · l'étape 5 (Vercel), l'étape 6 (DNS), l'étape 7 (Stripe en mode réel) :
-    aucun objet local, et le brief interdit d'y toucher.
-  · le chemin PRODUIT de génération (condition 3 de B3) : le garde-fou de
-    banque et la libération des assignations vivent dans le harnais, pas dans
-    la route. Ce trou est le même depuis l'origine et il porte maintenant deux
-    choses.
-  · un mois réel regardé par une personne (étape 10) : quinze minutes, et
-    elles n'ont pas eu lieu.
+⚠ CE QUE LA RÉPÉTITION NE PEUT PAS DIRE, ET QUI EST LE PLUS IMPORTANT
+  Elle est verte sur la BASE. Le recensement du 2026-09-26 (F45) a montré que
+  le chemin PRODUIT de génération n'est pas le même générateur que le harnais :
+  aucun des vingt mécanismes — trente contrôles, portillon, mention de licence,
+  banque, crédit de contenu — n'y est présent. Une répétition verte ne dit donc
+  rien de ce qu'un mois vendu porterait.
+
+  Les étapes 5 (Vercel), 6 (DNS) et 7 (Stripe en réel) restent injouables à
+  blanc, et B5 les ramène à une demi-heure de gestes mécaniques.

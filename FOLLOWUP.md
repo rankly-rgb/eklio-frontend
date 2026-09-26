@@ -2707,6 +2707,26 @@ chez l'ancien fournisseur.
 
 ## F43 — Le temps humain qui reste avant d'ouvrir, réestimé au 2026-09-26
 
+> **⚠ MISE À JOUR DU 2026-09-26 (seconde passe) — LE TOTAL N'EST PLUS LE BON
+> CHIFFRE.** Les 4 h 30 supposaient que la ligne 6 — « générer un mois par le
+> produit » — était une vérification de trente minutes. F45 montre que ce n'est
+> pas une vérification : le chemin produit n'est pas le même générateur, et
+> aucun des vingt mécanismes du harnais n'y est présent.
+>
+> | | temps | nature |
+> |---|---|---|
+> | lignes 1 à 5 (F12, Vercel, DNS, Stripe, coup d'œil) | **≈ 4 h** | gestes humains, prêts |
+> | ligne 6 — un mois par le produit | **non estimable** | chantier de développement, pas un geste (F45) |
+>
+> **Et Stripe est passé de 1 h 30 à ≈ 30 min** : `B5-stripe.md` porte désormais
+> les requêtes exactes de chaque étape, les deux verrous d'idempotence à
+> éprouver, la signature forgée, et un tableau « si ça ne marche pas » qui dit
+> où chercher dans l'ordre. Ce qui restait à découvrir a été établi sans appeler
+> Stripe.
+>
+> Donc : **≈ 3 h de gestes humains** (4 h moins l'heure économisée sur Stripe),
+> plus un chantier dont la taille dépend de la décision de F45.
+
 La répétition à blanc passe à **0 échec** et la restauration est prouvée à
 **0 écart sur 86 tables**. Ce qui reste n'est plus du code : c'est du temps de
 personne, sur des choses qu'aucun script ne peut jouer.
@@ -2747,6 +2767,38 @@ et chaque relance reconstruit la base.
 ---
 
 ## F44 — Tout ce qui attend du solde, dans l'ordre, avec son coût
+
+> **⚠ MISE À JOUR DU 2026-09-26 (seconde passe).** Deux choses ont changé, et
+> aucune ne touche l'ordre.
+>
+> **M0 reste en premier, et sa raison s'est renforcée.** F41 a divisé le tirage
+> par deux — 102 → 57 — sans qu'aucun appel ne le vérifie. Le seuil de banque a
+> suivi (174 → 99 pour un essai), et c'est ce seuil que le garde-fou applique
+> désormais depuis `lib/content/bank-guard.ts`. Si le rendement réel est sous
+> 0,85, le banc s'amincit et **tous les chiffres qui suivent sont mesurés sur un
+> pipeline qui n'est plus celui qu'on croit**. Un essai, 0,32 $.
+>
+> **Et une mesure sort de la liste.** M2 — les trois bras de comparaison de
+> modèles — n'est plus seulement bloquée (F42 : ni clef ni egress) : elle est
+> devenue sans objet à court terme. Le coût par mois livré est passé de 3,22 $ à
+> 0,574 $ sans changer de fournisseur, F41 devrait l'amener vers 0,32 $, et
+> **F45 dit que le générateur mesuré n'est pas celui qui est branché au
+> produit**. Comparer des modèles sur un générateur dont on ne sait pas s'il
+> survivra est une mesure qu'il faudra refaire.
+>
+> | ordre | mesure | essais | coût |
+> |---|---|---|---|
+> | **M0** | le premier essai post-F41 | 1 | 0,32 $ |
+> | **M1** | portillon sans les consignes | 1 | 0,32 $ |
+> | **M4** | confirmation à cinq mois | 5 | 1,60 $ |
+> | **M5** | notation indépendante | 1 juge | 0,20 $ |
+> | ~~M2~~ | *reportée jusqu'à la décision de F45* | — | — |
+> | | **total** | **7** | **≈ 2,45 $** |
+>
+> ⚠ **Rien de cette liste ne vaut si F45 tranche pour le chemin produit.** Les
+> sept essais mesurent le harnais. Si c'est l'autre générateur qui survit, ils
+> mesurent un pipeline qu'on jette — et il faut donc trancher F45 AVANT de
+> dépenser, même si trancher ne coûte rien.
 
 **Une seule entrée, à lire de haut en bas.** Le compte Anthropic est sous limite
 d'usage jusqu'au **2026-10-01 00:00 UTC**. Chaque mesure ci-dessous est prête :
@@ -2799,3 +2851,85 @@ chiffrer la suite.**
 - **`CONTENT_SESSION_CAP_USD`**, qui ne voit pas les remplissages de banque
   (F40). Le plafond réel est donc celui-là **plus** ce qu'un remplissage peut
   déclencher.
+
+---
+
+## F45 — ⚠ LE CHEMIN PRODUIT N'EST PAS LE MÊME GÉNÉRATEUR
+
+**C'est le constat le plus lourd de la session du 2026-09-26, et il est plus
+large que ce qu'on cherchait.**
+
+On cherchait deux mécanismes manquants côté produit : le garde-fou de banque et
+la libération des assignations. Le recensement, mené mécaniquement sur la chaîne
+transitive des imports, dit autre chose : **aucun** des vingt mécanismes du
+harnais n'est présent sur le chemin produit.
+
+| absent du chemin produit | ce que cela voudrait dire si la route était armée |
+|---|---|
+| `checkMonth` (trente contrôles) | un mois part sans qu'aucun contrôle de mois ne l'ait lu |
+| `checkPostAlone` (portillon) | aucun post n'est jugé seul |
+| `licenceMention` / `licenceMissingMessage` | **un mois produit ne porterait AUCUNE mention de licence**, que la Californie exige dans toute publicité |
+| `guardBank`, `drawable_count_for_kit`, `assign_topic_to_kit` | pas de banque du tout |
+| `judgeCompleteness`, `reviseMonth` | ni juge de complétude, ni passe de révision |
+| `composeWithFallback` | pas de composition vectorielle des onze archétypes |
+| `reserve_credit` / `settle_credit` | **le quota de trente posts achetés n'est tenu nulle part** |
+
+### La cause n'est pas un oubli
+
+Ce sont **deux générateurs** :
+
+| | harnais (`scripts/local-render/20-month.ts`) | produit (`generateMonth`, `lib/content/generate/pipeline.ts`) |
+|---|---|---|
+| ce qui est écrit | un payload d'archétype par post | une ligne et une légende par post |
+| l'image | composition vectorielle, coût nul | un fond photographique dessiné par API |
+| la banque | `assign_topic_to_kit` | `planMonth`, aucun tirage |
+| la déontologie | trente contrôles + portillon + gâchettes SQL | `checkEthics` à la réécriture, puis `ethicsCheck: { passed: true }` **en dur** |
+
+Tout ce qui a été mesuré depuis trois semaines — 2 mois livrés, 0,574 $ le mois,
+F38, F41, les trois classes de refus, la notation — l'a été **sur le harnais**.
+Le chemin produit n'a jamais généré un mois, et il ne générerait pas le même.
+
+### ⚠ Ce que cela change pour l'ouverture
+
+`CONTENT_GENERATION_ARMED=true` sur la route actuelle rendrait un **501** : la
+balayage mensuel n'est pas écrit. C'est une chance. **Armer une route qui
+appellerait `generateMonth` mettrait en vente des mois sans mention de licence et
+sans aucun des trente contrôles.**
+
+La condition 4 de `B3` — « générer un mois par le PRODUIT » — n'est donc pas une
+vérification de trente minutes. C'est un chantier : soit le chemin produit
+appelle le générateur du harnais, soit le harnais devient le produit.
+
+### Ce qui a été fait, et ce qui ne pouvait pas l'être
+
+**Porté** — la libération des assignations, seul mécanisme indépendant du
+générateur : `/api/cron/release-topics`, enregistrée dans `vercel.json`, avec sa
+RPC déclarée dans `types/supabase.ts` (qui ne la portait pas, d'où le cast dans
+le harnais).
+
+**Extrait** — la décision du garde-fou dans `lib/content/bank-guard.ts`, port
+injecté, éprouvée par le comportement. Prête pour le jour où un chemin produit
+tirera de la banque. ⚠ **Elle ne comble rien aujourd'hui** : on ne garde pas une
+banque que ce chemin ne consulte pas.
+
+**Impossible à porter** — les dix-huit autres. Ils portent sur des payloads
+d'archétypes composés, que le chemin produit ne produit pas.
+
+### La décision à prendre, et elle n'est pas technique
+
+Deux générateurs coûtent deux fois. Le harnais est celui qui est mesuré, contrôlé
+et déontologiquement tenu ; le chemin produit est celui qui est branché aux
+routes, au crédit d'images et à l'approbation. **Il faut choisir lequel survit**,
+et ce n'est pas une décision que je prends seul :
+
+1. **le harnais devient le produit** — sortir `20-month.ts` de `scripts/`, lui
+   donner une entrée serveur, et retirer `generateMonth`. C'est le chemin mesuré,
+   et le coût est celui de le rendre appelable depuis une route (pas de
+   sous-processus, pas d'`argv`, un budget par requête) ;
+2. **le chemin produit appelle le générateur du harnais** — plus petit en
+   apparence, mais il laisse deux entrées et la question « laquelle a tourné » se
+   posera à chaque incident.
+
+⚠ **Un troisième choix existe et il est mauvais** : armer le chemin produit tel
+quel « pour voir ». Ce serait mettre en vente des publicités sans mention de
+licence.
