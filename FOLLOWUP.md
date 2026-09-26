@@ -2468,3 +2468,61 @@ et c'est le bon prix à payer en attendant une décision. **La question à
 trancher :** ajoute-t-on `exception_pattern` aux quatre motifs concernés, ou
 garde-t-on les deux niveaux stricts et assume-t-on que la copy générée ne nie
 jamais explicitement une promesse ?
+
+---
+
+## F39 — `checkClinicalClaim` refuse la phrase qui dé-pathologise
+
+Même classe que F38, autre contrôle, et trouvée en mesurant les seize essais.
+
+`checkClinicalClaim` porte une règle juste : on ne rend pas un mot de
+diagnostic prédicat d'un comportement ordinaire. « Efficiency can become
+trauma » banalise ce qu'une clinicienne soigne, et le contrôle a raison de le
+refuser.
+
+Mais le motif est aveugle à la négation, et il refuse donc l'inverse exact :
+
+| phrase | verdict | ce qu'elle fait |
+|---|---|---|
+| `Not all change is trauma` | **refusé** | dé-pathologise |
+| `Not Every Block Is Trauma` | **refusé** | dé-pathologise |
+| `Change is not always trauma` | passe | dé-pathologise, même sens |
+| `A block is not trauma` | passe | dé-pathologise, même sens |
+| `Efficiency can become trauma` | refusé | banalise — bon refus |
+| `Overwork is burnout` | refusé | affirme — bon refus |
+
+La différence entre la ligne 1 et la ligne 3 n'est pas le sens, c'est l'ordre
+des mots : le motif exige `(is|are|becomes) + (a|an)? + <diagnostic>`, et
+`is not always trauma` intercale deux mots qu'il n'autorise pas. Une négation
+**en tête** de phrase ne le voit pas ; une négation **interne** l'évite.
+
+**Mesuré :** 2 des 10 constats `text.clinicalClaim` des seize essais sont de
+cette forme. C'est 20 % d'une classe, sur des phrases conformes.
+
+### Ce que j'ai fait, et ce que je n'ai pas fait
+
+Je n'ai **pas** touché au contrôle. Le garde-fou de la session du 2026-09-26
+autorisait F38 « dans les conditions ci-dessus » et rien d'autre ; étendre le
+principe de la négation immédiate à un second contrôle déontologique est une
+décision du même ordre que F38, et F38 a montré qu'elle te revient.
+
+Le prompt prévient donc le modèle : écrire « X is not trauma » plutôt que
+« Not every X is Y ». Ça marche, et **ce n'est pas là que la correction
+appartient** — enseigner à un modèle le tic d'un vérificateur est fragile, et
+la prochaine formulation conforme tombera de la même façon.
+
+**La question à trancher :** applique-t-on à `checkClinicalClaim` le même
+dépouillement qu'à `ethics_scan` — retirer les occurrences immédiatement niées
+avant d'appliquer le motif — ou élargit-on seulement le motif pour tolérer un
+adverbe entre le verbe et le diagnostic ? Le premier est cohérent avec F38 ; le
+second est plus étroit. Dans les deux cas, la consigne de contournement sort du
+prompt le jour où c'est fait.
+
+### ⚠ Et un troisième cas, du même genre, non corrigé
+
+« I am not the best therapist in Portland » reste bloqué des DEUX côtés après
+F38 : entre `not` et `best` il y a `the`, et l'exemption n'admet que des blancs
+et des guillemets. La phrase est un désaveu explicite, donc conforme. Élargir
+l'exemption aux déterminants (`the`, `a`, `an`) la débloquerait — c'est une
+modification du motif du code, que la décision de F38 disait de reprendre tel
+quel. À décider avec le reste.
