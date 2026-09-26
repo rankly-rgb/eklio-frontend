@@ -110,6 +110,15 @@ const PRODUCT_ORCHESTRATION = [
    * « porté » veut dire.
    */
   "lib/content/bank-guard.ts",
+  /*
+   * ⚠ `select.ts` EST PARTAGÉ, ET IL NE L'ÉTAIT QUE D'UN CÔTÉ. Il appelle
+   * `checkMonth` depuis l'extraction de l'étage B, mais il n'était inscrit que
+   * sur la liste du harnais : le recensement comptait donc `checkMonth` comme
+   * harnais-seul alors que le module qui l'appelle est celui que les deux côtés
+   * partagent. Même argument que `bank-guard.ts`, un rang plus haut.
+   */
+  "lib/content/month/select.ts",
+  "lib/content/month/assemble.ts",
 ] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
@@ -186,10 +195,18 @@ const ONLY_IN_HARNESS: Record<string, string> = {
     "le tirage de banque n'existe que sur le chemin archétypes : rien à assigner quand rien n'est tiré",
 
   /* ── les trente contrôles : ils portent sur des payloads d'archétypes ── */
-  checkMonth:
-    "les trente contrôles portent sur un mois d'archétypes composés ; le chemin produit ne produit aucun payload (F45)",
-  checkPostAlone:
-    "moitié par post de checkMonth — un post produit n'a ni payload, ni surtitre, ni pied de carte à contrôler",
+  /*
+   * ⚠ `checkMonth` ET `checkPostAlone` NE SONT PLUS ICI. `month/assemble.ts`
+   * appelle `checkPostAlone(asMonthPost(post), …)` sur chaque post à son
+   * arrivée, et `month/select.ts` appelle `checkMonth` sur les retenus. Les
+   * deux modules sont sur la liste produit, et `one-assembly-two-callers.test.ts`
+   * vérifie que le harnais et le module assemblent dans le même ordre.
+   *
+   * ⚠ MAIS EXTRAITS N'EST PAS BRANCHÉS, et c'est F50 ci-dessous qui le dit :
+   * aucun point d'entrée produit ne les atteint encore. Ce que ce retrait
+   * enregistre, c'est qu'ils n'ont plus besoin d'une RAISON de manquer — pas
+   * qu'un mois produit les traverse.
+   */
   judgeCompleteness:
     "juge la complétude d'une LIGNE de carte de trente caractères ; le chemin produit n'écrit pas de lignes de carte",
   reviseMonth:
@@ -338,6 +355,35 @@ describe("la route de libération tourne vraiment", () => {
     const src = readFileSync("app/api/cron/release-topics/route.ts", "utf8");
     expect(src).toContain("{ ok: false, released: 0 }, { status: 500 }");
   });
+
+  /*
+   * ── ⚠ ET ELLE FERME AUSSI LES LOTS PÉRIMÉS ────────────────────────────
+   *
+   * `abandon_stale_generation_runs()` est en base depuis le 2026-09-23 et
+   * n'avait aucun appelant : une ligne `submitted` de plus de vingt-neuf jours
+   * restait ouverte, et `content_generation_runs_unique` empêchait alors tout
+   * nouveau mois pour ce kit. Un mécanisme complet d'un côté, sans appelant de
+   * l'autre — la forme de F46, F47, F49 et F50.
+   */
+  it("le même passage ferme les lots que le fournisseur ne garde plus", () => {
+    const src = readFileSync("app/api/cron/release-topics/route.ts", "utf8");
+    const call = src.indexOf('rpc("abandon_stale_generation_runs")');
+    expect(call, "abandon_stale_generation_runs n'est appelé par aucune route").toBeGreaterThan(-1);
+    expect(src.indexOf("authorizeCron(request)"), "elle abandonne avant de vérifier qui appelle")
+      .toBeLessThan(call);
+  });
+
+  /*
+   * ⚠ ET SON ÉCHEC NE FAIT PAS ÉCHOUER LA LIBÉRATION. Rendre 500 sur un
+   * balayage de sujets qui a EU LIEU ferait refaire ce travail pour rien au tour
+   * suivant. L'écart doit être dit, pas avalé : `abandoned` reste `null`.
+   */
+  it("un abandon en échec est dit, pas avalé, et ne perd pas la libération", () => {
+    const src = readFileSync("app/api/cron/release-topics/route.ts", "utf8");
+    expect(src).toMatch(/let abandoned: number \| null = null/);
+    expect(src).toContain("abandon_stale_generation_runs: ${stale.error.message}");
+    expect(src, "la réponse ne dit pas ce que l'abandon a fait").toContain("released, abandoned");
+  });
 });
 
 /*
@@ -467,4 +513,159 @@ describe("la barrière", () => {
       "le verdict en dur a disparu de pipeline.ts — le motif de ce test n'a plus de témoin"
     ).toBe(true);
   });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  F50 — LA LISTE PRODUIT N'A PAS DE POINT D'ENTRÉE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ TROUVÉ LE 2026-09-26, EN APPLIQUANT LA RÈGLE DE F48 AVANT DE PUBLIER UN
+ *   COMPTE QUI MONTAIT : sept mécanismes portés, puis neuf. Et la première
+ *   chose qu'on trouve en cherchant ce que ce compte compte de travers est que
+ *   `app/api/cron/content-month/route.ts` — la seule porte du chemin produit —
+ *   n'importe que `authorizeCron` et `contentGenerationArmed`. Elle n'appelle
+ *   NI le préalable, NI le port de crédit, NI la garde de banque, NI
+ *   l'assemblage.
+ *
+ * Donc quatre des sept racines de `PRODUCT_ORCHESTRATION` sont des MODULES que
+ * rien n'invoque, et les inscrire comme racines les a déclarés points d'entrée
+ * alors qu'aucun ne l'est. La forme « liste nommée » de F48 n'a pas supprimé le
+ * défaut qu'elle visait — « un appel écrit DANS un module que rien n'invoque » —
+ * elle l'a DÉPLACÉ d'un cran : ce n'est plus la chaîne transitive qui se trompe,
+ * c'est le choix des racines.
+ *
+ * ── ⚠ CE QUE ÇA CHANGE AU COMPTE ────────────────────────────────────────
+ *
+ * Extraits, testés, sans CLI-isme : neuf. Atteignables depuis un fichier que le
+ * runtime invoque : un seul — `release_stale_topic_assignments`, par sa route
+ * planifiée. Les huit autres sont du code juste que personne n'appelle.
+ *
+ * ── ET CE N'EST PAS UN AVEU DE RIEN FAIRE ───────────────────────────────
+ *
+ * Le portage est réel : ces modules sont purs, éprouvés par des doublures, et
+ * l'assemblage a un ordre vérifié contre celui du harnais. Ce qui manque est
+ * l'orchestrateur, qui ne peut pas exister avant la rédaction — et la rédaction
+ * attend une clé. C'est la SIXIÈME fois qu'un mécanisme est branché d'un seul
+ * côté ; celle-ci, le côté manquant est l'appelant lui-même.
+ *
+ * Ce bloc tient donc les deux nombres SÉPARÉS et nomme l'écart, pour qu'aucune
+ * session ne relise « neuf portés » comme « neuf appelés ».
+ */
+
+/**
+ * Les fichiers que le RUNTIME invoque de lui-même.
+ *
+ * ⚠ PAS UNE LISTE DE CONFIANCE : un test vérifie que chacun exporte vraiment un
+ * handler HTTP. Une racine qu'on ne peut pas prouver invoquée n'en est pas une.
+ */
+const PRODUCT_ENTRY_POINTS = [
+  "app/api/cron/content-month/route.ts",
+  "app/api/cron/release-topics/route.ts",
+] as const;
+
+/**
+ * Les modules portés qu'aucun point d'entrée n'atteint, chacun avec la raison.
+ *
+ * ⚠ CHAQUE LIGNE EST UNE DETTE, PAS UNE DISPENSE. Elle sort d'ici le jour où un
+ * point d'entrée l'atteint — jamais parce qu'on a réécrit la raison.
+ */
+const EXTRACTED_NOT_WIRED: Record<string, string> = {
+  "lib/content/month/preflight.ts":
+    "l'étage A s'exécute avant la rédaction ; la route ne peut l'appeler qu'en ouvrant le mois, ce que le verrou d'armement interdit tant que le recensement porte des exemptions",
+  "lib/credits/server-port.ts":
+    "le port de crédit n'a de sens qu'appelé par un orchestrateur qui écrit des posts ; réserver sans rédiger débiterait pour rien",
+  "lib/content/bank-guard.ts":
+    "atteint par preflight.ts, qui n'est lui-même atteint par aucune porte — la garde est juste, sa chaîne s'arrête un cran plus haut",
+  "lib/content/month/select.ts":
+    "la sélection prend des posts déjà rédigés ; il n'y a rien à sélectionner avant que la rédaction existe côté produit",
+  "lib/content/month/assemble.ts":
+    "l'assemblage prend des posts déjà rédigés : son appelant est l'orchestrateur, qui a besoin de la rédaction, laquelle attend une clé (F44). Éprouvé par doublures en attendant",
+};
+
+describe("F50 — extraire n'est pas brancher", () => {
+  it("chaque point d'entrée exporte vraiment un handler que le runtime appelle", () => {
+    for (const file of PRODUCT_ENTRY_POINTS) {
+      expect(existsSync(file), `${file} n'existe pas`).toBe(true);
+      expect(
+        readFileSync(file, "utf8"),
+        `${file} n'exporte aucun handler HTTP — ce n'est pas un point d'entrée`
+      ).toMatch(/export\s+async\s+function\s+(GET|POST)\s*\(/);
+    }
+  });
+
+  /*
+   * ⚠ LE TEST QUI DIT LA VÉRITÉ SUR LE COMPTE. Tout module de la liste produit
+   * qui n'est ni un point d'entrée ni atteignable depuis un point d'entrée doit
+   * être nommé ci-dessus, avec sa raison. Porter un module sans écrire cette
+   * raison fait rougir le recensement — c'est le bon sens du biais.
+   */
+  it("tout module porté que rien n'invoque est nommé, avec sa raison", () => {
+    const reachable = chainOf([...PRODUCT_ENTRY_POINTS]);
+    const stranded = [...PRODUCT_ORCHESTRATION].filter(
+      (f) => !reachable.has(f) && !(f in EXTRACTED_NOT_WIRED)
+    );
+    expect(
+      stranded.sort(),
+      `module(s) porté(s) qu'aucun point d'entrée n'atteint, et sans raison nommée : ${stranded.join(", ")}`
+    ).toEqual([]);
+  });
+
+  it("aucune raison ne survit au branchement du module qu'elle explique", () => {
+    const reachable = chainOf([...PRODUCT_ENTRY_POINTS]);
+    for (const [file, why] of Object.entries(EXTRACTED_NOT_WIRED)) {
+      expect(existsSync(file), `${file} n'existe plus — dette périmée`).toBe(true);
+      expect(
+        reachable.has(file),
+        `${file} est désormais atteint depuis un point d'entrée : retire sa ligne de EXTRACTED_NOT_WIRED`
+      ).toBe(false);
+      expect(why.length, file).toBeGreaterThan(40);
+      expect(why, `${file} : « pas encore » n'est pas une raison`).not.toMatch(/pas encore|à faire|TODO/i);
+    }
+  });
+
+  /*
+   * ⚠ ET LA ROUTE RESTE EN 501 TANT QUE CET ÉCART EXISTE. C'est la deuxième
+   * serrure, indépendante des exemptions : un recensement pourrait devenir vert
+   * en exemptions tout en n'ayant toujours aucun appelant.
+   */
+  it("la route reste en 501 tant qu'un module porté n'a pas d'appelant", () => {
+    const stranded = Object.keys(EXTRACTED_NOT_WIRED).length;
+    expect(stranded, "tout est branché : cette serrure peut se lever").toBeGreaterThan(0);
+    expect(
+      readFileSync("app/api/cron/content-month/route.ts", "utf8"),
+      `${stranded} module(s) porté(s) sans appelant, et la route ne rend pas 501`
+    ).toContain("{ status: 501 }");
+  });
+});
+
+/*
+ * ── ⚠ ET L'APPARTENANCE À LA LISTE PRODUIT SE MÉRITE ────────────────────
+ *
+ * Sans ce test, `PRODUCT_ORCHESTRATION` est une liste qu'il suffit d'allonger.
+ * Un module du chemin produit tourne dans une requête serverless : il n'a ni
+ * terminal pour écrire, ni processus à faire sortir, ni arguments de ligne de
+ * commande à lire. Un module qui en porte est un morceau de harnais déplacé,
+ * pas un module porté — et le recensement le compterait pour un.
+ */
+describe("un module porté n'est pas un morceau de harnais déplacé", () => {
+  const CLI_ISMS: Array<[string, RegExp]> = [
+    ["process.argv", /\bprocess\.argv\b/],
+    ["process.exit", /\bprocess\.exit\s*\(/],
+    ["spawnSync", /\bspawn(?:Sync)?\s*\(/],
+    ["console", /(^|[^\w.])console\.\w+\s*\(/m],
+  ];
+
+  it.each([...PRODUCT_ORCHESTRATION].filter((f) => f.startsWith("lib/")))(
+    "%s ne parle ni au terminal ni au processus",
+    (file) => {
+      const src = readFileSync(file, "utf8")
+        /* Les commentaires nomment ces mécanismes pour les expliquer. */
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      for (const [name, pattern] of CLI_ISMS) {
+        expect(pattern.test(src), `${file} utilise ${name} — il n'est pas porté, il est déplacé`).toBe(false);
+      }
+    }
+  );
 });

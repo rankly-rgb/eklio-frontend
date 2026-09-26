@@ -823,6 +823,7 @@ async function main() {
     quotaRefusals: 0,
   };
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  let settlesWithoutReservation = 0;
   const repairUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   /*
    * ⚠ LE JUGE DE COMPLÉTUDE EST UN APPEL PAYANT, DONC IL A SA LIGNE. Un appel
@@ -862,7 +863,35 @@ async function main() {
 
   /** Règle : succès (le crédit est consommé) ou release AVEC son coût. */
   async function settle(reservationId: string | null, costUsd: number, succeeded: boolean) {
-    if (!reservationId) return;
+    /*
+     * ── ⚠ F49 : SIX DE CES APPELS SUR SEPT PORTENT UNE RÉSERVATION NULLE ───
+     *
+     * `candidate.reservationId` n'est posé qu'APRÈS un insert réussi (un seul
+     * endroit, dans la boucle d'écriture). Les six `settle` placés avant —
+     * échec de collecte, échec de réparation, refus déontologique, panne du
+     * moteur, refus du portillon, candidats écartés — opèrent donc tous sur
+     * `null` et ne font RIEN.
+     *
+     * ⚠ ET LE COÛT N'EST PAS PERDU POUR AUTANT. La sur-génération est un frais
+     * général : une seule réservation de phase porte le coût du lot entier, et
+     * elle est soldée au coût réel qu'il aboutisse ou non. Le livre est complet ;
+     * ce sont ces six lignes qui prétendent une comptabilité qu'elles ne font pas.
+     *
+     * ⚠ J'EN AI MÊME ÉLABORÉ UNE EN Y CROYANT. La session du 2026-09-26 a changé
+     * le refus du portillon de « solder à zéro » à « solder au coût réel », au
+     * nom de F40 — sur une réservation toujours nulle. C'est la règle de F48
+     * retournée contre moi : la correction allait dans le sens espéré, et je n'ai
+     * pas cherché ce qu'elle comptait de travers.
+     *
+     * Elles ne sont pas retirées mais COMPTÉES : le rapport porte le nombre, et
+     * un nombre non nul dit « cette comptabilité-là est décorative ». Les
+     * retirer sans pouvoir rejouer un mois réel serait échanger un mensonge
+     * visible contre un trou invisible.
+     */
+    if (!reservationId) {
+      settlesWithoutReservation += 1;
+      return;
+    }
     await credits.settle(reservationId, costUsd, succeeded);
   }
 
@@ -2103,6 +2132,12 @@ async function main() {
       byCheck: Object.fromEntries([...gateByCheck].sort((a, b) => b[1] - a[1])),
     },
     inserts: { replacements: spareUsed, refused: insertRefusals },
+    /*
+     * ⚠ F49 : LE NOMBRE DE RÈGLEMENTS SANS RÉSERVATION. Non nul veut dire que
+     * cette comptabilité-là ne fait rien — le coût est porté par la réservation
+     * de phase, et ces appels-là sont décoratifs.
+     */
+    settlesWithoutReservation,
     ethicsFlags,
     releasedTopics: released.length,
     rejectedAsRedundant: rejected,

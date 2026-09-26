@@ -3068,3 +3068,116 @@ lui-même** en est la victime. Les quatre ensemble font une règle :
 
 > Quand une mesure va dans le sens qu'on espère, chercher ce qu'elle compte de
 > travers avant de s'en réjouir.
+
+---
+
+## F49 — Six règlements de crédit portent sur `null` et ne font rien
+
+**Trouvé le 2026-09-26**, en retraçant la fidélité de `lib/content/month/assemble.ts`
+à l'assemblage du harnais.
+
+`candidate.reservationId` n'est affecté à une valeur non nulle qu'à **un seul
+endroit** de `scripts/local-render/20-month.ts` : après un insert réussi. Or six
+appels `settle(candidate.reservationId, …)` sont placés **avant** ce point —
+échec de collecte du lot, échec de réparation, refus déontologique, échec du
+moteur, refus du portillon, candidats écartés. Tous les six reçoivent `null` et
+ne font rien.
+
+### Ce qui n'est pas perdu, et ce qui est faux
+
+**L'argent n'est pas perdu.** La surgénération est un frais général, et une
+réservation de phase règle le lot entier à son coût réel. Le total facturé est
+juste.
+
+**Six lignes affirment pourtant une comptabilité qu'elles ne font pas.** Et la
+session précédente en a *élaboré une* — le règlement du portillon, passé de 0 au
+coût réel sous F40 — en croyant que cela changeait un chiffre.
+
+### Ce qui a été fait, et pourquoi pas la suppression
+
+Le fait est rendu **visible** plutôt que corrigé à l'aveugle :
+
+```ts
+if (!reservationId) {
+  settlesWithoutReservation += 1;
+  return;
+}
+```
+
+et `settlesWithoutReservation` figure au rapport de fin de run, à côté de
+`inserts`.
+
+> Les retirer sans pouvoir rejouer un mois réel serait échanger un mensonge
+> visible contre un trou invisible.
+
+Le compte fournisseur est sous limite d'usage jusqu'au 1er octobre : le prochain
+mois réel dira lequel des six doit disparaître et lequel doit recevoir une vraie
+réservation.
+
+---
+
+## F50 — La liste « produit » du recensement n'a pas de point d'entrée
+
+**Trouvé le 2026-09-26**, en appliquant la règle de F48 *avant* de publier un
+compte qui montait : sept mécanismes portés, puis neuf.
+
+`app/api/cron/content-month/route.ts` — la seule porte du chemin produit —
+n'importe que `authorizeCron` et `contentGenerationArmed`. Elle n'appelle **ni**
+le préalable, **ni** le port de crédit, **ni** la garde de banque, **ni**
+l'assemblage.
+
+Donc quatre des sept racines de `PRODUCT_ORCHESTRATION` sont des **modules que
+rien n'invoque**, et les inscrire comme racines les a déclarés points d'entrée
+alors qu'aucun ne l'est.
+
+### ⚠ La forme nommée de F48 n'a pas supprimé le défaut, elle l'a déplacé
+
+F48 visait « un appel écrit DANS un module que rien n'invoque ». La liste nommée
+a déplacé le même défaut d'un cran : ce n'est plus la chaîne transitive qui se
+trompe, **c'est le choix des racines**. Une liste nommée n'est pas plus vraie
+qu'une chaîne calculée ; elle est seulement plus lisible.
+
+### Les deux nombres, tenus séparés
+
+| | compte |
+|---|---|
+| extraits, éprouvés, sans CLI-isme | **9** |
+| atteignables depuis un fichier que le runtime invoque | **1** (`release_stale_topic_assignments`, par sa route planifiée) |
+
+Les huit autres sont du code juste que personne n'appelle.
+
+### Ce que le recensement fait maintenant
+
+- `PRODUCT_ENTRY_POINTS` — et un test vérifie que chacun exporte vraiment un
+  handler HTTP : une racine qu'on ne peut pas prouver invoquée n'en est pas une ;
+- `EXTRACTED_NOT_WIRED` — chaque module porté sans appelant, avec sa raison, et
+  un test qui **tombe** le jour où un point d'entrée l'atteint sans qu'on ait
+  retiré sa ligne ;
+- **une seconde serrure sur le 501**, indépendante des exemptions : un
+  recensement pourrait devenir vert en exemptions tout en n'ayant toujours aucun
+  appelant ;
+- un test qui rend l'appartenance à `PRODUCT_ORCHESTRATION` **méritée** : pas de
+  `process.argv`, `process.exit`, `spawn*` ni `console.*`. Un module qui en porte
+  est un morceau de harnais déplacé, pas un module porté.
+
+### ⚠ Le sixième mécanisme branché d'un seul côté, en six sessions
+
+F46 (le portillon de vérification), F47 (les sept motifs de refus), F49 (les six
+règlements), F50 (l'appelant lui-même), plus les deux trouvés cette session au
+passage :
+
+- **`abandon_stale_generation_runs()`** était en base depuis le 2026-09-23, et
+  aucun fichier TypeScript ne l'appelait. Sans lui, une ligne `submitted` de plus
+  de vingt-neuf jours reste ouverte et `content_generation_runs_unique` empêche
+  alors **tout nouveau mois pour ce kit** : la praticienne bloquée par la trace
+  d'une panne d'il y a un mois. Branché sur le balai quotidien.
+- **les deux tables du journal** (`content_generation_runs`,
+  `content_generation_results`) n'étaient déclarées ni dans `types/supabase.ts`
+  ni écrites par aucun TypeScript — la migration qui les crée dit pourtant
+  noir sur blanc que sans elles « une génération mensuelle interrompue en
+  production est intégralement reperdue et repayée ».
+
+> La question n'est plus « y en a-t-il un autre ». C'est **la forme dominante des
+> défauts de ce dépôt** : le SQL est écrit avec soin, en avance, et son appelant
+> n'arrive jamais. Chercher le suivant se fait en partant du SQL, pas du
+> TypeScript.

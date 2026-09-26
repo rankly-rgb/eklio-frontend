@@ -329,3 +329,69 @@ c'est exactement le défaut que F45 répare.
 
 Je ne réduis donc pas l'estimation. Les étapes 1 à 5 restent une session pleine,
 et elles sont toutes sans appel.
+
+---
+
+## §10 — Étage C : l'orchestrateur produit (2026-09-26, seconde session du jour)
+
+### Ce qui est porté, et appelé par quoi
+
+| mécanisme | module produit | appelé par |
+|---|---|---|
+| `checkPostAlone` | `lib/content/month/assemble.ts` | `assembleMonth`, sur chaque post à son arrivée |
+| `checkMonth` | `lib/content/month/select.ts` | `selectDeliverable`, sur les retenus |
+| le journal en base et la reprise | `lib/content/month/journal-port.ts` | **rien encore** — cf. F50 |
+| `abandon_stale_generation_runs()` | `app/api/cron/release-topics/route.ts` | **le cron quotidien de 3 h** |
+
+`select.ts` était inscrit sur la liste du **harnais seul** alors qu'il appelle
+`checkMonth` : le recensement comptait donc `checkMonth` comme harnais-seul
+pendant que le module partagé l'appelait. Corrigé — il est sur les deux listes,
+comme `bank-guard.ts`.
+
+### Les exemptions retirées
+
+`checkMonth` et `checkPostAlone` sortent de `ONLY_IN_HARNESS`. Ce que ce retrait
+enregistre, c'est qu'ils n'ont plus besoin d'une **raison de manquer** — pas
+qu'un mois produit les traverse. Cf. F50, et la distinction posée à l'étage B :
+**extraire n'est pas brancher**.
+
+### Les exemptions qui restent, avec leur raison
+
+| mécanisme | pourquoi il ne peut pas être porté |
+|---|---|
+| `guardBank`, `drawable_count_for_kit`, `assign_topic_to_kit` | le chemin produit ne tire pas de sujets : il passe par `planMonth` |
+| `judgeCompleteness`, `reviseMonth` | un appel de modèle, donc une clé — sous limite d'usage jusqu'au 1ᵉʳ octobre (F44) |
+| `composeWithFallback` | la composition vectorielle des onze archétypes ; le port produit dessine des fonds photographiques |
+| `licenceMention`, `licenceMissingMessage` | **la plus grave** : le pied de licence est posé par `composeWithFallback` |
+| `checkEthics` | présent des deux côtés en réalité, listé parce que le harnais l'appelle *aussi* en direct |
+
+### ⚠ Et la dette nommée de F50
+
+Cinq modules portés qu'aucun point d'entrée n'atteint, chacun avec sa raison dans
+`EXTRACTED_NOT_WIRED` : `preflight.ts`, `server-port.ts`, `bank-guard.ts`,
+`select.ts`, `assemble.ts`, plus `journal-port.ts` qui les rejoint. La cause est
+unique et elle est en amont : **l'orchestrateur a besoin de la rédaction**, et la
+rédaction attend une clé.
+
+### La duplication de l'assemblage, assumée pour une session
+
+Le harnais garde sa copie inline (lignes ~1749–1930 de `20-month.ts`). Convertir
+serait un refactor de cent quatre-vingts lignes sur le seul pipeline dont on ait
+des chiffres mesurés, **sans pouvoir rejouer un mois**. C'est le même refus que
+pour le transport OpenAI (F42).
+
+`lib/content/month/__tests__/one-assembly-two-callers.test.ts` tient la
+duplication : les deux assemblages doivent appeler la **même séquence** — le
+portillon, la sélection, l'écriture, le crédit — normaliser le post avant de le
+juger, et rejouer le même rang avec le remplaçant. Le fichier se **supprime** le
+jour où le harnais appelle `assembleMonth` : un test y veille.
+
+### Estimation
+
+**Deux à quatre sessions, dont une avec solde.** Elle baisse d'une session, et
+pour une raison précise : ce qui reste sans appel se réduit à `composeWithFallback`
+et au tirage. Tout le reste de la liste attend une clé, pas du travail.
+
+⚠ **Mais la séquence est contrainte** : l'orchestrateur ne peut pas exister avant
+la rédaction. Deux sessions sans solde n'avanceront plus le branchement — elles
+ne peuvent que porter `composeWithFallback` et le tirage, puis s'arrêter là.

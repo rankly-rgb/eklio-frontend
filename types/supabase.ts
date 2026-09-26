@@ -607,6 +607,95 @@ export type Database = {
           },
         ]
       }
+      content_generation_results: {
+        Row: {
+          created_at: string
+          id: string
+          result: Json | null
+          run_id: string
+          settled: boolean
+          topic_id: string
+          usage: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          result?: Json | null
+          run_id: string
+          settled?: boolean
+          topic_id: string
+          usage?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          result?: Json | null
+          run_id?: string
+          settled?: boolean
+          topic_id?: string
+          usage?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_generation_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "content_generation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_generation_results_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "content_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_generation_runs: {
+        Row: {
+          batch_id: string | null
+          brand_kit_id: string
+          closed_at: string | null
+          cost_usd: number
+          created_at: string
+          id: string
+          month: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: string | null
+          brand_kit_id: string
+          closed_at?: string | null
+          cost_usd?: number
+          created_at?: string
+          id?: string
+          month: string
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string | null
+          brand_kit_id?: string
+          closed_at?: string | null
+          cost_usd?: number
+          created_at?: string
+          id?: string
+          month?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_generation_runs_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_grounds: {
         Row: {
           cost_cents: number
@@ -3112,6 +3201,7 @@ export type Database = {
       }
     }
     Functions: {
+      abandon_stale_generation_runs: { Args: never; Returns: number }
       accept_organization_invitation: {
         Args: { p_token: string }
         Returns: Json

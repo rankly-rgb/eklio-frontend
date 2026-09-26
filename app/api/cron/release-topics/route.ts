@@ -57,6 +57,47 @@ export async function GET(request: Request) {
   }
 
   const released = typeof data === "number" ? data : 0;
+
+  /*
+   * ── ⚠ ET LE MÊME PASSAGE FERME LES LOTS QU'ANTHROPIC NE GARDE PLUS ─────
+   *
+   * `abandon_stale_generation_runs()` existe depuis le 2026-09-23 et AUCUN
+   * fichier TypeScript ne l'appelait — trouvé le 2026-09-26 en recensant le
+   * journal. Une fonction planifiée que rien ne planifie ne tourne jamais, et
+   * rien ne le dit : elle répond correctement quand on l'appelle à la main.
+   *
+   * Ce qu'elle laisse faute de tourner : une ligne `submitted` de plus de
+   * vingt-neuf jours reste ouverte alors que son lot n'est plus lisible chez
+   * Anthropic. `content_generation_runs_unique (brand_kit_id, month)` fait alors
+   * qu'aucun nouveau mois ne peut s'ouvrir pour ce kit et ce mois-là : la
+   * praticienne est bloquée par la trace d'une panne d'il y a un mois. Et une
+   * reprise qui rattacherait ce `batch_id` paierait un aller-retour pour
+   * apprendre que le travail est perdu.
+   *
+   * ⚠ ELLE PASSE ICI PARCE QUE C'EST LE SEUL BALAI QUOTIDIEN QUI EXISTE, et pas
+   * parce que les deux sujets se ressemblent : les deux ferment ce qu'une
+   * exécution tuée a laissé ouvert. Une seconde entrée de cron pour une requête
+   * d'une ligne serait un second endroit à se rappeler d'armer.
+   *
+   * ⚠ ET ELLE N'EMPÊCHE PAS LA ROUTE DE RÉUSSIR. La libération est ce que cette
+   * route existe pour faire ; échouer fermé sur l'abandon rendrait 500 sur un
+   * balayage de sujets qui, lui, a eu lieu — et le tour suivant le refarait pour
+   * rien. L'écart est DIT, pas avalé : `abandoned: null` dans la réponse, et un
+   * `console.error`.
+   */
+  const stale = await createAdminClient().rpc("abandon_stale_generation_runs");
+  let abandoned: number | null = null;
+  if (stale.error) {
+    console.error(`[cron/release-topics] abandon_stale_generation_runs: ${stale.error.message}`);
+  } else {
+    abandoned = typeof stale.data === "number" ? stale.data : 0;
+    if (abandoned > 0) {
+      console.warn(
+        `[cron/release-topics] ${abandoned} lot(s) de génération abandonné(s) — plus rattachables chez le fournisseur`
+      );
+    }
+  }
+
   /*
    * ⚠ ON LE DIT MÊME À ZÉRO, ET SURTOUT QUAND CE N'EST PAS ZÉRO. Un nombre non
    * nul signifie qu'une exécution a été tuée quelque part : c'est la seule trace
@@ -69,5 +110,5 @@ export async function GET(request: Request) {
   } else {
     console.info("[cron/release-topics] rien à rendre");
   }
-  return NextResponse.json({ ok: true, released });
+  return NextResponse.json({ ok: true, released, abandoned });
 }

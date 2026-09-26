@@ -33,20 +33,17 @@ import { dirname } from "node:path";
  * qui doit survivre à tout, et la PUBLICATION, qui doit rester atomique.
  */
 
-export type JournalEntry = {
-  /** La sortie du modèle, telle que `validateCopy` l'a rendue. */
-  result: unknown;
-  /** Ce que cet appel a consommé, pour que le coût reste juste après reprise. */
-  usage: { input: number; output: number; cacheRead: number; cacheWrite: number };
-  /**
-   * Le crédit a-t-il déjà été soldé pour ce sujet ?
-   *
-   * ⚠ SANS CE DRAPEAU, UNE REPRISE FACTURE DEUX FOIS. Le premier passage a
-   * réservé puis soldé un crédit ; le second, reprenant le même résultat,
-   * en réserverait un autre. Le journal dit ce qui a déjà été réglé.
-   */
-  settled: boolean;
-};
+/*
+ * ⚠ UNE SEULE DÉFINITION, ET ELLE EST DANS `lib/`. Le journal local et le
+ * journal en base portent la même entrée : la dupliquer les laisserait
+ * diverger — c'est `settled` qui empêche la double facturation des deux côtés,
+ * et une entrée qui l'aurait perdu d'un seul côté ne le dirait pas.
+ *
+ * Le sens de la dépendance est délibéré : ce fichier est du harnais, il peut
+ * lire `lib/` ; l'inverse emporterait `node:fs` dans une fonction serverless.
+ */
+import type { JournalEntry } from "@/lib/content/month/journal-port";
+export type { JournalEntry };
 
 export type Journal = {
   month: string;
