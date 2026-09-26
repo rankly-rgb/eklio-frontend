@@ -230,6 +230,7 @@ const input = (over: Record<string, unknown> = {}) => ({
   direction: DIRECTION as never,
   paletteFor: (i: number) => cardPalette(`card-${i}`, DIRECTION, false),
   practiceName: "Still Water",
+  layoutFor: () => "statement",
   dates: ["2027-07-01", "2027-07-08", "2027-07-15", "2027-07-22"],
   context: {
     direction: DIRECTION,
@@ -512,5 +513,141 @@ describe("la ligne du mois s'ouvre et se ferme", () => {
     } else {
       expect(w.months[0].status).toBe("failed");
     }
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  F55 — UN MOIS QUI ÉCHOUE N'EST JAMAIS LIVRÉ
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ MESURÉ SUR LA BASE LOCALE LE 2026-09-26, pas craint. `content_months`
+ * portait un mois de trente posts en `proposed`, avec trente posts en base, et
+ * son livre disait : 30 réservations, 0 règlement, 30 LIBÉRATIONS. Le harnais ne
+ * libère les crédits d'un mois livré que quand il RESTE des constats — ce mois-là
+ * avait donc été refusé par ses propres contrôles, et il était en base,
+ * indistinguable d'un bon mois. Une session ultérieure l'a relu comme livré.
+ */
+describe("F55 — un mois qui garde un constat ne s'écrit pas", () => {
+  /*
+   * Deux posts dont les lignes de carte sont identiques : `checkMonth` voit un
+   * doublon que le portillon par post ne peut pas voir, et il ne reste aucun
+   * remplaçant pour l'échanger.
+   */
+  function duplicated() {
+    return world({
+      stock: 2,
+      writer: {
+        write: vi.fn(async ({ topics }: { topics: DrawnTopic[] }) => ({
+          posts: topics.map((t: DrawnTopic) => ({
+            ...written(Number(t.id.slice(1))),
+            cardLine: "Rest is not a reward",
+            payload: { statement: "Rest is not a reward, and it shows up early." },
+          })),
+          batchId: null,
+          costUsd: 0.2,
+        })),
+      },
+    });
+  }
+
+  it("rien n'est écrit, et le refus nomme les constats", async () => {
+    const w = duplicated();
+    const out = await orchestrateMonth(w.ports, input({ wanted: 2, candidates: 2 }));
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.stage).toBe("assemble");
+    expect(out.remaining?.length ?? 0).toBeGreaterThan(0);
+    expect(w.inserted, "des posts écrits pour un mois refusé").toEqual([]);
+  });
+
+  it("aucun crédit n'est pris sur un mois refusé", async () => {
+    const w = duplicated();
+    await orchestrateMonth(w.ports, input({ wanted: 2, candidates: 2 }));
+    expect(w.reserved, "le quota a été débité pour un mois jamais publié").toEqual([]);
+  });
+
+  /*
+   * ⚠ ET LA LIGNE DU MOIS PASSE EN `failed`, PAS EN `proposed`. C'est le seul
+   * endroit où le refus reste lisible une fois le terminal fermé.
+   */
+  it("la ligne du mois dit failed, et les sujets sont rendus", async () => {
+    const w = duplicated();
+    const out = await orchestrateMonth(w.ports, input({ wanted: 2, candidates: 2 }));
+    expect(w.months[0].status).toBe("failed");
+    expect(w.released.flat().length, "les sujets restent volés au segment").toBeGreaterThan(0);
+    /* ⚠ Le coût engagé est dit : les jetons ont bien été dépensés. */
+    if (!out.ok) expect(out.costUsd).toBeCloseTo(0.2, 5);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LE LIVRE DIT CE QUE LE MOIS A COÛTÉ
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Le premier mois sorti du chemin produit a laissé VINGT-NEUF réservations sans
+ * issue : `credit_month_audit` disait 29 réservations, 0 règlement, 0 libération,
+ * coût 0,00000 $. Le quota était juste et les livres muets.
+ */
+describe("chaque réservation est soldée, au coût réparti", () => {
+  it("un règlement par post écrit", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    const settle = w.credits.settle as ReturnType<typeof vi.fn>;
+    expect(settle, "des réservations laissées sans issue").toHaveBeenCalledTimes(out.month.written);
+  });
+
+  /*
+   * ⚠ LE COÛT EST RÉPARTI, PAS RECOPIÉ. Solder chaque post au coût TOTAL
+   * multiplierait la dépense par trente — « un livre qui multiplie par trente est
+   * pire qu'un livre vide : le premier a l'air d'un chiffre ».
+   */
+  it("la somme des règlements fait le coût du mois, pas son multiple", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    const settle = w.credits.settle as ReturnType<typeof vi.fn>;
+    const total = settle.mock.calls.reduce((sum, call) => sum + (call[1] as number), 0);
+    expect(total).toBeCloseTo(out.costUsd, 5);
+  });
+
+  it("un règlement dit que le post a abouti", async () => {
+    const w = world();
+    await orchestrateMonth(w.ports, input());
+    const settle = w.credits.settle as ReturnType<typeof vi.fn>;
+    for (const call of settle.mock.calls) expect(call[2]).toBe(true);
+  });
+});
+
+/*
+ * ⚠ LES COLLISIONS DE DATES SONT COMPTÉES, PAS TUES. Mesuré le 2026-09-26 : un
+ * mois de trente posts en février 2028 est sorti sur vingt-neuf dates. Le repli
+ * `dates[index] ?? dates[last]` empilait le trentième sur le dernier créneau, en
+ * silence. Un mois de trente posts ne PEUT pas avoir trente dates distinctes en
+ * février : ce qui était faux était de le taire.
+ */
+describe("deux posts le même jour se comptent", () => {
+  it("un mois plus court que promis dit combien de créneaux se partagent", async () => {
+    const w = world({ stock: 3 });
+    const out = await orchestrateMonth(
+      w.ports,
+      input({ wanted: 3, candidates: 3, dates: ["2028-02-28", "2028-02-29"] })
+    );
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    if (!out.ok) return;
+    expect(out.month.written).toBe(3);
+    expect(out.month.dateCollisions, "la collision est passée sous silence").toBe(1);
+  });
+
+  it("assez de créneaux, aucune collision", async () => {
+    const w = world({ stock: 3 });
+    const out = await orchestrateMonth(w.ports, input({ wanted: 3, candidates: 3 }));
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.month.dateCollisions).toBe(0);
   });
 });

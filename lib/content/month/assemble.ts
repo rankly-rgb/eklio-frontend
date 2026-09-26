@@ -36,6 +36,8 @@ import type { DirectionPalette } from "@/lib/compose/palette";
 /** Ce qu'un post préparé doit porter pour être assemblé. */
 export type Assemblable = {
   cardLine: string;
+  /** La famille de mise en page, `content_items.archetype`, NOT NULL en base. */
+  layout: string;
   composeArchetype: string;
   payload: unknown;
   svg: string | null;
@@ -53,6 +55,19 @@ export type Assemblable = {
 export type ContentItemRow = {
   topicId: string;
   cardLine: string;
+  /*
+   * ⚠ DEUX COLONNES D'ARCHÉTYPE, ET CE N'EST PAS UNE REDONDANCE.
+   *
+   * `content_items.archetype` est la famille de MISE EN PAGE — « statement »,
+   * « story », « question », « notes », « signature » — et elle est NOT NULL.
+   * `compose_archetype` est la forme qui a VRAIMENT tenu après les replis du
+   * moteur. Confondre les deux ferait relire une carte avec le mauvais gabarit.
+   *
+   * ⚠ ET ELLE MANQUAIT ICI, donc l'assemblage ne pouvait pas écrire en vraie
+   * base : trouvé le 2026-09-26 en câblant l'orchestrateur sur PostgreSQL. Une
+   * doublure d'`insert` acceptait la ligne sans la colonne ; la base, non.
+   */
+  layout: string;
   composeArchetype: string;
   payload: unknown;
   onImageText: string | null;
@@ -108,6 +123,21 @@ export type AssembleOutcome<T extends Assemblable> = {
   /** Les refus d'écriture de la base, et les remplaçants consommés. */
   inserts: { refused: string[]; replacements: number };
   /**
+   * Combien de posts ont dû partager une date, faute de créneaux.
+   *
+   * ── ⚠ IL ÉTAIT SILENCIEUX, ET C'EST COMME ÇA QU'ON PUBLIE DEUX FOIS LE
+   *      MÊME JOUR ────────────────────────────────────────────────────────
+   *
+   * `input.dates[index] ?? dates[dates.length - 1]` empile sur le dernier
+   * créneau tout ce qui dépasse. Mesuré le 2026-09-26 : un mois de trente posts
+   * en FÉVRIER 2028 est sorti sur vingt-neuf dates — le mois n'en a pas trente.
+   *
+   * ⚠ ET CE N'EST PAS UN DÉFAUT QU'ON PEUT REFUSER : un mois de trente posts ne
+   * PEUT pas avoir trente dates distinctes en février. Ce qui était faux était de
+   * le taire. Le compte est donc rendu, et l'appelant décide s'il le montre.
+   */
+  dateCollisions: number;
+  /**
    * Le refus de crédit qui a arrêté l'écriture, s'il y en a eu un.
    *
    * ⚠ AVEC SON MOTIF (F47). Les sept issues de `reserve_credit` traversent
@@ -160,6 +190,46 @@ export async function assembleMonth<T extends Assemblable>(
     input.completeness
   );
 
+  /*
+   * ══════════════════════════════════════════════════════════════════════
+   *  ⚠ F55 — UN MOIS QUI ÉCHOUE N'EST JAMAIS LIVRÉ, ET CE N'ÉTAIT PAS TENU
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * ⚠ MESURÉ LE 2026-09-26 SUR LA BASE LOCALE, pas craint.
+   *
+   * `content_months` porte un mois de trente posts en `proposed`, avec trente
+   * posts en base — et son livre de crédit dit trente réservations, ZÉRO
+   * règlement, TRENTE libérations. Or le harnais ne libère les crédits d'un
+   * mois livré que dans un seul cas : `monthPasses === false`, c'est-à-dire
+   * quand il RESTE des constats après les échanges.
+   *
+   * Ce mois-là a donc été REFUSÉ par ses propres contrôles, et il est en base,
+   * en `proposed`, indistinguable d'un bon mois. Le seul endroit où son refus
+   * était écrit est un code de sortie non nul dans un terminal que personne ne
+   * garde — et une session ultérieure l'a relu comme un mois livré.
+   *
+   * La cause est un ORDRE : les posts étaient écrits AVANT que le verdict de
+   * mois existe, et le verdict ne décidait plus que des crédits. « Un mois qui
+   * échoue n'est jamais livré » n'était donc pas un contrôle, c'était une
+   * phrase.
+   *
+   * ⚠ ICI, RIEN N'EST ÉCRIT TANT QU'IL RESTE UN CONSTAT. Le banc a servi, les
+   * échanges ont eu lieu, et s'il reste quelque chose le mois ne s'écrit pas du
+   * tout. Ce qui a été payé au fournisseur reste payé — c'est un frais
+   * général — mais rien n'est publié et aucun crédit n'est pris.
+   */
+  if (selection.remaining.length > 0) {
+    return {
+      written: 0,
+      inserted: [],
+      gate: { arrived: input.prepared.length, passedAlone: clean.length, refused, byCheck },
+      selection,
+      inserts: { refused: [], replacements: 0 },
+      dateCollisions: 0,
+      creditRefusal: null,
+    };
+  }
+
   /* ── 3 et 4. l'écriture, le remplaçant, le crédit ───────────────────── */
   /*
    * ⚠ UNE FILE, PAS UN TABLEAU FIGÉ. Le remplaçant doit être VISITÉ, et sur le
@@ -181,6 +251,7 @@ export async function assembleMonth<T extends Assemblable>(
     const error = await ports.insert({
       topicId: candidate.topic.id,
       cardLine: post.cardLine,
+      layout: post.layout,
       composeArchetype: post.composeArchetype,
       payload: post.payload,
       onImageText: candidate.topic.hook ?? null,
@@ -231,9 +302,19 @@ export async function assembleMonth<T extends Assemblable>(
     candidate.reservationId = reserved.reservationId;
   }
 
+  /*
+   * ⚠ COMPTÉ SUR CE QUI A ÉTÉ ÉCRIT, pas sur ce qui était prévu. Un insert refusé
+   * libère son créneau, donc compter les prévisions surestimerait.
+   */
+  const slots = inserted.map(
+    (_, i) => input.dates[i] ?? input.dates[input.dates.length - 1] ?? input.month
+  );
+  const dateCollisions = slots.length - new Set(slots).size;
+
   return {
     written: inserted.length,
     inserted,
+    dateCollisions,
     gate: {
       arrived: input.prepared.length,
       passedAlone: clean.length,

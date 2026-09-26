@@ -3302,3 +3302,119 @@ apparaît pas : il est appelé par `checkAdvertisingEthics` dans
 `ON_BOTH_SIDES` traverse donc la chaîne, là où celui des exemptions lit la source
 directe — deux règles différentes pour deux affirmations différentes, ce qui est
 la seule façon de ne pas confondre « appelle » et « peut atteindre ».
+
+---
+
+## F55 — « Un mois qui échoue n'est jamais livré » n'était pas un contrôle
+
+**Mesuré le 2026-09-26 sur la base locale**, pas craint.
+
+`content_months` portait un mois de trente posts en `proposed`, avec trente posts
+en base — et son livre de crédit disait : **30 réservations, 0 règlement, 30
+libérations**. Or le harnais ne libère les crédits d'un mois livré que dans un
+seul cas :
+
+```ts
+const monthPasses = selection.remaining.length === 0;
+for (const candidate of delivered) await settle(candidate.reservationId, cost, monthPasses);
+```
+
+Ce mois-là avait donc été **refusé par ses propres contrôles**, et il était en
+base, en `proposed`, indistinguable d'un bon mois. Une session ultérieure l'a relu
+comme un mois livré — la mienne, pour le rejeu.
+
+### La cause est un ordre
+
+Les posts étaient écrits **avant** que le verdict de mois existe, et le verdict ne
+décidait plus que des crédits et du code de sortie. Le seul endroit où le refus
+était écrit est un code non nul dans un terminal que personne ne garde.
+
+### Deux conséquences, et la seconde vaut de l'argent
+
+1. Un mois refusé reste visible à la praticienne.
+2. Un mois « livré » peut avoir consommé **zéro quota** : `credit_balances.consumed`
+   valait 0 pour ce mois. Le plafond de trente posts par mois n'a donc contraint
+   aucun des mois récents du harnais.
+
+### Corrigé
+
+`assembleMonth` **n'écrit rien** tant que `selection.remaining` n'est pas vide : le
+banc a servi, les échanges ont eu lieu, et s'il reste un constat le mois ne
+s'écrit pas du tout. L'orchestrateur le dit, rend les sujets, et ferme la ligne du
+mois en `failed`.
+
+Et les réservations se **soldent** désormais, au coût réparti — le premier mois
+sorti du chemin produit avait laissé vingt-neuf réservations sans issue, quota juste
+et livres muets.
+
+---
+
+## F56 — ⚠ Chaque carte téléchargée sortait sans numéro de licence
+
+**Trouvé le 2026-09-26 en vérifiant un mois sorti du chemin produit.** C'est le
+défaut le plus grave de la série.
+
+`content_items` n'a pas de colonne de pied : la carte est **recomposée à la
+lecture**, par `cardBands(item, practiceName, licence)`. Le paramètre `licence`
+était **facultatif**, et le seul appelant de production ne le passait pas :
+
+```ts
+const bands = cardBands(item, practiceName);   // lib/content/review.ts:101
+```
+
+`reviewCardFor` est partagé par **l'écran de relecture** et par
+**`app/api/content-items/[id]/image`** — la route qui produit le fichier que la
+praticienne publie. Le repli rendait le nom du cabinet seul.
+
+Donc chaque carte affichée et chaque image téléchargée était une **publicité sans
+numéro de licence**, ce que la Californie exige dans toute publicité d'un
+praticien licencié (B&P §651). C'est exactement l'infraction que F45 reprochait à
+l'autre générateur — vivante, sur le chemin de lecture, pendant que la composition
+à l'écriture la portait.
+
+### ⚠ Et un test bénissait le défaut
+
+```
+it("sans mention, le pied est celui d'avant", …)   → expect(footer).toBe("Willow Clinic")
+```
+
+Il affirmait que l'omission était le comportement attendu. Un seul autre test
+passait la mention, explicitement.
+
+### Corrigé, et de la seule façon qu'on ne peut pas oublier
+
+Le paramètre n'est plus facultatif : `licence: string | null`. Le compilateur a
+nommé les deux appelants de production, et `null` est désormais une réponse
+explicite — un brief incomplet — que `licenceMissingMessage` sait dire. Une
+lecture unique, `licenceMentionFor`, résout la mention depuis le brief et la
+matrice `license_type_states` en lisant `verified_at`.
+
+**Prouvé** : trente cartes relues par le chemin de lecture, 30/30 portent
+`LMFT 12345`, 30/30 vectorielles. Planche dans `design/production-first-month/`.
+
+---
+
+## F57 — `redundantAgainst` dépend de l'ordre, donc un mois qui passe peut échouer relu
+
+**Trouvé le 2026-09-26** en rejouant un mois déjà livré à travers le tirage.
+
+`redundantAgainst(titre, déjà_acceptés)` compare un titre à ceux **déjà acceptés**.
+Le verdict dépend donc de l'ORDRE d'examen : rejouer un ensemble déjà dédoublonné
+dans un autre ordre en refuse un.
+
+Mesuré : les trente posts d'un mois livré, repassés par `drawMonth`, en ont perdu
+un — puis `mix.dominant` est monté à 31,0 % (9/29) contre 30,0 % (9/30) à
+l'origine, le plafond étant un dépassement strict. **Deux constats, une seule
+cause, et la cause était le rejeu.**
+
+Ce n'est pas un défaut du mois source : ses trente lignes de carte sont distinctes
+une fois coupées à trente caractères.
+
+### Ce que ça implique
+
+Un contrôle dont le verdict dépend de l'ordre ne peut pas servir à **vérifier**
+un mois déjà constitué — seulement à en **construire** un. Toute relecture d'un
+mois existant à travers le tirage inventera des refus. À décider quand un mois
+réel pourra être rejoué : ou bien le dédoublonnage devient symétrique (comparer
+toutes les paires), ou bien il reste réservé à la construction et la relecture
+utilise `checkMonth` seul.

@@ -3169,6 +3169,18 @@ export type Database = {
       }
     }
     Views: {
+      credit_month_audit: {
+        Row: {
+          cost_usd: number | null
+          kind: string | null
+          month: string | null
+          releases: number | null
+          reservations: number | null
+          settlements: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       sellable_states: {
         Row: {
           pairs: number | null

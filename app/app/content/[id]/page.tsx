@@ -25,7 +25,7 @@ import {
 } from "@/lib/content/write-screen";
 import { carouselSlides } from "@/lib/content/slides";
 import { deployEnvName, showsTechnicalDetail } from "@/lib/env/deploy";
-import { reviewCardFor } from "@/lib/content/review";
+import { licenceMentionFor, reviewCardFor } from "@/lib/content/review";
 import { layoutAlternatives } from "@/lib/content/alternatives";
 import { ethicsLineFor, payloadPublishedText } from "@/lib/content/ethics-line";
 
@@ -120,7 +120,13 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
    * deux ensemble scannerait la légende sans la carte, ce qui est exactement
    * l'angle mort que la base a fermé.
    */
-  const card = await reviewCardFor(supabase, item, palette, kit.practiceName);
+  /*
+   * ⚠ LA MENTION DE LICENCE EST PASSÉE, ET ELLE NE L'ÉTAIT PAS (F56). Sans elle,
+   * le pied ne portait que le nom du cabinet : chaque carte affichée sortait sans
+   * numéro de licence, ce que la Californie exige dans toute publicité.
+   */
+  const licence = await licenceMentionFor(supabase, kit.projectId);
+  const card = await reviewCardFor(supabase, item, palette, kit.practiceName, licence);
 
   const [labels, ethics] = await Promise.all([
     archetypeLabels(supabase),

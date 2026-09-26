@@ -18,6 +18,7 @@ function post(n: number, over: Partial<Assemblable> = {}): Assemblable {
     composeArchetype: "single_statement",
     payload: { archetype_key: "single_statement", statement: `Something ordinary happens ${n}.` },
     svg: null,
+    layout: "statement",
     /*
      * ⚠ UN SURTITRE VIDE EST UN DÉFAUT, et le portillon l'a dit dès le premier
      * essai : mes fixtures « propres » étaient refusées douze fois sur douze pour

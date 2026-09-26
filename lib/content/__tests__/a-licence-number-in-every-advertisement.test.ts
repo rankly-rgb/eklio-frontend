@@ -82,12 +82,54 @@ describe("le pied de carte la porte", () => {
     expect(bands.footer).toBe("Willow Clinic · LMFT 12345");
   });
 
-  it("sans mention, le pied est celui d'avant", () => {
+  /*
+   * ⚠ CE TEST DISAIT « SANS MENTION, LE PIED EST CELUI D'AVANT », ET IL BÉNISSAIT
+   *   LE DÉFAUT DE F56.
+   *
+   * Il affirmait que l'omission de la mention était le comportement attendu. Elle
+   * ne l'est pas : c'est un brief INCOMPLET, pas un choix. Le paramètre n'est plus
+   * facultatif — `null` est une réponse explicite, l'oublier n'en est pas une — et
+   * ce que ce test décrit est désormais le cas « le brief ne porte pas de
+   * licence », que `licenceMissingMessage` est là pour dire à l'écran.
+   */
+  it("un brief sans licence rend le pied d'avant, et c'est un brief à compléter", () => {
     const bands = cardBands(
       { theme: "t", title: "Rest is not a reward", topic: null } as never,
-      "Willow Clinic"
+      "Willow Clinic",
+      null
     );
     expect(bands.footer).toBe("Willow Clinic");
+    /* ⚠ Et le produit a de quoi le DIRE plutôt que de publier sans numéro. */
+    expect(licenceMissingMessage({ licenseTypeId: null, licenseNumber: null })).not.toBeNull();
+  });
+
+  /*
+   * ══════════════════════════════════════════════════════════════════════
+   *  ⚠ F56 — LES DEUX CHEMINS DE LECTURE PASSENT LA MENTION
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * `reviewCardFor` ne la passait pas, et il est partagé par l'écran de relecture
+   * et par la route qui produit l'IMAGE TÉLÉCHARGÉE. Le paramètre obligatoire fait
+   * que le compilateur le refuse désormais ; ce test le dit aussi en clair, pour
+   * qu'un futur `?` ne repasse pas en silence.
+   */
+  it("aucun appel de production n'omet la mention", () => {
+    const review = readFileSync("lib/content/review.ts", "utf8");
+    expect(review, "le paramètre est redevenu facultatif").toMatch(/licence: string \| null/);
+    expect(review).not.toMatch(/licence\?: string \| null/);
+    expect(review, "reviewCardFor ne transmet plus la mention à cardBands").toContain(
+      "cardBands(item, practiceName, licence)"
+    );
+    for (const file of [
+      "app/app/content/[id]/page.tsx",
+      "app/api/content-items/[id]/image/route.ts",
+    ]) {
+      const src = readFileSync(file, "utf8");
+      expect(src, `${file} ne lit pas la mention`).toContain("licenceMentionFor(");
+      expect(src, `${file} appelle reviewCardFor sans la mention`).toMatch(
+        /reviewCardFor\([^)]*licence\)/
+      );
+    }
   });
 
   /*

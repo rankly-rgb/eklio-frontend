@@ -4,6 +4,7 @@ import type { Palette } from "@/lib/compose/types";
 import type { ContentItem } from "@/lib/data/content";
 import type { Database } from "@/types/supabase";
 import { capitaliseTitle, eyebrowFor } from "@/lib/content/bands";
+import { licenceMention } from "@/lib/content/licence";
 
 /*
  * ── CE QU'IL FAUT POUR COMPOSER UN POST, RASSEMBLÉ UNE FOIS ─────────────
@@ -47,7 +48,19 @@ export function cardBands(
    * la ferait entrer en concurrence avec le libellé d'intention ; dans le
    * contenu, elle volerait la place du diagramme.
    */
-  licence?: string | null
+  /*
+   * ── ⚠ ELLE EST OBLIGATOIRE DEPUIS F56, ET ELLE ÉTAIT FACULTATIVE ──────
+   *
+   * Elle portait `?`. Le seul appelant de production — `reviewCardFor`, que
+   * l'écran de relecture ET la route d'image partagent — ne la passait pas. Le
+   * repli rendait donc le nom du cabinet seul, et CHAQUE carte qu'une praticienne
+   * regarde ou télécharge sortait sans numéro de licence. Un seul test la passait,
+   * et un autre affirmait que l'omission était le comportement attendu.
+   *
+   * Sans le `?`, le compilateur nomme tous les appelants. C'est la seule forme de
+   * ce contrôle qu'on ne peut pas oublier de brancher — la leçon de F50.
+   */
+  licence: string | null
 ): { eyebrow: string; headline: string; footer: string } {
   const fallback = practiceName?.trim() || "Eklio";
   return {
@@ -94,11 +107,17 @@ export async function reviewCardFor(
   supabase: SupabaseClient<Database>,
   item: ContentItem,
   direction: DirectionPalette | null,
-  practiceName: string | null
+  practiceName: string | null,
+  /*
+   * ⚠ LA MENTION VIENT DE L'APPELANT, ET ELLE N'EST PAS FACULTATIVE (F56).
+   * `null` est une réponse — un brief sans licence — et c'est à l'écran de le
+   * dire ; l'OUBLIER n'en est pas une, et c'est ce qui arrivait.
+   */
+  licence: string | null
 ): Promise<ReviewCard | null> {
   if (!direction) return null;
 
-  const bands = cardBands(item, practiceName);
+  const bands = cardBands(item, practiceName, licence);
 
   /*
    * ── LE PAYLOAD DE CE POST-CI PASSE AVANT CELUI DU SUJET ───────────────
@@ -190,4 +209,73 @@ export async function reviewCardFor(
     palette: cardPalette(item.id, direction, false),
     ...bands,
   };
+}
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  F56 — LA MENTION DE LICENCE, LUE SUR LE CHEMIN DE LECTURE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ TROUVÉ LE 2026-09-26 EN VÉRIFIANT UN MOIS SORTI DU CHEMIN PRODUIT.
+ *
+ * La composition à l'écriture porte bien la mention — `month/compose-card.ts`
+ * REFUSE un pied qui ne la porte pas. Mais rien n'est stocké : `content_items`
+ * n'a pas de colonne de pied, et la carte est RECOMPOSÉE à la lecture. Or
+ * `reviewCardFor` appelait `cardBands(item, practiceName)` sans la mention, et le
+ * repli rendait le nom du cabinet seul.
+ *
+ * Donc chaque carte qu'une praticienne regarde — et chaque image qu'elle
+ * TÉLÉCHARGE pour la publier, par `app/api/content-items/[id]/image` — sortait
+ * sans numéro de licence. C'est exactement l'infraction que F45 reprochait à
+ * l'autre générateur, et elle était vivante sur le chemin de lecture.
+ *
+ * ⚠ ET LA LECTURE EST ICI, PAS DANS L'ÉCRAN. Deux écrans la faisaient chacun à
+ * leur façon, ou pas du tout. Un seul endroit lit le brief et la matrice, et les
+ * deux appelants s'en servent.
+ */
+
+/**
+ * La mention de licence d'un projet, ou `null` quand le brief ne la porte pas.
+ *
+ * ⚠ L'ABRÉVIATION VIENT DE `license_type_states`, ET `verified_at` EST LU. Un État
+ * dont personne n'a encore lu la règle publicitaire ne rend pas d'abréviation
+ * (F12) : la mention retombe alors sur `LICENCE_ABBREVIATION`, une table du code,
+ * ce qui est le comportement de `licenceMention` et non le nôtre à décider.
+ */
+export async function licenceMentionFor(
+  supabase: SupabaseClient<Database>,
+  projectId: string
+): Promise<string | null> {
+  const brief = await supabase
+    .from("project_briefs")
+    .select("license_type_id, license_number, license_state_code, state")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (brief.error || !brief.data) return null;
+  const row = brief.data as {
+    license_type_id: string | null;
+    license_number: string | null;
+    license_state_code: string | null;
+    state: string | null;
+  };
+
+  /* ⚠ Le même repli que le préalable et que le harnais : le champ dédié, sinon l'État du cabinet. */
+  const stateCode = (row.license_state_code || row.state || "").toUpperCase();
+  let abbreviation: string | null = null;
+  if (row.license_type_id && stateCode) {
+    const matrix = await supabase
+      .from("license_type_states")
+      .select("abbreviation, verified_at")
+      .eq("license_type_id", row.license_type_id)
+      .eq("state_code", stateCode)
+      .maybeSingle();
+    const m = matrix.data as { abbreviation?: string | null; verified_at?: string | null } | null;
+    abbreviation = m?.verified_at ? (m.abbreviation ?? null) : null;
+  }
+
+  return licenceMention({
+    licenseTypeId: row.license_type_id,
+    licenseNumber: row.license_number,
+    abbreviation,
+  });
 }

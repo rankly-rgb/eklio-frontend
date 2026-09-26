@@ -145,48 +145,42 @@ describe("cardBands", () => {
    * d'abord — avec un thème qui a la forme d'un vrai thème.
    */
   it("un thème-phrase ne devient pas un surtitre de quatorze mots", () => {
-    const bands = cardBands(
-      item({
+    const bands = cardBands(item({
         theme: "returning to work when the body has not agreed to it",
         topic: null,
         title: "Rest is not a reward",
-      }),
-      "Elm & Ember Therapy"
-    );
+      }), "Elm & Ember Therapy", null);
     expect(bands.eyebrow.split(" ").length).toBeLessThanOrEqual(4);
     expect(bands.eyebrow).toBe("REST REWARD");
   });
 
   it("deux cartes d'un même thème ne portent pas le même surtitre", () => {
     const theme = "returning to work when the body has not agreed to it";
-    const a = cardBands(item({ theme, topic: null, title: "Rest is not a reward" }), "Elm & Ember");
-    const b = cardBands(item({ theme, topic: null, title: "The Sunday dread starts early" }), "Elm & Ember");
+    const a = cardBands(item({ theme, topic: null, title: "Rest is not a reward" }), "Elm & Ember", null);
+    const b = cardBands(item({ theme, topic: null, title: "The Sunday dread starts early" }), "Elm & Ember", null);
     expect(a.eyebrow).not.toBe(b.eyebrow);
   });
 
   it("le titre reçoit sa majuscule, et un nom propre garde la sienne", () => {
-    expect(cardBands(item({ title: "rest is not a reward" }), "X").headline).toBe(
+    expect(cardBands(item({ title: "rest is not a reward" }), "X", null).headline).toBe(
       "Rest is not a reward"
     );
     // ⚠ Un mot qui porte DÉJÀ une capitale est un choix, pas un oubli.
-    expect(cardBands(item({ title: "eMDR is not hypnosis" }), "X").headline).toBe(
+    expect(cardBands(item({ title: "eMDR is not hypnosis" }), "X", null).headline).toBe(
       "eMDR is not hypnosis"
     );
   });
 
   it("le libellé d'angle passe devant le titre", () => {
-    const bands = cardBands(
-      item({
+    const bands = cardBands(item({
         theme: null,
         topic: { id: "t", angle: "invite", angle_label: "A soft invitation", archetype_key: "cycle", timely: false },
-      }),
-      "Elm & Ember Therapy"
-    );
+      }), "Elm & Ember Therapy", null);
     expect(bands.eyebrow).toBe("A SOFT INVITATION");
   });
 
   it("à défaut de tout, le nom du cabinet — jamais une formule générique", () => {
-    const bands = cardBands(item({ theme: null, topic: null, title: null }), "Elm & Ember Therapy");
+    const bands = cardBands(item({ theme: null, topic: null, title: null }), "Elm & Ember Therapy", null);
     expect(bands.eyebrow).toBe("ELM & EMBER THERAPY");
     expect(bands.footer).toBe("Elm & Ember Therapy");
   });
@@ -197,7 +191,7 @@ describe("cardBands", () => {
      * de son texte ; une bande vide produirait une carte dont l'équilibre a été
      * prouvé sur un autre document.
      */
-    const bands = cardBands(item({ title: "   ", theme: "  " }), "   ");
+    const bands = cardBands(item({ title: "   ", theme: "  " }), "   ", null);
     expect(bands.eyebrow).not.toBe("");
     expect(bands.headline).not.toBe("");
     expect(bands.footer).not.toBe("");

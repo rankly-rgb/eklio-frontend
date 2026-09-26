@@ -1,0 +1,118 @@
+{
+  "label": "chemin produit, base locale — rédaction rejouée depuis un mois déjà payé",
+  "at": "2026-09-26T21:27:36.083Z",
+  "targetMonth": "2028-07-01",
+  "draw": {
+    "asked": 57,
+    "drawn": 57,
+    "rejected": 88,
+    "releasedEarly": 88,
+    "shortfall": [],
+    "byArchetype": {
+      "carousel": 7,
+      "quadrant_model": 6,
+      "annotated_curve": 4,
+      "lettered_technique": 2,
+      "numbered_strategies": 4,
+      "comparison_pair": 5,
+      "cycle": 3,
+      "concentric_control": 1,
+      "surface_and_beneath": 6,
+      "single_statement": 19
+    },
+    "allReleased": true
+  },
+  "bank": {
+    "archetypes": 11,
+    "thinnest": [
+      "quadrant_model",
+      75
+    ],
+    "total": 1361
+  },
+  "replay": {
+    "sourceMonthId": "11e2f29d-1eef-4cb3-b236-d15b249c246b",
+    "posts": 30
+  },
+  "freshMonth": {
+    "ok": false,
+    "stage": "assemble",
+    "refusal": "le mois garde 2 constat(s) après les échanges : month.short — 29 posts pour 30 promis — la banque n'en portait pas assez ; mix.dominant — single_statement occupe 31.0 % du mois (9/29), plafond 30 %",
+    "remaining": [
+      {
+        "check": "month.short",
+        "detail": "29 posts pour 30 promis — la banque n'en portait pas assez"
+      },
+      {
+        "check": "mix.dominant",
+        "detail": "single_statement occupe 31.0 % du mois (9/29), plafond 30 %"
+      }
+    ],
+    "costUsd": 0
+  },
+  "resumedMonth": {
+    "month": "2028-08-01",
+    "ok": true,
+    "written": 30,
+    "gate": {
+      "arrived": 30,
+      "passedAlone": 30,
+      "refused": [],
+      "byCheck": {}
+    },
+    "selection": {
+      "chosen": 30,
+      "dropped": 0,
+      "remaining": 0
+    },
+    "inserts": {
+      "refused": [],
+      "replacements": 0
+    },
+    "dateCollisions": 0,
+    "creditRefusal": null,
+    "costUsd": 0,
+    "resumed": {
+      "reattached": true,
+      "reused": 30,
+      "settledOnly": 30
+    },
+    "fallbacks": 0,
+    "released": 0,
+    "monthId": "56de58ce-01d8-4960-8119-4269d1083b22",
+    "postsAskedOfTheWriter": 0
+  },
+  "database": {
+    "month": "2028-08-01",
+    "itemsWritten": 30,
+    "distinctDates": 30,
+    "allProposed": true,
+    "withPayload": 30,
+    "composeArchetypes": 9,
+    "monthStatus": "proposed",
+    "creditAudit": [
+      {
+        "kind": "post_generation",
+        "reservations": 30,
+        "settlements": 30,
+        "releases": 0,
+        "cost_usd": 0
+      }
+    ],
+    "journal": [
+      {
+        "state": "published",
+        "cost_usd": 0,
+        "batch_id": "replayed-batch"
+      }
+    ],
+    "journalSettled": 30,
+    "journalTotal": 30
+  },
+  "readPath": {
+    "mention": "LMFT 12345",
+    "cards": 30,
+    "withLicence": 30,
+    "vectorial": 30
+  }
+}

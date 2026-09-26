@@ -160,6 +160,8 @@ export type OrchestrateInput = {
   direction: DirectionPalette;
   paletteFor(index: number): RenderInput["palette"];
   practiceName: string;
+  /** La famille de mise en page du post, `content_items.archetype`. */
+  layoutFor(index: number): string;
   dates: string[];
   context: PostContext;
   identityAllowList: string[];
@@ -172,7 +174,9 @@ export type OrchestrateOutcome =
   | {
       ok: false;
       /** `preflight` quand le refus vient de l'étage A, sinon l'étape nommée. */
-      stage: "preflight" | "draw" | "write" | "compose";
+      stage: "preflight" | "draw" | "write" | "compose" | "assemble";
+      /** Les constats de mois qui restaient, quand c'est eux qui refusent. */
+      remaining?: Array<{ check: string; detail: string }>;
       refusal: string;
       /** Ce qui a été dépensé avant le refus. Zéro quand le préalable refuse. */
       costUsd: number;
@@ -389,6 +393,12 @@ export async function orchestrateMonth(
       prepared.push({
         topicId: topic.id,
         cardLine: post.cardLine,
+        /*
+         * ⚠ LA MISE EN PAGE VIENT DE L'APPELANT, pas de l'archétype composé. Elle
+         * décide du gabarit de relecture ; la déduire de `composeArchetype`
+         * ferait changer le gabarit chaque fois que le moteur replie une carte.
+         */
+        layout: input.layoutFor(index),
         composeArchetype: card.archetype,
         payload: card.payload,
         svg: card.svg,
@@ -437,7 +447,8 @@ export async function orchestrateMonth(
   }
 
   /* ── 7. l'assemblage : portillon, sélection, écriture, crédit ───────── */
-  const month = await assembleMonth(ports.assembleFor(monthId), {
+  const assemblePorts = ports.assembleFor(monthId);
+  const month = await assembleMonth(assemblePorts, {
     prepared,
     wanted: input.wanted,
     dates: input.dates,
@@ -452,6 +463,54 @@ export async function orchestrateMonth(
     userId: input.userId,
     month: input.month,
   });
+
+  /*
+   * ══════════════════════════════════════════════════════════════════════
+   *  ⚠ F55 — UN MOIS QUI ÉCHOUE N'EST JAMAIS LIVRÉ
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * `assembleMonth` n'a rien écrit s'il restait un constat. Ici on le DIT, on
+   * rend les sujets, et la ligne du mois passe en `failed` — pas en `proposed`.
+   * Le mois de 2027-04 de la base locale est exactement ce qu'on évite : refusé
+   * par ses contrôles, et en base en `proposed` avec trente posts.
+   */
+  if (month.selection.remaining.length > 0) {
+    await ports.releaseTopics(drawnIds);
+    await ports.closeMonthRow(monthId, "failed");
+    await rememberCost(ports.journal, runId, costUsd, "collected");
+    return {
+      ok: false,
+      stage: "assemble",
+      refusal:
+        `le mois garde ${month.selection.remaining.length} constat(s) après les échanges : ` +
+        month.selection.remaining.map((f) => `${f.check} — ${f.detail}`).join(" ; "),
+      remaining: month.selection.remaining,
+      costUsd,
+      nothingWritten: true,
+    };
+  }
+
+  /*
+   * ══════════════════════════════════════════════════════════════════════
+   *  ⚠ LES RÉSERVATIONS SE SOLDENT, SINON LE LIVRE NE DIT PAS LE COÛT
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * Mesuré le 2026-09-26 : le premier mois sorti du chemin produit a laissé
+   * VINGT-NEUF réservations sans issue. `credit_month_audit` le disait —
+   * 29 réservations, 0 règlement, 0 libération, coût 0,00000 $. Le quota était
+   * juste (consommé 29) et les livres étaient muets sur ce que le mois a coûté.
+   *
+   * ⚠ ET LE COÛT EST RÉPARTI, PAS RECOPIÉ. Solder chaque post au coût TOTAL du
+   * mois multiplierait la dépense par vingt-neuf — c'est le défaut que le
+   * harnais a déjà payé une fois (« un livre qui multiplie par trente est pire
+   * qu'un livre vide : le premier a l'air d'un chiffre »).
+   */
+  const perPost = month.written > 0 ? costUsd / month.written : 0;
+  for (const post of month.inserted) {
+    const reservationId = post.candidate.reservationId;
+    if (!reservationId) continue;
+    await assemblePorts.credits.settle(reservationId, perPost, true);
+  }
 
   /*
    * ⚠ ET LE JOURNAL MARQUE SOLDÉ CE QUI VIENT D'ÊTRE PAYÉ. Sans ce geste, une

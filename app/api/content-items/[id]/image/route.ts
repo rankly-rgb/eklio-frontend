@@ -1,7 +1,7 @@
 import { authenticate, serverError } from "@/lib/api/handler";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import { getContentItem } from "@/lib/data/content";
-import { reviewCardFor } from "@/lib/content/review";
+import { licenceMentionFor, reviewCardFor } from "@/lib/content/review";
 import { carouselSlides } from "@/lib/content/slides";
 import { render, CompositionError } from "@/lib/compose/engine";
 import { BudgetExceededError } from "@/lib/compose/budget";
@@ -63,7 +63,13 @@ export async function GET(
     }
 
     const direction = kit.selectedDirection?.palette ?? kit.directions?.[0]?.palette ?? null;
-    const card = await reviewCardFor(supabase, item, direction, kit.practiceName);
+    /*
+     * ⚠ ET ICI PLUS QU'AILLEURS : CETTE ROUTE PRODUIT LE FICHIER QU'ELLE PUBLIE.
+     * Sans la mention, l'image téléchargée est une publicité sans numéro de
+     * licence (F56).
+     */
+    const licence = await licenceMentionFor(supabase, kit.projectId);
+    const card = await reviewCardFor(supabase, item, direction, kit.practiceName, licence);
     if (!card) {
       return Response.json(
         {
