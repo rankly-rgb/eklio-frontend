@@ -235,3 +235,54 @@ devient la barrière :
 déontologiquement contrôlé parce qu'il rendait un objet qui disait `passed: true`.
 Un recensement qui ne regarderait que les noms d'appels pourrait être satisfait
 de la même façon.
+
+---
+
+## 8 · Où en est le portage — 2026-09-26
+
+### Fait, et éprouvé sans un appel
+
+| étage | ce qui est porté | où |
+|---|---|---|
+| **A1–A5** | **le préalable en entier** — 17 tests | `lib/content/month/preflight.ts` |
+| A2b | ⚠ **une porte qui manquait** : l'État est-il *vérifié* ? | idem |
+| A5 | `credit_remaining()`, lecture sèche du quota | migration `20260926120000` |
+| A3–A4 | `guardBank`, décision extraite, port injecté — 9 tests | `lib/content/bank-guard.ts` |
+| — | la libération des assignations, planifiée | `/api/cron/release-topics` |
+| — | **la barrière** : 501 tant qu'il reste une exemption, et aucun verdict en dur | `the-harness-is-not-the-product.test.ts` |
+
+⚠ **La porte A2b est la trouvaille de cette étape, et elle vient d'avoir écrit
+le code.** F12 a établi que 240 couples (type, État) portent un `verified_at` et
+qu'un État n'est vendable qu'une fois sa règle lue. Le harnais lisait
+`abbreviation` sans le regarder — et une abréviation absente ne refuse même pas,
+parce que `licenceMention` retombe sur `LICENCE_ABBREVIATION`, une table du code.
+**L'absence d'abréviation n'était donc pas un contrôle de vérification.** La
+porte est maintenant explicite et échoue fermé.
+
+### Reste à faire, et dans quel ordre
+
+| # | étage | ce qu'il faut | appel API |
+|---|---|---|---|
+| 1 | **D5, D6, E1, E2** | l'assemblage : portillon, échanges du banc, insert, remplaçant. **Tout est pur ou en base** — c'est le plus gros morceau sans appel | non |
+| 2 | **E3** | `reserve_credit` / `settle_credit` par post écrit | non |
+| 3 | **C2, E4** | le journal en base, déjà conçu (§3.1) — brancher | non |
+| 4 | **D1–D4** | composition, juge, révision | juge et révision : oui |
+| 5 | **B1–B3** | le tirage | non, mais inutile sans C |
+| 6 | **C1, C3–C5** | l'écriture : lot, collecte, réparation, plafond | **oui** |
+| 7 | **§5** | le retrait du générateur produit | non |
+
+### ⚠ Combien de sessions, honnêtement
+
+**Trois à cinq, dont une seule a besoin de solde.**
+
+| | |
+|---|---|
+| **1 session** | étapes 1 et 2 — l'assemblage et le crédit. Purs et en base, donc entièrement éprouvables hors ligne. C'est la moitié du volume restant. |
+| **1 session** | étapes 3 et 5 — le journal en base et le tirage. La reprise s'éprouve avec des lignes posées à la main. |
+| **1 session avec solde** | étapes 4 et 6 — l'écriture. C'est la seule qui ne peut pas être finie sans appeler le modèle, et c'est aussi celle où un premier mois sort du chemin produit. |
+| **+1 ou 2** | ce que le premier mois réel révélera. Les sessions précédentes en ont trouvé à chaque fois : le dénominateur de F41, le journal de 7b, la gâchette de F38. Prétendre que celle-ci n'en trouvera pas serait la seule prédiction qu'on sait fausse. |
+| **1 session** | étape 7 — le retrait, une fois qu'un mois est sorti. |
+
+⚠ **Un mois VENDABLE demande une chose de plus que le portage** : les ~3 h de
+gestes humains de F43 — F12 Californie, Vercel, DNS, Stripe, le coup d'œil. Le
+portage rend le mois *générable* ; ces trois heures le rendent *vendable*.

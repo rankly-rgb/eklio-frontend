@@ -2933,3 +2933,55 @@ et ce n'est pas une décision que je prends seul :
 ⚠ **Un troisième choix existe et il est mauvais** : armer le chemin produit tel
 quel « pour voir ». Ce serait mettre en vente des publicités sans mention de
 licence.
+
+---
+
+## F46 — L'absence d'abréviation n'était pas un contrôle de vérification d'État
+
+Trouvé en portant l'étage A de F45, le 2026-09-26.
+
+F12 a établi la règle : `license_type_states` porte 240 couples (type de licence,
+État) et une colonne `verified_at`. **Un État n'est vendable que lorsqu'une
+personne a lu la règle publicitaire de son board.** C'est une vérification
+manuelle, 20 minutes pour la Californie, et c'est tout l'objet de la fiche
+`F12-comment-verifier.md`.
+
+**Elle n'était pas appliquée sur le chemin de génération.** Deux fois :
+
+1. **Le harnais lit `abbreviation` sans regarder `verified_at`.** Sa requête
+   filtre sur `(license_type_id, state_code)` et prend l'abréviation quelle que
+   soit sa vérification.
+2. **Et même une abréviation nulle ne refuserait pas.** `licenceMention` fait
+   `facts.abbreviation?.trim() || LICENCE_ABBREVIATION[type]` : il retombe sur une
+   table du code, dix types, indépendante de l'État. La mention s'imprime.
+
+Donc : un mois généré pour une praticienne d'un État dont personne n'a lu les
+règles porte une mention de licence d'apparence correcte. ⚠ **C'est précisément
+le cas que F12 existe pour empêcher**, et il passait.
+
+`lib/brief/license-state.ts` le fait correctement — il ne rend l'abréviation que
+si `verified_at` n'est pas nul. La règle existait donc, appliquée d'un côté et pas
+de l'autre : encore la classe de F27.
+
+### Corrigé côté produit, pas côté harnais
+
+`preflight` porte une porte **séparée et explicite** — `stateVerified(typeId,
+stateCode)` — qui échoue fermé : pas de couple vérifié, pas de génération. Elle
+est distincte du contrôle de licence parce que ce sont deux questions : « le brief
+porte-t-il de quoi écrire la mention » et « avons-nous le droit de vendre dans cet
+État ».
+
+⚠ **Le harnais n'est pas corrigé, et c'est délibéré.** Il tourne en local, sur des
+comptes de test californiens, et sa précondition de licence est mesurée dans cet
+état depuis trois sessions. Le modifier maintenant changerait le comportement du
+seul pipeline dont on ait des chiffres. Il héritera de la porte quand il
+deviendra le chemin produit (F45, étape 1).
+
+### La question qui reste
+
+Faut-il retirer le repli `LICENCE_ABBREVIATION` de `licenceMention` ? Il rend la
+fonction tolérante là où la matrice est la seule autorité. Mais il sert aussi
+l'écran de brief, où afficher « LMFT » avant qu'un État soit vérifié est utile et
+sans risque. **Deux appelants, deux besoins** — la bonne réponse est probablement
+un second point d'entrée strict plutôt qu'un repli retiré, et ça mérite d'être
+décidé plutôt que deviné.
