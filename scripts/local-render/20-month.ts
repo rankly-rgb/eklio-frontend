@@ -45,7 +45,7 @@ import { reviseMonth, revisionOn } from "../../lib/content/generate/revise";
 import { chooseArchetype, scheduleDates } from "../../lib/content/generate/plan";
 import { anthropicContentModel } from "../../lib/content/generate/model";
 import { deriveThemes } from "../../lib/content/generate/themes";
-import { composeWithFallback } from "../../lib/compose/fallback";
+import { composeCard } from "@/lib/content/month/compose-card";
 import { cardPalette } from "../../lib/compose/palette";
 import { checkEthics } from "../../lib/ethics/rules";
 import { checkinLeaks } from "../../lib/content/leakage";
@@ -1506,9 +1506,18 @@ async function main() {
       practiceName
     );
     try {
-      const composed = composeWithFallback({
+      /*
+       * ⚠ DÉLÉGUÉ À `lib/content/month/compose-card.ts` DEPUIS LE 2026-09-26.
+       * Le chemin produit n'appelait `composeWithFallback` nulle part, donc un
+       * mois produit n'aurait porté AUCUNE mention de licence. Le module ajoute
+       * un refus que ce bloc n'avait pas : un pied sans mention ne se compose
+       * plus. Il ne devrait jamais parler ici, puisque le préalable refuse déjà
+       * un mois sans licence — mais « ne devrait jamais » n'est pas un contrôle.
+       */
+      const composed = composeCard({
         archetype: candidate.topic.archetype_key,
         payload: result.payload,
+        licenceMention: mention,
         palette: cardPalette(`${monthRow.id}-${index}`, direction.palette, false),
         /*
          * ⚠ LE THÈME EN CAPITALES N'EST PAS UN SURTITRE, ET C'ÉTAIT ÇA LA
@@ -1522,14 +1531,14 @@ async function main() {
         headline: cardLine,
         // ⚠ La mention y est, sur les onze archétypes : c'est la seule bande partagée.
         footer: `${practiceName} · ${mention}`,
-      }, cardLine);
+      });
       composeArchetype = composed.archetype;
       payload = composed.payload;
-      composedSvg = composed.kind === "carousel" ? composed.slides[0].svg : composed.result.svg;
+      composedSvg = composed.svg;
       if (composed.steps.length > 0) {
         fallbacks.push({
           topic: candidate.topic.title, from: candidate.topic.archetype_key,
-          to: composed.kind === "carousel" ? `carousel×${composed.slides.length}` : composed.archetype,
+          to: composed.landedOn,
           steps: composed.steps.join("; "),
         });
       }

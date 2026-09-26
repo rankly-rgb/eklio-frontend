@@ -156,8 +156,15 @@ describe("le harnais la place au bon endroit", () => {
 
   it("elle passe avant la composition", () => {
     const revise = SOURCE.indexOf('await overhead("revision pass"');
-    const compose = SOURCE.indexOf("const composed = composeWithFallback({");
-    expect(revise).toBeGreaterThan(-1);
+    /*
+     * ⚠ LA COMPOSITION EST DÉLÉGUÉE DEPUIS LE 2026-09-26 : le harnais appelle
+     * `composeCard`, qui appelle `composeWithFallback`. L'ancre suit le mécanisme
+     * plutôt que de disparaître avec son ancienne écriture — sinon ce test
+     * deviendrait vert par déménagement (la forme 1 de F48).
+     */
+    const compose = SOURCE.indexOf("const composed = composeCard({");
+    expect(revise, "la passe de révision a disparu du harnais").toBeGreaterThan(-1);
+    expect(compose, "la composition a disparu du harnais").toBeGreaterThan(-1);
     expect(revise).toBeLessThan(compose);
   });
 

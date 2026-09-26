@@ -3251,3 +3251,54 @@ lecteur ne confond pas deux voisines — dont un qui parcourt les vingt-quatre.
 
 > Un contrôleur qui se trompe accuse le code juste. Celui-là a failli faire
 > réécrire une couture correcte.
+
+---
+
+## F53 — Rien ne vérifiait qu'une exemption soit encore nécessaire
+
+**Trouvé le 2026-09-26**, en cherchant pourquoi `licenceMention` figurait encore
+dans la carte d'exemptions.
+
+`ONLY_IN_HARNESS` portait trois tests : que chaque entrée dise pourquoi, que
+chacune concerne un mécanisme encore présent dans le harnais, et que la carte ne
+porte rien d'inexistant. **Aucun ne vérifiait que le mécanisme soit encore absent
+du produit.**
+
+Deux exemptions ont donc survécu une session entière après leur portage :
+
+| exemption | ce qu'elle disait | ce qui était vrai |
+|---|---|---|
+| `licenceMissingMessage` | « ⚠ CELLE-CI EST GRAVE … un mois produit ne porterait AUCUNE mention » | appelée par `month/preflight.ts` depuis l'étage A |
+| `licenceMention` | « la mention se compose sur la carte, et le chemin produit ne compose pas de cartes » | idem |
+
+Le « ⚠ CELLE-CI EST GRAVE » était vrai à l'écriture et faux depuis. C'est une
+ligne qui rassure faussement dans un sens, et qui aurait menti dans l'autre le
+jour où le mécanisme disparaît.
+
+### ⚠ Le biais de F48, dans l'autre sens
+
+F48 disait : une mesure qui s'améliore en montant est suspecte. Le pendant est
+qu'une exemption de trop fait paraître le portage **moins** avancé qu'il n'est —
+donc personne ne la cherche. Un compte qui flatte se fait relire ; un compte qui
+se rabaisse passe pour de la prudence.
+
+### La forme retenue
+
+Deux cartes aux obligations **opposées**, et un test pour chacune :
+
+- `ONLY_IN_HARNESS` — le produit ne doit **pas** l'appeler ;
+- `ON_BOTH_SIDES` — le produit **doit** l'atteindre, transitivement, et la ligne
+  dit par quel chemin.
+
+Les deux étaient mélangées, et c'est le mélange qui empêchait d'écrire le test :
+une entrée était là pour dire le contraire des autres (`checkEthics`, présent des
+deux côtés, listé pour information).
+
+### ⚠ Et `checkEthics` n'est atteint que transitivement
+
+Le recensement direct lit la source des fichiers nommés. `checkEthics` n'y
+apparaît pas : il est appelé par `checkAdvertisingEthics` dans
+`lib/content/month-checks.ts`, que `month/select.ts` atteint. Le test de
+`ON_BOTH_SIDES` traverse donc la chaîne, là où celui des exemptions lit la source
+directe — deux règles différentes pour deux affirmations différentes, ce qui est
+la seule façon de ne pas confondre « appelle » et « peut atteindre ».

@@ -80,6 +80,7 @@ const HARNESS_ORCHESTRATION = [
    */
   "lib/content/month/draw.ts",
   "lib/content/month/draw-port.ts",
+  "lib/content/month/compose-card.ts",
 ] as const;
 
 const HARNESS = "scripts/local-render/20-month.ts";
@@ -140,6 +141,13 @@ const PRODUCT_ORCHESTRATION = [
    */
   "lib/content/month/draw.ts",
   "lib/content/month/draw-port.ts",
+  /*
+   * ⚠ ET C'EST CELUI-LÀ QUI PORTE LA MENTION DE LICENCE. Le pied de carte est la
+   * seule bande partagée par les onze archétypes : sans lui, un mois composé
+   * n'aurait aucun numéro. Le module REFUSE en plus un pied qui ne le porte pas —
+   * un contrôle ajouté, que le harnais n'avait pas.
+   */
+  "lib/content/month/compose-card.ts",
 ] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
@@ -241,14 +249,13 @@ const ONLY_IN_HARNESS: Record<string, string> = {
     "juge la complétude d'une LIGNE de carte de trente caractères ; le chemin produit n'écrit pas de lignes de carte",
   reviseMonth:
     "réécrit les libellés répétés d'un payload d'archétype — il n'y a aucun payload côté produit",
-  composeWithFallback:
-    "la composition vectorielle des onze archétypes ; le chemin produit compose par un port injecté qui dessine des fonds photographiques",
-
-  /* ── la licence : la plus grave des absences ─────────────────────────── */
-  licenceMissingMessage:
-    "⚠ CELLE-CI EST GRAVE. Le pied de licence est posé par composeWithFallback ; un mois produit ne porterait AUCUNE mention, ce que la Californie exige dans toute publicité (F45)",
-  licenceMention:
-    "même raison que licenceMissingMessage : la mention se compose sur la carte, et le chemin produit ne compose pas de cartes",
+  /*
+   * ⚠ `composeWithFallback` N'EST PLUS ICI, ET C'ÉTAIT LA PLUS GRAVE.
+   * `month/compose-card.ts` l'appelle, le harnais passe par lui, et le module
+   * REFUSE un pied sans mention de licence — ce que le bloc inline du harnais ne
+   * faisait pas. Une mention vide y composait « Cabinet · » : une carte
+   * d'apparence normale, sans numéro, que personne ne remarquerait.
+   */
 
   /*
    * ⚠ `reserve_credit` ET `settle_credit` NE SONT PLUS ICI — ils sont PORTÉS.
@@ -258,9 +265,37 @@ const ONLY_IN_HARNESS: Record<string, string> = {
    * (`server-port.test.ts`).
    */
 
-  /* ── et une qui est présente des deux côtés, autrement ───────────────── */
+};
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  ⚠ CE QUI EST DES DEUX CÔTÉS, AUTREMENT — ET CE N'EST PAS UNE EXEMPTION
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Cette carte était MÉLANGÉE avec celle des exemptions, et le mélange coûtait
+ * exactement ce qu'un mélange coûte : on ne pouvait pas écrire le test qui
+ * vérifie qu'une exemption est encore NÉCESSAIRE, puisqu'une entrée était là pour
+ * dire le contraire.
+ *
+ * ⚠ ET CE TEST MANQUANT A LAISSÉ PASSER DEUX EXEMPTIONS PÉRIMÉES UNE SESSION
+ *   ENTIÈRE : `licenceMention` et `licenceMissingMessage` sont appelés par
+ *   `month/preflight.ts` depuis l'étage A, et leur ligne disait encore « le chemin
+ *   produit ne compose pas de cartes » — avec un « ⚠ CELLE-CI EST GRAVE » qui
+ *   était vrai à l'écriture et faux depuis. Une exemption pour un mécanisme que le
+ *   produit appelle déjà est une ligne qui mentirait aussi sur ce qu'elle protège
+ *   le jour où le mécanisme disparaît.
+ *
+ * Les deux cartes ont donc des obligations OPPOSÉES, et deux tests les tiennent :
+ * une exemption doit être ABSENTE du produit, une entrée d'ici doit y être
+ * PRÉSENTE.
+ */
+const ON_BOTH_SIDES: Record<string, string> = {
   checkEthics:
-    "présent des DEUX côtés en réalité : le chemin produit l'appelle par lib/ethics/guard.ts, à la réécriture. Listé ici parce que le harnais l'appelle AUSSI en direct, sur les quatre colonnes de la gâchette, juste avant l'insert",
+    "le chemin produit l'appelle par lib/ethics/guard.ts à la réécriture, et checkMonth l'appelle par checkAdvertisingEthics sur toutes les surfaces publiées ; le harnais l'appelle AUSSI en direct sur les quatre colonnes de la gâchette, juste avant l'insert",
+  licenceMention:
+    "le PORTILLON est porté — month/preflight.ts refuse un mois sans mention avant toute dépense (F46) — mais le PIED DE CARTE attend composeWithFallback, qui reste exempté et porte la gravité",
+  licenceMissingMessage:
+    "même partage que licenceMention : le refus est porté par le préalable, la phrase qui dit comment réparer en trente secondes est déjà rendue au produit",
 };
 
 /*
@@ -306,7 +341,9 @@ describe("le recensement harnais / produit", () => {
    * remarquait que le produit n'avait rien, parce que rien ne comparait.
    */
   it("aucun mécanisme du harnais n'est absent du produit sans raison nommée", () => {
-    const orphans = [...harness].filter((m) => !product.has(m) && !(m in ONLY_IN_HARNESS));
+    const orphans = [...harness].filter(
+      (m) => !product.has(m) && !(m in ONLY_IN_HARNESS) && !(m in ON_BOTH_SIDES)
+    );
     expect(
       orphans.sort(),
       `mécanisme(s) du harnais sans équivalent produit ni raison : ${orphans.join(", ")}`
@@ -319,6 +356,47 @@ describe("le recensement harnais / produit", () => {
       extra.sort(),
       `exemption(s) pour un mécanisme que le harnais n'appelle pas : ${extra.join(", ")}`
     ).toEqual([]);
+  });
+
+  /*
+   * ══════════════════════════════════════════════════════════════════════
+   *  ⚠ LE TEST QUI MANQUAIT : UNE EXEMPTION DOIT ÊTRE ENCORE NÉCESSAIRE
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * Rien ne vérifiait qu'un mécanisme exempté soit bien ABSENT du produit. Deux
+   * exemptions ont donc survécu une session entière après leur portage —
+   * `licenceMention` et `licenceMissingMessage`, appelés par `month/preflight.ts`
+   * depuis l'étage A — dont une portait « ⚠ CELLE-CI EST GRAVE », vrai à
+   * l'écriture et faux depuis.
+   *
+   * ⚠ ET LE BIAIS EST LE MÊME QUE CELUI DE F48, dans l'autre sens : une exemption
+   * de trop fait paraître le portage MOINS avancé qu'il n'est, donc personne ne la
+   * cherche. C'est le pendant exact du compte qui flatte, et il se corrige par le
+   * même geste — un test, pas une relecture.
+   */
+  it("aucune exemption ne couvre un mécanisme que le produit appelle déjà", () => {
+    const stale = Object.keys(ONLY_IN_HARNESS).filter((m) => product.has(m));
+    expect(
+      stale.sort(),
+      `exemption(s) périmée(s) — le produit appelle déjà ces mécanismes : ${stale.join(", ")}`
+    ).toEqual([]);
+  });
+
+  /*
+   * ⚠ ET L'OBLIGATION INVERSE POUR L'AUTRE CARTE. Une entrée de `ON_BOTH_SIDES`
+   * affirme que le produit l'atteint ; si ce n'est plus vrai, elle cache une
+   * absence au lieu de la documenter, et c'est pire qu'une exemption manquante
+   * puisqu'elle rassure.
+   */
+  it("chaque mécanisme dit des deux côtés est vraiment atteint par le produit", () => {
+    const reachable = mechanismsOf([...chainOf([...PRODUCT_ORCHESTRATION])].filter((f) => f.endsWith(".ts")));
+    for (const [mechanism, why] of Object.entries(ON_BOTH_SIDES)) {
+      expect(
+        reachable.has(mechanism),
+        `${mechanism} est dit des deux côtés, et la chaîne produit ne l'atteint pas`
+      ).toBe(true);
+      expect(why.length, mechanism).toBeGreaterThan(40);
+    }
   });
 
   it("chaque exemption dit pourquoi, et concerne un mécanisme qui existe encore", () => {
@@ -620,6 +698,8 @@ const EXTRACTED_NOT_WIRED: Record<string, string> = {
     "le tirage choisit les sujets À ÉCRIRE : tirer sans écrire retirerait trente-six sujets au segment pour quatre-vingt-dix jours sans rien en faire. Son appelant est l'orchestrateur, et le harnais l'appelle déjà",
   "lib/content/month/draw-port.ts":
     "la couture du tirage n'a de sens qu'appelée par le tirage, qui attend l'orchestrateur. Le harnais y passe déjà, donc il n'y a plus qu'une implémentation de ces deux RPC",
+  "lib/content/month/compose-card.ts":
+    "⚠ LA PLUS GRAVE DES SIX. Elle pose le pied de licence, et rien côté produit ne l'atteint : tant que l'orchestrateur n'existe pas, aucun mois produit ne peut être composé — ce qui est heureux, puisqu'un mois composé sans elle serait une publicité sans numéro de licence (B&P §651)",
 };
 
 describe("F50 — extraire n'est pas brancher", () => {
