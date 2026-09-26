@@ -3255,6 +3255,10 @@ export type Database = {
         Returns: boolean
       }
       content_error: { Args: { p_code: string }; Returns: Json }
+      credit_remaining: {
+        Args: { p_user: string; p_kind: string; p_month?: string }
+        Returns: Json
+      }
       custom_visual_path: {
         Args: { p_brand_kit_id: string; p_prompt_hash: string }
         Returns: string
@@ -3273,6 +3277,10 @@ export type Database = {
       credit_plan_for: { Args: { p_user: string }; Returns: string }
       credit_meter: { Args: { p_month?: string }; Returns: Json }
       credit_monthly_limit: { Args: { p_kind: string; p_user: string }; Returns: number }
+      drawable_count_for_kit: {
+        Args: { p_brand_kit_id: string }
+        Returns: { archetype_key: string; drawable: number }[]
+      }
       monthly_presence_entitled: { Args: never; Returns: boolean }
       monthly_presence_past_due_grace: { Args: never; Returns: string }
       release_stale_credit_reservations: { Args: { p_older_than?: string }; Returns: number }

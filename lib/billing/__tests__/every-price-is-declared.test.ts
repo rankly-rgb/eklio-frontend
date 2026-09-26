@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { KIT_PLANS, MONTHLY_PRESENCE } from "@/lib/billing/plans";
-import { KIT_TIERS, LEGACY_KIT_TIERS } from "@/lib/kit/tiers";
+import { KIT_TIERS, LEGACY_KIT_TIERS, sellableKitTierSchema } from "@/lib/kit/tiers";
 
 /*
  * ── ⚠ LE CODE PEUT EXIGER UNE VARIABLE QUE RIEN NE DÉCLARE ──────────────
@@ -77,34 +77,48 @@ describe("toute variable de prix que le code peut exiger est déclarée", () => 
   });
 
   /*
-   * ── ⚠ ET LES PALIERS ACHETABLES MAIS NON DÉCLARÉS SONT NOMMÉS ──────────
+   * ── ⚠ CORRIGÉ LE 2026-09-26 : ILS NE SONT PLUS ATTEIGNABLES ────────────
    *
-   * Tant qu'ils ne sont pas tranchés, ils sont ici, avec ce qu'il faut faire.
-   * Ce test tombe le jour où quelqu'un pose la variable OU restreint le schéma —
-   * et c'est l'intention : les deux réponses sont bonnes, l'oubli ne l'est pas.
+   * `foundation` (390 $) et `roster` (690 $) restent dans `KIT_TIERS` — un kit
+   * acheté doit continuer de se relire — et leurs variables de prix ne sont
+   * toujours pas déclarées. Ce qui a changé : l'action de checkout ne lit plus
+   * `kitTierSchema` mais `sellableKitTierSchema`, qui n'accepte que les trois
+   * paliers affichés. Le 500 sur un point d'entrée de paiement n'est plus
+   * atteignable.
+   *
+   * ⚠ ET LES DEUX SCHÉMAS DOIVENT RESTER DISTINCTS. Les confondre à nouveau
+   * rouvrirait exactement le même trou, et c'est ce que ces tests tiennent.
    */
-  const UNDECLARED_BUT_REACHABLE: Record<string, string> = {
-    foundation:
-      "390 $, accepté par kitTierSchema et absent de la page de tarifs. Poser STRIPE_PRICE_FOUNDATION si le palier se vend, sinon restreindre le schéma de l'action de checkout à LEGACY_KIT_TIERS",
-    roster:
-      "690 $, même situation que foundation. La bonne réponse tant que la page ne le montre pas est de restreindre le schéma : un palier achetable et invisible est un palier dont personne ne connaît le prix",
-  };
-
-  it("les paliers atteignables et non déclarés sont exactement ceux qu'on a nommés", () => {
-    const reachable = KIT_TIERS.filter((t) => !isDeclared.has(KIT_PLANS[t].priceEnvVar));
-    expect(
-      [...reachable].sort(),
-      "un palier atteignable a changé de statut : soit sa variable est posée, soit le schéma est restreint, soit il faut le nommer ici"
-    ).toEqual(Object.keys(UNDECLARED_BUT_REACHABLE).sort());
+  it("les paliers non déclarés ne sont plus vendables", () => {
+    const undeclared = KIT_TIERS.filter((t) => !isDeclared.has(KIT_PLANS[t].priceEnvVar));
+    expect(undeclared.length, "tous les paliers ont une variable : ce test peut disparaître")
+      .toBeGreaterThan(0);
+    for (const tier of undeclared) {
+      expect(
+        sellableKitTierSchema.safeParse(tier).success,
+        `${tier} n'a pas de variable de prix déclarée et reste vendable — le 500 est de retour`
+      ).toBe(false);
+    }
   });
 
-  it("chaque palier non déclaré dit quoi faire, et pas « plus tard »", () => {
-    for (const [tier, why] of Object.entries(UNDECLARED_BUT_REACHABLE)) {
-      expect(KIT_TIERS as readonly string[]).toContain(tier);
-      expect(why.length, tier).toBeGreaterThan(60);
-      expect(why, `${tier} : « plus tard » n'est pas une décision`).toMatch(
-        /Poser|restreindre/i
-      );
+  it("l'action de checkout lit le schéma vendable, pas celui des paliers existants", () => {
+    const src = readFileSync("app/app/checkout/actions.ts", "utf8");
+    expect(src).toContain("tier: sellableKitTierSchema,");
+    expect(src, "l'action lit à nouveau kitTierSchema — elle accepterait foundation et roster")
+      .not.toMatch(/tier:\s*kitTierSchema/);
+  });
+
+  /*
+   * ⚠ ET TOUT CE QUI EST VENDABLE EST DÉCLARÉ. C'est l'invariant dans l'autre
+   * sens : élargir la vente sans poser la variable ramènerait le 500.
+   */
+  it("tout palier vendable a sa variable déclarée", () => {
+    for (const tier of KIT_TIERS) {
+      if (!sellableKitTierSchema.safeParse(tier).success) continue;
+      expect(
+        isDeclared.has(KIT_PLANS[tier].priceEnvVar),
+        `${tier} est vendable et ${KIT_PLANS[tier].priceEnvVar} n'est pas déclarée`
+      ).toBe(true);
     }
   });
 });

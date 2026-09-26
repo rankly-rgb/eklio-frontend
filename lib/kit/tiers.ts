@@ -74,6 +74,28 @@ export const LEGACY_KIT_TIERS = ["starter", "practice", "signature"] as const;
 
 export const kitTierSchema = z.enum(KIT_TIERS);
 
+/*
+ * ── ⚠ CE QUI EST EN VENTE N'EST PAS CE QUI PEUT EXISTER ─────────────────
+ *
+ * `kitTierSchema` valide ce qu'un `brand_kits.tier` peut porter — y compris des
+ * paliers retirés de la vente, parce qu'un kit acheté doit continuer de se
+ * relire. L'action de checkout l'utilisait, et c'était un défaut : elle
+ * acceptait donc `foundation` (390 $) et `roster` (690 $), que la page de tarifs
+ * ne montre pas et dont les variables de prix ne sont déclarées nulle part.
+ * `requireEnv` levait, et un point d'entrée de PAIEMENT rendait un 500 non géré.
+ *
+ * Ce n'était pas une fuite d'argent — rien n'était débité. C'était un palier
+ * achetable par requête forgée, invisible à l'écran, dont personne ne connaît le
+ * prix.
+ *
+ * ⚠ CELUI-CI VALIDE CE QUI EST VENDABLE, et c'est lui que le checkout doit lire.
+ * Élargir la vente se fait en posant la variable de prix ET en ajoutant le
+ * palier à cette liste — deux gestes, dans le même commit, ce qui est le but.
+ */
+export const sellableKitTierSchema = z.enum(LEGACY_KIT_TIERS);
+
+export type SellableKitTier = z.infer<typeof sellableKitTierSchema>;
+
 export type KitTier = (typeof KIT_TIERS)[number];
 
 export type PageKey = (typeof PAGES_WANTED)[number];

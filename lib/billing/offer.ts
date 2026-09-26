@@ -1,3 +1,25 @@
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  ⚠ CONFIGURATION MORTE — RIEN N'IMPORTE CE FICHIER
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Relevé le 2026-09-26 : aucun fichier hors de ses propres tests ne l'importe.
+ * Il porte quatre variables de prix — `STRIPE_PRICE_IDENTITY_ADDON` (89 $),
+ * `_ROSTER_SEAT` (120 $), `_FILL_SOLO` (59 $), `_FILL_PRACTICE` (69 $) — dont
+ * AUCUNE n'est déclarée dans `.env.example` et aucune n'est atteignable depuis
+ * un achat.
+ *
+ * ⚠ NE PAS POSER CES VARIABLES. Un secret posé en production pour un chemin
+ * qu'aucun code n'emprunte est une portée de plus à se tromper, pour rien.
+ *
+ * ⚠ ET IL N'EST PAS SUPPRIMÉ, DÉLIBÉRÉMENT. Il décrit une offre — sièges,
+ * remplissages, add-on d'identité — que personne n'a fini de concevoir, et la
+ * supprimer perdrait ce travail de cadrage sans rien simplifier : il ne coûte
+ * rien puisqu'il n'est pas chargé. Le jour où on le branche,
+ * `lib/billing/__tests__/every-price-is-declared.test.ts` tombe et exige que ses
+ * quatre variables soient déclarées comme les autres.
+ */
+
 import type { KitTier } from "@/lib/kit/tiers";
 
 /*

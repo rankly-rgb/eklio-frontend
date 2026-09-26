@@ -240,3 +240,143 @@ describe("la route de libération tourne vraiment", () => {
     expect(src).toContain("{ ok: false, released: 0 }, { status: 500 }");
   });
 });
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LA BARRIÈRE — CE QUI EMPÊCHE QUE ÇA RECOMMENCE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Le recensement ci-dessus CONSTATE. Ce bloc-ci INTERDIT : tant qu'un mécanisme
+ * du harnais n'a pas d'équivalent produit, la route de génération doit rester en
+ * 501, et aucune valeur en dur ne doit pouvoir faire croire le contraire.
+ *
+ * ⚠ C'EST LE POINT 2 QUI COMPTE. Le générateur retiré passait pour
+ * déontologiquement contrôlé parce qu'il rendait un objet disant
+ * `passed: true`. Un recensement qui ne regarderait que des noms d'appels
+ * pourrait être satisfait de la même façon.
+ */
+
+/**
+ * Les fichiers que F45 retire, et qui ne partent qu'en dernier.
+ *
+ * ⚠ ILS SONT NOMMÉS POUR QUE LEUR DETTE EXPIRE. Tant qu'ils existent, la route
+ * reste en 501. Le jour où ils sont supprimés, les tests qui les citent tombent,
+ * et c'est le signal que la barrière peut se lever.
+ */
+const TO_REMOVE = [
+  "lib/content/generate/pipeline.ts",
+  "lib/content/generate/run.ts",
+  "scripts/content/generate-month.ts",
+] as const;
+
+describe("la barrière", () => {
+  const ROUTE = "app/api/cron/content-month/route.ts";
+
+  it("les fichiers que F45 retire existent encore — la dette n'est pas payée", () => {
+    const present = TO_REMOVE.filter((f) => existsSync(f));
+    expect(
+      present.length,
+      "les fichiers de F45 sont supprimés : la barrière peut se lever, et ce test doit être réécrit"
+    ).toBeGreaterThan(0);
+  });
+
+  /*
+   * ⚠ LA ROUTE RESTE EN 501 TANT QUE LE RECENSEMENT PORTE DES EXEMPTIONS. Armer
+   * une route qui appellerait `generateMonth` mettrait en vente des publicités
+   * sans mention de licence — ce que la Californie interdit.
+   */
+  it("la route rend 501 tant qu'il reste des exemptions", () => {
+    const exemptions = Object.keys(ONLY_IN_HARNESS).length;
+    expect(exemptions, "plus aucune exemption : la route peut générer").toBeGreaterThan(0);
+    const src = readFileSync(ROUTE, "utf8");
+    expect(src, `${exemptions} mécanisme(s) sans équivalent produit, et la route ne rend pas 501`)
+      .toContain("{ status: 501 }");
+  });
+
+  /*
+   * ⚠ ET ELLE NE GÉNÈRE PAS. Une route qui appellerait le générateur retiré
+   * serait verte à tous les tests ci-dessus et vendrait quand même des mois sans
+   * mention de licence.
+   */
+  it("la route n'appelle aucun générateur", () => {
+    const src = readFileSync(ROUTE, "utf8");
+    for (const forbidden of ["runMonthForKit(", "generateMonth(", "persistGeneratedMonth("]) {
+      const calls = [...src.matchAll(new RegExp(`(^|[^*\\s])\\s*${forbidden.replace("(", "\\(")}`, "gm"))];
+      expect(
+        calls.map((m) => m[0].trim()),
+        `la route appelle ${forbidden} alors que le recensement n'est pas vert`
+      ).toEqual([]);
+    }
+  });
+
+  /*
+   * ── ⚠ AUCUN VERDICT DÉONTOLOGIQUE EN DUR, HORS DES FICHIERS RETIRÉS ────
+   *
+   * `ethicsCheck: { passed: true }` est la façon dont le générateur produit
+   * annonçait un contrôle qu'il ne faisait pas. Le motif est cherché sur toute
+   * la chaîne produit, et il n'est toléré que dans les fichiers que F45 retire —
+   * où il documente le défaut plutôt que de le commettre.
+   */
+  /**
+   * Les verdicts `passed: true` qui sont GAGNÉS, avec ce qui les gagne.
+   *
+   * ⚠ UN MOTIF NE PEUT PAS DISTINGUER « GAGNÉ » DE « AFFIRMÉ ». `guard.ts` rend
+   * `passed: true` après avoir LEVÉ sur toute violation non résolue ; `pipeline.ts`
+   * le rend sans condition, avec `flagged` collecté et jamais consulté. Les deux
+   * lignes se ressemblent et ne disent pas la même chose.
+   *
+   * L'exemption porte donc la GARDE qui la gagne, et un test vérifie que cette
+   * garde existe encore : le jour où quelqu'un retire le `throw`, l'exemption
+   * tombe avec lui.
+   */
+  const EARNED: Record<string, { guard: string; why: string }> = {
+    "lib/ethics/guard.ts": {
+      guard: "throw new EthicsComplianceError(",
+      why:
+        "enforceEthics lève sur toute violation bloquante encore présente après réécriture ; atteindre le retour signifie qu'il n'en reste aucune",
+    },
+  };
+
+  it("chaque verdict gagné porte encore sa garde", () => {
+    for (const [file, { guard, why }] of Object.entries(EARNED)) {
+      expect(existsSync(file), `${file} n'existe plus — exemption périmée`).toBe(true);
+      expect(
+        readFileSync(file, "utf8"),
+        `${file} rend passed: true sans plus rien lever — l'exemption n'est plus gagnée`
+      ).toContain(guard);
+      expect(why.length, file).toBeGreaterThan(40);
+    }
+  });
+
+  it("aucun verdict déontologique en dur, sauf dans ce qui part ou ce qui le gagne", () => {
+    const suspicious = /passed:\s*true|ok:\s*true\s*,\s*violations:\s*\[\]/;
+    const offenders: string[] = [];
+    for (const file of chainOf(PRODUCT_ROOTS)) {
+      if ((TO_REMOVE as readonly string[]).includes(file)) continue;
+      if (file in EARNED) continue;
+      const src = readFileSync(file, "utf8");
+      for (const [n, line] of src.split("\n").entries()) {
+        /* Une mention en commentaire documente, elle ne décide pas. */
+        if (/^\s*(\*|\/\/|\/\*)/.test(line)) continue;
+        if (suspicious.test(line)) offenders.push(`${file}:${n + 1} ${line.trim().slice(0, 60)}`);
+      }
+    }
+    expect(
+      offenders,
+      `verdict déontologique posé en dur, ni retiré ni gagné : ${offenders.join(" | ")}`
+    ).toEqual([]);
+  });
+
+  /*
+   * ⚠ ET LE MOTIF ATTRAPE BIEN QUELQUE CHOSE. Un test de motif qui ne trouve
+   * rien nulle part est un test qui passera toujours — y compris le jour où le
+   * défaut revient sous une forme qu'il ne voit pas.
+   */
+  it("le motif attrape le défaut là où il est, pour prouver qu'il fonctionne", () => {
+    const pipeline = readFileSync("lib/content/generate/pipeline.ts", "utf8");
+    expect(
+      /ethicsCheck:\s*\{\s*passed:\s*true/.test(pipeline),
+      "le verdict en dur a disparu de pipeline.ts — le motif de ce test n'a plus de témoin"
+    ).toBe(true);
+  });
+});

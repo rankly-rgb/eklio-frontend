@@ -10,7 +10,7 @@ import {
   createCheckoutSession,
 } from "@/lib/stripe/checkout";
 import { StripeConfigError } from "@/lib/stripe/client";
-import { kitTierSchema } from "@/lib/kit/tiers";
+import { sellableKitTierSchema } from "@/lib/kit/tiers";
 
 /*
  * Départ vers Stripe Checkout.
@@ -25,7 +25,13 @@ const GENERIC_ERROR =
   "We couldn't open the payment page. Please try again in a moment.";
 
 const startCheckoutSchema = z.object({
-  tier: kitTierSchema,
+  /*
+   * ⚠ LE SCHÉMA VENDABLE, PAS CELUI DES PALIERS EXISTANTS. Voir
+   * `sellableKitTierSchema` : `kitTierSchema` acceptait deux paliers dont aucune
+   * variable de prix n'est déclarée, et `requireEnv` levait un 500 sur un point
+   * d'entrée de paiement.
+   */
+  tier: sellableKitTierSchema,
   projectId: z.uuid().nullable(),
   withMonthlyPresence: z.boolean(),
 });
