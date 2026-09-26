@@ -75,3 +75,22 @@ git push origin origin/claude/gallant-lamport-mt20i0:refs/heads/main
 `main` en entier : le `push` est un fast-forward et rien n'est réécrit. Si Git
 le refuse, c'est que `main` a bougé depuis cette analyse — **s'arrêter et
 refaire le comptage**, ne pas forcer.
+
+---
+
+## ⚠ Mise à jour du 2026-09-26 — le compte de migrations
+
+L'analyse citait **154** migrations sur la branche source. Elle en porte
+désormais **157**. Les trois ajoutées depuis, dans l'ordre :
+
+| migration | ce qu'elle fait |
+|---|---|
+| `20260924150000_a_backup_that_does_not_restore_is_not_a_backup` | remplace la `CHECK` inter-tables de `section_types` par un trigger de contrainte différé — sans elle, la sauvegarde restaure onze lignes de moins, en silence |
+| `20260924160000_a_licence_number_is_required_in_every_advertisement` | `license_type_id`, `license_number`, `license_state_code` sur `project_briefs`, avec leurs contraintes de forme |
+| `20260926090000_ethics_immediate_negation` | F38 — un terme interdit immédiatement nié est conforme ; `ethics_prohibitive_lead()` et le dépouillement dans `ethics_scan` |
+
+⚠ **Le raisonnement de la fiche ne change pas.** Ce qui change est un compte, et
+c'est précisément pourquoi la répétition à blanc ne l'écrit plus en littéral :
+elle le **dérive** du dépôt (`ls $MIG/*.sql | wc -l`). Le cliché avait pris deux
+migrations de retard sans que l'étape le dise — le compte attendu et le compte
+réel étaient tous les deux faux, d'accord entre eux.

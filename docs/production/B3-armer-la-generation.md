@@ -57,3 +57,33 @@ select user_id, kind, reservations, settlements, cost_usd
 `content_months_kit_month_key` est unique sur `(brand_kit_id, month)`, donc le
 second insert est refusé par la base et non par un drapeau que quelqu'un a
 pensé à lire.
+
+---
+
+## ⚠ Mise à jour du 2026-09-26 — la condition 3 a changé d'échelle
+
+**Le seuil de banque a baissé de 43 %.** La condition 3 renvoyait à
+`fillTrigger({practitioners: N, attempts: 4})`. Deux de ses termes ont bougé :
+
+* **le tirage.** F41 a montré que les 102 candidats par essai venaient d'une
+  tautologie — la moitié était payée sans être examinée. Le tirage est désormais
+  dérivé de ce que la boucle consomme et vaut **57**. `fillTrigger` s'en déduit :
+  **174 → 99** pour un essai, **1 704 → 954** pour un segment de dix.
+* **`attempts`.** Le 4 venait de « 1 mois livré sur 4 essais ». Les deux mois du
+  2026-09-26 ont été livrés en **un essai chacun**, portillon par post en place.
+  ⚠ **Deux mois ne font pas une moyenne** : garder `attempts: 4` reste le choix
+  prudent jusqu'à la mesure de confirmation à cinq mois (M4). Le dimensionnement
+  ne doit pas se détendre sur deux points.
+
+Donc : la vérification reste la même, ses nombres ont baissé, et **il ne faut pas
+en profiter pour baisser `attempts`.**
+
+## ⚠ Et la condition 3 reste celle qu'on saute, pour la même raison
+
+Le garde-fou vit toujours dans le harnais et non sur le chemin produit. Ce qui a
+changé le 2026-09-26 : la pénurie de banque constatée n'était **pas** un manque
+de sujets mais **994 assignations orphelines** tenues par des essais interrompus.
+`release_stale_topic_assignments()` les a rendues, et zéro archétype est repassé
+sous le seuil. La libération tourne en tête de génération dans le harnais — **pas
+sur le chemin produit non plus.** C'est le même trou, et il en porte maintenant
+deux choses.

@@ -2702,3 +2702,44 @@ chez l'ancien fournisseur.
 - **Batch** : `/v1/responses` accepté, `completion_window: '24h'` **seule valeur
   déclarée**. Le harnais abandonne un lot à 90 minutes ; cette borne est la
   nôtre, et un lot abandonné peut continuer à être facturé jusqu'à son terme.
+
+---
+
+## F43 — Le temps humain qui reste avant d'ouvrir, réestimé au 2026-09-26
+
+La répétition à blanc passe à **0 échec** et la restauration est prouvée à
+**0 écart sur 86 tables**. Ce qui reste n'est plus du code : c'est du temps de
+personne, sur des choses qu'aucun script ne peut jouer.
+
+| # | ce qu'il reste | temps | pourquoi une personne |
+|---|---|---|---|
+| 1 | **F12 Californie : refaire les 4 lignes** | **20 min** | les quatre portent déjà `verified_at`, posé par le harnais, `verified_by = "LOCAL RENDER HARNESS — not a board check"`. Il faut les **effacer** et lire la règle du board. Sinon la première vente se fait sur une vérification qui n'a pas eu lieu |
+| 2 | **Vercel** : variables, portées, domaine | **1 h** | quatre secrets à poser en portée *Production uniquement* — B2. Une portée trop large ne donne aucune erreur, elle marche |
+| 3 | **DNS** | **30 min** + propagation | rien de local |
+| 4 | **Stripe de bout en bout** | **1 h 30** | ⚠ **jamais fait**, ni en test ni en réel. Mode test, puis un achat réel remboursé aussitôt — B5 |
+| 5 | **Le coup d'œil sur une planche réelle** | **15 min** | B6. Les deux mois du 2026-09-26 sont sortis sans un constat et **n'ont pas été regardés** |
+| 6 | **Générer un mois par le PRODUIT** | **30 min** | condition 4 de B3. Tout ce qui a été mesuré l'a été par le harnais, jamais par la route |
+| | **total** | **≈ 4 h 30** | hors propagation DNS |
+
+### ⚠ Et deux choses qui ressemblent à du temps humain et sont du développement
+
+**Ni l'une ni l'autre n'est dans les 4 h 30.**
+
+1. **Le garde-fou de banque et la libération des assignations ne vivent que dans
+   le harnais.** `20-month.ts` refuse avant de dépenser si la banque est courte,
+   et rend les assignations orphelines en tête de génération. Le chemin produit
+   — `/api/cron/content-month` — n'a **ni l'un ni l'autre**. Un `cron` armé sur
+   une banque courte livre des mois courts, et une exécution tuée retire des
+   sujets au segment pour trois heures sans que rien ne les rende. C'est le même
+   trou depuis l'origine, et il porte maintenant deux choses.
+2. **La notation indépendante n'a pas eu lieu** (voir F44, M5). « Zéro constat »
+   ne veut pas dire « bonne planche », il veut dire « rien de ce qu'on sait
+   nommer ». Les trente contrôles ne jugent pas si une phrase dit quelque chose.
+
+### Ce qui est prêt et n'attend personne
+
+Reconstruction de la copie de production depuis les 133 migrations, application
+des 24 nouvelles dans l'ordre, sauvegarde et restauration prouvées ligne à ligne,
+F38, les 18 règles et les 5 gâchettes, le délai de grâce de 3 h éprouvé dans les
+deux sens. Tout cela se rejoue en une commande, depuis n'importe quel répertoire,
+et chaque relance reconstruit la base.

@@ -67,3 +67,33 @@ dernier, après 8b.
 | `SUPABASE_SERVICE_ROLE_KEY` | une page `/app` se charge pour un compte connecté |
 | `RESEND_API_KEY` | `/api/cron/trial-ending` appelé avec le secret → 200 et un envoi dans le tableau de bord Resend |
 | `ANTHROPIC_API_KEY` | `/api/briefs/[id]/generate` sur un brief de test rend un kit ; ⚠ elle est lue par la ROUTE, pas par le client : une clé posée dans un shell ne sert à rien ici |
+
+---
+
+## ⚠ Mise à jour du 2026-09-26 — un cinquième secret, et il n'existe pas encore
+
+La fiche parle de **quatre** secrets. Un cinquième est apparu au brief du
+2026-09-26 : `EKLIO_OPENAI_API_KEY`, pour basculer la rédaction sur OpenAI.
+
+**Il n'a pas été posé, et la bascule est reportée** (F42) :
+
+| | constat |
+|---|---|
+| la clef | absente de l'environnement, de `/run/secrets` et de tout `.env` |
+| les domaines OpenAI | tous refusés par la politique d'egress — 403 au CONNECT |
+
+⚠ **Ne l'ajoute pas à cette liste tant que la bascule n'est pas mesurée.** Un
+secret posé en production pour un chemin qu'aucun run n'a exercé est une portée
+de plus à se tromper, pour rien. `lib/content/generate/provider.ts` est en place
+et éprouvé hors ligne ; le transport HTTP n'est pas écrit.
+
+⚠ **Et si la bascule se fait un jour, la portée n'est pas « Production ».** Les
+trois bras de comparaison (M2) tournent en local contre une copie : la clef y
+passe **par commande**, jamais par une variable Vercel.
+
+## ⚠ Ce qui n'a pas changé, et qui reste la ligne la plus importante
+
+`ANTHROPIC_API_KEY` doit être lue **par la route**, pas seulement au build. La
+condition 4 de B3 reste non vérifiée : aucun kit n'a été généré par
+`/api/briefs/[id]/generate`. Tout ce qui a été mesuré depuis — deux mois livrés,
+0,574 $ le mois — l'a été **par le harnais**, jamais par le produit.

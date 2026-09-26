@@ -76,3 +76,35 @@ L'étape 2 ne dit plus « vérifier qu'elle se restaure » mais **« la restaure
 avec `A-restaurer.sh`, et lire l'étape 6 »**. La procédure fonctionne sur la
 production **telle qu'elle est** : elle ne demande aucune migration préalable,
 et l'étape 1b devient une amélioration du schéma plutôt qu'un préalable.
+
+---
+
+## ⚠ Mise à jour du 2026-09-26 — rejouée, et la procédure s'est adaptée seule
+
+Rejouée intégralement sur la copie de production reconstruite depuis les 157
+migrations :
+
+```
+═══ 6 · LA VÉRIFICATION : LIGNE À LIGNE, PAS TABLE À TABLE ═══
+  ✓ 86 tables identiques, ligne à ligne et contenu compris
+── 0 écart(s) ──
+```
+
+**Et elle ne retire plus la même contrainte.** À l'écriture, l'étape 2 retirait
+`section_types_allowed_pages_check`. Cette `CHECK` n'existe plus : la migration
+`20260924150000` l'a remplacée par un trigger de contrainte différé, qui se
+restaure nativement. L'étape 2 a donc trouvé et traité une **autre** contrainte
+de la même classe, apparue depuis :
+
+```
+═══ 2 · retirer les CHECK qui lisent une autre table ═══
+  ✓ retirée : content_items.content_items_payload_valid
+═══ 4 · reposer les contraintes, et les VALIDER ═══
+  ✓ reposée et validée : content_items.content_items_payload_valid
+```
+
+⚠ **C'est le seul résultat de cette fiche qui valait d'être écrit.** L'étape 2
+énumère depuis `pg_constraint`/`pg_depend`/`pg_proc` au lieu de porter une liste.
+Une liste tenue à la main aurait nommé `section_types`, ne l'aurait plus trouvée,
+et aurait laissé passer `content_items` — c'est-à-dire aurait reproduit
+exactement le défaut d'origine sur une autre table, avec un script vert.

@@ -1,35 +1,52 @@
-═══ ÉTAPE 0 — ⚠ LE CORRECTIF DE RESTAURATION, SEUL, AVANT TOUT ═══
-  ✓ 20260924150000 appliquée seule sur la base à 133 migrations
-═══ ÉTAPE 1 — vérifications bloquantes ═══
-  ✓ 155 migrations sur la branche source
-  ✓ les 155 se rejouent sur une base neuve
-═══ ÉTAPE 2 — sauvegarde, et vérifier qu'elle se restaure ═══
-  ✓ sauvegarde prise (1.7M)
-  ✓ restauration sans erreur
-  ✓ section_types : 11 lignes de part et d'autre
-  ✓ site_pages : 4 lignes de part et d'autre
-  ✓ modalities :  lignes de part et d'autre
-  ✓ restauration vérifiée : 69 tables de part et d'autre
-═══ ÉTAPE 3 — appliquer les 21 nouvelles, dans l'ordre, arrêt au premier échec ═══
-  ✓ les 21 appliquées, dans l'ordre
-═══ ÉTAPE 4 — F12 : la matrice refuse tout tant qu'elle est vide ═══
-  ✓ les 240 lignes sont à NULL sur une base neuve
-  ✓ aucun État vendable : c'est la bonne réponse, pas une panne
-═══ ÉTAPE 7b — les deux tables de F17 existent ═══
-  ✓ content_generation_runs et content_generation_results
-═══ ÉTAPE 8 — la banque : les fonctions de tirage existent et répondent ═══
-  ✓ next_topic_for_kit
-  ✓ drawable_topics_for_kit
-  ✓ drawable_count_for_kit
-  ✓ release_stale_topic_assignments
-  ✓ assign_topic_to_kit
-  ✓ banque vide sur une base neuve — le remplissage est l'étape 8
-═══ ÉTAPE 8b — le crédit : le point d'étranglement et la vue d'audit ═══
-  ✓ reserve_credit
-  ✓ settle_credit
-  ✓ credit_month_audit
-  ✓ l'invariant un-seul-dénouement-par-réservation
-═══ ÉTAPE 8d — le juge : rien à vérifier en base, mais la clé doit être lue par la ROUTE ═══
-  ✓ (hors base — voir docs/production/B2-les-secrets.md)
+RÉPÉTITION À BLANC DE LA MISE EN PRODUCTION — 2026-09-26
+════════════════════════════════════════════════════════
+0 échec sur les étapes jouables.
 
-── 0 échec(s) sur les étapes jouables ──
+Rejouée depuis zéro : la copie de production est reconstruite à chaque
+lancement depuis les 133 migrations que `main` porte, puis les 24 nouvelles
+sont appliquées dans l'ordre.
+
+⚠ DEUX DÉFAUTS DE LA RÉPÉTITION ELLE-MÊME, CORRIGÉS CE JOUR
+  · Les chemins étaient relatifs. `scripts/local-verify-stub-schema.sql` et
+    `supabase/migrations/` vivent dans eklio-backend ; lancée depuis
+    eklio-frontend, la répétition rendait 31 échecs dont AUCUN n'était un
+    défaut de migration — l'amorce n'avait pas été trouvée. Une répétition de
+    mise en production qui ne tourne que depuis un répertoire non écrit
+    quelque part est une répétition qu'on rate le jour où on en a besoin.
+  · La base n'était pas reconstruite. Elle restait dans l'état où la
+    répétition précédente l'avait mise, donc l'étape 3 n'appliquait plus rien
+    et annonçait « les 21 appliquées » en n'en appliquant zéro.
+  · Le compte de migrations était un littéral (155). Il se dérive du dépôt.
+
+ÉTAPES
+  −1  copie de production reconstruite      133 migrations rejouées
+   0  correctif de restauration seul        appliqué
+   1  rejeu complet sur base neuve          157 migrations, 0 échec
+   2  sauvegarde et restauration            69 tables, section_types 11 = 11
+   3  les 24 nouvelles, dans l'ordre        appliquées
+   4  F12 : la matrice refuse à vide        240 lignes, 0 État vendable
+  7b  les deux tables de F17                présentes
+   8  les cinq fonctions de banque          présentes et répondent
+  8b  crédit : chokepoint, vue, invariant   présents
+  8d  le juge (hors base)                   voir B2
+   9  la licence                            3 colonnes, 2 contraintes, matrice 240
+  10  F38                                   immédiate passe, à distance bloque
+  11  18 motifs + 5 gâchettes armées        toutes
+  12  libération des assignations           délai de grâce 3 h, éprouvé des 2 côtés
+  13  ce qui ne se joue pas en base         portillon, crise, mention de licence
+
+PROCÉDURE DE RESTAURATION, VÉRIFIÉE À PART
+  86 tables identiques ligne à ligne, contenu compris — 0 écart.
+  Et elle a retiré une contrainte QUI N'EXISTAIT PAS à son écriture
+  (`content_items_payload_valid`), parce qu'elle énumère depuis le catalogue
+  au lieu de porter une liste.
+
+CE QUI NE PEUT PAS ÊTRE JOUÉ À BLANC
+  · l'étape 5 (Vercel), l'étape 6 (DNS), l'étape 7 (Stripe en mode réel) :
+    aucun objet local, et le brief interdit d'y toucher.
+  · le chemin PRODUIT de génération (condition 3 de B3) : le garde-fou de
+    banque et la libération des assignations vivent dans le harnais, pas dans
+    la route. Ce trou est le même depuis l'origine et il porte maintenant deux
+    choses.
+  · un mois réel regardé par une personne (étape 10) : quinze minutes, et
+    elles n'ont pas eu lieu.
