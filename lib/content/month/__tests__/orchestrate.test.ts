@@ -134,6 +134,11 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort }
   const j = journal();
   const inserted: string[] = [];
   const reserved: string[] = [];
+  const months: Array<{ id: string; status: string }> = [];
+  const insertPort = vi.fn(async (row: { topicId: string }) => {
+    inserted.push(row.topicId);
+    return null;
+  });
   const released: string[][] = [];
   const stock = over.stock ?? 4;
   const free = Array.from({ length: stock }, (_, i) => topic(i + 1));
@@ -157,7 +162,7 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort }
 
   const ports: OrchestratePorts = {
     preflight: {
-      monthExists: async () => false,
+      monthStatus: async () => null,
       licenceFacts: async () => ({
         licenseTypeId: "lmft",
         licenseNumber: "12345",
@@ -181,19 +186,24 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort }
     },
     journal: j.db,
     writer,
-    assemble: {
-      insert: vi.fn(async (row) => {
-        inserted.push(row.topicId);
-        return null;
-      }),
+    openMonthRow: vi.fn(async () => {
+      months.push({ id: "month-1", status: "generating" });
+      return "month-1";
+    }),
+    closeMonthRow: vi.fn(async (id: string, status: string) => {
+      const row = months.find((m) => m.id === id);
+      if (row) row.status = status;
+    }),
+    assembleFor: () => ({
+      insert: insertPort,
       credits,
-    },
+    }),
     releaseTopics: vi.fn(async (ids) => {
       released.push(ids);
     }),
   };
 
-  return { ports, journal: j, inserted, reserved, released, writer, credits };
+  return { ports, journal: j, inserted, reserved, released, writer, credits, months };
 }
 
 const input = (over: Record<string, unknown> = {}) => ({
@@ -427,5 +437,80 @@ describe("la mention de licence arrête le mois entier, pas une carte", () => {
     if (second.ok) return;
     expect(second.stage).toBe("preflight");
     expect(broken.inserted).toEqual([]);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LA LIGNE DU MOIS — LE TROISIÈME EFFET DE F54
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * `content_months.status` porte quatre valeurs, et `generating` n'avait qu'un seul
+ * écrivain : `queue.ts`, appelé par le webhook Stripe à l'achat. Le harnais insère
+ * la ligne À LA FIN, directement en `proposed` — donc une exécution tuée ne laisse
+ * aucune ligne, et l'écran « en cours » que `month-screen.ts` sait afficher n'est
+ * jamais atteint par une génération.
+ */
+describe("la ligne du mois s'ouvre et se ferme", () => {
+  it("elle s'ouvre avant la rédaction, et se ferme en proposed", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(true);
+    expect(w.ports.openMonthRow).toHaveBeenCalledTimes(1);
+    expect(w.months[0].status).toBe("proposed");
+  });
+
+  /*
+   * ⚠ RIEN N'EST OUVERT QUAND LE PRÉALABLE REFUSE. Une ligne posée pour un mois
+   * refusé bloquerait la clé unique `(brand_kit_id, month)` et empêcherait le tour
+   * suivant.
+   */
+  it("aucune ligne n'est ouverte quand le préalable refuse", async () => {
+    const w = world({ verified: false });
+    await orchestrateMonth(w.ports, input());
+    expect(w.ports.openMonthRow).not.toHaveBeenCalled();
+    expect(w.months).toEqual([]);
+  });
+
+  /*
+   * ⚠ ET UN ÉCHEC LA FERME EN `failed`, JAMAIS LAISSÉE EN `generating`. Un mois
+   * « en cours » pour toujours est le pire des trois états : la cliente attend, et
+   * le préalable du tour suivant le laisserait passer en croyant reprendre un
+   * travail qui n'existe pas.
+   */
+  it("une rédaction qui ne rend rien ferme la ligne en failed", async () => {
+    const w = world({
+      writer: { write: vi.fn(async () => ({ posts: [], batchId: null, costUsd: 0.05 })) },
+    });
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.stage).toBe("write");
+    expect(w.months[0].status, "une ligne laissée en generating pour toujours").toBe("failed");
+    /* ⚠ Et le coût engagé est DIT, même quand rien n'est livré. */
+    expect(out.costUsd).toBeCloseTo(0.05, 5);
+  });
+
+  it("un mois vide ne se ferme pas en proposed", async () => {
+    /* Tous les posts refusés par le portillon : rien à relire. */
+    const w = world({
+      writer: {
+        write: vi.fn(async ({ topics }: { topics: DrawnTopic[] }) => ({
+          posts: topics.map((t: DrawnTopic) => ({
+            ...written(Number(t.id.slice(1))),
+            caption: "Guaranteed relief from anxiety.",
+          })),
+          batchId: null,
+          costUsd: 0.1,
+        })),
+      },
+    });
+    const out = await orchestrateMonth(w.ports, input());
+    if (out.ok) {
+      expect(out.month.written).toBe(0);
+      expect(w.months[0].status, "un écran de relecture sans rien à relire").toBe("failed");
+    } else {
+      expect(w.months[0].status).toBe("failed");
+    }
   });
 });

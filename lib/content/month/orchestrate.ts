@@ -112,7 +112,30 @@ export type OrchestratePorts = {
   draw: DrawPorts;
   journal: JournalDb;
   writer: WriterPort;
-  assemble: AssemblePorts;
+  /*
+   * ⚠ LA LIGNE DU MOIS, ET PERSONNE NE L'ÉCRIVAIT CÔTÉ PRODUIT.
+   *
+   * `content_months.status` porte quatre valeurs et `generating` n'avait qu'un
+   * seul écrivain : `lib/content/generate/queue.ts`, appelé par le webhook Stripe
+   * à l'achat. Le harnais, lui, insère la ligne À LA FIN, directement en
+   * `proposed` — donc une exécution tuée ne laisse aucune ligne, et l'écran
+   * « en cours » que `lib/content/month-screen.ts` sait afficher n'est jamais
+   * atteint par une génération.
+   *
+   * L'orchestrateur ouvre donc la ligne en `generating` et la ferme en
+   * `proposed` ou `failed`. Trois choses en découlent : la cliente voit où en est
+   * son mois, une exécution tuée laisse une trace que la reprise retrouve, et
+   * `generating` garde un écrivain quand F45 retirera l'ancien générateur.
+   */
+  openMonthRow(input: { brandKitId: string; month: string }): Promise<string>;
+  closeMonthRow(monthId: string, status: "proposed" | "failed"): Promise<void>;
+  /*
+   * ⚠ L'ASSEMBLAGE DÉPEND DE LA LIGNE DU MOIS, ET LE TYPE LE DIT. `content_items`
+   * porte `month_id NOT NULL` : écrire un post avant que le mois existe est
+   * impossible en base, et une fabrique rend cette dépendance visible plutôt que
+   * de la laisser se découvrir à l'exécution.
+   */
+  assembleFor(monthId: string): AssemblePorts;
   /** Rend les sujets tirés mais non retenus. Un sujet gardé pour rien bloque le segment. */
   releaseTopics(topicIds: string[]): Promise<void>;
 };
@@ -168,6 +191,8 @@ export type OrchestrateOutcome =
       /** Les sujets rendus à la banque : tirés et non publiés. */
       released: string[];
       runId: string;
+      /** La ligne `content_months`, pour que l'appelant sache quoi relire. */
+      monthId: string;
     };
 
 /** Un post rédigé ET composé, prêt pour l'assemblage. */
@@ -204,7 +229,18 @@ export async function orchestrateMonth(
     };
   }
 
-  /* ── 2. la reprise : un lot déjà payé ne se resoumet pas ────────────── */
+  /*
+   * ── 2. LA LIGNE DU MOIS, OUVERTE EN `generating` ──────────────────────
+   *
+   * Après le préalable, parce qu'un mois refusé n'a pas à laisser de ligne ;
+   * avant la rédaction, parce qu'une exécution tuée doit laisser une trace.
+   */
+  const monthId = await ports.openMonthRow({
+    brandKitId: input.brandKitId,
+    month: input.month,
+  });
+
+  /* ── 3. la reprise : un lot déjà payé ne se resoumet pas ────────────── */
   const resumable = await findResumableRun(ports.journal, input.brandKitId, input.month);
   const { runId } = resumable
     ? { runId: resumable.runId }
@@ -233,7 +269,7 @@ export async function orchestrateMonth(
     topics = read.filter((t): t is DrawnTopic => t !== null);
     drawnIds = topics.map((t) => t.id);
   } else {
-    /* ── 3. le tirage ─────────────────────────────────────────────────── */
+    /* ── 4. le tirage ─────────────────────────────────────────────────── */
     const draw = await drawMonth(ports.draw, {
       families: input.families,
       drawOrder: input.drawOrder,
@@ -253,6 +289,7 @@ export async function orchestrateMonth(
     topics = draw.drawn.map((c) => c.topic);
     drawnIds = topics.map((t) => t.id);
     if (topics.length === 0) {
+      await ports.closeMonthRow(monthId, "failed");
       return {
         ok: false,
         stage: "draw",
@@ -264,7 +301,7 @@ export async function orchestrateMonth(
     fromJournal = null;
   }
 
-  /* ── 4. la rédaction : le seul port qui coûte ───────────────────────── */
+  /* ── 5. la rédaction : le seul port qui coûte ───────────────────────── */
   const alreadyWritten = new Map<string, WrittenPost>();
   let toSettle: string[] = [];
 
@@ -311,6 +348,7 @@ export async function orchestrateMonth(
   }
 
   if (alreadyWritten.size === 0) {
+    await ports.closeMonthRow(monthId, "failed");
     return {
       ok: false,
       stage: "write",
@@ -320,7 +358,7 @@ export async function orchestrateMonth(
     };
   }
 
-  /* ── 5. la composition : le pied porte la licence ───────────────────── */
+  /* ── 6. la composition : le pied porte la licence ───────────────────── */
   const prepared: PreparedPost[] = [];
   const composeFallbacks: Array<{ topicId: string; from: string; to: string; steps: string }> = [];
   const footer = `${input.practiceName} · ${verdict.licenceMention}`;
@@ -382,6 +420,13 @@ export async function orchestrateMonth(
 
   if (composeRefusal) {
     await ports.releaseTopics(drawnIds);
+    /*
+     * ⚠ `failed`, PAS UNE LIGNE LAISSÉE EN `generating`. Un mois qui reste
+     * « en cours » pour toujours est le pire des trois états : la cliente attend,
+     * et le préalable du tour suivant le laisserait passer en croyant reprendre
+     * un travail qui n'existe pas.
+     */
+    await ports.closeMonthRow(monthId, "failed");
     return {
       ok: false,
       stage: "compose",
@@ -391,8 +436,8 @@ export async function orchestrateMonth(
     };
   }
 
-  /* ── 6. l'assemblage : portillon, sélection, écriture, crédit ───────── */
-  const month = await assembleMonth(ports.assemble, {
+  /* ── 7. l'assemblage : portillon, sélection, écriture, crédit ───────── */
+  const month = await assembleMonth(ports.assembleFor(monthId), {
     prepared,
     wanted: input.wanted,
     dates: input.dates,
@@ -417,7 +462,13 @@ export async function orchestrateMonth(
   const publishedIds = month.inserted.map((p) => p.topicId);
   if (publishedIds.length > 0) await markSettled(ports.journal, runId, publishedIds);
 
-  /* ── 7. la publication : le coût reste lisible ──────────────────────── */
+  /* ── 8. la publication : le coût reste lisible ──────────────────────── */
+  /*
+   * ⚠ LA LIGNE DU MOIS PASSE À `proposed` QUAND IL Y A QUELQUE CHOSE À RELIRE, et
+   * à `failed` sinon. Un mois vide laissé en `proposed` mettrait la cliente devant
+   * un écran de relecture sans rien à relire.
+   */
+  await ports.closeMonthRow(monthId, month.written > 0 ? "proposed" : "failed");
   await publishRun(ports.journal, runId, costUsd);
 
   /*
@@ -430,5 +481,5 @@ export async function orchestrateMonth(
   const released = drawnIds.filter((id) => !kept.has(id));
   if (released.length > 0) await ports.releaseTopics(released);
 
-  return { ok: true, month, costUsd, resumed, fallbacks: composeFallbacks, released, runId };
+  return { ok: true, month, costUsd, resumed, fallbacks: composeFallbacks, released, runId, monthId };
 }

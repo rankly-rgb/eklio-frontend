@@ -48,9 +48,49 @@ export type PreflightRefusal =
   | "quota_exhausted"
   | "bank_short";
 
+/** Les quatre valeurs de `content_months.status`, telles que la base les borne. */
+export type MonthStatus = "generating" | "proposed" | "approved" | "failed";
+
+/*
+ * ⚠ CE QUI REFUSE EST UN MOIS LIVRÉ, ET LA LISTE EST COURTE EXPRÈS.
+ *
+ *   generating  la ligne posée par l'achat, ou une exécution tuée → ON CONTINUE,
+ *               et la reprise du journal fait le reste
+ *   failed      un essai qui n'a rien livré → ON RECOMMENCE
+ *   proposed    trente posts attendent sa relecture → refus
+ *   approved    elle les a validés → refus
+ *
+ * Ajouter `generating` ici refuserait les mois payés (F54) ; l'enlever de
+ * `proposed` écrirait le mois deux fois.
+ */
+const MONTH_ALREADY_DELIVERED: MonthStatus[] = ["proposed", "approved"];
+
 export type PreflightPort = {
-  /** Vrai si `content_months` porte déjà ce mois pour ce kit. */
-  monthExists(brandKitId: string, month: string): Promise<boolean>;
+  /**
+   * Le `status` de la ligne `content_months` de ce mois, ou `null` s'il n'y en a
+   * pas.
+   *
+   * ── ⚠ C'ÉTAIT UN BOOLÉEN, ET LE BOOLÉEN REFUSAIT LES MOIS PAYÉS (F54) ──
+   *
+   * `lib/content/generate/queue.ts` — appelé par le webhook Stripe à l'achat —
+   * insère la ligne du mois avec `status: "generating"` AVANT toute génération.
+   * C'est sa raison d'être : la cliente voit un écran « en cours » dès qu'elle a
+   * payé, et la clé unique `(brand_kit_id, month)` rend un rejeu Stripe
+   * idempotent.
+   *
+   * Un préalable qui demande « ce mois existe-t-il ? » répond donc OUI sur
+   * exactement les mois qu'on a été payé pour produire, et refuse en disant
+   * « rien n'a été dépensé » — vrai, et inutile. La cliente resterait sur son
+   * écran « en cours » indéfiniment.
+   *
+   * ⚠ ET LE MÊME BOOLÉEN RENDAIT LA REPRISE INATTEIGNABLE. Une exécution tuée
+   * laisse une ligne `generating` ; le préalable la lisait comme « déjà fait ».
+   * Les deux tables du journal, le drapeau `settled`, la leçon des 0,81 $ perdus :
+   * rien de tout cela ne pouvait servir sur le chemin produit.
+   *
+   * Ce qui refuse est donc un mois LIVRÉ, pas un mois annoncé.
+   */
+  monthStatus(brandKitId: string, month: string): Promise<MonthStatus | null>;
   /**
    * Les faits de licence du brief.
    *
@@ -144,11 +184,12 @@ export async function preflight(
    * toutes les deux. Elle est là pour rendre un message plutôt qu'une violation
    * de contrainte — la base reste l'arbitre.
    */
-  if (await port.monthExists(input.brandKitId, input.month)) {
+  const status = await port.monthStatus(input.brandKitId, input.month);
+  if (status !== null && MONTH_ALREADY_DELIVERED.includes(status)) {
     return {
       ok: false,
       code: "month_exists",
-      refusal: `un mois ${input.month} existe déjà pour ce kit — rien n'a été généré et rien n'a été dépensé`,
+      refusal: `un mois ${input.month} est déjà livré pour ce kit (${status}) — rien n'a été généré et rien n'a été dépensé`,
     };
   }
 

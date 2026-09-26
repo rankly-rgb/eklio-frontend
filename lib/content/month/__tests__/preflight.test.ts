@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { preflight, type PreflightPort } from "@/lib/content/month/preflight";
+import { readFileSync } from "node:fs";
 import { POSTS_PER_MONTH, fillTrigger, type BankDemand } from "@/lib/content/bank";
 import { FORMAT_FAMILIES } from "@/lib/content/month-checks";
 
@@ -23,7 +24,7 @@ const GOOD_LICENCE = {
 
 function port(over: Partial<PreflightPort> = {}): PreflightPort {
   return {
-    monthExists: vi.fn().mockResolvedValue(false),
+    monthStatus: vi.fn().mockResolvedValue(null),
     licenceFacts: vi.fn().mockResolvedValue(GOOD_LICENCE),
     stateVerified: vi.fn().mockResolvedValue(true),
     creditRemaining: vi.fn().mockResolvedValue({ remaining: 30, unlimited: false }),
@@ -68,7 +69,7 @@ describe("un mois qui peut se générer passe", () => {
 
 describe("les quatre refus, et leur ordre", () => {
   it("un mois déjà là refuse le premier, sans rien lire d'autre", async () => {
-    const p = port({ monthExists: vi.fn().mockResolvedValue(true) });
+    const p = port({ monthStatus: vi.fn().mockResolvedValue("proposed") });
     const verdict = await preflight(p, INPUT);
     expect(verdict.ok).toBe(false);
     if (verdict.ok) return;
@@ -185,7 +186,7 @@ describe("chaque refus dit que rien n'a été dépensé", () => {
    * l'argent est parti envoie chercher dans Stripe.
    */
   it.each([
-    ["month_exists", { monthExists: vi.fn().mockResolvedValue(true) }],
+    ["month_exists", { monthStatus: vi.fn().mockResolvedValue("proposed") }],
     ["licence_missing", { licenceFacts: vi.fn().mockResolvedValue({ ...GOOD_LICENCE, licenseNumber: null }) }],
     ["quota_exhausted", { creditRemaining: vi.fn().mockResolvedValue({ remaining: 0, unlimited: false }) }],
     ["state_unverified", { stateVerified: vi.fn().mockResolvedValue(false) }],
@@ -211,5 +212,60 @@ describe("le seuil de banque est celui du tirage courant", () => {
       bank: { releaseStale: vi.fn().mockResolvedValue(0), drawableCounts: vi.fn().mockResolvedValue(atThreshold) },
     });
     expect((await preflight(p, INPUT)).ok).toBe(true);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  F54 — LE MOIS ANNONCÉ À L'ACHAT N'EST PAS UN MOIS LIVRÉ
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ TROUVÉ LE 2026-09-26 EN CÂBLANT L'ORCHESTRATEUR SUR LA VRAIE BASE.
+ *
+ * `lib/content/generate/queue.ts`, appelé par le webhook Stripe à l'achat, insère
+ * la ligne du mois avec `status: "generating"` AVANT toute génération — pour que
+ * la cliente voie un écran « en cours » dès qu'elle a payé, et pour qu'un rejeu
+ * Stripe soit idempotent par la clé unique `(brand_kit_id, month)`.
+ *
+ * Le préalable demandait « ce mois existe-t-il ? ». Il répondait donc OUI sur
+ * exactement les mois payés, et refusait en disant « rien n'a été dépensé » —
+ * vrai, et inutile : la cliente resterait sur son écran « en cours ».
+ *
+ * Et le même booléen rendait la REPRISE inatteignable : une exécution tuée laisse
+ * une ligne `generating`, que le préalable lisait comme « déjà fait ».
+ */
+describe("F54 — ce qui refuse est un mois livré", () => {
+  it.each([
+    ["generating", "la ligne posée par l'achat, ou une exécution tuée"],
+    ["failed", "un essai qui n'a rien livré"],
+  ])("un mois %s passe le préalable — %s", async (status) => {
+    const p = port({ monthStatus: vi.fn().mockResolvedValue(status) });
+    const verdict = await preflight(p, INPUT);
+    expect(verdict.ok, verdict.ok ? "" : verdict.refusal).toBe(true);
+  });
+
+  it.each([
+    ["proposed", "trente posts attendent sa relecture"],
+    ["approved", "elle les a validés"],
+  ])("un mois %s refuse — %s", async (status) => {
+    const p = port({ monthStatus: vi.fn().mockResolvedValue(status) });
+    const verdict = await preflight(p, INPUT);
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.code).toBe("month_exists");
+    expect(verdict.refusal, "le refus ne dit pas quel état il a lu").toContain(status);
+  });
+
+  /*
+   * ⚠ ET LA LISTE VIENT DU MÊME ENDROIT QUE L'ÉCRITURE DU WEBHOOK. Si `queue.ts`
+   * change le statut qu'il pose, ce test tombe — sinon le préalable se remettrait
+   * à refuser les mois payés sans que rien ne le dise.
+   */
+  it("le statut que le webhook pose est bien celui qui passe", () => {
+    const queue = readFileSync("lib/content/generate/queue.ts", "utf8");
+    const posed = /status:\s*"(\w+)"/.exec(queue)?.[1];
+    expect(posed, "queue.ts ne pose plus de statut : vérifie ce que le préalable accepte").toBe(
+      "generating"
+    );
   });
 });
