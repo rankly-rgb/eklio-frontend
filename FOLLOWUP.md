@@ -3418,3 +3418,55 @@ mois existant à travers le tirage inventera des refus. À décider quand un moi
 réel pourra être rejoué : ou bien le dédoublonnage devient symétrique (comparer
 toutes les paires), ou bien il reste réservé à la construction et la relecture
 utilise `checkMonth` seul.
+
+---
+
+## F58 — Le plafond de dépense a perdu son appelant, et c'est moi qui l'ai retiré
+
+**Le 2026-09-26**, en supprimant l'ancien générateur (étape 4 de F45).
+
+`withCallCeiling` — un plafond en NOMBRE D'APPELS de modèle, qui refuse *avant*
+d'appeler et rejette plutôt que de lever — était appelé par
+`lib/content/generate/pipeline.ts`. Son test l'éprouvait **à travers**
+`generateMonth` : le fichier supprimé, la couverture partait avec lui.
+
+### ⚠ C'est un mécanisme branché d'un seul côté, et de mon fait
+
+Toute la série F46-F57 porte sur des mécanismes dont l'appelant n'est **jamais
+arrivé**. Celui-ci en avait un, et je l'ai retiré. Retirer un générateur laisse
+des mécanismes justes sans personne pour s'en servir — et ne pas le dire serait
+exactement ce que F48 reproche.
+
+`lib/content/generate/__tests__/the-ceiling-has-no-caller.test.ts` fait donc deux
+choses : il éprouve le mécanisme **directement** — la borne, le refus avant appel,
+le rejet plutôt que la levée synchrone — et il **affirme l'absence d'appelant**, en
+tombant le jour où on le branche.
+
+### Sa place future est connue
+
+`WriterPort` dans `lib/content/month/orchestrate.ts` est le seul accès payant de
+tout l'enchaînement. Un plafond s'y pose en une ligne, et **il devra y être posé
+avant que la route quitte le 501** : un orchestrateur sans plafond peut dépenser
+autant que la banque a de sujets.
+
+---
+
+## F59 — Deux lectures non vérifiées dans mon propre lanceur, le même jour
+
+Consigné parce que c'est la **classe dominante** de cette session et que je l'ai
+reproduite deux fois en une heure, en la cherchant chez les autres.
+
+| lecture | erreur | ce que le rapport disait |
+|---|---|---|
+| `project_briefs.select("… modalities")` | la colonne s'appelle `modality_ids` | « État absent du brief » — le préalable refusait |
+| `credit_ledger.select("id, kind, outcome")` | pas de colonne `outcome` | « 0 ligne au livre » alors que 29 réservations existaient |
+
+Dans les deux cas PostgREST rendait une erreur, `data` valait `null`, et un repli
+produisait une valeur **parfaitement plausible**. Le premier a fait refuser un mois
+qui pouvait passer ; le second a fait annoncer un zéro inventé.
+
+> Un repli sur une erreur NON LUE ne protège de rien, il déguise. Et un rapport qui
+> invente un zéro est pire qu'un rapport vide : le premier a l'air d'un chiffre.
+
+La correction est la même partout : `if (read.error) throw`. Le lanceur le fait
+maintenant sur ses dix lectures.

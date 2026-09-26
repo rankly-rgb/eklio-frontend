@@ -451,3 +451,68 @@ de choix :
 ⚠ **Une session sans solde d'ici là n'avancera plus le portage.** Elle ne peut que
 consolider ce qui existe — ce qui a de la valeur, F49 à F53 en sont la preuve, mais
 ce n'est plus du portage.
+
+---
+
+## §12 — Le premier mois du chemin produit (2026-09-26, troisième session du jour)
+
+### ⚠ M0 n'a pas pu tourner
+
+Le compte fournisseur est **toujours** sous limite d'usage jusqu'au
+**2026-10-01 00:00 UTC** : `claude-haiku-4-5` et `claude-sonnet-5` refusent tous
+deux avant le premier jeton. **Dépense de la session : 0,00 $.** Aucun mois ne peut
+être *rédigé* aujourd'hui, ni par le chemin produit ni par le harnais.
+
+### Ce qui est sorti du chemin produit
+
+`lib/content/month/orchestrate.ts` — l'appelant que les neuf modules attendaient —
+enchaîne préalable → ligne du mois → reprise → tirage → **rédaction (port)** →
+composition → assemblage → publication.
+
+Mesuré contre le vrai PostgreSQL local, reproductible sur quatre mois d'affilée :
+
+| | mesure |
+|---|---|
+| posts en base | **30 / 30** |
+| dates distinctes | **30** |
+| cartes portant la mention de licence, **par le chemin de lecture** | **30 / 30** |
+| cartes vectorielles | **30 / 30** |
+| livre de crédit | 30 réservations, **30 règlements**, 0 libération |
+| journal | `published`, **30 / 30** soldés |
+| posts redemandés à la rédaction sur reprise | **0** |
+| tirage, contre la vraie banque | 57 demandés, **57 tirés**, 11 archétypes |
+
+**Étiquette, et elle est en tête de la planche** : la **rédaction est rejouée**
+depuis un mois déjà payé. Tout le reste est du chemin produit.
+
+### L'ancien générateur est retiré
+
+`generate/pipeline.ts`, `generate/run.ts`, `scripts/content/generate-month.ts` sont
+supprimés. Les trois tests conçus pour tomber ce jour-là — ils le disaient
+eux-mêmes — sont **retournés** : la barrière garde maintenant que les fichiers ne
+reviennent pas, le motif de verdict-en-dur porte son témoin en clair, et la règle
+« ne dépenser que par des ports injectés » a changé de fichier pour
+l'orchestrateur.
+
+### La route reste en 501, et pour une seule raison
+
+Deux exemptions : `judgeCompleteness` et `reviseMonth`, **toutes deux un appel de
+modèle**. Et `EXTRACTED_NOT_WIRED` compte **dix** modules portés sans appelant, dont
+la cause est désormais unique : `WriterPort` n'a aucune implémentation côté produit.
+
+### Ce qui reste avant que l'abonnement se vende
+
+1. **le transport de rédaction** (F42) et **M0** — dès le 1ᵉʳ octobre ;
+2. **`judgeCompleteness` et `reviseMonth`**, les deux dernières exemptions ;
+3. **le plafond de dépense sur `WriterPort`** (F58) — un orchestrateur sans plafond
+   dépense autant que la banque a de sujets ;
+4. **l'énumération** : quelles abonnées sont dues, dans quel ordre, à quelle
+   cadence — la seule chose que la route dit encore ne pas savoir faire ;
+5. **F57** : décider si le dédoublonnage devient symétrique ou reste réservé à la
+   construction.
+
+### Estimation
+
+**Une session avec solde**, et elle suffit si M0 confirme le tirage : les points 1
+à 3 sont du câblage sur des modules déjà éprouvés. Le point 4 est une décision
+produit, pas du code.

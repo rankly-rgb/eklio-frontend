@@ -197,15 +197,27 @@ describe("le générateur dépense, et sur la bonne bourse seulement", () => {
     ]);
   });
 
-  it("et le générateur ne dépense que par un port injecté, jamais par une RPC en dur", () => {
-    // ⚠ La réservation et le règlement passent par `AllowancePort`, que
-    //   l'appelant fournit. Le pipeline ne connaît ni supabase ni le nom des
-    //   RPC : c'est ce qui rend le sens interdit — dessiner d'abord, réserver
-    //   ensuite — impossible à écrire par distraction.
-    const pipeline = code("lib/content/generate/pipeline.ts");
-    expect(pipeline).toContain("AllowancePort");
-    expect(pipeline).not.toContain("supabase");
-    expect(pipeline).not.toContain(".rpc(");
+  /*
+   * ── ⚠ LA RÈGLE A CHANGÉ DE FICHIER, PAS DE SENS (2026-09-26) ───────────
+   *
+   * Elle portait sur `lib/content/generate/pipeline.ts`, que F45 a supprimé — il
+   * rendait un verdict déontologique en dur et ne posait aucune mention de
+   * licence. L'orchestrateur produit (`lib/content/month/orchestrate.ts`) en tient
+   * le rôle, et la règle vaut pour lui mot pour mot : il ne connaît ni supabase ni
+   * le nom d'une RPC, donc il ne PEUT pas dessiner avant de réserver.
+   *
+   * ⚠ ET C'EST CE QUI REND LES TESTS DE CETTE SESSION POSSIBLES : un module qui ne
+   * parle au monde que par des ports s'éprouve entier par des doublures, sans
+   * dépenser. C'est ainsi qu'un mois de trente posts a été prouvé le jour où le
+   * compte fournisseur était sous limite d'usage.
+   */
+  it("et l'orchestrateur ne dépense que par des ports injectés, jamais par une RPC en dur", () => {
+    const orchestrator = code("lib/content/month/orchestrate.ts");
+    expect(orchestrator).toContain("WriterPort");
+    expect(orchestrator).not.toContain("supabase");
+    expect(orchestrator).not.toContain(".rpc(");
+    /* ⚠ Et pas de `fetch` non plus : le seul accès payant est le port de rédaction. */
+    expect(orchestrator).not.toMatch(/(^|[^\w.])fetch\s*\(/m);
   });
 });
 

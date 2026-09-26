@@ -155,6 +155,14 @@ const PRODUCT_ORCHESTRATION = [
    * dépenser un centime, et ce qui fait qu'il n'embarque aucun stub.
    */
   "lib/content/month/orchestrate.ts",
+  /*
+   * ⚠ LES QUATRE DERNIERS ACCÈS À LA BASE, NOMMÉS UNE FOIS. Le préalable,
+   * l'écriture d'un post, la ligne du mois et la libération des sujets étaient
+   * chacun écrits inline dans le harnais. Sans cette couture, le chemin produit les
+   * aurait réécrits avec sa propre idée de la forme des arguments — et c'est ainsi
+   * qu'on obtient deux arbitres.
+   */
+  "lib/content/month/server-ports.ts",
 ] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
@@ -526,12 +534,25 @@ describe("la route de libération tourne vraiment", () => {
 describe("la barrière", () => {
   const ROUTE = "app/api/cron/content-month/route.ts";
 
-  it("les fichiers que F45 retire existent encore — la dette n'est pas payée", () => {
-    const present = TO_REMOVE.filter((f) => existsSync(f));
+  /*
+   * ── ⚠ LA DETTE EST PAYÉE, ET CE TEST EST RETOURNÉ (2026-09-26) ─────────
+   *
+   * Il exigeait que les trois fichiers de F45 existent ENCORE, et disait
+   * lui-même : « les fichiers de F45 sont supprimés : la barrière peut se lever,
+   * et ce test doit être réécrit. » Ils le sont. Il garde désormais l'inverse.
+   *
+   * ⚠ ET CE N'EST PAS UNE FORMALITÉ. Le générateur retiré rendait
+   * `ethicsCheck: { passed: true }` en dur et ne posait aucune mention de
+   * licence : armé, il vendait des publicités illégales en Californie. Le
+   * remettre — par un `git revert` distrait, par une reprise de branche — le
+   * remettrait avec ce défaut.
+   */
+  it("les fichiers que F45 retire ont disparu, et ne reviennent pas", () => {
+    const back = TO_REMOVE.filter((f) => existsSync(f));
     expect(
-      present.length,
-      "les fichiers de F45 sont supprimés : la barrière peut se lever, et ce test doit être réécrit"
-    ).toBeGreaterThan(0);
+      back.sort(),
+      `le générateur de F45 est revenu : il rend un verdict déontologique en dur et ne pose aucune mention de licence — ${back.join(", ")}`
+    ).toEqual([]);
   });
 
   /*
@@ -626,12 +647,32 @@ describe("la barrière", () => {
    * rien nulle part est un test qui passera toujours — y compris le jour où le
    * défaut revient sous une forme qu'il ne voit pas.
    */
-  it("le motif attrape le défaut là où il est, pour prouver qu'il fonctionne", () => {
-    const pipeline = readFileSync("lib/content/generate/pipeline.ts", "utf8");
-    expect(
-      /ethicsCheck:\s*\{\s*passed:\s*true/.test(pipeline),
-      "le verdict en dur a disparu de pipeline.ts — le motif de ce test n'a plus de témoin"
-    ).toBe(true);
+  /*
+   * ── ⚠ LE TÉMOIN A DISPARU AVEC LE FICHIER, ET LE MOTIF RESTE ÉPROUVÉ ───
+   *
+   * Ce test lisait `pipeline.ts` pour prouver que le motif attrape bien un
+   * verdict en dur. Le fichier est supprimé : le témoin est donc écrit ICI, en
+   * clair. Un motif est une fonction pure du texte — il n'a pas besoin qu'un
+   * défaut vive dans le dépôt pour qu'on montre qu'il le voit.
+   *
+   * ⚠ ET IL DOIT AUSSI NE PAS VOIR CE QUI N'EST PAS UN DÉFAUT, sinon il
+   * rougirait sur du code juste et on le retirerait.
+   */
+  it("le motif attrape un verdict en dur, et rien d'autre", () => {
+    const pattern = /passed:\s*true|ok:\s*true\s*,\s*violations:\s*\[\]/;
+    for (const guilty of [
+      "  return { ethicsCheck: { passed: true } };",
+      "const verdict = { ok: true, violations: [] };",
+    ]) {
+      expect(pattern.test(guilty), `le motif ne voit plus : ${guilty}`).toBe(true);
+    }
+    for (const innocent of [
+      "const passed = checkEthics(text).violations.length === 0;",
+      "if (!verdict.ok) return verdict;",
+      "expect(passed).toBe(true);",
+    ]) {
+      expect(pattern.test(innocent), `le motif accuse du code juste : ${innocent}`).toBe(false);
+    }
   });
 });
 
@@ -714,6 +755,8 @@ const EXTRACTED_NOT_WIRED: Record<string, string> = {
    */
   "lib/content/month/orchestrate.ts":
     "il enchaîne les huit autres et il est éprouvé de bout en bout par une doublure de rédaction ; ce qui manque est une implémentation de WriterPort côté produit, laquelle demande un appel de modèle — le compte fournisseur est sous limite d'usage jusqu'au 2026-10-01 (F44)",
+  "lib/content/month/server-ports.ts":
+    "les quatre coutures restantes n'ont de sens qu'appelées par l'orchestrateur ; le lanceur de répétition (scripts/production-path) s'en sert déjà contre la base locale, mais un lanceur n'est pas un point d'entrée du runtime",
   "lib/content/month/compose-card.ts":
     "⚠ LA PLUS GRAVE DES SIX. Elle pose le pied de licence, et rien côté produit ne l'atteint : tant que l'orchestrateur n'existe pas, aucun mois produit ne peut être composé — ce qui est heureux, puisqu'un mois composé sans elle serait une publicité sans numéro de licence (B&P §651)",
 };
