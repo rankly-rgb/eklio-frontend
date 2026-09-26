@@ -286,3 +286,46 @@ porte est maintenant explicite et échoue fermé.
 ⚠ **Un mois VENDABLE demande une chose de plus que le portage** : les ~3 h de
 gestes humains de F43 — F12 Californie, Vercel, DNS, Stripe, le coup d'œil. Le
 portage rend le mois *générable* ; ces trois heures le rendent *vendable*.
+
+---
+
+## 9 · Étage B porté — 2026-09-26 (seconde session)
+
+### Recensement honnête : 7 portés, 8 restants
+
+| portés | restants |
+|---|---|
+| `reserve_credit`, `settle_credit` | `checkMonth`, `checkPostAlone` |
+| `guardBank`, `bankShortfall` | `composeWithFallback` |
+| `licenceMention`, `licenceMissingMessage` | `judgeCompleteness`, `reviseMonth` |
+| `release_stale_topic_assignments` | `assign_topic_to_kit`, `drawable_count_for_kit` |
+
+⚠ **`checkMonth` et `checkPostAlone` sont EXTRAITS mais pas PORTÉS**, et la
+distinction est le cœur de ce qui a été appris. `lib/content/month/select.ts`
+existe, il est pur, le harnais l'importe — mais **aucun fichier produit ne
+l'appelle**. Extraire n'est pas brancher, et un recensement qui confondrait les
+deux rendrait un vert faux (F48).
+
+### Ce qui reste à faire, précisément
+
+| # | ce qu'il faut | appel API |
+|---|---|---|
+| 1 | **un orchestrateur produit qui appelle `selectDeliverable`** — c'est ce qui manque pour que `checkMonth` et `checkPostAlone` soient portés | non |
+| 2 | l'insert dans `content_items` + le remplaçant, avec `reserve_credit` par post écrit | non |
+| 3 | le journal en base (§3.1), déjà conçu | non |
+| 4 | `composeWithFallback` — la composition, pure, mais elle n'a de sens qu'avec (1) | non |
+| 5 | `assign_topic_to_kit`, `drawable_count_for_kit` — le tirage et son port | non |
+| 6 | `judgeCompleteness`, `reviseMonth` | **oui** |
+| 7 | le retrait du générateur produit (§5) | non |
+
+### ⚠ L'estimation ne bouge pas, et c'est délibéré
+
+**Trois à cinq sessions, dont une seule avec solde.** Cette session a porté le
+crédit et extrait l'assemblage, ce qui était la moitié annoncée du volume — mais
+elle a aussi passé un temps notable à réparer son propre instrument de mesure
+(F48, quatre formes successives). Ce temps n'était pas du gaspillage : un
+recensement qui flatte aurait fait déclarer « porté » ce qui ne l'est pas, et
+c'est exactement le défaut que F45 répare.
+
+Je ne réduis donc pas l'estimation. Les étapes 1 à 5 restent une session pleine,
+et elles sont toutes sans appel.
