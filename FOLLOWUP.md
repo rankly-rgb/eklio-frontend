@@ -2561,3 +2561,51 @@ livre : un zéro y effaçait la dépense pour de bon.
 **Pas corrigé** : le remplissage lui-même. Il faudrait qu'il réserve et solde
 par lot comme le mois le fait, ce qui touche au chemin de crédit et mérite d'être
 regardé avec le reste du livre.
+
+---
+
+## F41 — « 46 sur 102 » n'était pas un taux de conformité
+
+Deux briefs de suite ont conclu, sur ce chiffre, que la **première écriture**
+était le goulot du pipeline. Le numérateur était juste ; le dénominateur non.
+
+La boucle d'examen des candidats porte, en première ligne :
+
+```ts
+if (usable.length >= WANTED + SPARE_POOL) break;
+```
+
+Elle s'arrête dès qu'elle tient **48** utilisables. Sur 102 candidats tirés,
+elle en regarde une cinquantaine et ne touche jamais aux autres.
+`funnel.candidates` compte le TIRAGE ; `funnel.conformantFirstCall` compte les
+conformes parmi les EXAMINÉS. Diviser l'un par l'autre mélange deux ensembles.
+
+Mesure du 2026-09-26, `tova.lindgren` : 46 conformes au premier appel,
+2 réparés — soit 48 utilisables, c'est-à-dire exactement le seuil d'arrêt. Le
+taux vrai est donc **46 sur ~48, environ 96 %**, et non 45 %.
+
+**Conséquences, et elles ne sont pas petites :**
+
+1. **La priorité 1 de ce brief visait un problème qui n'existe pas à cette
+   échelle.** Les trois consignes ont été écrites et elles sont justes — le
+   portillon montre 5 posts écartés sur 45 pour `text.unfinished` et
+   `text.clinicalClaim` — mais « 46/102 » annonçait une hémorragie là où il y a
+   une fuite.
+2. **Le tirage est deux fois ce que le run examine.** 102 tirés pour ~50
+   regardés : les 52 autres sont assignés au kit, comptés par
+   `drawable_count_for_kit`, et rendus à la fin. C'est ce qui a relevé
+   `fillTrigger` de 42 % à la session précédente et fait refuser trois essais
+   sur cinq avant la moindre dépense.
+3. **`PREPARATION_YIELD = 0.479` est probablement faux du même défaut.** Il a
+   été calibré en divisant des utilisables par des tirés. S'il vaut en réalité
+   ~0,9, la banque est sur-provisionnée d'un facteur deux et le seuil de
+   remplissage avec elle.
+
+**Corrigé** : `funnel.examined` est compté après le `break`, à côté du
+numérateur qu'il divise, avec un test qui tombe si quelqu'un le déplace avant.
+
+**À décider :** re-calibrer `CANDIDATES_PER_ATTEMPT` et `PREPARATION_YIELD` sur
+`examined` plutôt que sur `candidates`. Ça demande deux ou trois runs pour
+mesurer le rendement réel, et ça devrait faire baisser à la fois le coût par
+mois et le seuil de banque. **C'est le chantier qui rapporte le plus, et il
+n'était pas visible avant d'avoir le bon dénominateur.**

@@ -777,6 +777,20 @@ async function main() {
     neverAnswered: 0,
     /** Ceux dont la réponse est arrivée et qu'on n'a pas su lire. */
     technicalFailures: 0,
+    /*
+     * ── ⚠ LE DÉNOMINATEUR DE LA CONFORMITÉ N'EST PAS `candidates` ─────────
+     *
+     * La boucle d'examen s'arrête dès qu'elle tient `WANTED + SPARE_POOL`
+     * utilisables : sur 102 tirés, elle en regarde une cinquantaine et laisse
+     * les autres intacts. Lire `conformantFirstCall / candidates` donnait donc
+     * « 46 sur 102 = 45 % » là où la mesure vraie est « 46 sur 48 = 96 % », et
+     * c'est sur ce 45 % qu'on a conclu que la première écriture était le
+     * problème.
+     *
+     * ⚠ UN TAUX SANS SON DÉNOMINATEUR EST UNE OPINION. Le compteur d'examens
+     * est donc tenu ici, à côté de celui qu'il divise.
+     */
+    examined: 0,
     conformantFirstCall: 0,
     repaired: 0,
     refusedAfterRepair: 0,
@@ -1129,6 +1143,7 @@ const SPARE_POOL = 18;
      */
     for (const candidate of candidates) {
       if (usable.length >= WANTED + SPARE_POOL) break;
+      funnel.examined += 1;
 
       /*
        * ── ⚠ LE QUOTA SE TIENT SUR CE QUI EST LIVRÉ, PAS SUR CE QU'ON TENTE ─
