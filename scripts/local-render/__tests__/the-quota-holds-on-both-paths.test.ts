@@ -66,7 +66,13 @@ describe("la phase de candidature est un frais général", () => {
 
   /* ⚠ Et soldée au coût réel, que le mois aboutisse ou non. */
   it("elle est soldée au coût réel avant le verdict", () => {
-    const settleAt = SOURCE.indexOf("if (phaseReservation) {");
+    /*
+     * ⚠ ANCRÉ SUR LA RÉSERVATION, PAS SUR SA FORME. La condition disait
+     * `if (phaseReservation)` ; F47 a élargi le port pour qu'il porte le motif
+     * du refus, et la réservation est devenue un objet — `if (…​.ok)`. Ce test
+     * est tombé sans qu'une de ses garanties ait bougé.
+     */
+    const settleAt = SOURCE.search(/if \(phaseReservation(\.ok)?\) \{/);
     expect(settleAt).toBeGreaterThan(-1);
     expect(settleAt).toBeLessThan(SOURCE.indexOf("const selection = selectDeliverable("));
     expect(SOURCE.slice(settleAt, settleAt + 300)).toContain("batchCostUsd([usage])");

@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { withPaidCall, withOverhead, QuotaRefused, type CreditPort } from "@/lib/credits/paid-call";
+import {
+  ReserveRefused,
+  aPurchaseWouldHelp,
+  reserveRefusal,
+  withOverhead,
+  withPaidCall,
+  type CreditPort,
+  type ReserveRefusal,
+} from "@/lib/credits/paid-call";
 
 /*
  * ── ⚠ UN APPEL PAYANT QUI N'EST PAS AU LIVRE EST UN APPEL QU'ON CROIT
@@ -19,7 +27,7 @@ const port = (overrides: Partial<CreditPort> = {}): CreditPort & {
   const settled: Array<[string, number, boolean]> = [];
   return {
     reserved, settled,
-    reserve: overrides.reserve ?? (async (s) => { reserved.push(s.reason); return `res-${reserved.length}`; }),
+    reserve: overrides.reserve ?? (async (s) => { reserved.push(s.reason); return { ok: true as const, reservationId: `res-${reserved.length}` }; }),
     settle: overrides.settle ?? (async (id, cost, ok) => { settled.push([id, cost, ok]); }),
   };
 };
@@ -30,7 +38,7 @@ describe("withPaidCall", () => {
   it("réserve AVANT d'appeler, règle APRÈS", async () => {
     const order: string[] = [];
     const p: CreditPort = {
-      reserve: async () => { order.push("reserve"); return "res-1"; },
+      reserve: async () => { order.push("reserve"); return { ok: true as const, reservationId: "res-1" }; },
       settle: async () => { order.push("settle"); },
     };
     await withPaidCall(p, { userId: "u", kind: "post_generation", reason: "r" }, async () => {
@@ -61,11 +69,11 @@ describe("withPaidCall", () => {
 
   it("un quota refusé n'appelle rien", async () => {
     const call = vi.fn();
-    const p = port({ reserve: async () => null });
+    const p = port({ reserve: async () => ({ ok: false as const, reason: "quota_exhausted" as const }) });
     await expect(withPaidCall(p, { userId: "u", kind: "post_generation", reason: "r" }, async () => {
       call();
       return { value: 1, usage: { input: 0, output: 0 }, costUsd: 0 };
-    })).rejects.toBeInstanceOf(QuotaRefused);
+    })).rejects.toBeInstanceOf(ReserveRefused);
     expect(call).not.toHaveBeenCalled();
   });
 });
@@ -74,7 +82,7 @@ describe("withOverhead", () => {
   it("passe par le livre avec le genre qui ne facture pas", async () => {
     const kinds: string[] = [];
     const p: CreditPort = {
-      reserve: async (s) => { kinds.push(s.kind); return "res-1"; },
+      reserve: async (s) => { kinds.push(s.kind); return { ok: true as const, reservationId: "res-1" }; },
       settle: async () => {},
     };
     await withOverhead(p, { userId: "u", reason: "juge de complétude" }, ran(0.0004));
@@ -88,7 +96,7 @@ describe("withOverhead", () => {
    * `credit_month_audit` sert à lire.
    */
   it("appelle quand même si la réservation échoue", async () => {
-    const p = port({ reserve: async () => null });
+    const p = port({ reserve: async () => ({ ok: false as const, reason: "quota_exhausted" as const }) });
     const out = await withOverhead(p, { userId: "u", reason: "réparation" }, ran(0.001));
     expect(out.costUsd).toBe(0.001);
     expect(p.settled).toEqual([]);

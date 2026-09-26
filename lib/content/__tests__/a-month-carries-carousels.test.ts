@@ -72,7 +72,16 @@ describe("un mois porte des carrousels", () => {
  * le mois à chaque tour, sans jamais ajouter un carrousel.
  */
 describe("le sélecteur sait que ce constat-là s'échange autrement", () => {
-  const SOURCE = readFileSync("scripts/local-render/20-month.ts", "utf8");
+  /*
+   * ⚠ LA SÉLECTION A DÉMÉNAGÉ (F45, étage D6). Elle vivait dans le harnais ;
+   * elle est dans `lib/content/month/select.ts`, pure et lisible par une route.
+   * Ce test lit donc les deux sources : le harnais pour ce qu'il PASSE au
+   * sélecteur, le module pour ce que le sélecteur en FAIT.
+   */
+  const SOURCE =
+    readFileSync("scripts/local-render/20-month.ts", "utf8") +
+    "\n" +
+    readFileSync("lib/content/month/select.ts", "utf8");
 
   it("il cherche un carrousel au banc plutôt que le premier venu", () => {
     expect(SOURCE).toContain('if (finding.check === "mix.carousel") {');

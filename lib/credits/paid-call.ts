@@ -48,16 +48,75 @@ export type PaidCallSpec = {
   month?: string;
 };
 
+/*
+ * ── ⚠ LA RPC DISTINGUE SEPT MOTIFS ; LE PORT EN ÉCRASAIT SIX ────────────
+ *
+ * `reserve_credit` rend `{ok:false, reason}` avec sept valeurs possibles, et son
+ * propre code porte l'avertissement qui explique pourquoi :
+ *
+ *   « ranger une violation de forme sous `quota_exhausted` est un MENSONGE sur
+ *     son compte, et aurait envoyé quelqu'un sur une page de paiement acheter
+ *     des crédits qu'elle avait déjà. »
+ *
+ * Le port TypeScript rendait `string | null` : les six refus devenaient un
+ * `null`, et `withPaidCall` levait `QuotaRefused` pour tous. Le SQL prenait soin
+ * de distinguer, et la couche au-dessus jetait ce soin. C'est le quatrième
+ * mécanisme trouvé branché d'un seul côté (F47), après le dénominateur de F41, la
+ * porte de vérification d'État de F46 et le verdict en dur du générateur retiré.
+ */
+export type ReserveRefusal =
+  /** Elle a épuisé ce qu'elle a acheté. Un achat y change quelque chose. */
+  | "quota_exhausted"
+  /** Son abonnement ne porte pas ce droit. Un achat y change quelque chose. */
+  | "not_entitled"
+  /** Le plan n'a pas de ligne pour ce genre de crédit. Défaut de configuration. */
+  | "no_quota_configured"
+  /** Défauts de programmation : ils doivent traverser la frontière comme tels. */
+  | "no_user"
+  | "unknown_kind"
+  | "invalid_cost"
+  /** La RPC a rendu un motif que ce code ne connaît pas. */
+  | "unknown";
+
+/**
+ * Les deux motifs qu'un achat répare.
+ *
+ * ⚠ C'EST LA SEULE DISTINCTION QUI COMPTE POUR L'APPELANT. Les quatre autres
+ * sont des défauts de notre côté : proposer un achat pour un `unknown_kind`
+ * ferait payer une praticienne pour notre faute.
+ */
+export function aPurchaseWouldHelp(reason: ReserveRefusal): boolean {
+  return reason === "quota_exhausted" || reason === "not_entitled";
+}
+
+export type ReserveOutcome =
+  | { ok: true; reservationId: string }
+  | { ok: false; reason: ReserveRefusal };
+
 /** Ce dont le wrapper a besoin : deux RPC, rien d'autre. */
 export type CreditPort = {
-  reserve(spec: PaidCallSpec): Promise<string | null>;
+  reserve(spec: PaidCallSpec): Promise<ReserveOutcome>;
   settle(reservationId: string, costUsd: number, succeeded: boolean): Promise<void>;
 };
 
-export class QuotaRefused extends Error {
-  constructor(readonly spec: PaidCallSpec) {
-    super(`quota refusé pour ${spec.kind} : ${spec.reason}`);
-    this.name = "QuotaRefused";
+/**
+ * Une réservation refusée, AVEC son motif.
+ *
+ * ⚠ LE NOM NE DIT PLUS « QUOTA », parce que cinq des sept motifs n'en sont pas
+ * un. `aPurchaseWouldHelp` dit lequel des deux cas mérite une page de paiement.
+ */
+export class ReserveRefused extends Error {
+  constructor(
+    readonly spec: PaidCallSpec,
+    readonly reason: ReserveRefusal
+  ) {
+    super(`réservation refusée pour ${spec.kind} (${reason}) : ${spec.reason}`);
+    this.name = "ReserveRefused";
+  }
+
+  /** Vrai quand un achat y change quelque chose. */
+  get buyable(): boolean {
+    return aPurchaseWouldHelp(this.reason);
   }
 }
 
@@ -79,8 +138,9 @@ export async function withPaidCall<T>(
   spec: PaidCallSpec,
   run: () => Promise<{ value: T; usage: CallUsage; costUsd: number }>
 ): Promise<{ value: T; usage: CallUsage; costUsd: number; reservationId: string }> {
-  const reservationId = await port.reserve(spec);
-  if (!reservationId) throw new QuotaRefused(spec);
+  const reserved = await port.reserve(spec);
+  if (!reserved.ok) throw new ReserveRefused(spec, reserved.reason);
+  const reservationId = reserved.reservationId;
 
   try {
     const outcome = await run();
@@ -111,10 +171,37 @@ export async function withOverhead<T>(
   try {
     return await withPaidCall(port, { ...spec, kind: "overhead" }, run);
   } catch (error) {
-    if (error instanceof QuotaRefused) {
+    if (error instanceof ReserveRefused) {
+      /*
+       * ⚠ ON APPELLE QUAND MÊME, ET LE MOTIF NE CHANGE RIEN ICI. `overhead` est
+       * illimité par construction : un refus signifie que la comptabilité est en
+       * panne, pas que le droit manque. Un contrôle de syntaxe ne doit pas faire
+       * tomber un mois pour une ligne de livre absente — et l'absence de ligne
+       * est précisément ce que `credit_month_audit` sert à voir.
+       */
       const outcome = await run();
       return outcome;
     }
     throw error;
   }
+}
+
+/**
+ * Le motif rendu par `reserve_credit`, ramené au type.
+ *
+ * ⚠ UN MOTIF INCONNU DEVIENT `"unknown"`, PAS `"quota_exhausted"`. Si la RPC
+ * gagne un huitième motif, l'appelant doit apprendre qu'il ne le connaît pas —
+ * pas se le faire raconter comme un quota épuisé. C'est exactement l'erreur que
+ * F47 répare.
+ */
+export function reserveRefusal(reason: string | null | undefined): ReserveRefusal {
+  const known: ReserveRefusal[] = [
+    "quota_exhausted",
+    "not_entitled",
+    "no_quota_configured",
+    "no_user",
+    "unknown_kind",
+    "invalid_cost",
+  ];
+  return known.find((r) => r === reason) ?? "unknown";
 }

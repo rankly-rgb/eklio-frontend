@@ -39,12 +39,78 @@ import { dirname, join, normalize } from "node:path";
  * quelqu'un doit décider lequel des deux il rejoint.
  */
 
-const HARNESS = "scripts/local-render/20-month.ts";
-const PRODUCT_ROOTS = [
+/**
+ * Les fichiers que F45 retire, et qui ne partent qu'en dernier.
+ *
+ * ⚠ ILS SONT NOMMÉS POUR QUE LEUR DETTE EXPIRE. Tant qu'ils existent, la route
+ * reste en 501. Le jour où ils sont supprimés, les tests qui les citent tombent,
+ * et c'est le signal que la barrière peut se lever.
+ */
+const TO_REMOVE = [
+  "lib/content/generate/pipeline.ts",
   "lib/content/generate/run.ts",
+  "scripts/content/generate-month.ts",
+] as const;
+
+/*
+ * ── LE PÉRIMÈTRE : L'ORCHESTRATION DU MOIS, PAS TOUTE LA COUCHE DE DONNÉES ──
+ *
+ * ⚠ TROISIÈME FORME DE CE RECENSEMENT, ET LES DEUX PREMIÈRES MENTAIENT dans des
+ * sens opposés. Lire le seul fichier du harnais PERDAIT un mécanisme dès qu'on le
+ * déplaçait dans `lib/` ; lire sa chaîne transitive entière RAMASSAIT tout le
+ * CRUD de `lib/data/content.ts` — `get_content_month`, `swap_content_item`,
+ * `set_content_preferences` — qui n'est pas de l'orchestration de génération et
+ * que les écrans du produit utilisent déjà.
+ *
+ * Le périmètre est donc NOMMÉ : le harnais, et les modules qui en ont été
+ * extraits. Il grandit à chaque portage, et c'est exactement ce qu'on veut —
+ * ajouter un module extrait sans l'inscrire ici le laisserait hors du
+ * recensement.
+ */
+const HARNESS_ORCHESTRATION = [
+  "scripts/local-render/20-month.ts",
+  "lib/content/month/select.ts",
+  "lib/content/bank-guard.ts",
+] as const;
+
+const HARNESS = "scripts/local-render/20-month.ts";
+/*
+ * ── LE CÔTÉ PRODUIT, NOMMÉ LUI AUSSI — ET SYMÉTRIQUEMENT ────────────────
+ *
+ * ⚠ QUATRIÈME FORME, ET LES TROIS PREMIÈRES SE TROMPAIENT TOUTES DANS LE MÊME
+ *   SENS : elles flattaient.
+ *
+ *   1. le fichier du harnais seul      perdait un mécanisme dès qu'on le
+ *                                      déplaçait dans `lib/`
+ *   2. la chaîne transitive du harnais ramassait tout le CRUD de `lib/data/`
+ *   3. la chaîne transitive du produit comptait les imports de `run.ts`, le
+ *                                      générateur qu'on RETIRE, et comptait les
+ *                                      DÉFINITIONS de `month-checks.ts` comme
+ *                                      des appels
+ *
+ * Et même corrigée de tout cela, une chaîne transitive compte un appel écrit
+ * DANS un module que rien n'invoque : `checkMonth` appelle `checkPostAlone`, donc
+ * `checkPostAlone` paraissait branché alors que rien n'appelle `checkMonth`.
+ *
+ * ⚠ LE BON BIAIS EST DE SOUS-COMPTER. Un recensement qui surestime rend un vert
+ * faux, qu'on ne cherche pas ; un recensement qui sous-estime rend un rouge
+ * qu'il faut résoudre — en portant, ou en écrivant une raison. Les deux côtés
+ * sont donc des listes NOMMÉES, et porter un mécanisme veut dire inscrire son
+ * module ici : un geste délibéré, qu'une relecture voit.
+ */
+const PRODUCT_ORCHESTRATION = [
   "app/api/cron/content-month/route.ts",
   "app/api/cron/release-topics/route.ts",
-];
+  "lib/content/month/preflight.ts",
+  "lib/credits/server-port.ts",
+  /*
+   * ⚠ IL EST SUR LES DEUX LISTES, ET C'EST JUSTE. `bank-guard.ts` est la
+   * décision extraite : le harnais l'appelle par son propre port, le préalable
+   * par le sien. Un module partagé est présent des deux côtés — c'est ce que
+   * « porté » veut dire.
+   */
+  "lib/content/bank-guard.ts",
+] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
 function chainOf(roots: string[]): Set<string> {
@@ -86,8 +152,21 @@ function mechanismsOf(files: Iterable<string>): Set<string> {
     for (const m of src.matchAll(/"(release_stale_topic_assignments|drawable_count_for_kit|next_topic_for_kit|assign_topic_to_kit|reserve_credit|settle_credit)"/g)) {
       out.add(m[1]);
     }
-    for (const m of src.matchAll(/\b(check[A-Z]\w*|guardBank|judgeCompleteness|reviseMonth|licenceMissingMessage|licenceMention|composeWithFallback|bankShortfall)\s*\(/g)) {
-      out.add(m[1]);
+    /*
+     * ⚠ UNE DÉFINITION N'EST PAS UN APPEL, et les compter ensemble faisait dire
+     * à ce recensement que `checkMonth` était porté. `lib/content/month-checks.ts`
+     * est atteignable depuis la chaîne produit — `bank.ts` y prend
+     * `FORMAT_FAMILIES` — et chacun de ses `export function check…(` matchait
+     * comme un appel. Le module qui DÉFINIT trente contrôles les faisait tous
+     * paraître branchés.
+     *
+     * Le motif exige donc qu'un mot ne précède pas immédiatement le nom : pas de
+     * `function`, pas de `export function`.
+     */
+    for (const m of src.matchAll(
+      /(^|[^\w.])(?<!function )(check[A-Z]\w*|guardBank|judgeCompleteness|reviseMonth|licenceMissingMessage|licenceMention|composeWithFallback|bankShortfall)\s*\(/gm
+    )) {
+      out.add(m[2]);
     }
   }
   return out;
@@ -124,11 +203,13 @@ const ONLY_IN_HARNESS: Record<string, string> = {
   licenceMention:
     "même raison que licenceMissingMessage : la mention se compose sur la carte, et le chemin produit ne compose pas de cartes",
 
-  /* ── le crédit : tenu, mais pas celui-là ─────────────────────────────── */
-  reserve_credit:
-    "⚠ le chemin produit tient l'allocation d'IMAGES (reserve_content_image), pas le crédit de contenu : le quota de trente posts achetés n'y est tenu nulle part (F45)",
-  settle_credit:
-    "même raison que reserve_credit — et c'est lui qui écrit le coût réel au livre, donc le coût d'un mois produit n'y apparaîtrait pas",
+  /*
+   * ⚠ `reserve_credit` ET `settle_credit` NE SONT PLUS ICI — ils sont PORTÉS.
+   * `lib/credits/server-port.ts` est la première implémentation de `CreditPort`
+   * hors du harnais ; le quota reste tenu par `credit_ledger_apply()`, qui lève
+   * `EK010`, et le port ne recalcule aucun plafond. Un test le vérifie
+   * (`server-port.test.ts`).
+   */
 
   /* ── et une qui est présente des deux côtés, autrement ───────────────── */
   checkEthics:
@@ -146,8 +227,26 @@ const ONLY_IN_HARNESS: Record<string, string> = {
  */
 
 describe("le recensement harnais / produit", () => {
-  const harness = mechanismsOf([HARNESS]);
-  const product = mechanismsOf(chainOf(PRODUCT_ROOTS));
+  /*
+   * ⚠ LA CHAÎNE DU HARNAIS, PAS SON SEUL FICHIER — ET C'EST LE TEST QUI L'A
+   *   EXIGÉ.
+   *
+   * La première version lisait `20-month.ts` seul. En portant l'assemblage dans
+   * `lib/content/month/select.ts`, `checkMonth` a cessé d'être nommé dans le
+   * harnais sans pour autant devenir atteignable côté produit : il est sorti des
+   * DEUX listes, et le recensement l'a perdu de vue. Une exemption est devenue
+   * « périmée » alors que le mécanisme était toujours là, juste ailleurs.
+   *
+   * Un recensement qui perd un mécanisme quand on le déplace est un recensement
+   * qui deviendra vert par déménagement. Il compare donc ce qui est ATTEIGNABLE
+   * de chaque côté, transitivement.
+   */
+  const harness = mechanismsOf(HARNESS_ORCHESTRATION);
+  /*
+   * ⚠ ET LA CHAÎNE PRODUIT EXCLUT CE QUI PART. Un mécanisme n'est « côté
+   * produit » que s'il est atteignable depuis un fichier qui SURVIVRA.
+   */
+  const product = mechanismsOf(PRODUCT_ORCHESTRATION);
 
   it("le recensement trouve bien quelque chose des deux côtés", () => {
     expect(harness.size, "le harnais ne porte plus aucun mécanisme reconnaissable").toBeGreaterThan(10);
@@ -256,18 +355,7 @@ describe("la route de libération tourne vraiment", () => {
  * pourrait être satisfait de la même façon.
  */
 
-/**
- * Les fichiers que F45 retire, et qui ne partent qu'en dernier.
- *
- * ⚠ ILS SONT NOMMÉS POUR QUE LEUR DETTE EXPIRE. Tant qu'ils existent, la route
- * reste en 501. Le jour où ils sont supprimés, les tests qui les citent tombent,
- * et c'est le signal que la barrière peut se lever.
- */
-const TO_REMOVE = [
-  "lib/content/generate/pipeline.ts",
-  "lib/content/generate/run.ts",
-  "scripts/content/generate-month.ts",
-] as const;
+
 
 describe("la barrière", () => {
   const ROUTE = "app/api/cron/content-month/route.ts";
@@ -351,7 +439,7 @@ describe("la barrière", () => {
   it("aucun verdict déontologique en dur, sauf dans ce qui part ou ce qui le gagne", () => {
     const suspicious = /passed:\s*true|ok:\s*true\s*,\s*violations:\s*\[\]/;
     const offenders: string[] = [];
-    for (const file of chainOf(PRODUCT_ROOTS)) {
+    for (const file of chainOf([...PRODUCT_ORCHESTRATION])) {
       if ((TO_REMOVE as readonly string[]).includes(file)) continue;
       if (file in EARNED) continue;
       const src = readFileSync(file, "utf8");

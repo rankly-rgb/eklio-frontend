@@ -171,7 +171,16 @@ describe("ce que le rendu produit passe le contrôle", () => {
  * qu'on note.
  */
 describe("le harnais passe un libellé", () => {
-  const SOURCE = readFileSync("scripts/local-render/20-month.ts", "utf8");
+  /*
+   * ⚠ LA SÉLECTION A DÉMÉNAGÉ (F45, étage D6). Elle vivait dans le harnais ;
+   * elle est dans `lib/content/month/select.ts`, pure et lisible par une route.
+   * Ce test lit donc les deux sources : le harnais pour ce qu'il PASSE au
+   * sélecteur, le module pour ce que le sélecteur en FAIT.
+   */
+  const SOURCE =
+    readFileSync("scripts/local-render/20-month.ts", "utf8") +
+    "\n" +
+    readFileSync("lib/content/month/select.ts", "utf8");
 
   it("il ne passe plus le code d'intention au surtitre", () => {
     expect(SOURCE).not.toContain("angleLabel: candidate.topic.intent");

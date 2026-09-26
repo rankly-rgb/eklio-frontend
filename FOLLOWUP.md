@@ -2985,3 +2985,86 @@ l'écran de brief, où afficher « LMFT » avant qu'un État soit vérifié est 
 sans risque. **Deux appelants, deux besoins** — la bonne réponse est probablement
 un second point d'entrée strict plutôt qu'un repli retiré, et ça mérite d'être
 décidé plutôt que deviné.
+
+---
+
+## F47 — Le port de crédit écrasait six motifs de refus sur sept
+
+**Le quatrième mécanisme trouvé branché d'un seul côté**, après le dénominateur de
+F41, la porte de vérification d'État de F46 et le verdict en dur du générateur
+retiré.
+
+`reserve_credit` distingue **sept** issues : `reserved`, `quota_exhausted`,
+`not_entitled`, `no_quota_configured`, `no_user`, `unknown_kind`,
+`invalid_cost`. Et son propre code porte l'avertissement qui explique pourquoi :
+
+> ranger une violation de forme sous `quota_exhausted` est un **mensonge sur son
+> compte**, et aurait envoyé quelqu'un sur une page de paiement acheter des
+> crédits qu'elle avait déjà.
+
+Le port TypeScript rendait `string | null`. Les six refus devenaient un `null`,
+et `withPaidCall` levait `QuotaRefused` pour tous. **Le SQL prenait soin de
+distinguer ; la couche au-dessus jetait ce soin.**
+
+| motif | ce qu'on annonçait | ce que c'est |
+|---|---|---|
+| `quota_exhausted` | quota épuisé | ✓ juste |
+| `not_entitled` | quota épuisé | l'abonnement ne porte pas ce droit |
+| `no_quota_configured` | quota épuisé | défaut de configuration de notre côté |
+| `no_user` | quota épuisé | défaut de programmation |
+| `unknown_kind` | quota épuisé | défaut de programmation |
+| `invalid_cost` | quota épuisé | défaut de programmation |
+
+### Corrigé
+
+`CreditPort.reserve` rend un `ReserveOutcome` qui porte le motif. `ReserveRefused`
+remplace `QuotaRefused` — le nom ne dit plus « quota », puisque cinq motifs sur
+six n'en sont pas un — et `aPurchaseWouldHelp(reason)` dit lequel des deux cas
+mérite une page de paiement. Un huitième motif futur devient `"unknown"`, jamais
+`quota_exhausted`.
+
+⚠ **Et une panne de transport n'est plus un refus.** La base tombée ne dit rien du
+droit de la praticienne ; le port lève au lieu de rendre `{ok:false}`.
+
+---
+
+## F48 — Mon propre recensement a flatté quatre fois de suite
+
+À consigner parce que c'est un défaut d'INSTRUMENT, et qu'un instrument qui
+flatte est pire qu'un instrument absent : il produit un vert que personne ne
+cherche à vérifier.
+
+Le recensement harnais/produit a pris quatre formes en une session, et **les
+quatre se trompaient dans le même sens** :
+
+| forme | ce qu'elle comptait | le biais |
+|---|---|---|
+| 1 | le fichier du harnais seul | **perdait** un mécanisme dès qu'on le déplaçait dans `lib/` — une exemption devenait « périmée » alors que le mécanisme était là, ailleurs |
+| 2 | la chaîne transitive du harnais | **ramassait** tout le CRUD de `lib/data/content.ts`, qui n'est pas de l'orchestration de mois |
+| 3 | la chaîne transitive du produit | comptait les imports de `run.ts`, **le générateur qu'on retire** ; et comptait les `export function check…(` de `month-checks.ts` comme des **appels** |
+| 4 | idem, définitions exclues | comptait un appel écrit DANS un module que rien n'invoque : `checkMonth` appelle `checkPostAlone`, donc `checkPostAlone` paraissait branché alors que rien n'appelle `checkMonth` |
+
+À chaque étape, la correction faisait **baisser** le nombre de mécanismes
+« portés ». C'est le signe qu'il faut chercher : une mesure qui s'améliore en
+montant est suspecte.
+
+### La forme retenue, et son biais assumé
+
+**Les deux côtés sont des listes nommées.** Porter un mécanisme veut dire inscrire
+son module dans `PRODUCT_ORCHESTRATION` — un geste délibéré, qu'une relecture
+voit. Un module partagé figure sur les deux listes, et c'est ce que « porté » veut
+dire.
+
+⚠ **Le biais est de SOUS-COMPTER, délibérément.** Un recensement qui surestime
+rend un vert faux, qu'on ne cherche pas ; un recensement qui sous-estime rend un
+rouge qu'il faut résoudre — en portant, ou en écrivant une raison nommée. C'est la
+même règle que « échouer fermé », appliquée à une mesure.
+
+### ⚠ Ce que cela dit des trois autres
+
+F41, F46 et F47 ont tous la même forme : une valeur produite avec soin d'un côté,
+lue avec négligence de l'autre. F48 ajoute le cas où **l'instrument de mesure
+lui-même** en est la victime. Les quatre ensemble font une règle :
+
+> Quand une mesure va dans le sens qu'on espère, chercher ce qu'elle compte de
+> travers avant de s'en réjouir.
