@@ -1627,7 +1627,7 @@ function selectDeliverable<
       candidate.topic.hook,
       JSON.stringify(result.payload),
     ].join("\n");
-    const violations = checkEthics(scanned, { reading: "as-database" }).violations;
+    const violations = checkEthics(scanned).violations;
     for (const violation of violations) {
       ethicsFlags.push({ topic: candidate.topic.title, rule: violation.ruleId, excerpt: violation.excerpt.slice(0, 80) });
     }

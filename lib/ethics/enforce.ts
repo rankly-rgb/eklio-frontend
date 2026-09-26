@@ -119,7 +119,7 @@ export async function generateWithEthicsGuard<T>(
     const result = await callModel(feedback);
 
     const violations = publishableText(result).flatMap(
-      (text) => checkEthics(text, { reading: "as-database" }).violations
+      (text) => checkEthics(text).violations
     );
     lastViolations = violations;
 

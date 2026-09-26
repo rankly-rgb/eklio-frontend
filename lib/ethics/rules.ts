@@ -452,11 +452,7 @@ function isProhibitiveMention(text: string, index: number): boolean {
  * scanner est reconstruit à chaque appel — les motifs de `FORBIDDEN_PATTERNS`
  * restent sans drapeau `g`, donc sans état partagé.
  */
-function findViolation(
-  pattern: RegExp,
-  text: string,
-  exemptProhibitive: boolean
-): RegExpExecArray | null {
+function findViolation(pattern: RegExp, text: string): RegExpExecArray | null {
   const flags = pattern.flags.includes("g")
     ? pattern.flags
     : `${pattern.flags}g`;
@@ -464,7 +460,7 @@ function findViolation(
 
   let match: RegExpExecArray | null;
   while ((match = scanner.exec(text)) !== null) {
-    if (!exemptProhibitive || !isProhibitiveMention(text, match.index)) return match;
+    if (!isProhibitiveMention(text, match.index)) return match;
     // Garde anti-boucle sur un motif capable de matcher le vide.
     if (match.index === scanner.lastIndex) scanner.lastIndex += 1;
   }
@@ -480,43 +476,6 @@ export type EthicsViolation = {
   excerpt: string;
 };
 
-/*
- * ── ⚠ DEUX LECTURES, PARCE QUE LA BASE N'EN CONNAÎT QU'UNE ──────────────
- *
- * `public.ethics_patterns` n'implémente PAS l'exemption prohibitive : les
- * gâchettes `*_ethics_gate` bloquent « there is no guarantee » comme elles
- * bloquent « guaranteed relief ». Le recensement des motifs était pourtant
- * vert des deux côtés (`parity.test.ts`) — un recensement compare des NOMS,
- * et l'exemption n'est pas un motif.
- *
- * L'écart se paie à l'écriture : un mois généré, contrôlé, facturé, dont un
- * post est refusé par la base au moment de l'`insert`. Mesuré sur 21 sondes
- * prohibitives, quatre passent ici et sont bloquées là-bas — dont les trois
- * formes de `guarantee`, qui est exactement ce que la base a refusé le
- * 24 septembre 2026 sur `sable.ingram` (29 posts écrits pour 30 retenus).
- *
- * D'où le choix, et il n'est pas symétrique :
- *
- *   `"default"`      garde l'exemption. C'est la boîte de saisie de la
- *                    clinicienne (`check-your-words.tsx`) : écrire « je ne
- *                    garantis rien » est le socle APPLIQUÉ, et le lui
- *                    souligner en rouge serait une erreur de lecture.
- *
- *   `"as-database"`  la retire. C'est tout ce qui ÉCRIT en base : ce que le
- *                    pipeline produit doit être acceptable par la gâchette,
- *                    sinon le refus arrive trop tard — après la dépense.
- *
- * ⚠ ALIGNÉ SUR LE PLUS STRICT, PAS SUR LE PLUS JUSTE. « There is no guarantee
- * that six weeks will change anything » est de la copy conforme, et la base a
- * tort de la refuser. Corriger la base serait relâcher un contrôle
- * déontologique de production ; ce n'est pas une décision à prendre seule. Le
- * pipeline perd donc une tournure honnête, ce qui coûte du style et rien
- * d'autre. La question reste ouverte dans FOLLOWUP.md (F38).
- */
-export type EthicsCheckOptions = {
-  reading?: "default" | "as-database";
-};
-
 export type EthicsCheckResult = {
   /** Faux dès qu'une violation `block` est présente ; les `warn` n'y touchent pas. */
   ok: boolean;
@@ -529,11 +488,7 @@ export type EthicsCheckResult = {
  * Un pattern ne remonte que sa première occurrence : le but est de nommer le
  * problème au modèle, pas d'en dresser l'inventaire exhaustif.
  */
-export function checkEthics(
-  text: string,
-  options: EthicsCheckOptions = {}
-): EthicsCheckResult {
-  const exemptProhibitive = options.reading !== "as-database";
+export function checkEthics(text: string): EthicsCheckResult {
   const violations: EthicsViolation[] = [];
 
   if (!text) return { ok: true, violations };
@@ -541,7 +496,7 @@ export function checkEthics(
   for (const { pattern, ruleId, reason, severity } of FORBIDDEN_PATTERNS) {
     // Les mentions prohibitives (« no testimonials ») ne sont pas des
     // violations : c'est le socle appliqué, pas transgressé.
-    const match = findViolation(pattern, text, exemptProhibitive);
+    const match = findViolation(pattern, text);
     if (match) {
       violations.push({ ruleId, reason, severity, excerpt: match[0].trim() });
     }

@@ -552,7 +552,7 @@ async function main() {
       }
 
       const scanned = [title, hook, captionSeed, JSON.stringify(payload)].join("\n");
-      const verdict = checkEthics(scanned, { reading: "as-database" });
+      const verdict = checkEthics(scanned);
       const clean = verdict.violations.length === 0;
 
       const { error } = await db.from("content_topics").insert({

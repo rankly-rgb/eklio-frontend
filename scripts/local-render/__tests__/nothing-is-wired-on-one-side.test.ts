@@ -204,14 +204,21 @@ describe("toute grandeur produite est CONSOMMÉE, pas seulement affichée", () =
   });
 
   /*
-   * ⚠ ET IL LIT COMME LA BASE LIT. L'exemption prohibitive du côté TS n'existe
-   * pas en base : sans cet argument, « there is no guarantee » passe ici et est
-   * refusé à l'`insert`. Voir lib/ethics/__tests__/as-strict-as-the-database.
+   * ⚠ ET IL LIT COMME LA BASE LIT — GARANTI AILLEURS, DÉSORMAIS.
+   *
+   * Entre le 24 et le 26 septembre, cet endroit vérifiait que le scan passait
+   * `reading: "as-database"` : la gâchette n'exemptait pas les mentions
+   * prohibitives, le code si, et il fallait forcer la lecture stricte pour ne
+   * pas payer un mois refusé à l'`insert`. F38 a aligné la base sur le motif du
+   * code ; l'option n'existe plus, et la parité de comportement est tenue par
+   * une paire de tests jumeaux qui écrivent les mêmes phrases des deux côtés :
+   *
+   *   lib/ethics/__tests__/immediate-negation.test.ts
+   *   eklio-backend/supabase/tests/20260926090000_immediate_negation.test.sql
+   *
+   * Ce qui reste à vérifier ICI est la SURFACE — quelles colonnes le scan
+   * lit — et c'est le test au-dessus qui le fait.
    */
-  it("le scan déontologique lit dans la lecture de la base", () => {
-    const at = MONTH.search(/const violations = checkEthics\(/);
-    expect(MONTH.slice(at, at + 200)).toContain('reading: "as-database"');
-  });
 });
 
 /*

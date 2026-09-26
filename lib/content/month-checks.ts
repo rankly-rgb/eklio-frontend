@@ -1104,7 +1104,7 @@ export function checkAdvertisingEthics(posts: PostUnderCheck[]): Finding[] {
   const seen = new Set<string>();
 
   for (const line of surfacesForEthics(posts)) {
-    for (const violation of checkEthics(line.text, { reading: "as-database" }).violations) {
+    for (const violation of checkEthics(line.text).violations) {
       if (violation.severity !== "block") continue;
       /*
        * ⚠ UN CONSTAT PAR POST ET PAR RÈGLE. La même règle enfreinte dans la

@@ -415,7 +415,7 @@ async function scan(
   retries: RetryNote[],
   flagged: EthicsCheck["flagged"]
 ): Promise<string | null> {
-  const first = checkEthics(text, { reading: "as-database" });
+  const first = checkEthics(text);
   for (const violation of first.violations) {
     flagged.push({ field: `${index}.${field}`, excerpt: violation.excerpt, rule_id: violation.ruleId });
   }
@@ -434,7 +434,7 @@ async function scan(
   const rewritten = (await input.model.rewrite({ text, problem })).trim();
   if (rewritten === "") return null;
 
-  const second = checkEthics(rewritten, { reading: "as-database" });
+  const second = checkEthics(rewritten);
   for (const violation of second.violations) {
     flagged.push({ field: `${index}.${field}`, excerpt: violation.excerpt, rule_id: violation.ruleId });
   }

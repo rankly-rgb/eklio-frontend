@@ -85,7 +85,7 @@ function describe(rules: EthicsRule[], ruleId: EthicsRuleId, fallback: string) {
  * trips a rule — before a rewrite and after one.
  */
 export function reviewText(text: string, rules: EthicsRule[]): CheckReview {
-  const { violations } = checkEthics(text, { reading: "as-database" });
+  const { violations } = checkEthics(text);
   return {
     findings: violations.map((violation) => ({
       ruleId: violation.ruleId,

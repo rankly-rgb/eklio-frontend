@@ -119,7 +119,7 @@ export async function enforceEthics(
 
   for (const field of fields) {
     let text = field.text;
-    let violations = checkEthics(text, { reading: "as-database" }).violations;
+    let violations = checkEthics(text).violations;
 
     // Tout ce qui est trouvé est CONSIGNÉ, y compris les avertissements et y
     // compris ce qui sera réécrit : le badge doit pouvoir dire ce qui a été
@@ -145,7 +145,7 @@ export async function enforceEthics(
       });
 
       text = rewritten.trim() || text;
-      violations = checkEthics(text, { reading: "as-database" }).violations;
+      violations = checkEthics(text).violations;
 
       for (const violation of violations) {
         flagged.push({

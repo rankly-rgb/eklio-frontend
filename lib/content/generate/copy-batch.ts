@@ -295,7 +295,28 @@ const SHAPES: Record<string, Shape> = {
    * filet — plus comme seule défense.
    */
   carousel: {
-    shape: `{"cards": [3 to 6 x {"archetype_key": "any archetype except carousel", "payload": {that archetype's shape}}]}`,
+    /*
+     * ── ⚠ LA RÈGLE DU CARROUSEL N'ÉTAIT NULLE PART ────────────────────────
+     *
+     * Elle n'était que SUGGÉRÉE par l'exemple, qui empile énoncé /
+     * surface_and_beneath / énoncé — donc un seul volet héritant. Le modèle
+     * lisait « any archetype except carousel » et en choisissait trois
+     * différents. Neuf des quatorze constats `carousel.samePanel` disent
+     * exactement cela : « 2 volets sans énoncé propre affichent tous le titre
+     * du carrousel ».
+     *
+     * Un exemple n'est pas une règle : il montre un cas permis, il ne dit pas
+     * ce qui est interdit.
+     */
+    shape:
+      `{"cards": [3 to 6 x {"archetype_key": "any archetype except carousel", "payload": {that archetype's shape}}]}` +
+      `\n⚠ AT MOST ONE panel may use an archetype other than "single_statement". ` +
+      `"single_statement" is the only inner archetype that prints a headline of its own; ` +
+      `every other one shows THE CAROUSEL'S OWN card_line at the top. Two of them and the ` +
+      `reader swipes past what looks like the same card twice — same line, same drawing, ` +
+      `same template — and the whole month is refused for it. ` +
+      `Three to six panels, of which at least (n-1) are "single_statement", each with a ` +
+      `DIFFERENT statement: a panel that repeats another panel's payload is refused too.`,
     example:
       `{"cards": [{"archetype_key": "single_statement", "payload": ` +
       `{"statement": "Rest is not a switch your body flips."}}, ` +
@@ -583,6 +604,79 @@ export function cachedPrefix(brand: BrandContext, archetypeKey: string): Anthrop
      * maintenant des constantes ; il ne peut plus diverger sans qu'un test le
      * voie (voir `prompt-constants.test.ts`).
      */
+    /*
+     * ── ⚠ TROIS CLASSES FAISAIENT LE GROS DES REFUS, ET LES CONSIGNES
+     *      EXISTAIENT — MAL PORTÉES ───────────────────────────────────────
+     *
+     * Mesuré sur seize essais (2026-09-24/25), conformité au premier appel
+     * 46/102. Les constats résiduels ne sont pas dispersés :
+     *
+     *   text.unfinished     62 constats · ligne de carte et libellés de payload
+     *   carousel.samePanel  14 constats · dont 9 « 2 volets sans énoncé propre »
+     *   text.clinicalClaim  10 constats · alternatif, ligne de carte, énoncés
+     *
+     * ⚠ AUCUNE DES TROIS N'ÉTAIT UNE RÈGLE MANQUANTE. Chacune était écrite
+     * quelque part et portait sur la mauvaise surface :
+     *
+     *   * la complétude n'était exigée que de `card_line`, alors que le
+     *     contrôle lit CHAQUE ligne écrite du payload ;
+     *   * la règle du carrousel — un seul volet peut hériter du titre —
+     *     n'était nulle part, seulement suggérée par l'exemple ;
+     *   * la nuance clinique était dans le bloc LÉGENDE, donc lue comme une
+     *     règle de légende, alors que le contrôle lit toutes les surfaces.
+     *
+     * Ce bloc les sort de leur surface d'origine et les dit pour toutes.
+     */
+    `⚠ EVERY WRITTEN LINE MUST BE FINISHED — not just "card_line". The check`,
+    `reads each line you write: "card_line", every label, statement, gloss and`,
+    `panel line inside "payload". A line is unfinished when its last word DEMANDS`,
+    `A COMPLEMENT that never comes. This is not about function words; these are`,
+    `real refusals, and every one of them ends on a content word:`,
+    ``,
+    `   refused                        why                    write instead`,
+    `   "The cost of unshakeable"      unshakeable WHAT       "The cost of never wavering"`,
+    `   "Function isn't the same"      the same AS WHAT       "Function is not recovery"`,
+    `   "Stuck between one chapter"    between one AND WHAT   "Stuck between two chapters"`,
+    `   "When your life script"        script DOES WHAT       "When the old script runs"`,
+    ``,
+    `Comparatives and relational words are the trap: "the same", "more than",`,
+    `"as … as", "between", "the cost of", "instead of", "closer to". Each one`,
+    `opens a slot. Fill it, or choose a phrase that opens none.`,
+    ``,
+    `⚠ THE CLINICAL NUANCE APPLIES TO EVERY SURFACE, not only the caption. A`,
+    `card line of four words is read under her licence exactly as a caption of`,
+    `three hundred is. Two forms, side by side:`,
+    ``,
+    `   may not publish              may publish`,
+    `   "EMDR helps"                 "EMDR can help"`,
+    `   "Bilateral stimulation       "Bilateral stimulation is designed to give`,
+    `    gives a nervous system       an overworked nervous system a way to`,
+    `    a way to power down"         settle"`,
+    `   "Reprocessing lets a         "Reprocessing may let a memory settle"`,
+    `    memory settle"`,
+    ``,
+    `The hedge — can, may, often, sometimes, for some, is designed to, aims to —`,
+    `is the whole difference. A named technique as the SUBJECT of a result verb,`,
+    `with no hedge, is the single most common way this copy fails.`,
+    ``,
+    /*
+     * ⚠ CETTE DERNIÈRE CONSIGNE CONTOURNE UN FAUX POSITIF, ET CE N'EST PAS LÀ
+     * QUE LA CORRECTION DEVRAIT ÊTRE.
+     *
+     * `checkClinicalClaim` refuse « Not all change is trauma » — une phrase
+     * DÉ-pathologisante, exactement ce que le contrôle prétend protéger — et
+     * accepte « Change is not always trauma », qui dit la même chose. Mesuré :
+     * 2 des 10 constats de cette classe sont de cette forme. C'est la même
+     * classe que F38, dans un autre contrôle, et la corriger est une décision
+     * de contrôle déontologique que cette session n'a pas le droit de prendre
+     * seule (voir F39). En attendant, le modèle est prévenu.
+     */
+    `⚠ WHEN YOU SAY SOMETHING IS *NOT* A DIAGNOSIS, put the negation inside the`,
+    `verb phrase, never in front of the sentence. "Not all change is trauma" and`,
+    `"Change is not always trauma" mean the same thing; the first is refused and`,
+    `the second is not. Write "X is not trauma", "Grief is not a disorder",`,
+    `"Overwork is not burnout" — never "Not every X is Y".`,
+    ``,
     `⚠ WHY "card_line" IS ${CARD_LINE_MAX} CHARACTERS AND NOT A TITLE. The card sets`,
     `that line as large as it fits, and every other size on the card is derived`,
     `from it — a label may never exceed 1/${TYPE.minTitleToLabelRatio} of it. At ${CARD_LINE_MAX} characters`,

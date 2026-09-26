@@ -270,7 +270,7 @@ export async function generateDirectoryProfile(
     const scanned = [
       { field: "first_paragraph", text: built.draft.prose.firstParagraph },
       { field: "body", text: built.draft.prose.body },
-    ].map((entry) => ({ ...entry, scan: checkEthics(entry.text, { reading: "as-database" }) }));
+    ].map((entry) => ({ ...entry, scan: checkEthics(entry.text) }));
 
     const violations = scanned.flatMap((entry) => entry.scan.violations);
     const flagged = scanned.flatMap((entry) =>
