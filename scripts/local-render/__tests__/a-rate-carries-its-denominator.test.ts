@@ -21,6 +21,18 @@ const MONTH = readFileSync("scripts/local-render/20-month.ts", "utf8");
  * quelqu'un divisera par ce qu'il a sous la main, et c'est arrivé deux fois.
  */
 describe("la conformité au premier appel porte son dénominateur", () => {
+  /*
+   * ⚠ ET LA CIBLE D'ARRÊT VIENT DU DIMENSIONNEMENT, PAS DU HARNAIS. C'est la
+   * correction de F41 : le tirage se déduit de ce que la boucle consomme, donc
+   * les deux doivent lire la même expression.
+   */
+  it("la condition d'arrêt lit la cible partagée", () => {
+    expect(MONTH).toContain("if (usable.length >= USABLE_TARGET) break;");
+    expect(MONTH, "USABLE_TARGET n'est pas importé du dimensionnement").toMatch(
+      /USABLE_TARGET[\s\S]*?from "\.\.\/\.\.\/lib\/content\/bank"/
+    );
+  });
+
   it("l'entonnoir compte les candidats EXAMINÉS", () => {
     expect(MONTH, "funnel.examined a disparu").toContain("examined: 0,");
     expect(MONTH).toContain("funnel.examined += 1;");
@@ -33,9 +45,15 @@ describe("la conformité au premier appel porte son dénominateur", () => {
    */
   it("il est compté après l'arrêt de boucle, pas avant", () => {
     const loop = MONTH.indexOf("for (const candidate of candidates) {");
-    const stop = MONTH.indexOf("if (usable.length >= WANTED + SPARE_POOL) break;", loop);
+    /*
+     * ⚠ ANCRÉ SUR LE `break`, PAS SUR SA FORMULE. La condition disait
+     * `WANTED + SPARE_POOL` ; F41 l'a remplacée par `USABLE_TARGET`, la seule
+     * expression que le harnais et le dimensionnement lisent tous les deux, et
+     * ce test est tombé sans qu'une de ses garanties ait bougé.
+     */
+    const stop = MONTH.search(/if \(usable\.length >= \w+\) break;/);
     const count = MONTH.indexOf("funnel.examined += 1;", loop);
-    expect(stop).toBeGreaterThan(loop);
+    expect(stop, "l'arrêt de boucle est introuvable").toBeGreaterThan(-1);
     expect(count, "l'examen est compté AVANT l'arrêt : le dénominateur redevient le tirage")
       .toBeGreaterThan(stop);
   });

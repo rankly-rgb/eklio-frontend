@@ -16,56 +16,95 @@ import { PRACTITIONER_CARDS_PER_MONTH } from "@/lib/content/practitioner";
  * génération simultanée de tout un segment.
  */
 
-/** Combien de candidats un essai tire. */
-/*
- * ── ⚠ LE BANC ÉTAIT VIDE DANS LES CINQ ESSAIS, PAR ARITHMÉTIQUE ──────────
- *
- * Mesuré le 2026-09-24, cinq essais, contrôles gelés : **zéro mois livré**, et
- * les cinq avaient ÉPUISÉ leur banc — `retirés == banc` dans les cinq, à 4, 4,
- * 5, 5 et 6. Le sélecteur avait échangé tout ce qu'il avait.
- *
- * ⚠ ET CE N'ÉTAIT PAS LA SÉVÉRITÉ DES CONTRÔLES. Chaque mois n'échouait que
- * sur un à quatre constats, ce qu'un banc suffisant répare par échange. Ce qui
- * manquait était le banc.
- *
- * Les deux bornes tombaient au même point, et c'est ce qui rendait le défaut
- * invisible :
- *
- *   rendement de préparation   174 candidats utilisables sur 363 = **47,9 %**
- *   72 tirés × 47,9 %          ≈ 34,5 utilisables
- *   `WANTED + SPARE_POOL`      30 + 6 = **36**
- *
- * Relever l'un sans l'autre ne donne rien : à 72 tirés le rendement borne, et à
- * `SPARE_POOL = 6` le plafond borne. Il faut les deux.
- *
- * ── ⚠ ET LE NOMBRE DE CONSTATS A MONTÉ, LUI AUSSI ───────────────────────
- *
- * Le banc de 6 avait été dimensionné quand vingt-trois contrôles lisaient la
- * CARTE. Ils sont désormais trente et ils lisent toutes les surfaces publiées,
- * légende comprise : plus de surfaces, plus de constats, plus d'échanges. Un
- * banc de six était juste pour un jeu de contrôles qui n'existe plus.
- *
- * Pour un banc de dix-huit : `(30 + 18) / 0,479 ≈ 100` candidats.
- *
- * ⚠ ET CENT DEUX, PAS CENT. La boucle tire `ceil(CANDIDATES / 3)` par famille :
- * à cent elle en tire cent deux, et la somme ne vaut plus ce qu'on a demandé.
- * Un nombre qui ne divise pas par trois fait mentir tout le dimensionnement
- * d'un ou deux sujets par archétype — assez pour qu'une cible de banque soit
- * fausse sans que personne voie où.
- */
-export const CANDIDATES_PER_ATTEMPT = 102;
+/** Combien de posts un mois livre. Le seul 30 du dépôt. */
+export const POSTS_PER_MONTH = 30;
 
 /**
- * Le rendement mesuré entre le tirage et la préparation.
+ * Le banc : les utilisables de rab que le sélecteur peut échanger.
  *
- * ⚠ IL NE SE DEVINE PAS. Budget de mots, schéma, déontologie, et depuis F35 la
- * légende : un candidat sur deux n'arrive pas. Le chiffre vient de cinq essais
- * réels, pas d'une estimation.
+ * ⚠ IL VIVAIT DANS LE HARNAIS, et le tirage vivait ici. Deux fichiers, aucune
+ * expression commune — c'est la divergence structurelle de F41, et rien ne
+ * pouvait la voir.
+ *
+ * Dix-huit, parce qu'un banc de six a été épuisé dans cinq essais sur cinq le
+ * 2026-09-24 : chaque mois n'échouait que sur un à quatre constats, ce qu'un
+ * banc suffisant répare par échange. Depuis le portillon par post, un défaut
+ * par post ne consomme plus d'échange du tout — les deux mois livrés du
+ * 2026-09-26 en ont consommé ZÉRO sur un banc de dix. Dix-huit est donc
+ * généreux, et c'est voulu tant que la mesure tient sur deux mois.
  */
-export const PREPARATION_YIELD = 0.479;
+export const SPARE_POOL = 18;
 
-/** Combien de posts un mois livre. */
-export const POSTS_PER_MONTH = 30;
+/**
+ * Ce que la boucle d'examen consomme avant de s'arrêter.
+ *
+ * ⚠ C'EST LE SEUL CONSOMMATEUR QUI COMPTE, et c'est l'expression que le harnais
+ * ET le dimensionnement doivent lire tous les deux. Le harnais s'arrête sur
+ * `usable.length >= USABLE_TARGET` ; le tirage se calcule à partir de lui.
+ */
+export const USABLE_TARGET = POSTS_PER_MONTH + SPARE_POOL;
+
+/*
+ * ── ⚠ F41 : 47,9 % N'ÉTAIT PAS UN RENDEMENT, C'ÉTAIT UNE TAUTOLOGIE ──────
+ *
+ * Le chiffre précédent — `PREPARATION_YIELD = 0.479`, « 174 candidats
+ * utilisables sur 363 » — mesurait cinq essais qui tiraient 72 candidats et
+ * s'arrêtaient à `30 + 6 = 36` utilisables. Il ne mesurait donc pas la
+ * conformité du modèle : il mesurait LE SEUIL D'ARRÊT DIVISÉ PAR LE TIRAGE.
+ * 36/72 = 50 %, par construction, quoi que le modèle écrive.
+ *
+ * Puis le tirage a été redérivé de ce ratio : `(30 + 18) / 0,479 ≈ 100`. La
+ * boucle d'arrêt s'est donc mise à 48, le « rendement » est resté à ~50 %, et
+ * la mesure s'est confirmée elle-même. Relever le banc doublait le tirage, et
+ * le doublement prouvait le rendement.
+ *
+ * ⚠ ET LA MOITIÉ DU TIRAGE ÉTAIT PAYÉE SANS ÊTRE LUE. Le lot soumet toutes les
+ * candidatures d'un coup et les facture à la soumission ; la boucle en examinait
+ * une cinquantaine. Sur les deux mois livrés du 2026-09-26 : 102 tirés, 101
+ * réponses facturées, **48 utilisables atteints en 48 et 49 examens**.
+ *
+ * Le bon rapport est `utilisables / EXAMINÉS`. Mesuré sur 30 essais enregistrés,
+ * la panne de solde du fournisseur exclue — elle rendait 3 utilisables sur 72,
+ * et une panne se rattrape par une relance, pas par un tirage plus gros :
+ *
+ *   médiane        0,980
+ *   10e centile    0,941
+ *   minimum        0,923
+ *
+ * ⚠ LE CHIFFRE RETENU EST SOUS LE MINIMUM OBSERVÉ, ET C'EST DÉLIBÉRÉ. Se
+ * tromper vers le haut coûte des appels jetés ; se tromper vers le bas coûte un
+ * banc plus mince, ce qui ne fait perdre un mois que si le banc tombe sous les
+ * trente posts nets. À 0,85 le tirage rend ~48 utilisables ; au pire rendement
+ * observé (0,923) il en rend 52, et à un rendement catastrophique de 0,70 il en
+ * rend encore 40 — soit trente posts et dix de banc.
+ */
+export const EXAMINED_YIELD = 0.85;
+
+/**
+ * Combien de candidatures soumettre pour en examiner assez.
+ *
+ * ⚠ ARRONDI AU MULTIPLE DE TROIS SUPÉRIEUR. La boucle de tirage prend
+ * `ceil(candidats / 3)` par famille : un nombre qui ne divise pas par trois fait
+ * tirer plus que demandé et fait mentir tout le dimensionnement d'un ou deux
+ * sujets par archétype — assez pour qu'une cible de banque soit fausse sans que
+ * personne voie où.
+ */
+export function candidatesToSubmit(
+  target = USABLE_TARGET,
+  yieldRate = EXAMINED_YIELD
+): number {
+  const raw = Math.ceil(target / yieldRate);
+  return Math.ceil(raw / Object.keys(FORMAT_FAMILIES).length) * Object.keys(FORMAT_FAMILIES).length;
+}
+
+/**
+ * Combien de candidats un essai tire — ET SOUMET, donc paie.
+ *
+ * ⚠ DÉRIVÉ, PLUS UNE CONSTANTE. C'était `102`, écrit à la main, et c'est ce qui
+ * a permis à F41 de vivre : un littéral ne peut pas diverger de la boucle qui le
+ * consomme, il peut seulement avoir tort.
+ */
+export const CANDIDATES_PER_ATTEMPT = candidatesToSubmit();
 
 /**
  * La fenêtre anti-collision, en tours de `cron` mensuel.

@@ -1993,6 +1993,28 @@ comme une AMÉLIORATION, puisque la pénurie avait disparu.
 
 ## F13 — ⚠ LA BANQUE DE SUJETS SE TARIT POUR LA SIXIÈME PRATICIENNE D'UN SEGMENT
 
+> **⚠ MISE À JOUR DU 2026-09-26 — LE DIMENSIONNEMENT A BAISSÉ DE 43 %.**
+> Les chiffres de cette entrée ont été calculés avec un tirage de 102 candidats
+> par essai. F41 a montré que ce 102 venait d'une tautologie : la moitié du
+> tirage était payée sans être examinée. Le tirage est désormais **dérivé** de ce
+> que la boucle consomme (`candidatesToSubmit`), et vaut **57**.
+>
+> | | avec 102 tirés | avec 57 tirés |
+> |---|---|---|
+> | seuil de remplissage, un essai | 174 | **99** (−43 %) |
+> | cible de banque, un essai | 203 | **129** (−36 %) |
+> | seuil, segment de 10 praticiennes | 1 704 | **954** (−44 %) |
+> | cible, segment de 10 | 2 604 | **1 853** (−29 %) |
+>
+> Le raisonnement de l'entrée — la fenêtre de 90 jours, le tirage simultané de
+> tout un segment, le fait que le total mente et qu'il faille compter par
+> archétype — reste entièrement valable. Seule l'échelle change, et elle change
+> dans le bon sens : **la banque n'avait pas besoin d'être deux fois plus
+> grande.** Le 2026-09-26, la pénurie constatée n'était d'ailleurs pas un manque
+> de sujets mais **994 assignations orphelines** tenues par des essais
+> interrompus ; la libération automatique les a rendues et zéro archétype est
+> passé sous le seuil.
+
 **Mesuré le 2026-09-21, pas déduit.** Au moment de générer un mois pour le
 sixième compte de test — même modalité (EMDR), même État (CA) que les cinq
 précédents — la banque contenait **118 sujets dont 2 tirables**.

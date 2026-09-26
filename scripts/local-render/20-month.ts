@@ -53,7 +53,8 @@ import { licenceMention, licenceMissingMessage } from "../../lib/content/licence
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
 import {
-  bankShortfall, CANDIDATES_PER_ATTEMPT, WINDOW_ROUNDS, type BankDemand,
+  bankShortfall, CANDIDATES_PER_ATTEMPT, POSTS_PER_MONTH, SPARE_POOL, USABLE_TARGET,
+  WINDOW_ROUNDS, type BankDemand,
 } from "../../lib/content/bank";
 import {
   checkMonth, checkPostAlone, writtenLinesIn, FORMAT_FAMILIES, familyOf,
@@ -73,7 +74,12 @@ import {
 } from "./lib";
 import { withOverhead, type CreditPort } from "../../lib/credits/paid-call";
 
-const WANTED = 30;
+/*
+ * ⚠ LE MÊME 30 QUE `bank.ts`, PAS UN SECOND. Il était écrit ici en littéral et
+ * là-bas sous le nom `POSTS_PER_MONTH` ; deux 30 qui se trouvent égaux ne sont
+ * pas une garantie qu'ils le resteront.
+ */
+const WANTED = POSTS_PER_MONTH;
 
 const ZERO = (): { input: number; output: number; cacheRead: number; cacheWrite: number } =>
   ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
@@ -835,21 +841,20 @@ async function main() {
  * sélecteur de quoi échanger.
  */
 /*
- * ── ⚠ SIX ÉTAIT LE BANC D'UN JEU DE CONTRÔLES QUI N'EXISTE PLUS ─────────
+ * ── ⚠ LE BANC ET LE TIRAGE VIENNENT DU MÊME ENDROIT (F41) ───────────────
  *
- * Mesuré le 2026-09-24 : cinq essais, zéro mois livré, et les cinq avaient
- * épuisé leur banc — `retirés == banc` dans les cinq. Chaque mois n'échouait
- * que sur un à quatre constats, ce qu'un banc suffisant répare par échange.
+ * `SPARE_POOL` était déclaré ici, à 18, et le tirage était déclaré dans
+ * `bank.ts`, à 102. Deux fichiers, aucune expression commune : la boucle
+ * d'examen s'arrêtait à 48 utilisables pendant que le lot en payait 101, et rien
+ * ne pouvait le voir. Les deux lisent désormais `USABLE_TARGET`, et le tirage
+ * s'en déduit — voir `candidatesToSubmit`.
  *
- * ⚠ CE PLAFOND-CI EST LA MOITIÉ DU PROBLÈME, l'autre étant le nombre de
- * candidats tirés : `30 + 6 = 36` et `72 × 47,9 % ≈ 34,5` tombaient au même
- * point, donc relever l'un sans l'autre ne donnait rien.
- *
- * ⚠ ET LES CANDIDATS DU BANC SONT DÉJÀ PAYÉS. Le lot facture ses cent
- * réponses à la soumission : en collecter quarante-huit utilisables au lieu de
- * trente-six ne coûte que les réparations, pas les appels.
+ * ⚠ ET LE COMMENTAIRE QUI AURAIT DÛ L'ATTRAPER DISAIT LE CONTRAIRE : « les
+ * candidats du banc sont déjà payés, le lot facture ses cent réponses à la
+ * soumission, donc en collecter quarante-huit au lieu de trente-six ne coûte
+ * que les réparations ». Juste sur le mécanisme, et il acceptait les cent comme
+ * un donné au lieu de demander pourquoi cent.
  */
-const SPARE_POOL = 18;
 
   /*
    * ── ⚠ LA CARTE PRATICIENNE NE PASSE PAR AUCUN MODÈLE ──────────────────
@@ -1121,7 +1126,7 @@ const SPARE_POOL = 18;
     }
     for (const candidate of asked) {
       if (candidate.result?.usage) candidate.usage = candidate.result.usage;
-      if (usable.length >= WANTED + SPARE_POOL) break;
+      if (usable.length >= USABLE_TARGET) break;
       if (await settleCandidate(candidate)) {
         usable.push(candidate);
       } else {
@@ -1142,7 +1147,7 @@ const SPARE_POOL = 18;
      * l'écriture du cache.
      */
     for (const candidate of candidates) {
-      if (usable.length >= WANTED + SPARE_POOL) break;
+      if (usable.length >= USABLE_TARGET) break;
       funnel.examined += 1;
 
       /*
