@@ -2743,3 +2743,59 @@ des 24 nouvelles dans l'ordre, sauvegarde et restauration prouvées ligne à lig
 F38, les 18 règles et les 5 gâchettes, le délai de grâce de 3 h éprouvé dans les
 deux sens. Tout cela se rejoue en une commande, depuis n'importe quel répertoire,
 et chaque relance reconstruit la base.
+
+---
+
+## F44 — Tout ce qui attend du solde, dans l'ordre, avec son coût
+
+**Une seule entrée, à lire de haut en bas.** Le compte Anthropic est sous limite
+d'usage jusqu'au **2026-10-01 00:00 UTC**. Chaque mesure ci-dessous est prête :
+son code est écrit, ses champs de rapport existent, et rien ne reste à
+instrumenter.
+
+Les coûts viennent des deux mois livrés du 2026-09-26 — **0,5612 $ et 0,5868 $
+pour 102 candidats soumis**. Depuis F41 le tirage est de **57**, donc l'ordre de
+grandeur attendu est **≈ 0,32 $ par essai**. ⚠ C'est une extrapolation : le
+premier essai post-F41 la confirmera ou non, et **il faut la lire avant de
+chiffrer la suite.**
+
+| ordre | mesure | ce qu'elle tranche | essais | coût estimé |
+|---|---|---|---|---|
+| **M0** | **le premier essai post-F41** | le tirage à 57 suffit-il ? `funnel.examined` doit valoir ~50 et `gate.arrived` ~45 | 1 | **0,32 $** |
+| **M1** | portillon **sans** les consignes | ce que chacun apporte dans les 3,22 $ → 0,574 $ | 1 | 0,32 $ |
+| **M4** | confirmation à cinq mois | 2/2 n'est pas un taux ; cinq d'affilée en est un | 5 | 1,60 $ |
+| **M5** | notation indépendante | « zéro constat » ne dit pas « bonne planche » | 0 + 1 juge | 0,20 $ |
+| **M2** | les trois bras de modèle | Sonnet contre deux candidats OpenAI | 12 | 4 $ + OpenAI |
+| | **total sans M2** | | **7** | **≈ 2,45 $** |
+
+### Pourquoi cet ordre, et pas celui du brief
+
+1. **M0 d'abord, et il est nouveau.** F41 a divisé le tirage par deux sans
+   qu'aucun appel ne le vérifie. Si le rendement réel est sous 0,85, le banc
+   s'amincit et tout ce qui suit est mesuré sur un pipeline qui n'est plus celui
+   qu'on croit. Un essai, 0,32 $, et il conditionne les six autres.
+2. **M1 ensuite**, parce que son résultat change ce qu'on garde : si les
+   consignes n'apportent rien, 2 106 caractères de préfixe par archétype sortent,
+   et M4 se mesure sur le pipeline allégé. Détails et commande :
+   `docs/mesures/M1-separer-portillon-et-consignes.md`.
+3. **M4 avant M5.** Noter une planche coûte un appel de juge ; la noter avant
+   d'avoir cinq mois ferait noter un échantillon de deux.
+4. **M2 en dernier, et peut-être jamais.** Le gain attendu s'est effondré : le
+   coût par mois livré est passé de 3,22 $ à 0,574 $ **sans changer de
+   fournisseur**, et F41 devrait l'amener vers 0,32 $. Une bascule de fournisseur
+   pour gagner sur un chiffre déjà divisé par dix n'est plus le levier qu'elle
+   était. Elle reste bloquée de toute façon (F42 : ni clef ni egress).
+
+### Ce qu'il faut avoir sous la main avant de lancer
+
+- **La banque.** Vérifier `drawable_count_for_kit` contre `fillTrigger` sur les
+  onze archétypes **avant** de dépenser — le garde-fou le fait, mais le savoir
+  évite de découvrir un remplissage à 1,20 $ au milieu d'une mesure (F40).
+- **Un kit frais par essai**, brief complet, aucun mois à la date visée. La
+  requête est dans M1.
+- **Le mode lot, pas le synchrone.** `--batch` force le lot même au premier mois
+  d'un kit ; le synchrone coûte le double et tient six heures pour cinq essais.
+  C'est l'erreur qui a coûté 0,39 $ le 2026-09-26.
+- **`CONTENT_SESSION_CAP_USD`**, qui ne voit pas les remplissages de banque
+  (F40). Le plafond réel est donc celui-là **plus** ce qu'un remplissage peut
+  déclencher.
