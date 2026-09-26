@@ -24,6 +24,20 @@ import { FORMAT_FAMILIES } from "@/lib/content/month-checks";
  */
 const SOURCE = readFileSync("scripts/local-render/20-month.ts", "utf8");
 
+/*
+ * ── ⚠ ET LA RONDE ELLE-MÊME A DÉMÉNAGÉ DANS `lib/` ──────────────────────
+ *
+ * Le tirage est sorti du harnais le 2026-09-26 (étage C3 de F45) : le harnais
+ * appelle `drawMonth`. Deux de ces contrôles lisaient la BOUCLE, pas la liste,
+ * et ils regardent donc maintenant le module.
+ *
+ * ⚠ C'EST EXACTEMENT LA FORME 1 DE F48, et c'est pourquoi ils sont repointés
+ * plutôt que retirés : un test dérivé de la source qui perd son mécanisme quand
+ * on le déplace devient vert par déménagement. Le harnais garde ce qui est
+ * encore chez lui — `DRAW_ORDER`, les poids —, le module porte la ronde.
+ */
+const MODULE = readFileSync("lib/content/month/draw.ts", "utf8");
+
 describe("le tirage ne condamne pas un format par son rang", () => {
   it("les formats larges passent avant les phrases seules", () => {
     const order = SOURCE.slice(SOURCE.indexOf("const DRAW_ORDER = ["));
@@ -32,9 +46,11 @@ describe("le tirage ne condamne pas un format par son rang", () => {
     expect(line.indexOf("simple")).toBeLessThan(line.indexOf("statement"));
   });
 
-  it("la boucle de tirage suit DRAW_ORDER, pas l'ordre de l'objet", () => {
-    expect(SOURCE).toContain("for (const family of DRAW_ORDER) {");
-    expect(SOURCE).not.toContain("for (const [family, archetypes] of Object.entries(FAMILIES))");
+  it("la boucle de tirage suit l'ordre reçu, pas l'ordre de l'objet", () => {
+    expect(MODULE).toContain("for (const family of input.drawOrder) {");
+    expect(MODULE).not.toContain("for (const [family, archetypes] of Object.entries(");
+    /* Et le harnais lui passe bien DRAW_ORDER, pas une liste à lui. */
+    expect(SOURCE).toContain("drawOrder: [...DRAW_ORDER]");
   });
 
   /*
@@ -77,7 +93,8 @@ describe("le tirage ne condamne pas un format par son rang", () => {
   });
 
   it("le motif de rejet nomme l'archétype", () => {
-    expect(SOURCE).toContain("archetype: string; because: string }> = [];");
-    expect(SOURCE).not.toMatch(/rejected\.push\(\{ title: topic\.title, because:/);
+    expect(MODULE).toContain("archetype: topic.archetype_key");
+    expect(MODULE).toMatch(/export type DrawRefusal = \{[^}]*archetype: string/);
+    expect(MODULE).not.toMatch(/rejected\.push\(\{ title: topic\.title, because:/);
   });
 });

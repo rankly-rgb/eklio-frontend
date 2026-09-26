@@ -33,12 +33,37 @@ function declaredArgs(): Map<string, DeclaredArg[]> {
   const block = types.slice(types.indexOf("    Functions: {"));
   const found = new Map<string, DeclaredArg[]>();
 
-  for (const match of block.matchAll(/^ {6}(\w+):\s*\{/gm)) {
+  /*
+   * ── ⚠ LA FENÊTRE S'ARRÊTE À LA DÉCLARATION SUIVANTE ────────────────────
+   *
+   * Elle faisait 600 caractères, à l'aveugle. Or `Args: never` — vingt-quatre des
+   * deux cent vingt-quatre fonctions — ne correspond à aucune des deux formes
+   * cherchées : la recherche continuait donc dans la fenêtre et attrapait les
+   * paramètres de la fonction SUIVANTE. Une fonction sans argument héritait des
+   * arguments de sa voisine, et ce contrôleur exigeait alors d'un appel qu'il
+   * envoie un paramètre qui n'existe pas.
+   *
+   * ⚠ TROUVÉ LE 2026-09-26 PARCE QU'UN APPEL EST APPARU, pas parce que quelqu'un
+   * l'a cherché : `release_stale_topic_assignments` n'était appelé que via un
+   * alias local (`rpc(...)`, sans point), que l'extracteur de sites ne voit pas.
+   * En le passant dans une couture qui écrit `db.rpc(...)`, le site est devenu
+   * visible et le défaut a parlé. Vingt-quatre fonctions étaient exposées à la
+   * même méprise, en silence, en attendant leur premier appel.
+   */
+  const bounds = [...block.matchAll(/^ {6}\w+:/gm)].map((m) => m.index ?? 0);
+  for (const match of block.matchAll(/^ {6}(\w+):\s*(\{|never)/gm)) {
     const name = match[1];
-    // La déclaration tient dans les quelques lignes qui suivent le nom.
-    const window = block.slice(match.index ?? 0, (match.index ?? 0) + 600);
-    const args = /Args:\s*(\{[^}]*\}|Record<[^>]*>)/.exec(window);
+    const at = match.index ?? 0;
+    const next = bounds.find((b) => b > at) ?? block.length;
+    const window = block.slice(at, next);
+    const args = /Args:\s*(\{[^}]*\}|Record<[^>]*>|never)/.exec(window);
     if (!args) continue;
+
+    /* `Args: never` veut dire AUCUN paramètre, et c'est une information. */
+    if (args[1] === "never") {
+      found.set(name, []);
+      continue;
+    }
 
     if (args[1].startsWith("Record")) {
       found.set(name, []);
@@ -184,6 +209,44 @@ describe("ce qui reste supposé", () => {
 
   it("chacune est bien déclarée, faute de quoi la liste ment", () => {
     for (const fn of UNCONFIRMED) expect(DECLARED.has(fn)).toBe(true);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  ⚠ ET LE LECTEUR DE DÉCLARATIONS NE CONFOND PAS DEUX VOISINES
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Sa fenêtre faisait 600 caractères à l'aveugle, et `Args: never` ne
+ * correspondait à aucune forme cherchée : une fonction sans argument héritait
+ * donc des arguments de la suivante. Vingt-quatre fonctions sur deux cent
+ * vingt-quatre étaient dans ce cas, et le défaut ne parlait qu'au premier appel
+ * visible — le 2026-09-26, quand `release_stale_topic_assignments` est passé par
+ * une couture qui écrit `db.rpc(...)` au lieu d'un alias local.
+ *
+ * Un contrôleur qui se trompe accuse le code juste. Celui-ci se vérifie donc.
+ */
+describe("le lecteur de déclarations se vérifie lui-même", () => {
+  it("une fonction sans argument en déclare zéro, pas ceux de sa voisine", () => {
+    expect(DECLARED.get("release_stale_topic_assignments")).toEqual([]);
+    expect(DECLARED.get("abandon_stale_generation_runs")).toEqual([]);
+    expect(DECLARED.get("anon_token_hash")).toEqual([]);
+  });
+
+  it("aucune déclaration sans argument n'emprunte un paramètre", () => {
+    const types = readFileSync(join(ROOT, "types/supabase.ts"), "utf8");
+    const block = types.slice(types.indexOf("    Functions: {"));
+    const nullary = [...block.matchAll(/^ {6}(\w+):\s*\{\s*Args:\s*never/gm)].map((m) => m[1]);
+    expect(nullary.length, "plus aucune fonction sans argument : ce test n'a plus de témoin")
+      .toBeGreaterThan(10);
+    for (const fn of nullary) {
+      expect(DECLARED.get(fn), `${fn} a emprunté les paramètres d'une voisine`).toEqual([]);
+    }
+  });
+
+  /* Et il lit toujours correctement celles qui en ont. */
+  it("une fonction qui a des arguments les garde tous", () => {
+    expect(DECLARED.get("drawable_count_for_kit")?.map((a) => a.name)).toEqual(["p_brand_kit_id"]);
   });
 });
 

@@ -3181,3 +3181,73 @@ passage :
 > défauts de ce dépôt** : le SQL est écrit avec soin, en avance, et son appelant
 > n'arrive jamais. Chercher le suivant se fait en partant du SQL, pas du
 > TypeScript.
+
+---
+
+## F51 — La ronde du tirage vide la banque de sa famille quand les doublons refusent
+
+**Trouvé le 2026-09-26**, en extrayant le tirage dans `lib/content/month/draw.ts`.
+
+Quand un sujet est refusé par le dédoublonnage — ni pénurie, ni plafond
+praticienne — rien ne sort de `live` et `taken` ne monte pas : le tour
+recommence. `assign_topic_to_kit` rend un sujet **différent** à chaque appel,
+puisqu'il vient de marquer le précédent assigné, donc la boucle finit bien — mais
+elle finit en **assignant puis refusant tout le reste de la famille**.
+
+### ⚠ C'est une cause plausible des 994 assignations orphelines
+
+Chaque refus part dans `releasedEarly`, donc tout se répare **si l'appelant
+relâche**. Un run tué au milieu ne relâche rien, et le segment entier reste
+bloqué trois heures — la fenêtre de `topic_assignment_grace()`.
+
+### Pourquoi le garde-fou n'est pas posé
+
+S'arrêter après un tour infructueux changerait le nombre de candidats d'un mois,
+donc son mélange, donc les chiffres mesurés. Or cette extraction est une
+**délégation** : le harnais appelle le module. Un portage qui modifie le
+comportement du seul pipeline mesuré n'est pas un portage.
+
+J'ai écrit le garde-fou, puis je l'ai retiré : il aurait fait passer les tests en
+changeant silencieusement le tirage. Un mois réel tranchera — et la mesure à
+prendre est le nombre d'assignations par candidat retenu, pas le nombre de
+candidats.
+
+---
+
+## F52 — Le contrôleur de signatures RPC héritait des paramètres de la voisine
+
+**Trouvé le 2026-09-26**, et *pas* en le cherchant.
+
+`lib/__tests__/rpc-signatures.test.ts` lisait la déclaration d'une fonction dans
+une fenêtre de **600 caractères à l'aveugle** après son nom. Or `Args: never` ne
+correspond à aucune des deux formes cherchées (`{…}` ou `Record<…>`) : la
+recherche continuait dans la fenêtre et attrapait le `Args: { … }` de la fonction
+**suivante**.
+
+Conséquence : une fonction sans argument héritait des arguments de sa voisine, et
+le contrôleur exigeait alors d'un appel juste qu'il envoie un paramètre qui
+n'existe pas.
+
+**Vingt-quatre fonctions sur deux cent vingt-quatre** portent `Args: never`.
+Toutes étaient exposées à la même méprise.
+
+### ⚠ Ce qui l'a révélé, et ce que ça dit
+
+`release_stale_topic_assignments` n'était appelé que par un **alias local**
+(`rpc(...)`, sans point), que l'extracteur de sites ne voit pas — il cherche
+`.rpc("`. En le faisant passer par une couture partagée qui écrit `db.rpc(...)`,
+le site est devenu visible et le défaut a parlé.
+
+Donc :
+
+1. le défaut dormait depuis que le contrôleur existe, et rien ne l'aurait
+   réveillé sans un appel nouveau ;
+2. **l'extracteur de sites a un angle mort qui reste** : tout appel passant par un
+   alias local est invisible à ce contrôleur. Le harnais en avait deux.
+
+Corrigé : la fenêtre s'arrête à la déclaration suivante, `Args: never` vaut
+explicitement « aucun paramètre », et trois tests vérifient désormais que le
+lecteur ne confond pas deux voisines — dont un qui parcourt les vingt-quatre.
+
+> Un contrôleur qui se trompe accuse le code juste. Celui-là a failli faire
+> réécrire une couture correcte.

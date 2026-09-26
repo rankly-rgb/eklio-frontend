@@ -67,12 +67,26 @@ describe("le même visuel ne paraît pas neuf fois", () => {
    * des deux portes n'est pas un plafond.
    */
   it("le plafond est posé là où les deux tirages passent", () => {
-    const source = readFileSync("scripts/local-render/20-month.ts", "utf8");
+    /*
+     * ⚠ LE TIRAGE A DÉMÉNAGÉ DANS `lib/` LE 2026-09-26 (étage C3 de F45) : c'est
+     * `drawMonth` qui porte `accept`, et le harnais l'appelle. Ce test suit le
+     * mécanisme plutôt que de devenir vert par déménagement — la forme 1 de F48.
+     */
+    const source = readFileSync("lib/content/month/draw.ts", "utf8");
     const accept = source.slice(
-      source.indexOf("const accept = (topic: Topic, family: string): boolean => {"),
+      source.indexOf("const accept = (topic: DrawnTopic, family: string): boolean => {"),
       source.indexOf("const clash = redundantAgainst(")
     );
-    expect(accept).toContain("PRACTITIONER_CARDS_PER_MONTH");
-    expect(accept).toContain("releasedEarly.push(topic.id);");
+    expect(accept.length, "la porte unique du tirage a disparu de draw.ts").toBeGreaterThan(200);
+    expect(accept).toContain("input.practitionerCap");
+    /* Le refus relâche : c'est `refuse` qui pousse dans `releasedEarly`. */
+    expect(accept).toContain("return refuse(");
+    expect(source).toContain("releasedEarly.push(topic.id)");
+    /*
+     * ⚠ ET LE PLAFOND VIENT BIEN DE LA CONSTANTE, pas d'un nombre réécrit dans le
+     * module : le harnais le lui passe.
+     */
+    const harness = readFileSync("scripts/local-render/20-month.ts", "utf8");
+    expect(harness).toContain("practitionerCap: PRACTITIONER_CARDS_PER_MONTH");
   });
 });

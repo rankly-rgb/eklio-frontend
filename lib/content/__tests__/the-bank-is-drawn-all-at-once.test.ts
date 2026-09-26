@@ -201,10 +201,22 @@ describe("le harnais compte la banque avant de tirer", () => {
    * qu'un grep.
    */
   it("il compte ce que le tirage verra, via le module partagé", () => {
-    expect(SOURCE).toContain('"drawable_count_for_kit"');
-    expect(SOURCE).toContain("guardBank({");
+    /*
+     * ⚠ DEUXIÈME DÉMÉNAGEMENT, ET LA MÊME LEÇON. L'appel RPC lui-même est sorti du
+     * harnais le 2026-09-26 dans `lib/content/month/draw-port.ts` : la décision
+     * était déjà partagée, l'APPEL l'est maintenant aussi, et le chemin produit
+     * n'a donc plus à le réécrire avec sa propre idée des arguments.
+     *
+     * Ce qui reste à vérifier ici est la double délégation : le harnais passe par
+     * la couture, et il ne réimplémente ni la décision ni l'appel.
+     */
+    const seam = readFileSync("lib/content/month/draw-port.ts", "utf8");
+    expect(seam).toContain('"drawable_count_for_kit"');
+    expect(SOURCE).toContain("serverBankGuardPort(");
     expect(SOURCE, "le harnais réimplémente la décision au lieu de la déléguer")
       .not.toContain("bankShortfall(");
+    expect(SOURCE, "le harnais nomme encore le RPC : il y a deux coutures")
+      .not.toContain('"drawable_count_for_kit"');
   });
 
   /*

@@ -71,6 +71,15 @@ const HARNESS_ORCHESTRATION = [
   "scripts/local-render/20-month.ts",
   "lib/content/month/select.ts",
   "lib/content/bank-guard.ts",
+  /*
+   * ⚠ LE HARNAIS LES APPELLE DEPUIS LE 2026-09-26, et c'est une DÉLÉGATION, pas
+   * une copie : le tirage est sorti du harnais et le harnais s'en sert. Il faut
+   * donc les lire des deux côtés, sinon le recensement perdrait
+   * `assign_topic_to_kit` en le déplaçant — la forme 1 de F48, devenir vert par
+   * déménagement.
+   */
+  "lib/content/month/draw.ts",
+  "lib/content/month/draw-port.ts",
 ] as const;
 
 const HARNESS = "scripts/local-render/20-month.ts";
@@ -119,6 +128,18 @@ const PRODUCT_ORCHESTRATION = [
    */
   "lib/content/month/select.ts",
   "lib/content/month/assemble.ts",
+  /*
+   * ⚠ LA DÉCISION ET SA COUTURE, SÉPARÉES POUR LA MÊME RAISON QUE LE CRÉDIT.
+   * `draw.ts` porte la ronde et les plafonds, éprouvés par doublures, et ne
+   * contient aucun nom de RPC. `draw-port.ts` nomme `assign_topic_to_kit` et
+   * `drawable_count_for_kit` — symétrique de `lib/credits/server-port.ts`.
+   *
+   * Sans la couture, le recensement ne pouvait PAS voir ces deux RPC comme
+   * portés, et il avait raison : une décision portée dont l'appel reste inline
+   * dans le harnais est à moitié portée.
+   */
+  "lib/content/month/draw.ts",
+  "lib/content/month/draw-port.ts",
 ] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
@@ -186,13 +207,22 @@ function mechanismsOf(files: Iterable<string>): Set<string> {
  * d'exemptions sans raison est une liste qui grandit.
  */
 const ONLY_IN_HARNESS: Record<string, string> = {
-  /* ── la banque : le chemin produit ne tire pas de sujets ─────────────── */
-  guardBank:
-    "garde une banque de sujets que le chemin produit ne consulte pas : il passe par planMonth et n'appelle jamais le tirage (F45)",
-  drawable_count_for_kit:
-    "compte le tirable par archétype pour guardBank ; sans tirage côté produit, il n'y a rien à compter",
-  assign_topic_to_kit:
-    "le tirage de banque n'existe que sur le chemin archétypes : rien à assigner quand rien n'est tiré",
+  /*
+   * ⚠ `guardBank`, `assign_topic_to_kit` ET `drawable_count_for_kit` NE SONT PLUS
+   * ICI — ils sont PORTÉS, et leur ancienne raison était PÉRIMÉE.
+   *
+   * Elle disait « le chemin produit ne tire pas de sujets : il passe par
+   * planMonth ». Or F45 avait déjà tranché que ce générateur DEVIENT le chemin
+   * produit : l'exemption décrivait un état que la décision avait supprimé. Une
+   * exemption qui garde sa raison après que la raison a changé est exactement ce
+   * que F48 cherche — et celle-ci a survécu deux sessions.
+   *
+   * `month/draw.ts` porte la ronde et les deux plafonds, `month/draw-port.ts`
+   * nomme les RPC, et le harnais appelle les deux. Une seule implémentation,
+   * parce qu'une assignation fautive se libère d'elle-même en trois heures : le
+   * rayon d'action d'une erreur de portage est borné, contrairement à
+   * l'assemblage qui débite et publie.
+   */
 
   /* ── les trente contrôles : ils portent sur des payloads d'archétypes ── */
   /*
@@ -305,6 +335,11 @@ describe("le recensement harnais / produit", () => {
    * générateur, seulement de la banque. Sa route planifiée existe.
    */
   it("la libération des assignations est des deux côtés", () => {
+    /*
+     * ⚠ ELLE EST DANS LA COUTURE PARTAGÉE DEPUIS LE 2026-09-26, pas dans le
+     * fichier du harnais : `serverBankGuardPort` la nomme, et le harnais l'appelle.
+     * C'est pourquoi la liste du harnais lit aussi `draw-port.ts`.
+     */
     expect(harness.has("release_stale_topic_assignments")).toBe(true);
     expect(
       product.has("release_stale_topic_assignments"),
@@ -581,6 +616,10 @@ const EXTRACTED_NOT_WIRED: Record<string, string> = {
     "la sélection prend des posts déjà rédigés ; il n'y a rien à sélectionner avant que la rédaction existe côté produit",
   "lib/content/month/assemble.ts":
     "l'assemblage prend des posts déjà rédigés : son appelant est l'orchestrateur, qui a besoin de la rédaction, laquelle attend une clé (F44). Éprouvé par doublures en attendant",
+  "lib/content/month/draw.ts":
+    "le tirage choisit les sujets À ÉCRIRE : tirer sans écrire retirerait trente-six sujets au segment pour quatre-vingt-dix jours sans rien en faire. Son appelant est l'orchestrateur, et le harnais l'appelle déjà",
+  "lib/content/month/draw-port.ts":
+    "la couture du tirage n'a de sens qu'appelée par le tirage, qui attend l'orchestrateur. Le harnais y passe déjà, donc il n'y a plus qu'une implémentation de ces deux RPC",
 };
 
 describe("F50 — extraire n'est pas brancher", () => {

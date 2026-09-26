@@ -61,6 +61,8 @@ import {
   CANDIDATES_PER_ATTEMPT, POSTS_PER_MONTH, SPARE_POOL, USABLE_TARGET,
   WINDOW_ROUNDS, type BankDemand,
 } from "../../lib/content/bank";
+import { drawMonth } from "@/lib/content/month/draw";
+import { serverBankGuardPort, serverDrawPort, type DrawRpcClient } from "@/lib/content/month/draw-port";
 import {
   checkMonth, checkPostAlone, writtenLinesIn, FORMAT_FAMILIES, familyOf,
   type Finding, type PostUnderCheck,
@@ -164,19 +166,17 @@ async function guardTheBank(db: ReturnType<typeof admin>, kitId: string): Promis
     n: string, a: Record<string, unknown>
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
-  const verdict = await guardBank({
-    async releaseStale() {
-      const { data, error } = await rpc("release_stale_topic_assignments", {});
-      if (error) throw new Error(`release_stale_topic_assignments: ${error.message}`);
-      return Number(data ?? 0);
-    },
-    async drawableCounts(id) {
-      const { data, error } = await rpc("drawable_count_for_kit", { p_brand_kit_id: id });
-      if (error) throw new Error(`drawable_count_for_kit: ${error.message}`);
-      const rows = (data ?? []) as Array<{ archetype_key: string; drawable: number }>;
-      return Object.fromEntries(rows.map((r) => [r.archetype_key, Number(r.drawable)]));
-    },
-  }, kitId, BANK_DEMAND);
+  /*
+   * ⚠ LA COUTURE EST PARTAGÉE, ET C'EST TOUT L'INTÉRÊT. Ces deux appels étaient
+   * écrits ici ; le chemin produit aurait dû les réécrire, avec sa propre idée de
+   * la forme des arguments. `serverBankGuardPort` les nomme une seule fois —
+   * comme `serverCreditPort` pour le crédit.
+   */
+  const verdict = await guardBank(
+    serverBankGuardPort(db as unknown as DrawRpcClient),
+    kitId,
+    BANK_DEMAND
+  );
 
   if (verdict.released > 0) {
     console.error(`▸ ${verdict.released} assignations rendues — des exécutions qui n'ont rien livré`);
@@ -568,180 +568,56 @@ async function main() {
 
   await guardTheBank(db, kitId);
 
-  /* ── Les candidats, tirés par famille ──────────────────────────────── */
+  /* ── Les candidats, tirés par famille — DÉLÉGUÉ À `lib/content/month/draw.ts` ──
+   *
+   * ⚠ CENT SOIXANTE-DIX LIGNES SONT SORTIES D'ICI, ET LE HARNAIS LES APPELLE.
+   *
+   * Le tirage était inline, et le chemin produit n'en avait rien : le recensement
+   * du 2026-09-26 exemptait `assign_topic_to_kit` et `drawable_count_for_kit` au
+   * motif que « le chemin produit ne tire pas de sujets ». F45 avait pourtant déjà
+   * tranché que ce générateur DEVIENT le chemin produit — la raison de l'exemption
+   * décrivait un état que la décision avait supprimé.
+   *
+   * ⚠ ET C'EST UNE DÉLÉGATION, PAS UNE COPIE. L'assemblage garde deux
+   * implémentations pour une session, faute de pouvoir rejouer un mois ; le
+   * tirage, lui, ne dépense rien et `release_stale_topic_assignments()` répare une
+   * assignation fautive au bout de trois heures. Le rayon d'action d'une erreur de
+   * portage est borné par un mécanisme qui existe déjà, donc une seule
+   * implémentation.
+   *
+   * Le module est FIDÈLE, y compris là où le comportement est discutable : la
+   * ronde vide la banque de sa famille quand les doublons refusent tout. Cf. F51.
+   */
   const perFamily = Math.ceil(CANDIDATES / 3);
-  const candidates: Candidate[] = [];
-  const drawnIds: string[] = [];
-  const shortfall: string[] = [];
-  /*
-   * ── ⚠ LE DOUBLON SE REFUSE AU TIRAGE, ET SON SUJET EST RELÂCHÉ ────────
-   *
-   * Le mois du 2026-09-21b portait six paires de titres de même sens — « Life
-   * rewrote itself » et « When life rewrites itself », trois variantes de
-   * « competence masks ». Chacun passait tous les contrôles, parce qu'aucun ne
-   * regardait les AUTRES titres du mois.
-   *
-   * Refuser à l'écriture arriverait trop tard : le sujet est déjà marqué
-   * assigné et sort de la banque pour 90 jours. Il est donc écarté ICI, et son
-   * assignation part dans `released` avec les sujets sur-générés non utilisés
-   * — la règle du cahier des charges, « les sujets non utilisés ne sont pas
-   * marqués assignés », vaut aussi pour ceux-là.
-   */
-  /*
-   * ⚠ L'ARCHÉTYPE EST DANS LE MOTIF DE REJET, et il y manquait. Le mois de
-   * teo.marrow est sorti sans un seul carrousel, et le rapport ne permettait
-   * pas de dire si aucun n'avait été tiré ou si les cinq avaient été refusés
-   * comme redondants. « Absent du mois » et « refusé au tirage » demandent
-   * deux corrections opposées.
-   */
-  const rejected: Array<{ title: string; archetype: string; because: string }> = [];
-  const releasedEarly: string[] = [];
-
-  const accept = (topic: Topic, family: string): boolean => {
-    /*
-     * ── ⚠ LA CARTE PRATICIENNE EST UN APPOINT, PAS UN ARCHÉTYPE ─────────
-     *
-     * Mesuré le 2026-09-23 : dès que la banque a porté des cartes
-     * praticiennes libres, le tirage en a pris NEUF sur trente. Toutes
-     * identiques — mêmes trois lignes venues du brief, même dessin de porte,
-     * seul le titre changeait — et le mois a passé tous les contrôles, parce
-     * que 9 sur 30 font exactement 30,0 %, le plafond au centième près.
-     *
-     * ⚠ ET LE PLAFOND EST ICI, PAS DANS LA RONDE PAR FAMILLE. Posé dans la
-     * ronde, il ne tenait que sur le PREMIER des deux tirages : le rattrapage
-     * qui complète le mois demande un sujet sans nommer d'archétype, et il en
-     * a repris huit. Un plafond posé sur une seule des deux portes n'est pas
-     * un plafond. `accept` est la seule par où les deux passent.
-     */
-    if (
-      topic.archetype_key === "practitioner_card" &&
-      candidates.filter((c) => c.topic.archetype_key === "practitioner_card").length
-        >= PRACTITIONER_CARDS_PER_MONTH
-    ) {
-      rejected.push({
-        title: topic.title,
-        archetype: topic.archetype_key,
-        because: `déjà ${PRACTITIONER_CARDS_PER_MONTH} cartes praticiennes, et leurs lignes sont identiques`,
-      });
-      releasedEarly.push(topic.id);
-      return false;
+  const draw = await drawMonth(
+    serverDrawPort(db as unknown as DrawRpcClient, { kitId, month: MONTH }),
+    {
+      families: FAMILIES,
+      drawOrder: [...DRAW_ORDER],
+      perFamily,
+      candidates: CANDIDATES,
+      practitionerCap: PRACTITIONER_CARDS_PER_MONTH,
+      practitionerPayload: practitionerPayload !== null,
     }
-
-    /*
-     * ⚠ SUR LE TITRE COMPLET **ET** SUR CE QUI SERA IMPRIMÉ.
-     *
-     * Le dédoublonnage lisait `topic.title`, la forme longue en banque. Mais
-     * la carte porte `clampCardLine(title)` — trente caractères — et deux
-     * titres distincts en banque peuvent s'y réduire au MÊME texte. Le mois de
-     * marlow.quint est sorti avec deux cartes titrées « When the body
-     * disagrees », l'une en quadrant, l'autre en courbe : aucune des deux
-     * règles lexicales n'avait de raison de les rapprocher, puisqu'en banque
-     * elles ne se ressemblaient pas.
-     *
-     * La ligne de carte est donc comparée telle qu'elle sera lue.
-     */
-    const line = clampCardLine(topic.title).toLowerCase();
-    if (candidates.some((c) => clampCardLine(c.topic.title).toLowerCase() === line)) {
-      rejected.push({ title: topic.title, archetype: topic.archetype_key, because: `même ligne de carte une fois coupée : « ${line} »` });
-      releasedEarly.push(topic.id);
-      return false;
-    }
-
-    const clash = redundantAgainst(topic.title, candidates.map((c) => c.topic.title));
-    if (clash) {
-      rejected.push({ title: topic.title, archetype: topic.archetype_key, because: clash });
-      releasedEarly.push(topic.id);
-      return false;
-    }
-    candidates.push({ topic, family, reservationId: null, result: null, usage: ZERO() });
-    drawnIds.push(topic.id);
-    return true;
-  };
+  );
 
   /*
-   * ── ⚠ À TOUR DE RÔLE DANS LA FAMILLE, ET PAS « LE PREMIER JUSQU'À
-   *      ÉPUISEMENT DU QUOTA » ──────────────────────────────────────────
-   *
-   * La boucle interne était `while (taken < perFamily)` autour d'UN archétype :
-   * le premier de la famille absorbait le quota entier, et les autres
-   * n'étaient atteints que s'il manquait de stock. Le mélange d'un mois
-   * dépendait donc de la PÉNURIE — et quand la banque a été remplie, il s'est
-   * effondré : le mois de perrin.vale est sorti avec 5 archétypes sur 11, sans
-   * un seul cycle, numbered_strategies ni annotated_curve, alors que la banque
-   * en portait 23, 23 et 30. Six icebergs identiques et onze phrases seules.
-   *
-   * C'est l'inverse exact de ce qu'un lecteur doit voir, et c'est pour ça que
-   * le mois PRÉCÉDENT, à court de stock, était plus varié que celui-ci.
-   *
-   * Un tour de rôle prend un sujet de chaque archétype, puis recommence. Un
-   * archétype épuisé sort de la ronde ; les autres continuent.
+   * ⚠ LA FORME DU HARNAIS EST RECONSTRUITE ICI, PAS DANS LE MODULE. `Candidate`
+   * porte `reservationId`, `result` et `usage` — trois champs qui n'ont rien à
+   * faire dans un tirage. Les y mettre aurait fait dépendre le module de ce que
+   * l'écriture en fait ensuite.
    */
-  for (const family of DRAW_ORDER) {
-    const archetypes = FAMILIES[family];
-    let taken = 0;
-    // ⚠ Un archétype dont le brief ne porte pas les faits n'entre pas dans la
-    // ronde : il ne sert à rien de tirer un sujet qu'on ne pourra pas composer.
-    const live = archetypes.filter((a) => a !== "practitioner_card" || practitionerPayload !== null);
-
-    while (taken < perFamily && live.length > 0) {
-      for (let k = 0; k < live.length && taken < perFamily; ) {
-        const { data: topicId, error } = await (db.rpc as unknown as (
-          n: string, a: Record<string, unknown>
-        ) => Promise<{ data: string | null; error: { message: string } | null }>)(
-          "assign_topic_to_kit", { p_brand_kit_id: kitId, p_month: MONTH, p_archetype: live[k] }
-        );
-        if (error) throw new Error(`assign_topic_to_kit: ${error.message}`);
-        if (!topicId) {
-          live.splice(k, 1);
-          continue;
-        }
-        const { data: topic } = await db
-          .from("content_topics").select("id, archetype_key, intent, title, hook").eq("id", topicId).single();
-        if (!topic) {
-          live.splice(k, 1);
-          continue;
-        }
-        if (accept(topic as Topic, family)) taken += 1;
-        else if (live[k] === "practitioner_card") {
-          // Son plafond est atteint : elle sort de la ronde plutôt que de la
-          // faire tourner à vide jusqu'à épuiser la banque.
-          live.splice(k, 1);
-          continue;
-        }
-        k += 1;
-      }
-    }
-    if (taken < perFamily) shortfall.push(`${family}: ${taken} of ${perFamily} (the bank had no more)`);
-  }
-
-  /*
-   * ── ⚠ CE QUI MANQUE DANS UNE FAMILLE EST PRIS AILLEURS ────────────────
-   *
-   * Mesuré le 2026-09-21 : le second compte de test n'a pu tirer que 28
-   * candidats sur 36, parce que l'anti-collision lui refuse tout ce que la
-   * première praticienne a pris dans les 90 jours — même État, même modalité,
-   * utilisatrice différente. C'est la fenêtre qui fait son travail, et c'est
-   * exactement le scénario que §10.8 du rapport d'implémentation décrit.
-   *
-   * Un mélange visé n'est pas un mélange garanti : mieux vaut trente posts
-   * dont le mélange penche que vingt-deux posts bien répartis. Le rapport
-   * publie le mélange obtenu, jamais celui qui était visé.
-   */
-  while (candidates.length < CANDIDATES) {
-    const { data: topicId, error } = await (db.rpc as unknown as (
-      n: string, a: Record<string, unknown>
-    ) => Promise<{ data: string | null; error: { message: string } | null }>)(
-      "assign_topic_to_kit", { p_brand_kit_id: kitId, p_month: MONTH }
-    );
-    if (error) throw new Error(`assign_topic_to_kit: ${error.message}`);
-    if (!topicId) break;
-    const { data: topic } = await db
-      .from("content_topics").select("id, archetype_key, intent, title, hook").eq("id", topicId).single();
-    if (!topic) break;
-    const family =
-      Object.entries(FAMILIES).find(([, keys]) => keys.includes(topic.archetype_key))?.[0] ?? "varied";
-    accept(topic as Topic, family);
-  }
+  const candidates: Candidate[] = draw.drawn.map(({ topic, family }) => ({
+    topic: topic as Topic,
+    family,
+    reservationId: null,
+    result: null,
+    usage: ZERO(),
+  }));
+  const drawnIds = draw.drawn.map((c) => c.topic.id);
+  const shortfall = draw.shortfall;
+  const rejected = draw.rejected;
+  const releasedEarly = draw.releasedEarly;
 
   /*
    * ── ⚠ EN ALTERNANCE, PAS PAR PAQUETS ──────────────────────────────────

@@ -71,10 +71,28 @@ describe("le balai rend le nombre visible", () => {
    * racheter ce qu'on possédait déjà.
    */
   it("la génération l'appelle avant de compter le stock", () => {
-    const sweep = MONTH.indexOf('"release_stale_topic_assignments"');
-    const count = MONTH.indexOf('"drawable_count_for_kit"');
-    expect(sweep).toBeGreaterThan(-1);
-    expect(sweep).toBeLessThan(count);
+    /*
+     * ⚠ L'ORDRE EST DANS `guardBank`, ET LES DEUX APPELS DANS LA COUTURE.
+     *
+     * Les deux RPC sont sortis du harnais le 2026-09-26 dans
+     * `lib/content/month/draw-port.ts` : chercher leur ordre d'apparition dans le
+     * harnais ne dit plus rien, puisque la couture ne fait que les nommer. Ce qui
+     * tient la garantie est `guardBank`, qui libère PUIS compte — et c'est là qu'il
+     * faut la lire.
+     *
+     * Compter d'abord verrait la banque telle que les exécutions mortes l'ont
+     * laissée et déclencherait un remplissage : racheter ce qu'on possédait déjà.
+     */
+    const guard = readFileSync("lib/content/bank-guard.ts", "utf8");
+    const sweep = guard.indexOf("releaseStale()");
+    const count = guard.indexOf("drawableCounts(");
+    expect(sweep, "la libération a disparu de guardBank").toBeGreaterThan(-1);
+    expect(count, "le décompte a disparu de guardBank").toBeGreaterThan(-1);
+    expect(sweep, "guardBank compte avant de libérer : il verrait la banque des morts")
+      .toBeLessThan(count);
+    /* Et le harnais passe bien par lui, plutôt que d'appeler les RPC lui-même. */
+    expect(MONTH).toContain("guardBank(");
+    expect(MONTH).not.toContain('"release_stale_topic_assignments"');
   });
 
   /*
@@ -93,11 +111,17 @@ describe("le balai rend le nombre visible", () => {
    * mais le fait que l'erreur soit RELEVÉE et non journalisée.
    */
   it("son échec n'est pas avalé", () => {
-    const port = MONTH.slice(
-      MONTH.indexOf("async releaseStale()"),
-      MONTH.indexOf("async drawableCounts(")
+    /*
+     * Le port a changé de place deux fois — d'abord injecté dans `guardBank`, puis
+     * sorti dans la couture partagée. Ce qui compte n'est ni son nom ni son
+     * fichier, mais que l'erreur soit RELEVÉE et non journalisée.
+     */
+    const seam = readFileSync("lib/content/month/draw-port.ts", "utf8");
+    const port = seam.slice(
+      seam.indexOf("async releaseStale()"),
+      seam.indexOf("async drawableCounts(")
     );
-    expect(port, "le port de libération a disparu").not.toBe("");
+    expect(port, "le port de libération a disparu de la couture").not.toBe("");
     expect(port).toContain("throw new Error(`release_stale_topic_assignments:");
   });
 });
