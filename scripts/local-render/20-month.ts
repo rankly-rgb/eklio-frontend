@@ -53,8 +53,9 @@ import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import { licenceMention, licenceMissingMessage } from "../../lib/content/licence";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
 import { redundantAgainst } from "../../lib/content/dedup";
+import { guardBank } from "../../lib/content/bank-guard";
 import {
-  bankShortfall, CANDIDATES_PER_ATTEMPT, POSTS_PER_MONTH, SPARE_POOL, USABLE_TARGET,
+  CANDIDATES_PER_ATTEMPT, POSTS_PER_MONTH, SPARE_POOL, USABLE_TARGET,
   WINDOW_ROUNDS, type BankDemand,
 } from "../../lib/content/bank";
 import {
@@ -140,64 +141,52 @@ function numberFlag(flag: string, fallback: number): number {
   return Number.isFinite(n) && n >= 1 ? n : fallback;
 }
 
-/**
- * Compte ce que le tirage verra, et remplit s'il manque.
+/*
+ * ── LE GARDE-FOU DE BANQUE — LA DÉCISION EST AILLEURS ────────────────────
  *
- * ⚠ IL NE REND PAS LA MAIN TANT QUE LE REMPLISSAGE N'A PAS FINI. Lancer la
- * génération pendant que le lot de sujets tourne reviendrait à tirer dans la
- * banque d'avant — donc exactement au défaut qu'on répare.
+ * Elle vivait ici, et nulle part ailleurs. `lib/content/bank-guard.ts` la
+ * porte désormais, pure et éprouvable hors ligne ; ce qui reste ici est ce qui
+ * est PROPRE AU HARNAIS : lancer le remplissage en sous-processus, ce qu'une
+ * route serveur ne peut pas et ne doit pas faire.
+ *
+ * ⚠ ET LE TROU N'EST PAS COMBLÉ POUR AUTANT. Le chemin produit ne tire pas de
+ * la banque de sujets — il passe par `planMonth` et n'appelle jamais
+ * `next_topic_for_kit`. Voir F45 : ce ne sont pas deux mécanismes qui manquent
+ * au produit, c'est le générateur entier qui n'est pas le même.
  */
 async function guardTheBank(db: ReturnType<typeof admin>, kitId: string): Promise<void> {
-  /*
-   * ── ⚠ ON REND CE QU'ON TIENT POUR RIEN, AVANT DE COMPTER CE QU'IL RESTE ──
-   *
-   * Mesuré le 2026-09-24 : **915 sujets** assignés à vingt-six kits sans un
-   * seul post — le résidu de runs tués, de lots en erreur, de sessions
-   * coupées — retirés à tout le segment pendant quatre-vingt-dix jours.
-   *
-   * ⚠ ET ON S'APPRÊTAIT À RACHETER CE QU'ON POSSÉDAIT DÉJÀ : le garde-fou
-   * aurait vu la banque basse et déclenché un remplissage. Le stock manquant
-   * était là, tenu par des exécutions qui n'avaient rien produit.
-   *
-   * Le tirage les ignore déjà (la fonction SQL le fait), mais le balai rend le
-   * NOMBRE visible : sans lui, la banque « se répare » en silence et personne
-   * n'apprend qu'un run a été tué.
-   */
-  const { data: released, error: sweepError } = await (db.rpc as unknown as (
+  const rpc = db.rpc as unknown as (
     n: string, a: Record<string, unknown>
-  ) => Promise<{ data: number | null; error: { message: string } | null }>)(
-    "release_stale_topic_assignments", {}
-  );
-  if (sweepError) throw new Error(`release_stale_topic_assignments: ${sweepError.message}`);
-  if ((released ?? 0) > 0) {
-    console.error(`▸ ${released} assignations rendues — des exécutions qui n'ont rien livré`);
-  }
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
-  const { data, error } = await (db.rpc as unknown as (
-    n: string, a: Record<string, unknown>
-  ) => Promise<{ data: Array<{ archetype_key: string; drawable: number }> | null; error: { message: string } | null }>)(
-    "drawable_count_for_kit", { p_brand_kit_id: kitId }
-  );
-  if (error) throw new Error(`drawable_count_for_kit: ${error.message}`);
-  const drawable = Object.fromEntries((data ?? []).map((r) => [r.archetype_key, Number(r.drawable)]));
-  const short = bankShortfall(drawable, { ...BANK_DEMAND, attempts: 1, rounds: 1 });
-  if (short.length === 0) {
-    const thinnest = Object.entries(drawable).sort((a, b) => a[1] - b[1])[0];
-    console.error(`▸ banque : ${thinnest?.[0]} au plus bas avec ${thinnest?.[1]} tirables — le tour passe`);
+  const verdict = await guardBank({
+    async releaseStale() {
+      const { data, error } = await rpc("release_stale_topic_assignments", {});
+      if (error) throw new Error(`release_stale_topic_assignments: ${error.message}`);
+      return Number(data ?? 0);
+    },
+    async drawableCounts(id) {
+      const { data, error } = await rpc("drawable_count_for_kit", { p_brand_kit_id: id });
+      if (error) throw new Error(`drawable_count_for_kit: ${error.message}`);
+      const rows = (data ?? []) as Array<{ archetype_key: string; drawable: number }>;
+      return Object.fromEntries(rows.map((r) => [r.archetype_key, Number(r.drawable)]));
+    },
+  }, kitId, BANK_DEMAND);
+
+  if (verdict.released > 0) {
+    console.error(`▸ ${verdict.released} assignations rendues — des exécutions qui n'ont rien livré`);
+  }
+  if (verdict.ok) {
+    console.error(`▸ banque : ${verdict.said}`);
     return;
   }
 
-  const said = short.map((s) => `${s.archetype} ${s.drawable}/${s.needed}`).join(", ");
   /*
    * ⚠ `--confirm` EN FAIT PARTIE, ET SON ABSENCE A FAIT ÉCHOUER LE PREMIER
    * DÉCLENCHEMENT RÉEL. Le garde-fou a bien vu le manque, bien lancé le
    * remplissage — et le remplissage a répondu « Refusing without --confirm »,
    * puis le mois est tombé. Une commande construite dans une chaîne que
    * personne n'a lancée est une commande qui ne marche pas.
-   *
-   * ⚠ ET LE CONFIRMER ICI EST LÉGITIME : l'opératrice a déjà confirmé une
-   * dépense pour CE mois, et le remplissage en fait partie. `--no-fill` reste
-   * la porte de sortie pour qui ne veut pas de cette dépense-là.
    */
   const fill = [
     "npx tsx scripts/local-render/10-topic-bank.ts --sync --confirm",
@@ -208,15 +197,15 @@ async function guardTheBank(db: ReturnType<typeof admin>, kitId: string): Promis
 
   if (process.argv.includes("--no-fill")) {
     throw new Error(
-      `la banque ne porte pas de quoi composer ce mois — ${said}. Remplir d'abord : ${fill}`
+      `la banque ne porte pas de quoi composer ce mois — ${verdict.said}. Remplir d'abord : ${fill}`
     );
   }
 
-  console.error(`▸ banque sous le seuil (${said}) — remplissage AVANT la génération`);
+  console.error(`▸ banque sous le seuil (${verdict.said}) — remplissage AVANT la génération`);
   const [command, ...args] = fill.split(" ");
   const filled = spawnSync(command, args, { stdio: "inherit", env: process.env });
   if (filled.status !== 0) {
-    throw new Error(`le remplissage a échoué (code ${filled.status}) — ${said}`);
+    throw new Error(`le remplissage a échoué (code ${filled.status}) — ${verdict.said}`);
   }
 }
 

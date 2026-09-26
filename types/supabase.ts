@@ -3526,6 +3526,7 @@ export type Database = {
         Args: { p_brand_kit_id: string }
         Returns: boolean
       }
+      release_stale_topic_assignments: { Args: never; Returns: number }
       request_brand_asset_upload: {
         Args: {
           p_brand_kit_id: string

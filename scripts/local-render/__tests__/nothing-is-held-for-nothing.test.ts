@@ -85,9 +85,20 @@ describe("le balai rend le nombre visible", () => {
     expect(MONTH).toContain("assignations rendues — des exécutions qui n'ont rien livré");
   });
 
-  /* ⚠ Et une panne du balai arrête la génération : elle tirerait faux. */
+  /*
+   * ⚠ ET UNE PANNE DU BALAI ARRÊTE LA GÉNÉRATION : elle tirerait faux.
+   *
+   * Le message nommait `sweepError` ; l'appel est passé dans le port injecté de
+   * `guardBank` et la variable a changé de nom. Ce qui compte n'est pas le nom
+   * mais le fait que l'erreur soit RELEVÉE et non journalisée.
+   */
   it("son échec n'est pas avalé", () => {
-    expect(MONTH).toContain("release_stale_topic_assignments: ${sweepError.message}");
+    const port = MONTH.slice(
+      MONTH.indexOf("async releaseStale()"),
+      MONTH.indexOf("async drawableCounts(")
+    );
+    expect(port, "le port de libération a disparu").not.toBe("");
+    expect(port).toContain("throw new Error(`release_stale_topic_assignments:");
   });
 });
 

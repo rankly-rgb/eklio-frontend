@@ -190,10 +190,21 @@ describe("le harnais compte la banque avant de tirer", () => {
     expect(guard).toBeLessThan(draw);
   });
 
-  /* ⚠ Avec la requête qui TIRE, pas avec un décompte qui lui ressemble. */
-  it("il compte ce que le tirage verra", () => {
+  /*
+   * ⚠ AVEC LA REQUÊTE QUI TIRE, pas avec un décompte qui lui ressemble.
+   *
+   * La décision vit désormais dans `lib/content/bank-guard.ts` — ce test
+   * cherchait `bankShortfall(drawable,` en toutes lettres dans le harnais et est
+   * tombé à l'extraction, sans qu'une garantie ait bougé. Ce qui reste à
+   * vérifier ICI est la DÉLÉGATION ; la décision elle-même est éprouvée par le
+   * comportement dans `the-bank-guard-decides-once.test.ts`, ce qui est mieux
+   * qu'un grep.
+   */
+  it("il compte ce que le tirage verra, via le module partagé", () => {
     expect(SOURCE).toContain('"drawable_count_for_kit"');
-    expect(SOURCE).toContain("bankShortfall(drawable,");
+    expect(SOURCE).toContain("guardBank({");
+    expect(SOURCE, "le harnais réimplémente la décision au lieu de la déléguer")
+      .not.toContain("bankShortfall(");
   });
 
   /*
