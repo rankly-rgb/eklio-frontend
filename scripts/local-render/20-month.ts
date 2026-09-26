@@ -56,7 +56,8 @@ import {
   bankShortfall, CANDIDATES_PER_ATTEMPT, WINDOW_ROUNDS, type BankDemand,
 } from "../../lib/content/bank";
 import {
-  checkMonth, writtenLinesIn, FORMAT_FAMILIES, familyOf, type Finding,
+  checkMonth, checkPostAlone, writtenLinesIn, FORMAT_FAMILIES, familyOf,
+  type Finding, type PostUnderCheck,
 } from "../../lib/content/month-checks";
 import { undecidedIn, type CompletenessVerdicts } from "../../lib/content/writing-checks";
 import { judgeCompleteness } from "../../lib/content/generate/completeness-judge";
@@ -1327,6 +1328,36 @@ const SPARE_POOL = 18;
  */
 type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ title: string; why: string }> };
 
+/**
+ * La projection d'un post préparé vers ce que les contrôles lisent.
+ *
+ * ── ⚠ ÉCRITE UNE FOIS, PARCE QU'IL Y A MAINTENANT DEUX LECTEURS ─────────
+ *
+ * Elle vivait dans `selectDeliverable`, qui était le seul endroit où les
+ * contrôles tournaient. Le portillon par post la lit aussi, et une projection
+ * recopiée est une surface qui se perd d'un côté : la légende et l'alternatif
+ * ont déjà manqué UNE fois à cette liste, et c'est le plus gros trou que
+ * l'audit du corpus ait trouvé — 341 annonces de disponibilité sur 400
+ * légendes, alors que `checkSellsSlots` existait depuis F26.
+ */
+function asMonthPost(p: {
+  cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
+  eyebrow: string; footer: string;
+  candidate: { topic: { title: string }; result?: { caption?: string; altText?: string } | null };
+}): PostUnderCheck {
+  return {
+    archetype: p.composeArchetype,
+    title: p.candidate.topic.title,
+    cardLine: p.cardLine,
+    payload: p.payload,
+    svg: p.svg ?? undefined,
+    eyebrow: p.eyebrow,
+    caption: p.candidate.result?.caption ?? undefined,
+    altText: p.candidate.result?.altText ?? undefined,
+    footer: p.footer,
+  };
+}
+
 function selectDeliverable<
   T extends { cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
               eyebrow: string; footer: string;
@@ -1354,23 +1385,7 @@ function selectDeliverable<
    */
   completeness: CompletenessVerdicts
 ): Deliverable<T> {
-  const asPost = (p: T) => ({
-    archetype: p.composeArchetype,
-    title: p.candidate.topic.title,
-    cardLine: p.cardLine,
-    payload: p.payload,
-    svg: p.svg ?? undefined,
-    eyebrow: p.eyebrow,
-    /*
-     * ⚠ LA LÉGENDE ET L'ALTERNATIF PARTENT AU CONTRÔLE. Ils ne partaient pas,
-     * et c'est le plus gros trou trouvé par l'audit du corpus : la légende est
-     * le texte publié le plus LONG, et elle portait 341 annonces de
-     * disponibilité sur 400 alors que `checkSellsSlots` existe depuis F26.
-     */
-    caption: p.candidate.result?.caption ?? undefined,
-    altText: p.candidate.result?.altText ?? undefined,
-    footer: p.footer,
-  });
+  const asPost = asMonthPost;
 
   let chosen = prepared.slice(0, wanted);
   const bench = prepared.slice(wanted);
@@ -1778,14 +1793,120 @@ function selectDeliverable<
   console.error(`▸ complétude : ${toJudge.length} lignes indécises jugées, ${
     Object.values(judged.verdicts).filter((v) => v === false).length} refusées`);
 
+  /*
+   * ── ⚠ CHAQUE POST EST CONTRÔLÉ SEUL, AVANT L'ASSEMBLAGE ───────────────
+   *
+   * Tous les contrôles tombaient à l'assemblage, sur les trente posts retenus.
+   * Un post fautif n'était donc découvert qu'une fois les vingt-neuf autres
+   * choisis, et il fallait un ÉCHANGE pour le remplacer : un tour de sélection,
+   * un remplaçant pris au banc, et le banc s'épuisait sur des défauts qui
+   * n'avaient jamais besoin d'entrer dans le mois.
+   *
+   * Mesuré : `sable.ingram`, le 2026-09-24, a réussi DIX échanges — tous ses
+   * constats de contenu levés — puis est mort sur `month.short`. Les dix
+   * défauts se lisaient chacun sur un post seul.
+   *
+   * ⚠ ICI ET PAS DANS LA BOUCLE DE COMPOSITION, pour une seule raison : le
+   * juge de complétude. `text.unfinished` est la classe la plus fournie (62
+   * constats sur seize essais) et son verdict vient d'un appel — un par mois,
+   * pas un par post. Contrôler plus tôt coûterait trente appels pour gagner
+   * quelques secondes.
+   *
+   * Ce qui est gagné n'est pas du temps, c'est du BANC : un post écarté ici ne
+   * consomme aucun échange, et `checkMonth` dans le sélecteur ne voit plus que
+   * des constats transversaux — le compte, le mélange, les doublons.
+   */
+  const postContext = {
+    direction: direction.palette as DirectionPalette,
+    practiceName,
+    identityAllowList: allowList,
+    modalities: facts.modalities,
+    completeness: judged.verdicts,
+    eyebrowCatalogue: [...intentLabels].map(([id, label]) => ({ id, label })),
+    licenceMention: mention,
+  };
+  const clean: typeof readyPosts = [];
+  const gateRefusals: Array<{ topic: string; checks: string[] }> = [];
+  for (const post of readyPosts) {
+    const findings = checkPostAlone(asMonthPost(post), postContext);
+    if (findings.length === 0) {
+      clean.push(post);
+      continue;
+    }
+    gateRefusals.push({
+      topic: post.candidate.topic.title,
+      checks: [...new Set(findings.map((f) => f.check))],
+    });
+    failures.push({
+      topic: post.candidate.topic.title, kind: "post gate",
+      because: findings.map((f) => f.detail).join("; ").slice(0, 200),
+    });
+    await settle(post.candidate.reservationId, 0, false);
+  }
+  const gateByCheck = new Map<string, number>();
+  for (const r of gateRefusals) for (const c of r.checks) gateByCheck.set(c, (gateByCheck.get(c) ?? 0) + 1);
+  console.error(
+    `▸ portillon : ${clean.length}/${readyPosts.length} posts passent seuls` +
+    (gateByCheck.size > 0
+      ? ` — écartés : ${[...gateByCheck].sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c}×${n}`).join(", ")}`
+      : "")
+  );
+
+  /*
+   * ⚠ ET SI LE BANC EST ÉPUISÉ, ON LE DIT AVANT D'ÉCRIRE. Le compte est déjà
+   * un contrôle (`checkCount`), mais il tombait au bout de la sélection, après
+   * des tours d'échange impossibles. Ici la réponse est arithmétique et
+   * gratuite : moins de trente posts propres, aucun échange ne peut les
+   * inventer.
+   */
+  if (clean.length < WANTED) {
+    console.error(
+      `▸ ⚠ ${clean.length} posts propres pour ${WANTED} demandés — aucun échange ne peut combler ` +
+      `l'écart. Le mois sera refusé sur month.short ; la cause est en amont, ` +
+      `pas dans la sélection.`
+    );
+  }
+
   const selection = selectDeliverable(
-    readyPosts, direction.palette as DirectionPalette, WANTED, practiceName, allowList,
+    clean, direction.palette as DirectionPalette, WANTED, practiceName, allowList,
     [...intentLabels].map(([id, label]) => ({ id, label })), mention,
     facts.modalities, judged.verdicts
   );
-  const succeeded = selection.chosen.map((p: Prepared) => p.candidate);
 
-  for (const [index, post] of selection.chosen.entries()) {
+  /*
+   * ── ⚠ UN `insert` REFUSÉ NE LAISSE PLUS LE MOIS COURT ─────────────────
+   *
+   * Le 2026-09-24, `sable.ingram` a écrit 29 posts pour 30 : la gâchette
+   * déontologique de la base a refusé le trentième, et le mois est tombé sur
+   * `month.short` — après trente contrôles verts et dix échanges réussis. Le
+   * banc était plein, et personne n'y est allé.
+   *
+   * La cause de CE refus-là est corrigée ailleurs (F38, et le portillon
+   * ci-dessus qui fait passer le socle déontologique avant la dépense). Mais
+   * la base porte des contraintes que le code ne réplique pas toutes — un
+   * budget de mots, une contrainte de forme — et la bonne réponse à un refus
+   * d'écriture n'est pas de rendre le mois court : c'est de prendre le suivant.
+   *
+   * ⚠ LE REMPLAÇANT VIENT DES POSTS PROPRES NON RETENUS, donc déjà passés par
+   * le portillon : il ne peut pas être refusé pour ce qu'un contrôle sait voir.
+   * S'il n'y en a plus, le mois sort court et `checkCount` le refuse — ce qui
+   * est le bon verdict, et il est alors dit pour la bonne raison.
+   */
+  const spare = clean.filter((p) => !selection.chosen.includes(p));
+  let spareUsed = 0;
+  const insertRefusals: string[] = [];
+
+  /*
+   * ⚠ UNE FILE, PAS UN TABLEAU FIGÉ. Le remplaçant doit être VISITÉ, et sur le
+   * créneau du refusé : itérer une copie l'aurait ignoré, et l'insérer au rang
+   * suivant lui aurait donné la date du post d'après — un mois de trente posts
+   * sur vingt-neuf jours.
+   */
+  const queue = [...selection.chosen];
+  const insertedPosts: typeof clean = [];
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const post = queue[index];
     const { candidate } = post;
     const { error } = await db.from("content_items").insert({
       brand_kit_id: kitId, month_id: monthRow.id, topic_id: candidate.topic.id,
@@ -1799,9 +1920,26 @@ function selectDeliverable<
     });
     if (error) {
       failures.push({ topic: candidate.topic.title, kind: "database", because: error.message.slice(0, 160) });
+      insertRefusals.push(`${candidate.topic.title.slice(0, 34)} — ${error.message.slice(0, 80)}`);
       await settle(candidate.reservationId, 0, false);
+
+      /*
+       * ⚠ ON PREND LE SUIVANT, ET ON RÉESSAIE LA MÊME DATE. Le remplaçant
+       * occupe le créneau du refusé : décaler les dates ferait sortir un mois
+       * de trente posts sur vingt-neuf jours.
+       */
+      const replacement = spare.shift();
+      if (!replacement) {
+        console.error("▸ ⚠ insert refusé et plus aucun remplaçant propre — le mois sortira court");
+        continue;
+      }
+      spareUsed += 1;
+      // ⚠ MÊME CRÉNEAU, MÊME DATE : on rejoue ce rang avec le remplaçant.
+      queue[index] = replacement;
+      index -= 1;
       continue;
     }
+    insertedPosts.push(post);
     written += 1;
     /*
      * ── ⚠ LE CRÉDIT SE PREND ICI, UN PAR POST ÉCRIT ────────────────────
@@ -1881,6 +2019,13 @@ function selectDeliverable<
    * ⚠ ET LEUR CRÉDIT REVIENT, AVEC LE COÛT ÉCRIT. Un appel refusé a dépensé
    * des jetons chez le fournisseur et ne doit rien à la praticienne.
    */
+  /*
+   * ⚠ LES SUJETS GARDÉS SONT CEUX DONT LE POST EST EN BASE, pas ceux qui
+   * avaient été retenus. Un `insert` refusé laissait son sujet assigné pour un
+   * post qui n'existe nulle part — c'est la classe de F13, appliquée cette
+   * fois au refus d'écriture.
+   */
+  const succeeded = insertedPosts.map((p) => p.candidate);
   const keptTopicIds = new Set(succeeded.map((c: Candidate) => c.topic.id));
   const discarded = candidates.filter((c) => !succeeded.includes(c));
   /*
@@ -2029,6 +2174,18 @@ function selectDeliverable<
     shortfall,
     fallbacks,
     failures,
+    /*
+     * ⚠ LE PORTILLON EST UNE MESURE, PAS UNE TRACE. C'est lui qui dit la
+     * conformité au premier appel PAR CLASSE — la seule grandeur qui répond à
+     * « est-ce que la consigne a marché ».
+     */
+    gate: {
+      arrived: readyPosts.length,
+      passedAlone: clean.length,
+      refused: gateRefusals.length,
+      byCheck: Object.fromEntries([...gateByCheck].sort((a, b) => b[1] - a[1])),
+    },
+    inserts: { replacements: spareUsed, refused: insertRefusals },
     ethicsFlags,
     releasedTopics: released.length,
     rejectedAsRedundant: rejected,

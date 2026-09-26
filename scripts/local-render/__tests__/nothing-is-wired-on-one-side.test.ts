@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 /*
+ * ⚠ ANCRÉ SUR L'ACTE, PAS SUR L'EN-TÊTE DE BOUCLE. Ces tranches cherchaient
+ * « for (const [index, post] of selection.chosen.entries()) » en toutes
+ * lettres ; la boucle est devenue une file indexée le 2026-09-26, pour qu'un
+ * `insert` refusé prenne un remplaçant au même créneau, et trois tests sont
+ * tombés sans qu'une seule de leurs garanties ait bougé. L'`insert` lui-même ne
+ * peut pas être reformulé sans changer de sens.
+ */
+const WRITE_LOOP_ANCHOR = 'db.from("content_items").insert({';
+
+
+/*
  * ── ⚠ LA CLASSE DE DÉFAUTS LA PLUS FRÉQUENTE DE CE DÉPÔT ────────────────
  *
  * Cinq fois en une session, le même défaut sous cinq noms :
@@ -145,7 +156,7 @@ describe("toute grandeur produite est CONSOMMÉE, pas seulement affichée", () =
 
   it("le quota est consulté à l'écriture, sur les deux chemins", () => {
     const writeLoop = MONTH.slice(
-      MONTH.indexOf("for (const [index, post] of selection.chosen.entries())"),
+      MONTH.indexOf(WRITE_LOOP_ANCHOR),
       MONTH.indexOf("clearJournal(journal);")
     );
     expect(writeLoop).toContain("await reserve(`month ${MONTH}");
@@ -300,7 +311,7 @@ describe("un mois refusé ne consomme pas ses crédits", () => {
 
   /* Et rien ne solde plus à `true` en dur pendant l'écriture. */
   it("aucun règlement inconditionnel ne subsiste dans la boucle", () => {
-    const start = MONTH.indexOf("for (const [index, post] of selection.chosen.entries())");
+    const start = MONTH.indexOf(WRITE_LOOP_ANCHOR);
     const end = MONTH.indexOf("clearJournal(journal);", start);
     expect(MONTH.slice(start, end)).not.toContain("syncCostUsd(candidate.usage), true)");
   });

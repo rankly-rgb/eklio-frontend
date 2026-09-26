@@ -23,6 +23,27 @@ import {
 
 const SOURCE = readFileSync("lib/content/month-checks.ts", "utf8");
 
+/*
+ * ── ⚠ LE HUB DE CONTRÔLE N'EST PLUS UNE SEULE FONCTION ──────────────────
+ *
+ * `checkMonth` contrôlait trente posts d'un coup, à l'assemblage. Depuis la
+ * priorité 2 du 2026-09-26, il est la COMPOSITION de deux moitiés —
+ * `checkAcrossPosts` pour ce qui n'existe qu'entre les posts,
+ * `checkPostAlone` pour ce qui se juge sur un post seul — afin qu'un post
+ * fautif soit refusé à son arrivée plutôt qu'après les vingt-neuf autres.
+ *
+ * Les tests de recensement de ce fichier lisaient le corps de `checkMonth`.
+ * Ils lisent maintenant les DEUX moitiés : c'est là que les appels vivent, et
+ * un contrôle qui n'est dans ni l'une ni l'autre n'est pas branché.
+ */
+function hubBody(): string {
+  const from = SOURCE.indexOf("export function checkAcrossPosts(");
+  const to = SOURCE.indexOf("\n}\n", SOURCE.indexOf("export function checkMonth("));
+  expect(from, "checkAcrossPosts introuvable").toBeGreaterThan(-1);
+  expect(to, "checkMonth introuvable").toBeGreaterThan(from);
+  return SOURCE.slice(from, to);
+}
+
 /** Les champs de `PostUnderCheck`, lus dans le type lui-même. */
 function surfacesOf(): string[] {
   const start = SOURCE.indexOf("export type PostUnderCheck = {");
@@ -137,7 +158,7 @@ describe("un post dont chaque surface est marquée les rend toutes", () => {
  * `written` prennent la même.
  */
 describe("les contrôles de texte prennent tous `written`", () => {
-  const body = SOURCE.slice(SOURCE.indexOf("export function checkMonth("));
+  const body = hubBody();
 
   /*
    * ⚠ CE QUI A COÛTÉ 341 LÉGENDES N'EST PAS QU'UN CONTRÔLE MANQUAIT : c'est
@@ -262,9 +283,13 @@ describe("la déontologie publicitaire est lue sur chaque surface", () => {
    * le temps où il ne servait à rien ; un contrôle qu'on n'appelle pas n'est pas
    * un contrôle.
    */
-  it("checkMonth l'appelle", () => {
-    const body = SOURCE.slice(SOURCE.indexOf("export function checkMonth("));
-    expect(body).toContain("checkAdvertisingEthics(month.posts)");
+  it("le hub l'appelle", () => {
+    /*
+     * ⚠ SUR `month.posts`, ET `checkPostAlone` LUI EN PASSE UN SEUL. C'est ce
+     * qui permet au contrôle déontologique — le plus grave du jeu — de refuser
+     * un post à son arrivée, avant que les vingt-neuf autres soient payés.
+     */
+    expect(hubBody()).toContain("checkAdvertisingEthics(month.posts)");
   });
 
   /*

@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 /*
+ * ⚠ ANCRÉ SUR L'ACTE, PAS SUR L'EN-TÊTE DE BOUCLE. Ces tranches cherchaient
+ * « for (const [index, post] of selection.chosen.entries()) » en toutes
+ * lettres ; la boucle est devenue une file indexée le 2026-09-26, pour qu'un
+ * `insert` refusé prenne un remplaçant au même créneau, et trois tests sont
+ * tombés sans qu'une seule de leurs garanties ait bougé. L'`insert` lui-même ne
+ * peut pas être reformulé sans changer de sens.
+ */
+const WRITE_LOOP_ANCHOR = 'db.from("content_items").insert({';
+
+
+/*
  * ── ⚠ LE QUOTA SE TIENT SUR CE QUI EST LIVRÉ, PAS SUR CE QU'ON TENTE ────
  *
  * Ce fichier a d'abord exigé l'inverse, et il avait tort.
@@ -77,10 +88,7 @@ describe("la phase de candidature est un frais général", () => {
 });
 
 describe("le crédit se prend à l'écriture du post", () => {
-  const writeLoop = slice(
-    "for (const [index, post] of selection.chosen.entries())",
-    "clearJournal(journal);"
-  );
+  const writeLoop = slice(WRITE_LOOP_ANCHOR, "clearJournal(journal);");
 
   it("un crédit est réservé par post écrit", () => {
     expect(writeLoop).toContain("const reservationId = await reserve(`month ${MONTH}");

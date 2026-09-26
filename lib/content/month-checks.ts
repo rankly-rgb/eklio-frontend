@@ -873,12 +873,56 @@ export function checkEyebrow(
   return out;
 }
 
-export function checkMonth(month: MonthUnderCheck): Finding[] {
+/*
+ * ── ⚠ DEUX MOMENTS, PAS UN ──────────────────────────────────────────────
+ *
+ * `checkMonth` contrôlait trente posts d'un coup, à l'assemblage. Un post
+ * fautif n'était donc découvert qu'une fois les vingt-neuf autres écrits et
+ * PAYÉS, et il fallait un échange — un tour de sélection, un remplaçant du
+ * banc — pour ce qu'un contrôle à l'arrivée aurait refusé pour rien.
+ *
+ * Mesuré : `sable.ingram`, le 2026-09-24, a fait dix échanges qui ont tous
+ * abouti, puis est mort sur `month.short`. Les dix défauts étaient tous
+ * lisibles sur un post seul, dès son arrivée.
+ *
+ * Le partage est donc explicite, et il ne coûte pas une liste :
+ *
+ *   `checkAcrossPosts`  ce qui n'existe QU'ENTRE les posts — le compte, le
+ *                       mélange des formats, les titres en double, les
+ *                       payloads identiques. Quatre contrôles.
+ *   `checkPostAlone`    tout le reste, qui ne regarde jamais qu'un post.
+ *
+ * ⚠ ET `checkMonth` EST LEUR COMPOSITION, pas une troisième liste. C'est ce
+ * qui empêche la dérive : un contrôle ajouté à l'un des deux entre dans
+ * `checkMonth` sans que personne y pense, et un contrôle ajouté à `checkMonth`
+ * seul ne peut pas exister — la fonction n'a plus de corps propre.
+ */
+
+/** Ce qu'un contrôle par post a besoin de savoir du mois autour. */
+export type PostContext = Omit<MonthUnderCheck, "posts" | "wanted">;
+
+/** Les quatre contrôles qui n'ont de sens que sur l'ensemble. */
+export function checkAcrossPosts(month: MonthUnderCheck): Finding[] {
   const out: Finding[] = [];
   out.push(...checkCount(month.posts.length, month.wanted));
   out.push(...checkMix(month.posts.map((p) => p.archetype)));
   out.push(...checkDuplicateTitles(month.posts.map((p) => p.cardLine || p.title)));
   out.push(...checkIdenticalPayloads(month.posts));
+  return out;
+}
+
+/**
+ * Tout ce qui se juge sur un post seul.
+ *
+ * ⚠ LES CONTRÔLES DE LIGNE REÇOIVENT UN TABLEAU D'UN SEUL POST, et rendent
+ * exactement ce qu'ils rendaient : ils lisent des LIGNES, et les lignes d'un
+ * post ne changent pas selon qui l'entoure. C'est ce qui rend le partage
+ * gratuit.
+ */
+export function checkPostAlone(post: PostUnderCheck, context: PostContext): Finding[] {
+  const out: Finding[] = [];
+  const month = { ...context, posts: [post] } as MonthUnderCheck;
+
   out.push(...checkEyebrow(month.posts, month.eyebrowCatalogue ?? [], month.practiceName));
   out.push(...checkLicence(month.posts, month.licenceMention));
   /*
@@ -955,6 +999,14 @@ export function checkMonth(month: MonthUnderCheck): Finding[] {
     if (post.svg) out.push(...checkTints(post.svg, month.direction));
   }
   return out;
+}
+
+export function checkMonth(month: MonthUnderCheck): Finding[] {
+  const { posts, wanted, ...context } = month;
+  return [
+    ...checkAcrossPosts(month),
+    ...posts.flatMap((post) => checkPostAlone(post, context)),
+  ];
 }
 
 /* ── 13. Ce qui se répète d'une carte à l'autre ──────────────────────── */
