@@ -2526,3 +2526,38 @@ et des guillemets. La phrase est un désaveu explicite, donc conforme. Élargir
 l'exemption aux déterminants (`the`, `a`, `an`) la débloquerait — c'est une
 modification du motif du code, que la décision de F38 disait de reprendre tel
 quel. À décider avec le reste.
+
+---
+
+## F40 — Le remplissage de banque dépense hors registre
+
+Mesuré le 2026-09-26, pendant la mesure à cinq mois. Le garde-fou de banque a
+déclenché un remplissage pour `juno.wexford` :
+
+| | dépense |
+|---|---|
+| ce que le remplissage rapporte lui-même | **1,1980 $** |
+| ce que `credit_ledger` porte pour ce compte | **0,0046 $** |
+
+`10-topic-bank.ts` écrit sa propre dépense dans son rapport JSON et ne la
+consigne pas au livre. Trois conséquences :
+
+1. **Le plafond de session ne la voit pas.** `CONTENT_SESSION_CAP_USD` est
+   appliqué au point de règlement du crédit ; un remplissage peut donc dépenser
+   au-delà du plafond sans que rien ne l'arrête.
+2. **Le coût par mois livré est faux si on le lit au registre.** C'est pourquoi
+   les deux sessions ont rapporté des chiffres qui ne se recoupent pas : la
+   veille, « les remplissages (~0,5 $) hors registre » ; ce jour, 1,20 $.
+3. **Un remplissage déclenché par le garde-fou est invisible à l'opératrice.**
+   Il tourne en sous-processus, et sa sortie JSON atterrit dans le fichier du
+   mois — ce qui a fait lire un remplissage comme un mois livré par mon propre
+   dépouillement avant correction.
+
+**Corrigé dans le harnais de mois** : un post écarté par le portillon ou par la
+déontologie est désormais soldé AU COÛT RÉEL et non à zéro. `settle_credit` rend
+`already_settled` sans lever, donc la première issue est celle qui reste au
+livre : un zéro y effaçait la dépense pour de bon.
+
+**Pas corrigé** : le remplissage lui-même. Il faudrait qu'il réserve et solde
+par lot comme le mois le fait, ce qui touche au chemin de crédit et mérite d'être
+regardé avec le reste du livre.

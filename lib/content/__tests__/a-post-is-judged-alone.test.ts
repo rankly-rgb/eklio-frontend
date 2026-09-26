@@ -130,12 +130,22 @@ describe("le harnais contrôle à l'arrivée et remplace un insert refusé", () 
       .toBeLessThan(select);
   });
 
-  it("un post écarté rend son crédit et son sujet", () => {
+  it("un post écarté rend son crédit, AU COÛT RÉEL, et son sujet", () => {
     const block = MONTH.slice(
       MONTH.indexOf("const gateRefusals"),
       MONTH.indexOf("const selection = selectDeliverable(")
     );
-    expect(block).toContain("await settle(post.candidate.reservationId, 0, false)");
+    expect(block).toContain("await settle(");
+    expect(block).toContain("post.candidate.reservationId");
+    /*
+     * ⚠ PAS À ZÉRO. Les jetons ont été dépensés chez le fournisseur, et
+     * `settle_credit` rend `already_settled` sans lever : la PREMIÈRE issue est
+     * celle qui reste au registre, donc un zéro ici efface la dépense pour
+     * toujours. Mesuré le 2026-09-26 sur le remplissage de banque, qui dépense
+     * 1,20 $ dont le registre ne porte que 0,0046 $.
+     */
+    expect(block).not.toContain("post.candidate.reservationId, 0, false");
+    expect(block).toMatch(/batchCostUsd\(\[post\.candidate\.usage\]\)/);
   });
 
   /*

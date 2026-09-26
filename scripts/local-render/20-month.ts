@@ -1663,7 +1663,13 @@ function selectDeliverable<
         topic: candidate.topic.title, kind: "ethics",
         because: violations.map((v) => `${v.ruleId}: ${v.excerpt.slice(0, 60)}`).join("; "),
       });
-      await settle(candidate.reservationId, 0, false);
+      // ⚠ AU COÛT RÉEL : voir le portillon plus bas. Solder à zéro efface du
+      // registre des jetons réellement dépensés.
+      await settle(
+        candidate.reservationId,
+        useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage),
+        false
+      );
       continue;
     }
 
@@ -1738,7 +1744,13 @@ function selectDeliverable<
         topic: candidate.topic.title, kind: "engine",
         because: error instanceof Error ? error.message.slice(0, 140) : String(error),
       });
-      await settle(candidate.reservationId, 0, false);
+      // ⚠ AU COÛT RÉEL : voir le portillon plus bas. Solder à zéro efface du
+      // registre des jetons réellement dépensés.
+      await settle(
+        candidate.reservationId,
+        useBatch ? batchCostUsd([candidate.usage]) : syncCostUsd(candidate.usage),
+        false
+      );
       continue;
     }
 
@@ -1841,7 +1853,18 @@ function selectDeliverable<
       topic: post.candidate.topic.title, kind: "post gate",
       because: findings.map((f) => f.detail).join("; ").slice(0, 200),
     });
-    await settle(post.candidate.reservationId, 0, false);
+    /*
+     * ⚠ AU COÛT RÉEL, PAS À ZÉRO. Les jetons de ce post ont été dépensés chez
+     * le fournisseur ; le solder à zéro les efface du registre. `settle_credit`
+     * rend `already_settled` sans lever, donc la boucle des écartés plus bas
+     * ne peut pas corriger le chiffre — la PREMIÈRE issue est celle qui compte,
+     * et c'est celle-ci.
+     */
+    await settle(
+      post.candidate.reservationId,
+      useBatch ? batchCostUsd([post.candidate.usage]) : syncCostUsd(post.candidate.usage),
+      false
+    );
   }
   const gateByCheck = new Map<string, number>();
   for (const r of gateRefusals) for (const c of r.checks) gateByCheck.set(c, (gateByCheck.get(c) ?? 0) + 1);
