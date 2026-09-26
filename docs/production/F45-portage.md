@@ -395,3 +395,59 @@ et au tirage. Tout le reste de la liste attend une clé, pas du travail.
 ⚠ **Mais la séquence est contrainte** : l'orchestrateur ne peut pas exister avant
 la rédaction. Deux sessions sans solde n'avanceront plus le branchement — elles
 ne peuvent que porter `composeWithFallback` et le tirage, puis s'arrêter là.
+
+---
+
+## §11 — État à la fin de la session (corrige §10, écrit à mi-parcours)
+
+⚠ **§10 a été écrit au milieu de la session et il est périmé sur trois points** :
+il dit le journal appelé par « rien encore », `composeWithFallback` exempté, et le
+tirage non porté. Les trois ont bougé ensuite. Cette section est l'état final.
+
+### Le recensement, en deux nombres qui ne veulent pas dire la même chose
+
+| | compte |
+|---|---|
+| mécanismes du harnais | 15 |
+| mécanismes **extraits** côté produit | 13 |
+| mécanismes **atteints depuis un point d'entrée** | 1 |
+| exemptions restantes | **2** |
+| modules portés sans appelant (F50) | 8 |
+
+Les treize : `abandon_stale_generation_runs`, `assign_topic_to_kit`,
+`bankShortfall`, `checkMonth`, `checkPostAlone`, `composeWithFallback`,
+`drawable_count_for_kit`, `guardBank`, `licenceMention`, `licenceMissingMessage`,
+`release_stale_topic_assignments`, `reserve_credit`, `settle_credit`.
+
+### Les deux exemptions restantes, et ce qui les bloque
+
+| mécanisme | ce qu'il faut |
+|---|---|
+| `judgeCompleteness` | un appel de modèle — le compte fournisseur est sous limite d'usage jusqu'au 1ᵉʳ octobre (F44) |
+| `reviseMonth` | idem |
+
+`checkEthics` n'est plus une exemption : il est dans `ON_BOTH_SIDES`, atteint
+transitivement par `month/select.ts` → `month-checks.ts` →
+`checkAdvertisingEthics`, en plus de `lib/ethics/guard.ts` à la réécriture.
+
+### ⚠ Il ne reste RIEN de portable sans appel de modèle
+
+C'est le fait structurant pour la suite, et il change l'estimation plus que le
+compte. Les huit modules portés attendent tous le même appelant, et cet appelant
+a besoin de la rédaction.
+
+### Estimation révisée
+
+**Une session avec solde, puis une sans.** L'ordre est contraint et il n'y a plus
+de choix :
+
+1. **avec solde** — le transport de rédaction (F42), puis l'orchestrateur qui
+   enchaîne préalable → tirage → rédaction → composition → assemblage, et un mois
+   réel qui le valide. C'est ce qui vide `EXTRACTED_NOT_WIRED` d'un coup, parce que
+   ces huit modules ont un seul appelant manquant ;
+2. **sans solde** — `judgeCompleteness` et `reviseMonth` une fois la rédaction là,
+   le retrait du générateur produit (§5), et la levée des deux serrures du 501.
+
+⚠ **Une session sans solde d'ici là n'avancera plus le portage.** Elle ne peut que
+consolider ce qui existe — ce qui a de la valeur, F49 à F53 en sont la preuve, mais
+ce n'est plus du portage.
