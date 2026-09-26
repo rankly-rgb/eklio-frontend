@@ -148,6 +148,13 @@ const PRODUCT_ORCHESTRATION = [
    * un contrôle ajouté, que le harnais n'avait pas.
    */
   "lib/content/month/compose-card.ts",
+  /*
+   * ⚠ L'APPELANT QUE LES HUIT AUTRES ATTENDAIENT (F50). Il enchaîne préalable →
+   * reprise → tirage → rédaction → composition → assemblage → publication, et sa
+   * rédaction est un PORT : c'est ce qui le rend éprouvable de bout en bout sans
+   * dépenser un centime, et ce qui fait qu'il n'embarque aucun stub.
+   */
+  "lib/content/month/orchestrate.ts",
 ] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
@@ -698,6 +705,15 @@ const EXTRACTED_NOT_WIRED: Record<string, string> = {
     "le tirage choisit les sujets À ÉCRIRE : tirer sans écrire retirerait trente-six sujets au segment pour quatre-vingt-dix jours sans rien en faire. Son appelant est l'orchestrateur, et le harnais l'appelle déjà",
   "lib/content/month/draw-port.ts":
     "la couture du tirage n'a de sens qu'appelée par le tirage, qui attend l'orchestrateur. Le harnais y passe déjà, donc il n'y a plus qu'une implémentation de ces deux RPC",
+  /*
+   * ⚠ ET C'EST LA DERNIÈRE LIGNE QUI COMPTE VRAIMENT, parce qu'elle a changé de
+   * nature. Les huit autres attendaient l'orchestrateur ; l'orchestrateur, lui,
+   * n'attend plus qu'UNE implémentation de `WriterPort` — le seul port payant de
+   * tout l'enchaînement. Ce qui manque au chemin produit n'est plus du code à
+   * écrire, c'est un appel de modèle à pouvoir faire.
+   */
+  "lib/content/month/orchestrate.ts":
+    "il enchaîne les huit autres et il est éprouvé de bout en bout par une doublure de rédaction ; ce qui manque est une implémentation de WriterPort côté produit, laquelle demande un appel de modèle — le compte fournisseur est sous limite d'usage jusqu'au 2026-10-01 (F44)",
   "lib/content/month/compose-card.ts":
     "⚠ LA PLUS GRAVE DES SIX. Elle pose le pied de licence, et rien côté produit ne l'atteint : tant que l'orchestrateur n'existe pas, aucun mois produit ne peut être composé — ce qui est heureux, puisqu'un mois composé sans elle serait une publicité sans numéro de licence (B&P §651)",
 };
