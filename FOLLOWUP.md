@@ -2609,3 +2609,74 @@ numérateur qu'il divise, avec un test qui tombe si quelqu'un le déplace avant.
 mesurer le rendement réel, et ça devrait faire baisser à la fois le coût par
 mois et le seuil de banque. **C'est le chantier qui rapporte le plus, et il
 n'était pas visible avant d'avoir le bon dénominateur.**
+
+---
+
+## F42 — La bascule OpenAI est construite et n'a pas pu être mesurée
+
+Trois blocages indépendants, tous constatés au démarrage du 2026-09-26 :
+
+| | constat |
+|---|---|
+| clef OpenAI | **absente de l'environnement.** `EKLIO_OPENAI_API_KEY` n'existe ni en variable, ni dans `/run/secrets`, ni dans un `.env` |
+| domaines OpenAI | **tous refusés par la politique d'egress.** 403 au CONNECT sur `developers.openai.com`, `platform.openai.com`, `api.openai.com`, `openai.com`, `cdn.openai.com`, `help.openai.com` |
+| compte Anthropic | **sous limite d'usage** jusqu'au 2026-10-01 00:00 UTC — le bras de référence ne pouvait pas tourner non plus |
+
+Aucun appel n'a donc été fait, et **0 $ dépensé**.
+
+### Ce qui est fait et éprouvé
+
+`lib/content/generate/provider.ts` — la couture, pilotée par
+`CONTENT_COPY_PROVIDER`. Les deux traductions sont pures, donc entièrement
+vérifiables hors ligne : 29 tests. Chaque nom de champ vient des déclarations de
+`openai@7.23.0` (`resources/responses/responses.d.ts`), générées depuis la
+spécification de l'API — la documentation étant inaccessible.
+
+Le mois et « Write it » passent désormais par le **même** assembleur. Ils
+construisaient les mêmes paramètres à deux endroits, avec deux littéraux de
+plafond ; une bascule faite d'un seul côté aurait laissé la moitié des posts
+chez l'ancien fournisseur.
+
+### Ce qui manque pour mesurer, dans l'ordre
+
+1. **Une clef OpenAI**, et l'ouverture de `api.openai.com` dans la politique
+   réseau de l'environnement.
+2. **Lire les deux tarifs sur la page** et les dater dans `PRICE_VERIFIED_ON`.
+   `priceRefusal()` refuse aujourd'hui de chiffrer un coût pour les deux
+   candidats — délibérément : `rateFor()` retombe sur le tarif le plus cher
+   connu, ce qui est prudent pour un plafond et **faux pour une comparaison**.
+   Un candidat facturé au tarif d'Opus rendrait la conclusion inverse de la
+   vérité.
+3. **Le transport HTTP OpenAI** — non écrit. Trois endpoints là où Anthropic en
+   demande un : `POST /v1/files` (`purpose: "batch"`) pour téléverser le JSONL,
+   `POST /v1/batches` qui référence le fichier, puis le téléchargement de la
+   sortie. `openAiBatchLine()` produit déjà les lignes du JSONL. Je ne l'ai pas
+   écrit parce que du code réseau que rien ne peut exercer contre l'API réelle
+   se trompe d'une façon que seul un vrai appel révèle — et il resterait au
+   dépôt en ayant l'air fini.
+4. **Le choix des deux candidats est une hypothèse de position, pas de prix.**
+   `gpt-5.6-luna` et `gpt-5.6-terra` sont les paliers bas et médian de la
+   famille complète la plus récente, lus dans le type `ChatModel` du SDK, qui
+   ordonne `sol, terra, luna`. La recherche web rend des agrégateurs tiers qui
+   se contredisent **au sein d'une même page** (« $4/$20 » puis « $5/$30 » pour
+   `gpt-5.6-sol`) : ce n'est pas une source.
+
+### Ce que le SDK établit de première main, et qui compte pour ce pipeline
+
+- **Sortie structurée stricte** : `text.format = {type:"json_schema", name,
+  schema, strict}`. C'est le meilleur argument d'OpenAI ici — la classe d'échec
+  « forme invalide » disparaît par construction. Mais `strict: true` exige
+  `additionalProperties: false` sur chaque objet, donc onze schémas de payload
+  écrits à la main, donc une **seconde source de vérité** pour la forme des
+  cartes. L'enveloppe est contrainte, le payload reste libre. Le jour où les
+  archétypes gagnent une définition machine (un schéma zod que le moteur ET le
+  prompt liraient), `strict: true` devient gratuit.
+- **Cache de préfixe** : `prompt_cache_key` + `prompt_cache_retention:
+  'in_memory' | '24h'`, avec `cached_tokens` ET `cache_write_tokens` dans
+  `usage.input_tokens_details` — la comptabilité de coût n'a rien à approximer.
+  Le SDK déclare les motifs d'invalidation, dont `text_format_changed` et
+  `reasoning_effort_changed` : l'effort et le schéma doivent être constants pour
+  une clef donnée, d'où **une clef par archétype**.
+- **Batch** : `/v1/responses` accepté, `completion_window: '24h'` **seule valeur
+  déclarée**. Le harnais abandonne un lot à 90 minutes ; cette borne est la
+  nôtre, et un lot abandonné peut continuer à être facturé jusqu'à son terme.
