@@ -78,3 +78,32 @@ comme le serait le pooler, avec un registre `schema_migrations`.
    script** (≈ 15 min, dont 5 pour la condition 4).
 2. Les vérifications d'après.
 3. Le feu vert de Naima pour l'étape 3 — la fusion, qui est le déploiement.
+
+---
+
+## Seconde tentative — 2026-09-27, même session : toujours injoignable
+
+Les deux réglages ont été faits, mais **ce conteneur ne les voit pas** :
+`SUPABASE_DB_PASSWORD` est absente de l'environnement du processus, d'un shell de
+connexion et du processus initial. Les réglages d'environnement s'appliquent aux
+**nouvelles sessions**.
+
+Et un second obstacle, qu'une nouvelle session ne lèvera pas : **le port 5432 du
+pooler n'est pas joignable en direct** (les IPv4 du pooler répondent « fermé »),
+et le proxy de sortie, s'il accepte le tunnel `CONNECT` vers
+`aws-0-us-east-1.pooler.supabase.com:5432` (« 200 Connection Established »),
+**ne laisse pas passer le protocole Postgres** : le `SSLRequest` reste sans réponse.
+Le proxy intercepte le TLS ; la négociation Postgres n'est pas du TLS d'emblée.
+Autoriser un domaine dans la politique réseau ouvre le HTTPS vers lui, pas le
+protocole Postgres.
+
+Rien n'a été lu ni écrit en production. Deux voies :
+
+1. **Lancer le script depuis une machine qui atteint Postgres** — celle de Naima :
+   `psql` et `pg_dump` 16 ou plus récents, les deux dépôts, Postgres local pour la
+   copie. Le script est autonome et s'arrête de lui-même sur toute condition rouge.
+2. Ou une connexion sans proxy, si l'environnement cloud en propose une (niveau
+   d'accès réseau « complet ») — à vérifier dans ses réglages, puis une **nouvelle
+   session**.
+
+L'achat de contrôle d'après est écrit dans `B5-stripe.md` §5b.

@@ -237,6 +237,47 @@ vert, un échec en réel est presque toujours une variable posée en portée
 
 ---
 
+## 5b · L'achat de contrôle contre la production migrée — Naima, dix minutes
+
+À jouer **juste après** l'application des 30 migrations, **avant** la fusion : le
+code en production est encore celui de `main`, et on vérifie qu'il encaisse sur le
+schéma migré (prouvé sur une doublure, `F-application-resultat.md` ; ceci le
+confirme sur la vraie base).
+
+### ✓ Recommandé : un achat Starter en carte réelle, remboursé aussitôt
+
+**Pourquoi celui-là.** C'est le seul des deux qui ÉCRIT : il fait passer un
+événement neuf par tout le chemin — signature, `stripe_events`, `purchases`,
+`plan_grants`, `generation_credits`, puis `charge.refunded` et
+`purchase_status_events`. Coût : les frais Stripe du paiement, que le
+remboursement ne rend pas (≈ 2,60 $ sur 79 $ aux tarifs US standard).
+
+1. Un compte de test sur le site de production (une adresse à toi, avec `+eklio-controle`).
+2. Remplir le brief jusqu'au checkout ; **Starter**, carte réelle.
+3. Stripe (live) → Developers → Webhooks → l'endpoint de production → le dernier
+   `checkout.session.completed` : réponse **200**, corps `"status":"processed"`.
+4. Dans l'éditeur SQL Supabase (lecture seule), avec l'`id` du compte :
+   ```sql
+   select tier, amount_cents, status from purchases where user_id = '<uid>';      -- starter | 7900 | paid
+   select tier, grant_key from plan_grants g join purchases p on p.project_id = g.project_id
+    where p.user_id = '<uid>';                                                     -- une ligne
+   ```
+5. Stripe → Payments → ce paiement → **Refund** (total). Attendre le
+   `charge.refunded` : **200**.
+6. `select status from purchases where user_id = '<uid>';` → **refunded** ;
+   `select new_status, previous_status from purchase_status_events …` → `refunded`, `paid`.
+7. Le kit du compte de test est refermé : `/app` ne le montre plus comme payé.
+
+### Pas recommandé seul : renvoyer un événement réel depuis le tableau de bord
+
+Stripe → Events → un `checkout.session.completed` passé → **Resend**. Il ne coûte
+rien, mais il **ne prouve presque rien** : l'id de l'événement est déjà dans
+`stripe_events`, la route répond `duplicate` **sans rien écrire**. Il confirme la
+signature et le routage — pas qu'un achat s'enregistre sur le schéma migré. À
+faire en complément (réponse 200 `duplicate` attendue), jamais à la place.
+
+---
+
 ## ⚠ Ce que cette fiche ne couvre pas, et qu'il faut savoir avant de la jouer
 
 Stripe encaisse. Il n'ouvre pas un mois de contenu.
