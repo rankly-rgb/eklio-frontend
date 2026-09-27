@@ -237,6 +237,32 @@ vert, un échec en réel est presque toujours une variable posée en portée
 
 ---
 
+## 5a · ✓ LA LISTE — l'achat de contrôle, à cocher (Naima, ≈ 10 min)
+
+Le code en production est celui de `main` ; le schéma, celui des 177 migrations.
+
+- [ ] **1. Un compte de test** sur le site de production, avec ton adresse et un
+      suffixe : `naima+controle@…`. Brief rempli, **État : Californie** (la seule
+      vendable aujourd'hui).
+- [ ] **2. Acheter depuis le kit du compte** — le bouton d'achat de SON kit, pas
+      `/pricing` (un achat sans projet n'ouvre aucun palier, et le contrôle 5
+      dirait PAS OK). **Starter, 79 $**, carte réelle, **case Monthly Presence
+      décochée**.
+- [ ] **3. Dans Stripe (mode live)** → Developers → Webhooks → l'endpoint de
+      production → le dernier `checkout.session.completed` : **200**, corps
+      contenant `"status":"processed"`.
+- [ ] **4. Coller `H-achat-controle.sql`** dans l'éditeur SQL, ton adresse de test
+      à la ligne 3 : contrôles **1 à 5 OK**, 6 et 7 PAS OK (normal : pas encore
+      remboursé). M'envoyer le résultat.
+- [ ] **5. Rembourser** : Stripe → Payments → ce paiement → **Refund** → montant
+      total → Refund. Puis Webhooks : le `charge.refunded` en **200**.
+- [ ] **6. Recoller `H-achat-controle.sql`** : **7/7 OK**. M'envoyer le résultat.
+
+Coût : les frais Stripe du paiement, que le remboursement ne rend pas (≈ 2,60 $).
+La requête H a été éprouvée par `scripts/stripe-path/h-proof.ts` : vraie route,
+vraie signature, base à 177 — 5 OK / 2 PAS OK après l'achat, 7/7 après le
+remboursement.
+
 ## 5b · L'achat de contrôle contre la production migrée — Naima, dix minutes
 
 À jouer **juste après** l'application des 30 migrations, **avant** la fusion : le

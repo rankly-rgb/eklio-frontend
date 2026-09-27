@@ -3800,3 +3800,34 @@ défauts avant qu'ils comptent : une sauvegarde sans les droits (la mienne) ;
 `A-restaurer.sh` qui ne comparait pas les droits, et certifiait donc « 0 écart »
 sur une restauration où chaque fonction était ouverte à tous ; et un `dropdb` raté
 avalé. Tous corrigés, avec contre-épreuve. Détail : `F-application-resultat.md`.
+
+---
+
+## F68 — Le chantier `claude/stoic-ritchie-1liqrz`, côté front : à part, non intégré
+
+**Décision de Naima, 2026-09-27** : les 14 migrations de stoic-ritchie sont
+intégrées (elles sont en production depuis le 20 septembre) ; ses **14 commits
+front ne le sont pas** — des changements produit jamais vus ni validés, qu'elle
+ne veut pas mêler à ce déploiement. Ils restent sur la branche, rien n'est perdu.
+
+Ce qu'ils contiennent (`git log 60f7708..origin/claude/stoic-ritchie-1liqrz`,
+36 fichiers, +4506 / −78) :
+
+| chantier | commits | fichiers principaux |
+|---|---|---|
+| **The First Line — le palier gratuit** : un rapport gratuit sur la prose d'un site, trié par sévérité, plafond de constats en donnée (`app_settings`), repli compté | `e70e2cb`, `cd440a7`, `13ee334` | `app/api/first-line/route.ts` (nouvelle route publique), `lib/check/first-line.ts` |
+| **Le positionnement, seconde famille de règles** : dix règles v1 en base, revue par la position (la « fenêtre ») et non la frontière de phrase, `written_in_third_person` ancrée | `1b6b65e`, `8e0fbad`, `c396b88`, `72fe281` | `lib/positioning/review.ts`, `lib/positioning/cap.ts` |
+| **Le profil d'annuaire** : la route vérifie l'État, un cliché est un refus nommé, pas une panne | `e6276e9`, `a79c510` | `app/api/brand-kits/[id]/directory/route.ts`, `lib/directory/*`, `components/kit/directory-profile.tsx` |
+| **Déontologie** : la règle `third_party_says` (un témoignage anonymisé reste un témoignage), deux tics de métier, les trente phrases données au modèle avant d'écrire | `355456d`, `b770210`, `b0ac1bb` | `lib/ethics/rules.ts`, `lib/ethics/claims.ts`, `lib/generation/banned-phrases.ts`, `lib/generation/pipeline.ts` |
+| Divers | `1129a72`, `b02549e` | la prose n'écrit plus de titre ; la poignée du catalogue ne part plus sur une page publique |
+
+### ⚠ Un écart qui existe DÉJÀ en production, et que ce choix laisse ouvert
+
+La base porte **20** motifs déontologiques (`third_party_says` depuis
+20260920081353) ; le code front — `main` déployé comme cette branche — en porte
+**19**. Le test SQL `20260914200000_ethics_parity` repris de stoic-ritchie compare
+la base à SA copie de la liste front, celle de stoic-ritchie : il atteste une
+parité avec un front qui n'est pas celui-ci. Le sens de l'écart est le sûr — la
+base, barrière finale, bloque plus que le code ; un texte refusé l'est à
+l'écriture, avec une erreur, jamais publié — mais c'est une décision : importer
+la seule règle (≈ 40 lignes de `lib/ethics/rules.ts`), ou l'assumer.
