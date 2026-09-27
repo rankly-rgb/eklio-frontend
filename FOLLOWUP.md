@@ -3831,3 +3831,68 @@ parité avec un front qui n'est pas celui-ci. Le sens de l'écart est le sûr �
 base, barrière finale, bloque plus que le code ; un texte refusé l'est à
 l'écriture, avec une erreur, jamais publié — mais c'est une décision : importer
 la seule règle (≈ 40 lignes de `lib/ethics/rules.ts`), ou l'assumer.
+
+## F69 — Preview écrit dans la base de production
+
+**Constaté le 2026-09-27**, lecture seule dans Vercel par Naima : l'environnement
+Preview porte le même `NEXT_PUBLIC_SUPABASE_URL` que Production
+(`fobgdsupyfslxbswfuay`, eklio-backend-us). `CONTENT_GENERATION_ARMED` est
+absente des deux. Rien n'a été changé.
+
+**Ce que ça implique.** Chaque push sur n'importe quelle branche, de n'importe
+quelle session, crée une URL `*.vercel.app` qui lit et écrit la vraie base :
+- **du code non fusionné, non relu, tourne contre les vraies données**, avec la
+  clé `service_role` si Preview la porte : une branche qui suppose un schéma
+  que la production n'a pas (cf. F66) casse ou écrit de travers en production,
+  sans passer par `main` ;
+- **les comptes et projets de test se mêlent aux clientes** : un essai en
+  preview crée une vraie ligne `auth.users`, un vrai projet, un vrai
+  `funnel_events` — les chiffres d'entonnoir de la production les comptent ;
+- **un paiement lancé depuis une preview** revient par le webhook, qui ne
+  connaît qu'une adresse : il écrit dans la même base. En mode test, sans gravité ;
+  si Preview recevait un jour des clés live, ce serait un vrai débit ;
+- **les previews affichent le détail technique des erreurs**
+  (`showsTechnicalDetail()` dans `lib/env/deploy.ts`, vrai hors production) :
+  sur une URL de preview, l'erreur d'une vraie cliente est lisible en clair. La
+  protection des déploiements Vercel (authentification sur les previews) limite
+  qui les ouvre — à vérifier qu'elle est active.
+
+Sans gravité tant qu'il y a 4 comptes et aucune cliente ; à trancher **avant la
+première vente**.
+
+**Option 1 — une base de preview séparée** (un second projet Supabase, ou une
+branche Supabase).
+- Coût : un projet de plus (gratuit en palier Free s'il en reste un, sinon ≈ 10 $/mois
+  sur Pro ; les branches Supabase sont facturées à l'heure), les 177 migrations
+  à y appliquer puis à tenir à jour à chaque nouvelle migration, un second jeu
+  de variables Preview (URL, clé anon, clé `service_role`, clés Stripe **test**
+  et un second endpoint webhook Stripe pointant sur les previews, sinon les
+  paiements de preview n'arrivent nulle part).
+- Risque : la dérive — une base de preview en retard sur la production fait
+  mentir les previews dans l'autre sens ; il faut la même discipline de
+  registre que pour la production (empreintes, `schema_drift_report.py`).
+- Gain : les previews restent utiles (voir une branche tourner) sans toucher aux
+  clientes.
+
+**Option 2 — fermer les previews** (désactiver les déploiements de branches dans
+Vercel, ou retirer toutes les variables Supabase de Preview pour qu'une preview
+ne démarre pas sans base).
+- Coût : nul en argent. On perd l'URL de preview pour relire une branche avant
+  fusion ; la vérification se fait alors en local (le harnais
+  `scripts/local-render/edge/up.sh` + `scripts/stripe-path/play.ts`, qui a déjà
+  servi pour cette fusion).
+- Risque : faible ; le seul est d'oublier une variable et de laisser une preview
+  à moitié branchée — d'où « retirer toutes les variables Supabase de Preview »
+  plutôt qu'en retirer une.
+
+**Recommandation** : option 2 maintenant (rien ne dépend des previews aujourd'hui,
+et c'est réversible en une minute), option 1 le jour où relire une branche sur
+une URL vaut dix dollars par mois et une migration de plus à tenir.
+
+**Données de test en production.** Le conteneur n'atteint pas la base (F67).
+La requête en lecture seule `docs/production/I-traces-preview.sql`, à coller dans
+l'éditeur SQL, les liste : tables de données client non vides, comptes (adresse
+de test ou non, dernière connexion), projets anonymes, achats (session Stripe
+test ou live), événements Stripe (test/live et **hôte de l'URL de retour** —
+un `*.vercel.app` autre que le domaine de production signe une preview),
+abonnements. Aucune suppression n'est proposée : c'est à décider ligne à ligne.
