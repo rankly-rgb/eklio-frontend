@@ -1,3 +1,4 @@
+-- ⚑ 616 LIGNES. La dernière est :   from checks order by ordre;   (Ctrl+Fin dans l'éditeur pour vérifier le collage)
 -- ════════════════════════════════════════════════════════════════════════════
 --  G — VÉRIFICATIONS, À COLLER APRÈS G-migrations-a-coller.sql
 -- ════════════════════════════════════════════════════════════════════════════
@@ -143,6 +144,20 @@ mig(version, name) as (values
     ('20260917073026','the_three_corrections_the_seed_undid'),
     ('20260917101844','the_eligibility_messages_say_why'),
     ('20260917101901','a_button_that_breaks_is_not_shown'),
+    ('20260917160202','california_is_the_first_verified_state'),
+    ('20260917164228','lep_the_fourth_bbs_licence'),
+    ('20260917164434','a_closure_is_a_decision_with_a_snapshot'),
+    ('20260917164505','florida_settles_the_national_description'),
+    ('20260917165937','the_decision_table_says_no_out_loud'),
+    ('20260917210004','positioning_is_a_second_family_of_rules'),
+    ('20260918185950','the_ten_positioning_rules_v1'),
+    ('20260918190034','how_many_findings_the_free_report_shows'),
+    ('20260918193221','third_person_becomes_present_without_and_the_cap_is_decided'),
+    ('20260919132507','third_person_is_anchored_not_capitalised'),
+    ('20260919172421','the_window_does_the_work_not_the_sentence_boundary'),
+    ('20260919200211','the_model_is_told_the_thirty_phrases'),
+    ('20260920081353','an_anonymised_testimonial_is_still_a_testimonial'),
+    ('20260920081641','two_craft_cliches_join_the_thirty'),
     ('20260920140000','monthly_presence_has_a_chokepoint'),
     ('20260920140100','credit_ledger_append_only'),
     ('20260920150000','content_archetypes'),
@@ -518,14 +533,14 @@ act_r as (
          c.relrowsecurity::text as rls
     from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','v','m','S','p')),
 checks(ordre, controle, bad, total, detail) as (
-  select 1, 'registre : les 163 migrations du dépôt enregistrées',
+  select 1, 'registre : les 177 migrations du dépôt enregistrées',
          (select count(*) from mig m where not exists (select 1 from supabase_migrations.schema_migrations s where s.version = m.version)),
-         163,
+         177,
          (select 'absentes : ' || string_agg(m.version, ' ') from mig m
            where not exists (select 1 from supabase_migrations.schema_migrations s where s.version = m.version))
   union all
-  select 2, 'registre : total = 163, rien de plus',
-         (select abs(count(*) - 163) from supabase_migrations.schema_migrations), 163,
+  select 2, 'registre : total = 177, rien de plus',
+         (select abs(count(*) - 177) from supabase_migrations.schema_migrations), 177,
          (select 'enregistrées : ' || count(*) || ' ; hors dépôt : ' || coalesce(string_agg(s.version, ' ') filter (where m.version is null), 'aucune')
             from supabase_migrations.schema_migrations s left join mig m on m.version = s.version)
   union all

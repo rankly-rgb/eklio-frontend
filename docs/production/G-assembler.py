@@ -73,9 +73,9 @@ begin
     from unnest(array[{arr(v_main)}]) v
    where not exists (select 1 from supabase_migrations.schema_migrations s where s.version = v);
   if v_missing is not null then
-    raise exception 'ARRÊT : la base n''est pas celle attendue — migrations de main absentes du registre : %. Rien n''a été fait.', v_missing;
+    raise exception 'ARRÊT : la base n''est pas celle attendue — migrations de la production absentes du registre : %. Rien n''a été fait.', v_missing;
   end if;
-  raise notice 'Garde-fou : rôle postgres, les {len(main)} de main présentes, aucune des {len(new)}. On applique.';
+  raise notice 'Garde-fou : rôle postgres, les {len(main)} de la production présentes, aucune des {len(new)}. On applique.';
 end
 $guard$;
 """]
@@ -139,5 +139,12 @@ $check$;
 commit;
 """)
 
-open(out_path, "w").write("".join(parts))
+text = "".join(parts)
+# ⚠ LE COLLAGE SE TRONQUE SANS RIEN DIRE (constaté le 2026-09-27 : un aperçu ne
+# copiait que les 100 premières lignes). La première ligne dit donc combien il y
+# en a et laquelle est la dernière : Ctrl+Fin dans l'éditeur doit tomber dessus.
+last = text.rstrip().splitlines()[-1]
+n = len(text.rstrip().splitlines()) + 1
+text = f"-- ⚑ {n} LIGNES. La dernière est : {last}   (Ctrl+Fin dans l'éditeur pour vérifier le collage)\n" + text
+open(out_path, "w").write(text)
 print(f"   {out_path} : {len(new)} migrations, {n_objects} objets aux droits explicites")

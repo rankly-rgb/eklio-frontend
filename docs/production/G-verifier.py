@@ -149,5 +149,12 @@ select controle as "contrôle",
        case when bad = 0 then total || '/' || total else coalesce(detail, (total - bad) || '/' || total) end as "détail"
   from checks order by ordre;
 """
-open(out_path, "w").write(sql)
+text = sql
+# ⚠ LE COLLAGE SE TRONQUE SANS RIEN DIRE (constaté le 2026-09-27 : un aperçu ne
+# copiait que les 100 premières lignes). La première ligne dit donc combien il y
+# en a et laquelle est la dernière : Ctrl+Fin dans l'éditeur doit tomber dessus.
+last = text.rstrip().splitlines()[-1]
+n = len(text.rstrip().splitlines()) + 1
+text = f"-- ⚑ {n} LIGNES. La dernière est : {last}   (Ctrl+Fin dans l'éditeur pour vérifier le collage)\n" + text
+open(out_path, "w").write(text)
 print(f"   {out_path} : 11 contrôles — {len(funcs)} fonctions, {len(rels)} relations, {len(cols)} colonnes, {len(trgs)} triggers, {len(pols)} policies attendus")

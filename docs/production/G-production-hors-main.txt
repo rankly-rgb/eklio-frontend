@@ -1,0 +1,17 @@
+# Les 14 migrations que le registre de PRODUCTION porte et que origin/main n'a pas.
+# Constaté le 2026-09-27 par G-registre-ecarts.sql, collé par Naima dans l'éditeur SQL.
+# Source : la branche claude/stoic-ritchie-1liqrz (eklio-backend), jamais fusionnée.
+20260917160202_california_is_the_first_verified_state.sql
+20260917164228_lep_the_fourth_bbs_licence.sql
+20260917164434_a_closure_is_a_decision_with_a_snapshot.sql
+20260917164505_florida_settles_the_national_description.sql
+20260917165937_the_decision_table_says_no_out_loud.sql
+20260917210004_positioning_is_a_second_family_of_rules.sql
+20260918185950_the_ten_positioning_rules_v1.sql
+20260918190034_how_many_findings_the_free_report_shows.sql
+20260918193221_third_person_becomes_present_without_and_the_cap_is_decided.sql
+20260919132507_third_person_is_anchored_not_capitalised.sql
+20260919172421_the_window_does_the_work_not_the_sentence_boundary.sql
+20260919200211_the_model_is_told_the_thirty_phrases.sql
+20260920081353_an_anonymised_testimonial_is_still_a_testimonial.sql
+20260920081641_two_craft_cliches_join_the_thirty.sql

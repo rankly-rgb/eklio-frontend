@@ -142,3 +142,43 @@ sur la première ligne utile.
 
 **Taille : 466 Ko.** Si l'éditeur refuse un texte de cette taille, ne pas le
 découper — la transaction unique est ce qui rend l'échec sans conséquence.
+
+---
+
+## ⚠ La production porte 14 migrations que `main` n'a pas (2026-09-27)
+
+Constaté par `G-registre-ecarts.sql`, collé par Naima : le registre compte **147**
+inscriptions, pas 133. Les 14 de plus (2026-09-17 → 09-20) viennent de
+**`claude/stoic-ritchie-1liqrz`** — neuf commits backend (et quatorze frontend)
+postérieurs à ce que la branche avait fusionné, appliqués en production, jamais
+revenus dans `main` ni dans `claude/busy-dijkstra-040z1t`. Liste :
+`G-production-hors-main.txt`. La vérification de sur-ensemble d'`E-fusion.md` ne
+portait pas sur cette branche : c'était un angle mort.
+
+**Le premier collage n'avait rien appliqué** (tronqué à la copie) — la base est
+restée à 147.
+
+**Les 30 par-dessus les 14, rejoués sur la vraie forme de la production
+(133 + 14)** :
+
+| question | réponse |
+|---|---|
+| les 30 s'appliquent-elles ? | oui, 0 erreur |
+| écrasent-elles le travail des 14 ? | **non** : 65 objets posés ou modifiés par les 14 (fonctions, contraintes, policies, colonnes, contenu de tables), **0** touché ensuite par les 30 |
+| les 14 retirent-elles ce que le code de busy lit ? | non : 27 colonnes, 18 contraintes, 5 policies, 1 fonction ajoutées ; aucune fonction modifiée ; du contenu changé dans 5 tables de référence |
+
+`G-generer.sh` part maintenant de la vraie base (147) : garde-fou sur les 147,
+registre attendu **177** après collage, même épreuve (identique à la référence,
+second collage refusé, 11/11 OK / 11/11 PAS OK).
+
+### ⚠ Deux conséquences hors migrations
+
+1. **F12 : la Californie est DÉJÀ marquée vérifiée en production** — cinq lignes
+   (dont LEP, ajoutée), `verified_by = « nainarahal@gmail.com (relevé machine,
+   pages du board lues le 2026-09-17, non relu par un humain) »`. La fiche F12
+   disait 240 lignes à NULL. L'acte humain reste dû — la ligne le dit elle-même —
+   mais la génération de kit est déjà ouverte en Californie sur la production.
+2. **Le dépôt n'est pas la production.** Avant la fusion vers `main`,
+   `claude/stoic-ritchie-1liqrz` doit être intégrée à la branche (les 14 fichiers
+   de migration au minimum), sinon `main` décrira une base qui n'existe pas et un
+   `supabase db push` futur ignorerait 14 migrations réelles.

@@ -26,13 +26,21 @@ PSQL="sudo -u postgres psql -qAt -v ON_ERROR_STOP=1"
 
 git -C "$BE" fetch -q origin main
 ls_main() { git -C "$BE" ls-tree --name-only origin/main supabase/migrations/ | grep '\.sql$' | xargs -n1 basename | sort; }
-ls_main > "$W/main.txt"
+# ⚠ LA PRODUCTION N'EST PAS main (constaté le 2026-09-27) : son registre porte 14
+# migrations de plus, venues de claude/stoic-ritchie-1liqrz. « main.txt » est donc
+# l'ensemble réellement enregistré en production : main + G-production-hors-main.txt.
+EXTRA_REF=${EXTRA_REF:-origin/claude/stoic-ritchie-1liqrz}
+git -C "$BE" fetch -q origin "${EXTRA_REF#origin/}"
+grep -v '^#' "$FE/docs/production/G-production-hors-main.txt" | grep . | sort > "$W/extra.txt"
+{ ls_main; cat "$W/extra.txt"; } | sort -u > "$W/main.txt"
 comm -13 "$W/main.txt" <(ls "$BE"/supabase/migrations/*.sql | xargs -n1 basename | sort) > "$W/new.txt"
-echo "main : $(wc -l < "$W/main.txt") migrations ; nouvelles : $(wc -l < "$W/new.txt")"
+echo "production : $(wc -l < "$W/main.txt") migrations (main $(ls_main | wc -l) + $(wc -l < "$W/extra.txt") hors main) ; nouvelles : $(wc -l < "$W/new.txt")"
 
 echo "== 1 · la base de production, reconstruite =="
 rm -rf "$W/prodmig"; mkdir -p "$W/prodmig"
-while read -r f; do git -C "$BE" show "origin/main:supabase/migrations/$f" > "$W/prodmig/$f"; done < "$W/main.txt"
+while read -r f; do
+  if grep -qx "$f" "$W/extra.txt"; then git -C "$BE" show "$EXTRA_REF:supabase/migrations/$f"; else git -C "$BE" show "origin/main:supabase/migrations/$f"; fi > "$W/prodmig/$f"
+done < "$W/main.txt"
 git -C "$BE" show origin/main:supabase/seed.sql > "$W/seed.sql"
 for db in $TRY $REF $BASE; do sudo -u postgres dropdb --if-exists $db; done
 sudo -u postgres createdb $BASE
