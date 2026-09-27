@@ -13,6 +13,34 @@ c'est le domaine acheté. C'est la première chose à confirmer.
 
 ---
 
+## ⚑ LA SÉQUENCE, APRÈS `E-fusion.md` (2026-09-27) — dans l'ordre, et qui fait quoi
+
+⚠ **Deux faits de `E-fusion.md` changent cette fiche.** (1) Vercel déploie **`main`
+en Production** à chaque push, et le fait depuis le 2026-09-12 : la production
+n'est pas « à ouvrir », elle **tourne** (`60f7708`). Des variables y sont donc
+déjà posées ; lesquelles, seul `vercel-env-check.ts` le dira. (2) Fusionner busy
+vers `main` **avant** les migrations casse le webhook des abonnements et ouvre une
+double facturation Monthly Presence. La fusion vient donc **après** les
+migrations, et c'est le déploiement.
+
+| # | étape | agent avec jeton | Naima |
+|---|---|---|---|
+| 1 | **Sauvegarder la production**, et prouver la restauration (`A-restaurer.sh <dump> <cible> <source>`, 0 écart) | ✓ jeton Supabase — lecture seule | donne le feu vert |
+| 2 | **Appliquer les 30 migrations** dans l'ordre, arrêt au premier échec — **F61 (20260927110000) et F64 (20260927130000) comprises, AVANT tout code qui les lit**. Le code de `main` tourne sans changement dessus (prouvé, `E-fusion.md` §5) | ✓ jeton Supabase — **écriture** | ⚠ **décide du moment** : c'est l'acte irréversible |
+| 3 | **Fusionner busy → `main`** (avance rapide, rien à réécrire) — **= déploiement Production**. Vérifier ensuite : `/api/cron/content-month` → 503, webhook sans signature → 400, un event d'abonnement de test → 200 | ✓ git | donne le feu vert |
+| 4 | **Variables Vercel** (§1) : `vercel-env-check.ts production … --phase=1` d'abord, pour voir ce qui est déjà là ; puis poser ce qui manque, **Production seulement** pour les secrets. Aucune ne dépend des nouvelles migrations | les non secrètes (`EMAIL_FROM`, `NEXT_PUBLIC_SITE_URL`, prix) — jeton Vercel | ✓ **les secrets** (service role, Stripe live, `CRON_SECRET`, Resend) : un agent ne les détient pas |
+| 5 | **F12** — lire les quatre règles californiennes, remplir le CSV, `f12-to-sql.ts CA`, coller | émet et vérifie le SQL | ✓ **l'acte professionnel de lecture** — seul geste qu'aucun jeton ne remplace |
+| 6 | **DNS** (§2) et **l'endpoint Stripe live** (§3), puis un achat réel remboursé | — | ✓ registrar, tableau de bord Stripe, carte |
+| 7 | **`ANTHROPIC_API_KEY`** (génération de kit) | — | ✓ secret |
+| 8 | **`CONTENT_GENERATION_ARMED`** — **en dernier**, et seulement quand la route a quitté le 501 (transport `WriterPort`, plafond F58). Poser la variable sur une route en 501 ne génère rien | — | ✓ décision |
+| 9 | **Repointer Vercel** — **inutile** : Production suit déjà `main` | — | — |
+
+**Ce qu'un agent ne fait jamais seul ici** : l'étape 2 (écrire la base de
+production), l'étape 5 (lire un board), un secret. Tout le reste est mécanique et
+vérifiable par un script de ce dossier.
+
+---
+
 ## 0 · Avant Vercel — l'ordre qui casse s'il est inversé
 
 1. **⚠ LES MIGRATIONS D'ABORD, LE CODE ENSUITE — F61.** Le webhook écrit

@@ -1922,7 +1922,7 @@ facturation.
 | 3 | **Appliquer les 149 migrations** dans l'ordre, transaction par transaction, en s'arrêtant à la première erreur. | agent (jeton Supabase) |
 | 4 | **F12 — `license_type_states.verified_at`.** Sur une base neuve, les 240 lignes de la matrice sont à NULL et `project_state_is_sellable` refuse TOUT : `/api/briefs/[id]/generate` répond `409 We're not open in CA yet` dans les cinquante États. ⚠ **Ce n'est pas du code, c'est un acte** : quelqu'un lit le site du board de chaque État et pose la date. Un agent qui remplirait `verified_by` fabriquerait l'apparence d'une vérification professionnelle qui n'a pas eu lieu. | **humain** |
 | 5 | **Variables d'environnement.** Voir le tableau ci-dessous. | agent pour les non-secrètes, **humain** pour les secrets |
-| 6 | **Créer `main`** depuis la branche validée. ⚠ Aujourd'hui `main` **n'existe pas** : les seules branches distantes sont `claude/gallant-lamport-mt20i0` et `claude/great-brahmagupta-za7qmx`. La branche source est celle que Naima a validée, nommée explicitement dans la demande — jamais « la dernière ». | **humain** décide laquelle ; agent exécute |
+| 6 | ⚠ **PÉRIMÉ (2026-09-27) : `main` existe, et Vercel la déploie en Production — voir `docs/production/E-fusion.md`.** ~~**Créer `main`** depuis la branche validée.~~ ⚠ Aujourd'hui `main` **n'existe pas** : les seules branches distantes sont `claude/gallant-lamport-mt20i0` et `claude/great-brahmagupta-za7qmx`. La branche source est celle que Naima a validée, nommée explicitement dans la demande — jamais « la dernière ». | **humain** décide laquelle ; agent exécute |
 | 7 | **Repointer Vercel** sur `main`, vérifier que les quatre `crons` de `vercel.json` (`anon-briefs` 05:00, `nudges` 14:00, `purge-deleted-kits` 06:00, `purge-events` 04:00) sont enregistrés et que `CRON_SECRET` les protège. | agent (jeton Vercel) |
 | 7b | ⚠ **BLOQUANT — créer `content_generation_runs` et `content_generation_results` (F17) AVANT d'armer la génération mensuelle.** Ce n'est pas une amélioration à planifier : **tant que ces deux tables n'existent pas, une génération interrompue est repayée EN ENTIER**, et un lot Batch est facturé à la soumission, donc avant qu'une seule réponse existe. Vercel n'a pas de disque qui survive à l'invocation : le journal fichier (`.eklio-journal/`) est le chemin LOCAL, ces tables sont le chemin SERVEUR, et il n'y a pas de troisième chemin. ⚠ **`CONTENT_GENERATION_ARMED` reste à `false` tant que l'étape 1 du rejeu ne montre pas les deux tables présentes.** La migration est écrite et rejouée (`20260923100000_a_paid_batch_survives_a_crash.sql`, RLS et policies comprises) ; elle part avec les autres à l'étape 3. | agent (migration) |
 | 8 | **Générer la banque de production.** Voir F13 pour le dimensionnement : `N × 90 × 3` par segment, 0,00290 $ le sujet. ⚠ **Après** les migrations et **après** F12, sinon les segments n'existent pas. Un mois généré sur une banque à sec sort court sans que rien le signale. | agent (clé passée par commande) |
@@ -3763,3 +3763,27 @@ démentiront le harnais — et elles se jouent depuis une machine qui atteint St
 
 Ce qui n'est plus un blocage de développement : **F64** (appliqué) et **F62**
 (fermé). Reste : `WriterPort`, mercredi.
+
+---
+
+## F66 — Fusionner vers `main` casserait les abonnements : la fusion n'a pas été faite
+
+**2026-09-27, joué, pas lu.** Vercel déploie `main` en Production à chaque push
+(API des déploiements GitHub : dernier déploiement Production = `60f7708` = `main`).
+Busy déployée sur la base de production actuelle (133 migrations, reconstruite) :
+
+* **tous les events `customer.subscription.*` répondent 500** — `stripe_event_at`
+  (F61) n'existe pas encore ; joué, 7/7 ;
+* **`canUseMonthlyPresence` rend `false` pour tout le monde** — la RPC
+  `monthly_presence_entitled` n'existe pas encore : l'accueil verrouille Monthly
+  Presence aux abonnées, et `/api/monthly-presence/checkout` **ouvre un second
+  abonnement à une abonnée active** ;
+* le Brand Kit, lui, encaisse et se débloque normalement, sur les trois paliers.
+
+Contre-épreuve : `main` sur la même base passe tout. Et `main` sur la base
+**complète** passe aussi (sauf la double allocation que busy corrige) : **les
+migrations d'abord, la fusion ensuite**, et aucune fenêtre ne casse. Séquence avec
+le partage agent / Naima : `D-le-dernier-geste.md`, en tête.
+
+`eklio-reveal-rebuild-28o625` n'a aucun ancêtre commun avec `main` : ce qu'elle
+porte d'absent est l'ancienne génération mensuelle, jamais sur la lignée de `main`.
