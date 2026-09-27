@@ -3,7 +3,12 @@
 # Joue les dix étapes contre une COPIE LOCALE de la base de production,
 # reconstituée depuis les 133 migrations que `main` porte. Aucun accès réel.
 set -uo pipefail
-S=/tmp/claude-0/-home-user/5b3a3612-b0c0-5aab-a84a-6d1f41b6eecf/scratchpad
+# ⚠ LE RÉPERTOIRE DE TRAVAIL ÉTAIT LE SCRATCHPAD D'UNE SESSION PASSÉE, EN DUR,
+# et les deux clichés de migrations y vivaient : sur une machine neuve la
+# répétition ne trouvait rien à rejouer. Il est maintenant paramétrable, et les
+# clichés se reconstruisent depuis git (2026-09-27).
+S=${REHEARSAL_DIR:-/tmp/eklio-rehearsal}
+mkdir -p "$S"
 
 # ── ⚠ LES CHEMINS SONT ABSOLUS, ET C'ÉTAIT UN DÉFAUT DE LA RÉPÉTITION ────
 # Le script lisait `scripts/local-verify-stub-schema.sql` et
@@ -22,6 +27,18 @@ Q="sudo -u postgres psql -qAt -v ON_ERROR_STOP=1 -d $DB"
 ok(){ printf '  ✓ %s\n' "$1"; }
 ko(){ printf '  ✗ %s\n' "$1"; FAILED=$((FAILED+1)); }
 FAILED=0
+
+# ── LES DEUX CLICHÉS, DÉRIVÉS DU DÉPÔT ──────────────────────────────────
+# prod-migrations : ce que la production porte = `origin/main` du backend
+#                   (B4 : 133 migrations au 2026-09-17).
+# target-migrations : ce que la branche source porte, tel quel.
+PROD_REF=${PROD_REF:-origin/main}
+rm -rf "$S/prod-migrations" "$S/target-migrations"
+mkdir -p "$S/prod-migrations" "$S/target-migrations"
+for f in $(git -C "$BE" ls-tree --name-only "$PROD_REF" supabase/migrations/ | grep '\.sql$'); do
+  git -C "$BE" show "$PROD_REF:$f" > "$S/prod-migrations/$(basename "$f")"
+done
+cp "$MIG"/*.sql "$S/target-migrations/"
 
 echo "═══ ÉTAPE −1 — RECONSTRUIRE LA COPIE DE PRODUCTION ═══"
 # ── ⚠ UNE RÉPÉTITION QU'ON NE PEUT PAS REJOUER EST JOUÉE UNE FOIS ────────
@@ -69,7 +86,22 @@ sudo -u postgres psql -q -v ON_ERROR_STOP=1 -d ${DB}_replay -f "$STUB" >/dev/nul
 rf=0; for f in $S/target-migrations/*.sql; do
   sudo -u postgres psql -q -v ON_ERROR_STOP=1 -d ${DB}_replay < "$f" >$S/r.log 2>&1 || { rf=$((rf+1)); [ $rf -le 2 ] && echo "      $(basename $f): $(tail -1 $S/r.log | cut -c1-110)"; }
 done
-[ "$rf" -eq 0 ] && ok "les 155 se rejouent sur une base neuve" || ko "$rf migration(s) échouent au rejeu neuf"
+[ "$rf" -eq 0 ] && ok "les $n se rejouent sur une base neuve" || ko "$rf migration(s) échouent au rejeu neuf"
+
+echo "═══ ÉTAPE 1b — LA SUITE SQL, SUR LE REJEU NEUF ═══"
+# ⚠ AJOUTÉE LE 2026-09-27 (F63). La répétition affichait « 0 échec » pendant que
+# `local-verify.sh` en comptait trois : une fonction de trigger exécutable par un
+# client, et quatre SECURITY DEFINER ouvertes à `anon` derrière elle. Une
+# répétition qui ne lance pas les tests certifie le schéma, pas son comportement.
+sudo -u postgres psql -q -v ON_ERROR_STOP=1 -d ${DB}_replay -f "$BE/supabase/seed.sql" >$S/seed.log 2>&1 \
+  && ok "graine appliquée" || ko "graine: $(tail -1 $S/seed.log)"
+tr=0; tf=0; tfirst=""
+for f in "$BE"/supabase/tests/*.test.sql; do
+  tr=$((tr+1))
+  sudo -u postgres psql -q -v ON_ERROR_STOP=1 -d ${DB}_replay -f "$f" >$S/t.log 2>&1 || {
+    tf=$((tf+1)); [ -z "$tfirst" ] && tfirst="$(basename $f): $(grep -m1 ERROR $S/t.log | cut -c1-110)"; }
+done
+[ "$tf" -eq 0 ] && ok "$tr fichiers de test, 0 échec" || { ko "$tf/$tr fichiers de test échouent"; echo "      $tfirst"; }
 
 echo "═══ ÉTAPE 2 — sauvegarde, et vérifier qu'elle se restaure ═══"
 sudo -u postgres pg_dump -Fc "$DB" > $S/prod.dump 2>$S/d.log \
@@ -78,10 +110,18 @@ sudo -u postgres dropdb --if-exists "$BK" >/dev/null 2>&1; sudo -u postgres crea
 sudo -u postgres pg_restore --single-transaction -d "$BK" < $S/prod.dump >$S/rs.log 2>&1
 e=$(grep -c "pg_restore: error" $S/rs.log)
 [ "$e" = "0" ] && ok "restauration sans erreur" || ko "$e erreur(s) de restauration"
-for t in section_types site_pages modalities; do
-  x=$(sudo -u postgres psql -qAt -d "$DB" -c "select count(*) from public.$t" 2>/dev/null)
-  y=$(sudo -u postgres psql -qAt -d "$BK" -c "select count(*) from public.$t" 2>/dev/null)
-  [ "$x" = "$y" ] && ok "$t : $x lignes de part et d'autre" || ko "$t : $x contre $y"
+# ⚠ `modalities` N'EXISTE PAS — la table s'appelle `modality_cards` — et ce
+# contrôle l'affirmait « identique » depuis sa première version : les deux
+# lectures échouaient, rendaient une chaîne vide, et deux vides sont égaux. La
+# classe de F59 dans la répétition elle-même (2026-09-27). Une lecture vide est
+# maintenant un échec, pas une égalité.
+for t in section_types site_pages modality_cards; do
+  x=$(sudo -u postgres psql -qAt -v ON_ERROR_STOP=1 -d "$DB" -c "select count(*) from public.$t" 2>/dev/null)
+  y=$(sudo -u postgres psql -qAt -v ON_ERROR_STOP=1 -d "$BK" -c "select count(*) from public.$t" 2>/dev/null)
+  if [ -z "$x" ] || [ -z "$y" ]; then ko "$t : lecture impossible (« $x » / « $y »)"
+  elif [ "$x" = "0" ]; then ko "$t : vide dans la source — rien à comparer"
+  elif [ "$x" = "$y" ]; then ok "$t : $x lignes de part et d'autre"
+  else ko "$t : $x contre $y"; fi
 done
 a=$(sudo -u postgres psql -qAt -d "$DB" -c "select count(*) from information_schema.tables where table_schema='public'")
 b=$(sudo -u postgres psql -qAt -d "$BK" -c "select count(*) from information_schema.tables where table_schema='public'")
@@ -206,9 +246,9 @@ else
 fi
 
 echo "═══ ÉTAPE 12c — CE QU'UN ACHAT STRIPE ÉCRIT (voir B5) ═══"
-# ⚠ SEPT OBJETS, DONT DEUX ÉCRITS PAR LA MÊME RPC. Une allocation à moitié posée
-# — `plan_grants` sans `generation_credits.has_paid` — est le cas qu'on ne pense
-# pas à vérifier, et la fiche B5 le fait vérifier explicitement.
+# ⚠ SEPT OBJETS, DONT DEUX ÉCRITS PAR LA MÊME RPC. ⚠ Et `has_paid` n'en est PAS :
+# `grant_plan_allowance` écrit `plan_tier`, et rien ne lit `has_paid` — la fiche
+# le croyait jusqu'au parcours joué du 2026-09-27 (B5 §6.5).
 for t in stripe_events purchases purchase_status_events subscriptions plan_grants generation_credits; do
   c=$($Q -c "select count(*) from information_schema.tables where table_name='$t'")
   [ "$c" = "1" ] && ok "$t" || ko "$t absente"
@@ -221,6 +261,38 @@ k=$($Q -c "select count(*) from pg_constraint where conrelid='public.stripe_even
 [ "$k" = "1" ] && ok "stripe_events porte sa clé primaire — le verrou de rejeu" || ko "aucune clé primaire sur stripe_events"
 g=$($Q -c "select count(*) from pg_constraint where conrelid='public.plan_grants'::regclass and contype='u'")
 [ "$g" -ge 1 ] && ok "plan_grants porte une contrainte d'unicité — le verrou d'allocation" || ko "plan_grants sans unicité : un rejeu ouvrirait deux fois le palier"
+
+echo "═══ ÉTAPE 12d — CE QUE LE PARCOURS STRIPE JOUÉ A CORRIGÉ (B5 §6) ═══"
+# F60 : les mois inclus de Signature sont payés — le quota ne les lit pas comme un essai.
+u=$($Q -c "insert into auth.users (email) values ('rehearsal-f60@eklio-test.invalid') returning id" | head -1)
+$Q -c "insert into public.subscriptions (user_id, stripe_subscription_id, status) values ('$u','sub_rehearsal_f60','trialing')" >/dev/null
+$Q -c "insert into public.purchases (user_id, tier, stripe_checkout_session_id, amount_cents, status, paid_at) values ('$u','signature','cs_rehearsal_f60',24900,'paid',now())" >/dev/null
+r=$($Q -c "select (public.credit_remaining('$u','post_generation') ->> 'remaining')")
+[ "$r" = "30" ] && ok "Signature en trialing : 30 posts, pas 8 (F60)" || ko "Signature en trialing : $r posts — le mois payé ne sera jamais généré"
+# F61 : un event ancien ne rouvre pas une résiliée.
+$Q -c "update public.subscriptions set status='canceled', stripe_event_at=now() where user_id='$u'" >/dev/null
+$Q -c "update public.subscriptions set status='active', stripe_event_at=now()-interval '1 minute' where user_id='$u'" >/dev/null
+st=$($Q -c "select status from public.subscriptions where user_id='$u'")
+[ "$st" = "canceled" ] && ok "un event en retard ne rouvre pas un abonnement résilié (F61)" || ko "un event en retard a rouvert l'abonnement : $st"
+$Q -c "delete from public.subscriptions where user_id='$u'; delete from public.purchases where user_id='$u'; delete from auth.users where id='$u'" >/dev/null 2>&1
+# F63 : aucune SECURITY DEFINER du crédit ou de la banque n'est ouverte à anon.
+leak=$($Q -c "select string_agg(p.proname, ', ') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('credit_remaining','credit_plan_for','drawable_count_for_kit','drawable_topics_for_kit','release_stale_topic_assignments','section_types_pages_exist','subscriptions_refuse_stale_event') and has_function_privilege('anon', p.oid, 'execute')")
+[ -z "$leak" ] && ok "crédit, banque et triggers fermés à anon (F63)" || ko "ouvertes à anon : $leak"
+
+echo "═══ ÉTAPE 12e — LE CODE QUI A CHANGÉ DEPUIS LA DERNIÈRE PASSE ═══"
+# ⚠ HORS BASE, MAIS C'EST CE QUE LE DÉPLOIEMENT POUSSE. Chaque ligne nomme ce
+# qu'elle affirme ; le détail est dans les tests qu'elle lance.
+if [ -d "$FE/node_modules" ]; then
+  ( cd "$FE" && npx vitest run lib/content/month lib/stripe lib/content/generate/__tests__/the-ceiling-has-no-caller.test.ts >$S/vt.log 2>&1 ) \
+    && ok "orchestrateur, plafond, énumération, préalable, Stripe : $(grep -Eo 'Tests +[0-9]+ passed' $S/vt.log | grep -Eo '[0-9]+') tests verts" \
+    || ko "vitest : $(grep -E 'Tests ' $S/vt.log | head -1)"
+else
+  ko "node_modules absent en $FE — npm ci"
+fi
+[ ! -e "$FE/lib/content/generate/pipeline.ts" ] && ok "l'ancien générateur est retiré (F45 étape 4)" || ko "lib/content/generate/pipeline.ts est revenu"
+grep -q 'status: 501' "$FE/app/api/cron/content-month/route.ts" && ok "la route content-month répond toujours 501" || ko "⚠ la route content-month ne rend plus 501"
+grep -q '"/api/cron/content-month"' "$FE/vercel.json" && ko "⚠ content-month est PLANIFIÉE dans vercel.json" || ok "content-month n'est pas planifiée"
+grep -q 'ceiling: SpendCeiling;\|ceiling: ' "$FE/lib/content/month/orchestrate.ts" && ok "le plafond de dépense est un champ de l'orchestrateur (F58)" || ko "le plafond n'est plus dans OrchestrateInput"
 
 echo "═══ ÉTAPE 13 — CE QUI NE SE JOUE PAS EN BASE, ET POURQUOI ═══"
 # ⚠ CES TROIS-LÀ N'ONT AUCUN OBJET EN BASE. Les dire ici évite de les croire

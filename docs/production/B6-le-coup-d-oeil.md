@@ -70,3 +70,16 @@ onze archétypes. `checkLicence` vérifie qu'elle **est là** ; il ne vérifie p
 qu'elle est **lisible**. À 390 px, c'est la bande la plus petite de la carte.
 Ajoute une case : **le pied se lit-il ?** La Californie exige la mention dans
 toute publicité ; une mention illisible est une mention absente.
+
+---
+
+## Mise à jour du 2026-09-27 — quoi ouvrir
+
+`npx tsx scripts/production-path/planche-390.ts <planche.html>` rend la planche
+du chemin produit à 390 px en une image, et refuse une planche qui n'a pas
+trente cartes. Les « deux contact-sheets » ci-dessus sont celles du harnais ; la
+planche du produit est `planche.html`, écrite par `first-month.ts`.
+
+⚠ Il n'y a aujourd'hui **aucune planche rédigée par le produit** à regarder : celle
+de `design/production-first-month/` est une rédaction rejouée. Le coup d'œil
+suit le premier vrai mois — après le 1ᵉʳ octobre et le transport de `WriterPort`.

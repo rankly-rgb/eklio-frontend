@@ -1,45 +1,49 @@
-RÉPÉTITION À BLANC DE LA MISE EN PRODUCTION — 2026-09-26 (seconde passe)
-═══════════════════════════════════════════════════════════════════════
+RÉPÉTITION À BLANC DE LA MISE EN PRODUCTION — 2026-09-27
+═══════════════════════════════════════════════════════
 0 échec sur les étapes jouables.
 
-Reconstruite depuis zéro à chaque lancement : 133 migrations de production,
-puis les 24 nouvelles dans l'ordre. Lançable depuis n'importe quel répertoire.
+Reconstruite depuis zéro : 133 migrations de production (origin/main du
+backend), puis les 29 nouvelles dans l'ordre. Les deux clichés se dérivent
+maintenant de git ; la répétition ne dépend plus du scratchpad d'une session
+passée (elle y lisait ses clichés, en dur).
 
 ÉTAPES
   −1  copie de production reconstruite      133 migrations rejouées
    0  correctif de restauration seul        appliqué
-   1  rejeu complet sur base neuve          157 migrations, 0 échec
-   2  sauvegarde et restauration            69 tables, section_types 11 = 11
-   3  les 24 nouvelles, dans l'ordre        appliquées
+   1  rejeu complet sur base neuve          162 migrations, 0 échec
+  1b  ⚑ la suite SQL sur le rejeu           99 fichiers, 0 échec
+   2  sauvegarde et restauration            69 tables ; section_types 11, site_pages 4,
+                                            modality_cards 14 — de part et d'autre
+   3  les 29 nouvelles, dans l'ordre        appliquées
    4  F12 : la matrice refuse à vide        240 lignes, 0 État vendable
   7b  les deux tables de F17                présentes
    8  les cinq fonctions de banque          présentes et répondent
   8b  crédit : chokepoint, vue, invariant   présents
-  8d  le juge (hors base)                   voir B2
    9  la licence                            3 colonnes, 2 contraintes, matrice 240
   10  F38                                   immédiate passe, à distance bloque
   11  18 motifs + 5 gâchettes armées        toutes
   12  libération des assignations           délai de grâce 3 h, éprouvé des 2 côtés
  12b  la tâche planifiée de libération      route présente ET dans vercel.json
  12c  ce qu'un achat Stripe écrit           7 objets, 2 verrous d'idempotence
+ 12d  ⚑ ce que le parcours Stripe a corrigé Signature trialing = 30 posts (F60) ;
+                                            event en retard sans effet (F61) ;
+                                            crédit et banque fermés à anon (F63)
+ 12e  ⚑ le code changé depuis              261 tests (orchestrateur, plafond, dues,
+                                            préalable, Stripe) ; ancien générateur
+                                            retiré ; content-month en 501 et non
+                                            planifiée ; plafond obligatoire (F58)
   13  ce qui ne se joue pas en base         portillon, crise, mention de licence
 
-AJOUTÉ CETTE PASSE
-  · 12b — une route `cron` absente de vercel.json ne tourne jamais, et rien ne
-    le dit : elle répond correctement quand on l'appelle à la main.
-  · 12c — les sept objets qu'un achat écrit, et les DEUX verrous d'idempotence :
-    la clé primaire de `stripe_events` (le rejeu de Stripe) et l'unicité de
-    `plan_grants` (l'allocation). Un rejeu non gardé facture deux fois.
+CE QUE CETTE PASSE A TROUVÉ DANS LA RÉPÉTITION ELLE-MÊME
+  · Elle ne lançait pas la suite SQL : elle affichait 0 échec pendant que
+    local-verify.sh en comptait trois (F63). Étape 1b.
+  · « modalities : lignes de part et d'autre » — la table n'existe pas. Les deux
+    lectures échouaient, rendaient une chaîne vide, et deux vides sont égaux.
+    Le contrôle d'intégrité de la restauration certifiait une table absente
+    depuis sa première version. Une lecture vide est maintenant un échec.
 
-PROCÉDURE DE RESTAURATION, VÉRIFIÉE À PART
-  86 tables identiques ligne à ligne, contenu compris — 0 écart.
-
-⚠ CE QUE LA RÉPÉTITION NE PEUT PAS DIRE, ET QUI EST LE PLUS IMPORTANT
-  Elle est verte sur la BASE. Le recensement du 2026-09-26 (F45) a montré que
-  le chemin PRODUIT de génération n'est pas le même générateur que le harnais :
-  aucun des vingt mécanismes — trente contrôles, portillon, mention de licence,
-  banque, crédit de contenu — n'y est présent. Une répétition verte ne dit donc
-  rien de ce qu'un mois vendu porterait.
-
-  Les étapes 5 (Vercel), 6 (DNS) et 7 (Stripe en réel) restent injouables à
-  blanc, et B5 les ramène à une demi-heure de gestes mécaniques.
+HORS RÉPÉTITION, JOUÉ À PART
+  · Stripe : scripts/stripe-path/play.ts — vraie route, vraie signature, vraie
+    base ; 0 échec, 1 défaut ouvert (F62). Voir B5-parcours-resultat.txt.
+  · F12 : scripts/production-path/f12-gate.ts — les deux portes, dans les deux
+    sens ; le CSV décrit exactement les 240 couples.

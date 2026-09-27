@@ -1,5 +1,11 @@
 # Les quatre secrets — noms exacts, portée exacte, et l'ordre
 
+> **⚠ REMPLACÉE LE 2026-09-27 par `D-le-dernier-geste.md` §1**, qui porte les
+> dix-neuf règles relevées dans le code (cette fiche en nommait quatre), l'ordre
+> de pose complet et un contrôle scripté (`vercel-env-check.ts`). Deux affirmations
+> ci-dessous étaient fausses et sont corrigées sur place : `CRON_SECRET` absente
+> fait répondre **503**, pas 404 ; et les crons sont **sept**, pas six.
+
 ⚠ **La portée est la partie qui se rate.** Un nom mal orthographié donne une
 erreur au premier appel, et on le voit. Une portée trop large ne donne rien du
 tout : elle marche, et c'est le problème.
@@ -10,7 +16,7 @@ tout : elle marche, et c'est le problème.
 |---|---|---|
 | `SUPABASE_SERVICE_ROLE_KEY` | routes serveur, `scripts/` | **Production uniquement** |
 | `ANTHROPIC_API_KEY` | `/api/briefs/[id]/generate`, `/api/cron/content-month` | **Production uniquement** |
-| `CRON_SECRET` | `lib/api/cron.ts`, les six routes `cron` | **Production uniquement** |
+| `CRON_SECRET` | `lib/api/cron.ts`, les sept routes de `vercel.json` | **Production uniquement** |
 | `RESEND_API_KEY` | `/api/cron/trial-guard`, `/api/cron/trial-ending` | **Production uniquement** |
 
 Et une non secrète qui les accompagne : `EMAIL_FROM`, lue par
@@ -52,7 +58,7 @@ dernier, après 8b.
 
 1. `EMAIL_FROM` (non secrète) — partout.
 2. `CRON_SECRET` — Production. ⚠ **Avant** de repointer Vercel : sans elle les
-   six `crons` répondent 404, et un 404 sur un `cron` ne réveille personne.
+   sept `crons` répondent 503 en nommant la variable (`lib/api/cron.ts`).
 3. `RESEND_API_KEY` — Production.
 4. `SUPABASE_SERVICE_ROLE_KEY` — Production. ⚠ Après elle, plus aucun build de
    prévisualisation ne doit être déclenché sur la branche de production.
@@ -63,7 +69,7 @@ dernier, après 8b.
 
 | variable | la vérification |
 |---|---|
-| `CRON_SECRET` | `curl -s -o /dev/null -w '%{http_code}' https://<site>/api/cron/nudges` → **401** (et non 404 : 404 veut dire que la variable manque) |
+| `CRON_SECRET` | `curl -s -o /dev/null -w '%{http_code}' https://<site>/api/cron/nudges` → **404** : posée (la route se cache sans jeton). **503** : absente. ⚠ Cette ligne disait « 401, et 404 = manquante » — l'inverse du code |
 | `SUPABASE_SERVICE_ROLE_KEY` | une page `/app` se charge pour un compte connecté |
 | `RESEND_API_KEY` | `/api/cron/trial-ending` appelé avec le secret → 200 et un envoi dans le tableau de bord Resend |
 | `ANTHROPIC_API_KEY` | `/api/briefs/[id]/generate` sur un brief de test rend un kit ; ⚠ elle est lue par la ROUTE, pas par le client : une clé posée dans un shell ne sert à rien ici |

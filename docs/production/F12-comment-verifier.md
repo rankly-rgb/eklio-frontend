@@ -23,16 +23,64 @@ est la bonne réponse, pas une panne.
 | Californie + 4 États voisins | ~19 | ~1 h 30 |
 | les cinquante-et-un | 240 | plusieurs jours |
 
-⚠ **Les quatre lignes de Californie portent déjà `verified_at`, et c'est un
-piège.** Leur `verified_by` dit `LOCAL RENDER HARNESS — not a board check` :
-c'est le harnais qui les a posées pour pouvoir générer un mois de test. **Elles
-doivent être effacées et refaites**, ou la première vente se fera sur une
-vérification qui n'a jamais eu lieu :
+⚠ **Corrigé le 2026-09-27 : les quatre lignes californiennes ne sont « déjà
+marquées » que sur une base LOCALE.** C'est `scripts/local-render/00-account.sql`
+qui y pose `verified_by = 'LOCAL RENDER HARNESS — not a board check'`, et il n'a
+jamais touché la production. La copie de production rejouée (répétition, étape 4)
+porte **240 lignes à NULL**. La fiche disait « à effacer et refaire » : en
+production il n'y a rien à effacer — mais on le **lit** d'abord plutôt que de le
+supposer, et c'est la première ligne du geste ci-dessous.
+
+## ⚠ Ce que la porte exige réellement — éprouvé sur la base, pas lu
+
+`scripts/production-path/f12-gate.ts` interroge les deux portes contre la base
+locale, dans les deux sens, et rend la base telle qu'il l'a trouvée :
+
+| porte | lit | ouvre quand |
+|---|---|---|
+| **kit** — `project_state_is_sellable` (409 sinon) | `project_briefs.state` | **TOUTES** les lignes de l'État sont vérifiées |
+| **mois** — `stateVerified` du préalable (F46) | `license_state_code ?? state` | **CE couple** (titre, État) est vérifié |
+
+Trois conséquences pour le geste :
+
+1. **Les quatre lignes de Californie, pas « celle du titre ».** Avec `lmft` seul
+   vérifié, le mois s'ouvrirait pour une LMFT et le kit resterait fermé pour tout
+   le monde.
+2. **Une seule réponse `non` garde la Californie fermée pour les kits.** « On ne
+   verse que les lignes `oui` » laisse la ligne `non` à NULL, et `state_is_sellable`
+   refuse l'État entier. En Californie les quatre titres existent et se
+   publicisent — `oui` est attendu partout ; si une lecture dit autre chose,
+   **s'arrêter** : c'est une décision produit, pas un versement.
+   `f12-to-sql.ts` refuse d'émettre dans ce cas, et le dit.
+3. **Un brief sans État passe la porte du kit** (« État vide → VRAI »,
+   20260915101137). C'est une décision écrite, pas un trou : aucune juridiction
+   n'est revendiquée. Mais elle a été écrite avant que chaque carte porte un
+   titre et un numéro (F56) — elle mérite d'être relue (F64).
+
+## Le geste, mécanique — vingt minutes dont quinze de lecture
+
+```sh
+# 1. LIRE la production, avant tout (lecture seule) :
+#    select license_type_id, verified_at, verified_by from license_type_states
+#     where state_code = 'CA' or verified_at is not null;
+#    attendu : 4 lignes CA, verified_at NULL, et rien d'autre de vérifié.
+#    Une ligne 'LOCAL RENDER HARNESS' ou 'migration probe' → l'effacer (requête plus bas).
+# 2. LIRE les deux boards (le seul acte qu'aucun script ne fait), remplir les
+#    4 lignes CA du CSV : oui/non, source_url https://…, TON nom, note.
+# 3. Émettre le SQL — il refuse s'il manque quoi que ce soit :
+npx tsx scripts/production-path/f12-to-sql.ts CA > /tmp/f12-CA.sql
+# 4. Relire /tmp/f12-CA.sql, le coller dans l'éditeur SQL de Supabase.
+#    Il se termine par sa propre preuve : `t | 4`. Sinon : rollback.
+```
+
+Éprouvé le 2026-09-27 sur la copie de production rejouée : CSV rempli de valeurs
+de test → 4 `UPDATE`, `vendable = t`, `verifiees = 4` ; puis remis à NULL.
 
 ```sql
+-- seulement si l'étape 1 trouve une ligne posée par un script :
 update public.license_type_states
    set verified_at = null, verified_by = null
- where verified_by = 'LOCAL RENDER HARNESS — not a board check';
+ where verified_by in ('LOCAL RENDER HARNESS — not a board check', 'migration probe');
 ```
 
 ## La question à poser, type de licence par type de licence
@@ -75,15 +123,13 @@ agrégateur privé.
 ## Le fichier
 
 `docs/production/F12-license-type-states.csv` — une ligne par
-(type de licence, État), **la Californie en premier**, avec les colonnes à
-remplir. Une fois rempli, il se reverse par :
+(type de licence, État), **la Californie en premier**. Vérifié le 2026-09-27
+contre la matrice rejouée : **240 couples, les mêmes, ni plus ni moins**
+(`f12-gate.ts`). La colonne `statut_actuel` disait `DÉJÀ-MARQUÉ-HARNAIS` pour la
+Californie ; elle dit maintenant `À-VÉRIFIER-EN-PREMIER`, ce qui est vrai en
+production.
 
-```sql
--- ⚠ `verified_by` porte le nom de la personne, pas celui d'un script.
-update public.license_type_states t
-   set verified_at = now(), verified_by = :name, source_url = :url, note = nullif(:note,'')
- where t.license_type_id = :lt and t.state_code = :st;
-```
-
-⚠ **Et on ne verse que les lignes `oui`.** Une ligne `non` reste à `NULL` : ce
-n'est pas un échec de vérification, c'est un État où l'on ne vend pas.
+`scripts/production-path/f12-to-sql.ts <ÉTAT>` le reverse — ⚠ `verified_by` porte
+le nom de la personne, et le script refuse un nom qui ressemble à un script.
+Une ligne `non` n'est pas versée, et le script refuse tout l'État plutôt que de
+le laisser fermé sans le dire.

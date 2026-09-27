@@ -3607,3 +3607,70 @@ Même cause partout : `revoke … from public` ne retire pas l'EXECUTE que Supab
 accorde **explicitement** à `anon` et `authenticated`. Corrigé par 20260927090000 et
 20260927120000. La répétition à blanc ne lance pas la suite SQL : elle affichait
 0 échec pendant que la suite en comptait trois.
+
+## F43 (réestimé le 2026-09-27) — le temps humain qui reste, geste par geste
+
+Chaque ligne a maintenant une fiche qui se suit sans réfléchir, et un contrôle
+scripté quand un contrôle est possible. `docs/production/D-le-dernier-geste.md`
+porte Vercel, DNS et Stripe en réel.
+
+| # | geste | temps | ce qui le rend mécanique |
+|---|---|---|---|
+| 1 | **F12 Californie** | **20 min** (15 de lecture) | `f12-to-sql.ts CA` émet la transaction et sa preuve ; refuse un champ vide, un nom de script, une ligne `non` |
+| 2 | **Vercel** | **25 min** | 19 règles relevées dans le code, ordre de pose en six temps, `vercel-env-check.ts` pour production ET preview |
+| 3 | **DNS** | **15 min** + propagation | cinq enregistrements, l'ordre, la ligne Supabase qu'on oublie |
+| 4 | **Stripe en test** | **25 min** (10 de mise en place) | `play.ts` joue tout ce qui ne parle pas à Stripe ; restent 5 lignes de contrôle (B5 §3) |
+| 5 | **Stripe en réel** | **15 min** | l'endpoint et ses 12 events nommés ; un achat remboursé |
+| 6 | **Le coup d'œil** | **15 min** | `planche-390.ts` ; ⚠ seulement après le premier vrai mois |
+| | **total** | **≈ 2 h** | contre 4 h 30 puis ≈ 3 h — hors propagation DNS |
+
+⚠ **Ce que ces deux heures n'ouvrent PAS**, et qui n'est pas du temps humain :
+
+* **F64** — le numéro qu'elle saisit (spec du site) n'est pas celui que le mois lit
+  (`project_briefs`, jamais écrit) ; le préalable refuse donc le premier mois de
+  **toute** cliente réelle. Développement, bloquant.
+* **`WriterPort`** — le transport de rédaction, mercredi.
+* **F62** — décider : masquer la case Monthly Presence au checkout du kit, ou
+  corriger le remboursement du panier après avoir relevé le champ en test.
+
+## F64 — ⚠ Le numéro de licence : saisi dans une table, exigé depuis une autre
+
+**Priorité 3, trouvé le 2026-09-27 en partant du SQL.** `20260924160000` a ajouté
+`project_briefs.license_number` et `license_state_code`, avec contraintes de forme
+et commentaires. F56 a rendu la mention **obligatoire** à la lecture ; le préalable
+refuse un mois sans elle (`licence_missing`). Trois lecteurs : `server-ports.ts`,
+`review.ts`, `20-month.ts`.
+
+**Aucun écrivain.** Aucun écran, action ou route n'écrit l'une ou l'autre colonne ;
+les comptes de test les ont reçues par SQL.
+
+⚠ **Et pourtant la praticienne SAISIT son numéro** — dans l'éditeur de site et les
+réglages (`components/site/details-section.tsx`, `lib/site/details.ts` :
+`{ key: "license_number", label: "License number" }`), qui l'écrivent dans
+`practice_details` de la spec du site. Le kit et le site le lisent là
+(`launch-context.ts`, `lovable.ts`, `email-signature.ts`). Le chemin du mois le
+lit dans `project_briefs`. **Deux emplacements pour le même fait, et le mois lit
+celui que personne ne remplit.** La classe de F27 — deux arbitres — sous la forme
+de F46.
+
+Conséquence : le premier mois de chaque cliente réelle — y compris celui que le
+webhook met en file à l'achat de Signature (F60) — est refusé au préalable avec
+« licence manquante », alors qu'elle a tapé son numéro ; et chaque carte affichée
+dit que le brief est incomplet. La mise en file, l'énumération et le quota
+s'accordent maintenant ; c'est la source du numéro qui ne s'accorde pas.
+
+**Non corrigé ici, exprès** : choisir l'autorité (la spec du site, où elle l'écrit ;
+ou le brief, où la contrainte de forme vit) et la migration des données existantes
+est une décision, et la faire à moitié créerait un troisième emplacement. Le plus
+court chemin probable : que `licenceFacts` lise `practice_details.license_number`
+en repli, ou qu'une écriture de `practice_details` recopie dans le brief — à
+trancher avec la contrainte de forme de 20260924160000, que la spec du site n'a pas.
+
+Et deux remarques voisines, pour la même décision :
+
+* `license_state_code` n'est jamais écrit, donc toujours `NULL`, donc toujours
+  replié sur `state` — la télésanté inter-États qu'il existe pour décrire n'est
+  pas représentable.
+* La porte du **kit** lit `state` et ouvre un brief **sans État** (décision écrite
+  de 20260915101137 : « aucune juridiction revendiquée »). Elle a été prise avant
+  que chaque carte porte un titre et un numéro ; elle mérite d'être relue.
