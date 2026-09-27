@@ -25,6 +25,7 @@ migrations, et c'est le déploiement.
 
 | # | étape | agent avec jeton | Naima |
 |---|---|---|---|
+| 1–2 | ⚑ **Un seul script pour les deux : `F-appliquer-les-migrations.sh`** (quatre conditions, puis `--apply`) — éprouvé sur une doublure le 2026-09-27, **pas encore joué en production** : voir `F-application-resultat.md` pour les deux réglages d'environnement qu'il attend. | | |
 | 1 | **Sauvegarder la production**, et prouver la restauration (`A-restaurer.sh <dump> <cible> <source>`, 0 écart) | ✓ jeton Supabase — lecture seule | donne le feu vert |
 | 2 | **Appliquer les 30 migrations** dans l'ordre, arrêt au premier échec — **F61 (20260927110000) et F64 (20260927130000) comprises, AVANT tout code qui les lit**. Le code de `main` tourne sans changement dessus (prouvé, `E-fusion.md` §5) | ✓ jeton Supabase — **écriture** | ⚠ **décide du moment** : c'est l'acte irréversible |
 | 3 | **Fusionner busy → `main`** (avance rapide, rien à réécrire) — **= déploiement Production**. Vérifier ensuite : `/api/cron/content-month` → 503, webhook sans signature → 400, un event d'abonnement de test → 200 | ✓ git | donne le feu vert |

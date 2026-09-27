@@ -3787,3 +3787,16 @@ le partage agent / Naima : `D-le-dernier-geste.md`, en tête.
 
 `eklio-reveal-rebuild-28o625` n'a aucun ancêtre commun avec `main` : ce qu'elle
 porte d'absent est l'ancienne génération mensuelle, jamais sur la lignée de `main`.
+
+## F67 — Les migrations n'ont pas été appliquées : le conteneur n'atteignait pas la production
+
+**2026-09-27.** Feu vert donné pour l'étape 2 ; condition 1 impossible —
+`SUPABASE_DB_PASSWORD` absente, hôte direct en IPv6 seul, pooler et
+`api.supabase.com` fermés. Rien n'a été lu ni écrit en production.
+
+À la place, `F-appliquer-les-migrations.sh` a été écrit et joué de bout en bout
+contre une doublure de la production, `--apply` compris. L'épreuve a trouvé trois
+défauts avant qu'ils comptent : une sauvegarde sans les droits (la mienne) ;
+`A-restaurer.sh` qui ne comparait pas les droits, et certifiait donc « 0 écart »
+sur une restauration où chaque fonction était ouverte à tous ; et un `dropdb` raté
+avalé. Tous corrigés, avec contre-épreuve. Détail : `F-application-resultat.md`.

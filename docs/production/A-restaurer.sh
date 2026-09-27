@@ -74,8 +74,12 @@ restore() {
 }
 
 echo "═══ 1 · le schéma seul ═══"
-sudo -u postgres dropdb --if-exists "$TARGET" >/dev/null 2>&1
-sudo -u postgres createdb "$TARGET"
+# ⚠ UN `dropdb` RATÉ ÉTAIT AVALÉ (2026-09-27) : une cible tenue ouverte (PostgREST
+# branché dessus) survivait, et la restauration se faisait par-dessus une base
+# sale. La vérification l'a vu, mais trop tard pour dire pourquoi.
+sudo -u postgres dropdb --if-exists "$TARGET" >$LOGS/drop.log 2>&1 \
+  || { ko "la cible $TARGET n'a pas pu être supprimée : $(tail -1 $LOGS/drop.log)"; exit $FAILED; }
+sudo -u postgres createdb "$TARGET" || { ko "createdb $TARGET"; exit $FAILED; }
 # ⚠ ON NE PRÉ-POSE RIEN. Les schémas `auth`, `storage` et `extensions` sont
 # DANS la sauvegarde : les poser d'abord produit dix erreurs « schema already
 # exists » au chargement du schéma, puis quatre « multiple primary keys » au
@@ -138,21 +142,55 @@ if [ -z "$SOURCE" ]; then
 fi
 
 # Empreinte par table : compte + md5 du contenu entier, lignes triées.
+# ⚠ Une source peut être DISTANTE (une URI postgresql://, la production) : elle se
+# lit alors par `psql <uri>` avec le PGPASSWORD de l'environnement, pas par sudo.
+q() {
+  case "$1" in
+    postgresql://*|postgres://*) local db=$1; shift; psql "$db" -qAt -v ON_ERROR_STOP=1 "$@" ;;
+    *) local db=$1; shift; sudo -u postgres psql -qAt -v ON_ERROR_STOP=1 -d "$db" "$@" ;;
+  esac
+}
 digest() {
-  sudo -u postgres psql -qAt -d "$1" -c "
+  q "$1" -c "
     select t.table_name || ' ' ||
            (select count(*) from information_schema.columns c
              where c.table_schema='public' and c.table_name=t.table_name)
       from information_schema.tables t
      where t.table_schema='public' and t.table_type='BASE TABLE'
      order by t.table_name;" | while read -r tbl _; do
-    n=$(sudo -u postgres psql -qAt -v ON_ERROR_STOP=1 -d "$1" -c "select count(*) from public.\"$tbl\"" 2>/dev/null)
-    h=$(sudo -u postgres psql -qAt -v ON_ERROR_STOP=1 -d "$1" -c "
+    n=$(q "$1" -c "select count(*) from public.\"$tbl\"" 2>/dev/null)
+    h=$(q "$1" -c "
         select coalesce(md5(string_agg(x, '' order by x)), 'vide')
           from (select (public.\"$tbl\".*)::text as x from public.\"$tbl\") s" 2>/dev/null)
     echo "$tbl|$n|$h"
   done
 }
+# ⚠ LES DROITS AUSSI (2026-09-27). Une sauvegarde prise sans les privilèges se
+# restaure avec des lignes identiques et CHAQUE FONCTION OUVERTE À TOUS : la
+# vérification disait « 0 écart ». Constaté sur la doublure de production.
+acl_digest() {
+  q "$1" -c "
+    select 'function '||p.oid::regprocedure::text||' '||coalesce(p.proacl::text,'(défaut)')
+      from pg_proc p where p.pronamespace = 'public'::regnamespace
+    union all
+    select 'table '||c.relname||' '||coalesce(c.relacl::text,'(défaut)')||' rls='||c.relrowsecurity
+      from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','v','m')
+    union all
+    select 'policy '||tablename||'.'||policyname||' '||cmd||' '||array_to_string(roles, ',')
+      from pg_policies where schemaname = 'public'
+    order by 1"
+}
+acl_digest "$SOURCE" > $LOGS/src.acl
+acl_digest "$TARGET" > $LOGS/tgt.acl
+if [ ! -s $LOGS/src.acl ]; then
+  ko "les droits de la source n'ont pas été lus"
+elif ! diff -q $LOGS/src.acl $LOGS/tgt.acl >/dev/null; then
+  ko "les DROITS diffèrent ($(diff $LOGS/src.acl $LOGS/tgt.acl | grep -c '^[<>]') ligne(s)) :"
+  diff $LOGS/src.acl $LOGS/tgt.acl | grep '^[<>]' | head -6 | sed 's/^/      /'
+else
+  ok "droits identiques : $(wc -l < $LOGS/src.acl) fonctions, tables et policies"
+fi
+
 digest "$SOURCE" > $LOGS/src.digest
 digest "$TARGET" > $LOGS/tgt.digest
 diffs=$(diff $LOGS/src.digest $LOGS/tgt.digest | grep '^[<>]' || true)
@@ -160,7 +198,7 @@ tables=$(wc -l < $LOGS/src.digest)
 # ⚠ AVANT de comparer : chaque côté a-t-il été LU ? Une base injoignable rend une
 # empreinte vide ; une table illisible rend « nom|| » des deux côtés.
 unread=$(cat $LOGS/src.digest $LOGS/tgt.digest | awk -F'|' '$2=="" || $3==""' | head -3)
-expected=$($PSQL -d "$SOURCE" -c "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'" 2>/dev/null)
+expected=$(q "$SOURCE" -c "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'" 2>/dev/null)
 if [ -z "$expected" ] || [ "$expected" = "0" ] || [ "$tables" != "$expected" ]; then
   ko "la source n'a pas été lue : $tables table(s) empreintes pour « ${expected:-illisible} » attendues"
 elif [ -n "$unread" ]; then
