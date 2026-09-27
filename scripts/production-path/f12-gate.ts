@@ -64,7 +64,7 @@ async function main() {
   const user = (await sql.query("insert into auth.users (email) values ($1) returning id", [`f12-gate-${Date.now()}@eklio-test.invalid`])).rows[0].id;
   const project = (await sql.query("insert into public.projects (user_id, name) values ($1, 'f12 gate') returning id", [user])).rows[0].id;
   const brief = await sql.query(
-    "insert into public.project_briefs (project_id, license_type_id, license_state_code) values ($1, 'lmft', 'CA') returning project_id",
+    "insert into public.project_briefs (project_id, license_type_id, state) values ($1, 'lmft', 'CA') returning project_id",
     [project]
   ).catch((e: Error) => e);
   if (brief instanceof Error) {
@@ -81,11 +81,26 @@ async function main() {
       "update public.license_type_states set verified_at = now(), verified_by = 'f12-gate.ts — PROBE, restored' where state_code = 'CA' and license_type_id = 'lmft'"
     );
     const kitOpen = await db.rpc("project_state_is_sellable", { p_project_id: project });
-    check("lmft/CA vérifié : le KIT s'ouvre", kitOpen.data === true, JSON.stringify(kitOpen.data ?? kitOpen.error?.message));
+    check("lmft/CA SEUL vérifié : le KIT reste fermé — il faut les quatre lignes de l'État", kitOpen.data === false, JSON.stringify(kitOpen.data ?? kitOpen.error?.message));
     check("lmft/CA vérifié : le MOIS s'ouvre pour lmft", (await port.stateVerified("lmft", "CA")) === true);
     check("…et PAS pour lcsw/CA, qui n'est pas vérifié", (await port.stateVerified("lcsw", "CA")) === false);
     check("…ni pour lmft/NV", (await port.stateVerified("lmft", "NV")) === false);
     check("…et une casse différente ne contourne rien", (await port.stateVerified("lmft", "ca")) === true);
+    await sql.query(
+      "update public.license_type_states set verified_at = now(), verified_by = 'f12-gate.ts — PROBE, restored' where state_code = 'CA'"
+    );
+    const kitAll = await db.rpc("project_state_is_sellable", { p_project_id: project });
+    check("les quatre lignes CA vérifiées : le KIT s'ouvre", kitAll.data === true, JSON.stringify(kitAll.data ?? kitAll.error?.message));
+
+    /*
+     * ⚠ UN BRIEF SANS ÉTAT PASSE LA PORTE DU KIT — c'est la décision écrite de
+     * 20260915101137 (« aucune juridiction revendiquée »), pas un défaut. Imprimé
+     * pour qu'on la voie, pas compté (F64, dernière remarque).
+     */
+    await sql.query("update public.license_type_states set verified_at = null, verified_by = null where state_code = 'CA'");
+    await sql.query("update public.project_briefs set state = null where project_id = $1", [project]);
+    const noState = await db.rpc("project_state_is_sellable", { p_project_id: project });
+    console.log(`  · brief SANS État, rien de vérifié : kit ${noState.data === true ? "OUVERT (décision de 20260915101137)" : "fermé"}`);
   } finally {
     for (const row of before) {
       await sql.query(
