@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   AlreadyPurchasedError,
+  CombinedCheckoutClosedError,
   UnsellableSkuError,
   PlatformNotEligibleError,
   createCheckoutSession,
@@ -107,6 +108,14 @@ export async function startCheckout(input: {
      * telle quelle : c'est la même phrase qu'à l'étape 1 du brief, et deux
      * formulations pour un même fait donnent l'impression de deux règles.
      */
+    if (error instanceof CombinedCheckoutClosedError) {
+      return {
+        ok: false,
+        error:
+          "Buy the kit on its own first — you can add Monthly Presence from your kit right after. You haven't been charged.",
+      };
+    }
+
     if (error instanceof PlatformNotEligibleError) {
       console.error(`[startCheckout] plateforme non éligible : ${error.sku}`);
       return {

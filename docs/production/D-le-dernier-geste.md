@@ -15,11 +15,15 @@ c'est le domaine acheté. C'est la première chose à confirmer.
 
 ## 0 · Avant Vercel — l'ordre qui casse s'il est inversé
 
-1. **Les migrations d'abord, le code ensuite.** Le webhook écrit
+1. **⚠ LES MIGRATIONS D'ABORD, LE CODE ENSUITE — F61.** Le webhook écrit
    `subscriptions.stripe_event_at` (20260927110000). Déployé avant la migration,
    **chaque event d'abonnement répond 500** (`PGRST204`). Rien n'est perdu —
    Stripe rejoue pendant trois jours — mais le tableau de bord Stripe se couvre
-   d'échecs et on cherche au mauvais endroit.
+   d'échecs et on cherche au mauvais endroit. Et PostgREST doit avoir rechargé
+   son schéma (Supabase le fait sur DDL ; en local : `notify pgrst, 'reload schema'`).
+   **Même ordre pour F64** (20260927130000) : sans elle, le numéro que les Réglages
+   écrivent reste dans la spec du site et n'atteint pas le brief — la reprise le
+   rattrapera, mais le préalable refusera le mois jusque-là.
 2. **La répétition à blanc à zéro échec** sur la branche validée :
    `bash docs/production/C-repetition-a-blanc.sh` (≈ 3 min).
 
@@ -148,9 +152,8 @@ hors de nos mains).
    `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`,
    `charge.dispute.closed`, `charge.refund.updated`, `refund.updated`.
 2. Copier son `whsec_…` → `STRIPE_WEBHOOK_SECRET` (1.3 e), redéployer.
-3. Un achat Starter réel, **remboursé aussitôt** ; `B5-stripe.md` §5.
-   ⚠ **Sans la case Monthly Presence** : un panier kit + abonnement remboursé
-   reste ouvert (F62).
+3. Un achat Starter réel, **remboursé aussitôt** ; `B5-stripe.md` §5. (La case
+   Monthly Presence n'existe plus sur cet écran — F62.)
 
 **Temps : 15 min.**
 

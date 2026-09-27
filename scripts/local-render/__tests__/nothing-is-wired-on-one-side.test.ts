@@ -135,6 +135,8 @@ describe("toute grandeur produite est CONSOMMÉE, pas seulement affichée", () =
    * ── F19 : les sujets rendus AVANT le refus, jamais après ──────────────
    */
   it("les sujets sont rendus avant le `throw` du refus", () => {
+    expect(MONTH.indexOf('untypedTable(db, "topic_assignments").delete()'), "la remise des sujets a disparu")
+      .toBeGreaterThan(-1);
     expect(MONTH.indexOf('untypedTable(db, "topic_assignments").delete()'))
       .toBeLessThan(MONTH.indexOf("if (selection.remaining.length > 0) {"));
   });
@@ -299,6 +301,7 @@ describe("un mois refusé ne consomme pas ses crédits", () => {
     const insertLoop = MONTH.indexOf("written += 1;");
     const verdict = MONTH.indexOf("const monthPasses = selection.remaining.length === 0;");
     expect(verdict, "le verdict ne décide pas des crédits").toBeGreaterThan(-1);
+    expect(insertLoop, "la boucle d'insertion a disparu").toBeGreaterThan(-1);
     expect(insertLoop).toBeLessThan(verdict);
   });
 
@@ -313,6 +316,9 @@ describe("un mois refusé ne consomme pas ses crédits", () => {
   it("aucun règlement inconditionnel ne subsiste dans la boucle", () => {
     const start = MONTH.indexOf(WRITE_LOOP_ANCHOR);
     const end = MONTH.indexOf("clearJournal(journal);", start);
+    // ⚠ Cette ancre a déjà cassé une fois ; une tranche vide ne contient rien (2026-09-27).
+    expect(start, "l'ancre de la boucle d'écriture a disparu").toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
     expect(MONTH.slice(start, end)).not.toContain("syncCostUsd(candidate.usage), true)");
   });
 });

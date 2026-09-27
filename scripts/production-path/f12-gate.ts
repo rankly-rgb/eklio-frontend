@@ -49,7 +49,11 @@ async function main() {
   );
   const missing = [...dbPairs].filter((k) => !filePairs.has(k));
   const extra = [...filePairs].filter((k) => !dbPairs.has(k));
-  check(`${filePairs.size} couples dans le fichier, ${dbPairs.size} en base`, filePairs.size === dbPairs.size && csv.length === filePairs.size);
+  /* ⚠ Deux ensembles vides ont la même taille : on exige d'avoir LU la matrice. */
+  check(
+    `${filePairs.size} couples dans le fichier, ${dbPairs.size} en base`,
+    dbPairs.size >= 200 && filePairs.size === dbPairs.size && csv.length === filePairs.size
+  );
   check("aucun couple de la base absent du fichier", missing.length === 0, missing.slice(0, 5).join(", "));
   check("aucun couple du fichier absent de la base", extra.length === 0, extra.slice(0, 5).join(", "));
   const ca = csv.slice(0, 4).map((l) => l.split(",")[0] + "/" + l.split(",")[1]);

@@ -326,6 +326,8 @@ async function main() {
       grants: await count("select count(*) from plan_grants where project_id = $1", [a.projectId]),
       transitions: await count("select count(*) from purchase_status_events pse join purchases p on p.id = pse.purchase_id where p.user_id = $1", [a.userId]),
     };
+    /* ⚠ « inchangé » entre deux zéros ne prouve rien : on exige d'abord l'achat. */
+    check("avant le rejeu : un achat et une allocation existent", before.purchases === 1 && before.grants === 1, JSON.stringify(before));
     const res = await send(evt);
     check("rejeu → 200 duplicate", res.status === 200 && res.body.includes("duplicate"), res.body.slice(0, 80));
     check("stripe_events : une seule ligne", (await count("select count(*) from stripe_events where stripe_event_id = $1", [evt.id])) === 1);
@@ -443,8 +445,13 @@ async function main() {
       event("charge.refunded", { id: `ch_${RUN}_combo`, object: "charge", payment_intent: `pi_${RUN}_invoice`, amount: 11800, amount_refunded: 11800 })
     );
     const after = await one<{ status: string }>("select status from purchases where stripe_checkout_session_id = $1", [session.id]);
+    /*
+     * F62 : ce panier n'est plus vendu (`KIT_AND_MONTHLY_PRESENCE_IN_ONE_CHECKOUT`),
+     * le serveur le refuse avant Stripe. La ligne reste pour dire ce que le webhook
+     * ferait si on le rouvrait sans corriger `handleChargeRefunded`.
+     */
     open(
-      "Starter acheté AVEC Monthly Presence, remboursé → l'accès se ferme",
+      "Starter + Monthly Presence (panier FERMÉ par F62), remboursé → l'accès se ferme",
       after?.status === "refunded",
       `${r.body.slice(0, 90)} → ${JSON.stringify(after)}`
     );

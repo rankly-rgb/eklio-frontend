@@ -174,7 +174,10 @@ describe("le règlement porte le coût réel", () => {
 describe("aucun plafond en TypeScript", () => {
   it("le module ne compte ni ne compare", () => {
     const src = readFileSync("lib/credits/server-port.ts", "utf8");
-    const body = src.slice(src.indexOf("export function serverCreditPort"));
+    const start = src.indexOf("export function serverCreditPort");
+    // ⚠ slice(-1) garde un caractère, et tous les not.toContain passent (2026-09-27).
+    expect(start, "serverCreditPort a changé de forme").toBeGreaterThan(-1);
+    const body = src.slice(start);
     for (const forbidden of ["POSTS_PER_MONTH", "monthly_limit", "consumed", "<=", ">="]) {
       expect(body, `le port applique un plafond (${forbidden}) au lieu de laisser le SQL décider`)
         .not.toContain(forbidden);

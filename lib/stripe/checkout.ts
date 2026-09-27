@@ -6,7 +6,11 @@ import {
   kitPriceId,
   monthlyPresencePriceId,
 } from "@/lib/stripe/client";
-import { includesMonthlyPresence, tierRank } from "@/lib/billing/plans";
+import {
+  includesMonthlyPresence,
+  KIT_AND_MONTHLY_PRESENCE_IN_ONE_CHECKOUT,
+  tierRank,
+} from "@/lib/billing/plans";
 import { siteUrl } from "@/lib/site-url";
 import { buildCheckoutMetadata } from "@/lib/stripe/metadata";
 import type { KitTier } from "@/lib/kit/tiers";
@@ -320,6 +324,14 @@ export class PlatformNotEligibleError extends Error {
   }
 }
 
+/** F62 : le panier kit + Monthly Presence est fermé (voir `lib/billing/plans.ts`). */
+export class CombinedCheckoutClosedError extends Error {
+  constructor(public readonly tier: KitTier) {
+    super(`${tier} and Monthly Presence are not sold in one checkout.`);
+    this.name = "CombinedCheckoutClosedError";
+  }
+}
+
 export class AlreadyPurchasedError extends Error {
   constructor(public readonly tier: KitTier) {
     super(`This project already has a paid ${tier} kit.`);
@@ -394,6 +406,14 @@ export async function createCheckoutSession(
   if (projectId) {
     const owned = await alreadyPaidFor(supabase, projectId, tier);
     if (owned) throw new AlreadyPurchasedError(owned);
+  }
+
+  /*
+   * ⚠ AVANT de créer quoi que ce soit chez Stripe. Refuser plutôt qu'ignorer :
+   * ignorer la case vendrait le kit seul à quelqu'un qui croyait s'abonner.
+   */
+  if (withMonthlyPresence && !includesMonthlyPresence(tier) && !KIT_AND_MONTHLY_PRESENCE_IN_ONE_CHECKOUT) {
+    throw new CombinedCheckoutClosedError(tier);
   }
 
   const customerId = await ensureStripeCustomer(supabase, { userId, email });

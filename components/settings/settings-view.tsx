@@ -14,6 +14,18 @@ const FIELDS: Array<{ key: Field; label: string; hint?: string }> = [
   { key: "practitioner_name", label: "Your name" },
   { key: "practice_name", label: "Practice name" },
   { key: "license_label", label: "Credential", hint: "LCSW, LMFT, and so on." },
+  /*
+   * ⚠ LE NUMÉRO DE LICENCE S'ÉCRIT DANS LE BRIEF, PAS DANS LA SPEC (F64). Le
+   * trigger `site_specs_licence_number_from_brief` le porte dans
+   * `project_briefs.license_number`, la seule autorité, que le préalable du mois
+   * et chaque pied de carte lisent. Ce champ manquait ici : le préalable ne
+   * pouvait pas dire « remplis-le dans tes réglages ».
+   */
+  {
+    key: "license_number",
+    label: "License number",
+    hint: "As your board prints it. California requires it on every post.",
+  },
   { key: "city", label: "City" },
   { key: "state", label: "State", hint: "Two letters." },
   { key: "email", label: "Email" },
@@ -89,12 +101,20 @@ function PracticeDetailsSection({
           hero: { cta_target_url: booking },
         }),
       });
-      if (!response.ok) throw new Error("save failed");
+      if (!response.ok) {
+        // Une erreur de champ du serveur dit quoi corriger (« A license number
+        // contains at least one digit. ») : la montrer plutôt qu'un échec muet.
+        const body = (await response.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        throw new Error(body?.error?.message ?? "save failed");
+      }
       setSaved(true);
       router.refresh();
       setTimeout(() => setSaved(false), 2000);
-    } catch {
-      setError("That didn't go through. Your previous values are unchanged.");
+    } catch (caught) {
+      const message = caught instanceof Error && caught.message !== "save failed" ? caught.message : null;
+      setError(message ?? "That didn't go through. Your previous values are unchanged.");
     } finally {
       setSaving(false);
     }

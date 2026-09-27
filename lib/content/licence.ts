@@ -74,14 +74,32 @@ export function licenceMention(facts: LicenceFacts): string | null {
  */
 export function licenceMissingMessage(facts: LicenceFacts): string | null {
   if (licenceMention(facts)) return null;
+  /*
+   * ⚠ ET IL DIT OÙ LE REMPLIR (F64). Le numéro a une seule autorité,
+   * `project_briefs.license_number` ; la praticienne l'écrit depuis Réglages ou
+   * depuis l'éditeur de site, et les deux y aboutissent. Nommer la colonne sans
+   * nommer l'écran envoyait une praticienne chercher un champ qu'elle ne voit pas.
+   */
   const missing: string[] = [];
-  if (!facts.licenseNumber?.trim()) missing.push("le numéro de licence (`license_number`)");
-  if (!facts.licenseTypeId?.trim()) missing.push("le type de licence (`license_type_id`)");
+  const where: string[] = [];
+  if (!facts.licenseNumber?.trim()) {
+    missing.push("le numéro de licence (`license_number`)");
+    where.push(
+      "le numéro se remplit dans Settings → Practice details → « License number » (/app/settings), " +
+        "ou dans l'éditeur de site, panneau « Your details »"
+    );
+  }
+  if (!facts.licenseTypeId?.trim()) {
+    missing.push("le type de licence (`license_type_id`)");
+    where.push("le type se choisit à l'étape licence du brief");
+  }
   if (missing.length === 0) {
     missing.push(`une abréviation pour « ${facts.licenseTypeId} » (\`license_type_states.abbreviation\`)`);
+    where.push("l'abréviation vient de la matrice des États, vérifiée à la main (docs/production/F12-comment-verifier.md)");
   }
   return (
     `impossible de générer un mois : ${missing.join(" et ")} manque au brief. ` +
+    `Où : ${where.join(" ; ")}. ` +
     `La Californie et d'autres États exigent le type ET le numéro de licence dans TOUTE publicité ; ` +
     `un post sans cette mention est une infraction publicitaire, et le produit ne l'écrit pas.`
   );

@@ -62,6 +62,9 @@ describe("la mention se construit, ou elle n'existe pas", () => {
     const why = licenceMissingMessage({ licenseTypeId: "lmft", licenseNumber: null })!;
     expect(why).toContain("license_number");
     expect(why).toContain("TOUTE publicité");
+    // F64 : et OÙ le remplir — l'écran, pas seulement la colonne.
+    expect(why).toContain("/app/settings");
+    expect(why).toContain("License number");
     expect(licenceMissingMessage({ licenseTypeId: "lmft", licenseNumber: "12345" })).toBeNull();
   });
 });

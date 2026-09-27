@@ -95,6 +95,8 @@ describe("anti-vacuity", () => {
       payload: payloadFor("single_statement", "nominal"),
     });
     const sizes = parseBoxes(svg).filter((b) => b.role === "text").map((b) => b.size);
+    // ⚠ `every` sur une liste vide est vrai : ce garde anti-vacuité était lui-même vide (2026-09-27).
+    expect(sizes.length).toBeGreaterThan(0);
     expect(sizes.every((s) => typeof s === "number" && s > 0)).toBe(true);
   });
 });

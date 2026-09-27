@@ -52,6 +52,27 @@ FAILED=0
 ok(){ printf '  ✓ %s\n' "$1"; }
 ko(){ printf '  ✗ %s\n' "$1"; FAILED=$((FAILED+1)); }
 
+# ── ⚠ UN CONTRÔLE QUI NE VÉRIFIE PAS QU'IL A LU NE VÉRIFIE RIEN (2026-09-27) ──
+# Trois formes creuses vivaient ici. (1) Les journaux s'écrivaient dans /tmp
+# sous un nom fixe : un `pg_restore` qui ne partait pas (sauvegarde absente)
+# laissait le journal de la passe PRÉCÉDENTE, et « 0 erreur » s'y lisait. (2) Le
+# code de sortie de `pg_restore` était ignoré. (3) L'empreinte d'une base
+# injoignable est VIDE, deux vides sont égaux, et `diff` concluait « 0 tables
+# identiques ». Chaque lecture doit maintenant prouver qu'elle a eu lieu.
+[ -s "$DUMP" ] || { echo "✗ sauvegarde absente ou vide : $DUMP"; exit 1; }
+LOGS=$(mktemp -d)
+# restore <section> <journal> — ok seulement si pg_restore a TOURNÉ, rendu 0, et
+# écrit un journal neuf sans erreur.
+restore() {
+  local section=$1 log=$LOGS/$1.log rc e
+  sudo -u postgres pg_restore --section="$section" -d "$TARGET" < "$DUMP" >"$log" 2>&1
+  rc=$?
+  e=$(grep -c "pg_restore: error" "$log" || true)
+  if [ "$rc" = "0" ] && [ "$e" = "0" ]; then return 0; fi
+  echo "      pg_restore --section=$section : code $rc, $e erreur(s)"; grep "pg_restore: error" "$log" | head -3 | sed 's/^/      /'
+  return 1
+}
+
 echo "═══ 1 · le schéma seul ═══"
 sudo -u postgres dropdb --if-exists "$TARGET" >/dev/null 2>&1
 sudo -u postgres createdb "$TARGET"
@@ -61,9 +82,7 @@ sudo -u postgres createdb "$TARGET"
 # post-data, pour des objets qui sont pourtant tous là. Dix-sept écarts
 # apparents, zéro écart réel — et c'est le genre de bruit qui fait conclure
 # que la procédure ne marche pas alors qu'elle marche.
-sudo -u postgres pg_restore --section=pre-data -d "$TARGET" < "$DUMP" >/tmp/pre.log 2>&1
-e=$(grep -c "pg_restore: error" /tmp/pre.log || true)
-[ "$e" = "0" ] && ok "schéma restauré" || ko "$e erreur(s) au schéma"
+restore pre-data && ok "schéma restauré" || ko "le schéma ne s'est pas restauré"
 
 echo "═══ 2 · retirer les CHECK qui lisent une autre table ═══"
 # ⚠ Énumérées depuis le CATALOGUE, jamais écrites à la main : une liste tenue
@@ -93,9 +112,7 @@ else
 fi
 
 echo "═══ 3 · les données ═══"
-sudo -u postgres pg_restore --section=data -d "$TARGET" < "$DUMP" >/tmp/data.log 2>&1
-e=$(grep -c "pg_restore: error" /tmp/data.log || true)
-[ "$e" = "0" ] && ok "données restaurées sans erreur" || { ko "$e erreur(s) aux données"; grep "pg_restore: error" /tmp/data.log | head -3; }
+restore data && ok "données restaurées sans erreur" || ko "les données ne se sont pas restaurées"
 
 echo "═══ 4 · reposer les contraintes, et les VALIDER ═══"
 if [ -n "$DROPPED" ]; then
@@ -110,9 +127,7 @@ if [ -n "$DROPPED" ]; then
 fi
 
 echo "═══ 5 · index, clés étrangères, triggers ═══"
-sudo -u postgres pg_restore --section=post-data -d "$TARGET" < "$DUMP" >/tmp/post.log 2>&1
-e=$(grep -c "pg_restore: error" /tmp/post.log || true)
-[ "$e" = "0" ] && ok "post-data restauré" || ko "$e erreur(s) au post-data"
+restore post-data && ok "post-data restauré" || ko "le post-data ne s'est pas restauré"
 
 echo "═══ 6 · ⚠ LA VÉRIFICATION : LIGNE À LIGNE, PAS TABLE À TABLE ═══"
 if [ -z "$SOURCE" ]; then
@@ -131,22 +146,30 @@ digest() {
       from information_schema.tables t
      where t.table_schema='public' and t.table_type='BASE TABLE'
      order by t.table_name;" | while read -r tbl _; do
-    n=$(sudo -u postgres psql -qAt -d "$1" -c "select count(*) from public.\"$tbl\"" 2>/dev/null)
-    h=$(sudo -u postgres psql -qAt -d "$1" -c "
+    n=$(sudo -u postgres psql -qAt -v ON_ERROR_STOP=1 -d "$1" -c "select count(*) from public.\"$tbl\"" 2>/dev/null)
+    h=$(sudo -u postgres psql -qAt -v ON_ERROR_STOP=1 -d "$1" -c "
         select coalesce(md5(string_agg(x, '' order by x)), 'vide')
           from (select (public.\"$tbl\".*)::text as x from public.\"$tbl\") s" 2>/dev/null)
     echo "$tbl|$n|$h"
   done
 }
-digest "$SOURCE" > /tmp/src.digest
-digest "$TARGET" > /tmp/tgt.digest
-diffs=$(diff /tmp/src.digest /tmp/tgt.digest | grep '^[<>]' || true)
-tables=$(wc -l < /tmp/src.digest)
-if [ -z "$diffs" ]; then
+digest "$SOURCE" > $LOGS/src.digest
+digest "$TARGET" > $LOGS/tgt.digest
+diffs=$(diff $LOGS/src.digest $LOGS/tgt.digest | grep '^[<>]' || true)
+tables=$(wc -l < $LOGS/src.digest)
+# ⚠ AVANT de comparer : chaque côté a-t-il été LU ? Une base injoignable rend une
+# empreinte vide ; une table illisible rend « nom|| » des deux côtés.
+unread=$(cat $LOGS/src.digest $LOGS/tgt.digest | awk -F'|' '$2=="" || $3==""' | head -3)
+expected=$($PSQL -d "$SOURCE" -c "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'" 2>/dev/null)
+if [ -z "$expected" ] || [ "$expected" = "0" ] || [ "$tables" != "$expected" ]; then
+  ko "la source n'a pas été lue : $tables table(s) empreintes pour « ${expected:-illisible} » attendues"
+elif [ -n "$unread" ]; then
+  ko "des tables n'ont pas été lues (compte ou empreinte vide) : $(echo $unread | tr '\n' ' ')"
+elif [ -z "$diffs" ]; then
   ok "$tables tables identiques, ligne à ligne et contenu compris"
 else
   ko "des tables diffèrent :"
-  diff /tmp/src.digest /tmp/tgt.digest | grep '^[<>]' | head -12 | sed 's/^/      /'
+  diff $LOGS/src.digest $LOGS/tgt.digest | grep '^[<>]' | head -12 | sed 's/^/      /'
 fi
 
 echo

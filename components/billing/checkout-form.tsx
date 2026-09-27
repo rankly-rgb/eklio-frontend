@@ -10,6 +10,7 @@ import {
   INCLUDED_MONTHLY_PRESENCE_COPY,
   KIT_PLANS,
   MONTHLY_PRESENCE,
+  KIT_AND_MONTHLY_PRESENCE_IN_ONE_CHECKOUT,
 } from "@/lib/billing/plans";
 import type { KitTier } from "@/lib/kit/tiers";
 
@@ -109,6 +110,15 @@ export function CheckoutForm({
             {INCLUDED_MONTHLY_PRESENCE_COPY}
           </p>
         </div>
+      ) : !KIT_AND_MONTHLY_PRESENCE_IN_ONE_CHECKOUT ? (
+        /*
+         * F62 : le panier combiné est fermé — un remboursement ne savait pas
+         * retrouver le kit. L'abonnement se prend ensuite, depuis le kit.
+         */
+        <p className="rounded-card border border-line bg-bg p-6 text-ui leading-prose text-ink-2">
+          Want {MONTHLY_PRESENCE.label}? Add it from your kit once it&apos;s ready —{" "}
+          {formatUsd(MONTHLY_PRESENCE.amountCents)}/{MONTHLY_PRESENCE.interval}, cancel any time.
+        </p>
       ) : (
       <label
         className={`flex cursor-pointer gap-4 rounded-card border p-6 transition-colors ${

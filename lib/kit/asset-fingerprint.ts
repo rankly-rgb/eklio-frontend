@@ -25,9 +25,11 @@ import { createHash } from "node:crypto";
  * `hero` (overline + headline — og_image_1200x630 is the first renderer
  * that reads copy beyond the practice name). Extend further the same lot
  * that adds a renderer reading licence/city/state or the template set. Two
- * more notes for whoever does: `license_number` does not exist anywhere in
- * this schema — only `license_types.label` (a short credential abbreviation,
- * e.g. "LCSW") does; and RENDERER_VERSION already covers "the renderer's
+ * more notes for whoever does: `license_number` now EXISTS — its single
+ * authority is `project_briefs.license_number`, projected into
+ * `site_specs.practice_details` by trigger (20260927130000, F64), so it is
+ * hashed here through `practiceDetails` and a changed number re-renders the
+ * signature; and RENDERER_VERSION already covers "the renderer's
  * output changed", so a new field only needs to be added here once some
  * renderer's OUTPUT actually varies with it.
  */

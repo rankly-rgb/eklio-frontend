@@ -3674,3 +3674,92 @@ Et deux remarques voisines, pour la même décision :
 * La porte du **kit** lit `state` et ouvre un brief **sans État** (décision écrite
   de 20260915101137 : « aucune juridiction revendiquée »). Elle a été prise avant
   que chaque carte porte un titre et un numéro ; elle mérite d'être relue.
+
+---
+
+## F64 — TRANCHÉ ET APPLIQUÉ le 2026-09-27 : le brief fait autorité
+
+**Décision** : `project_briefs.license_number` est la seule autorité du numéro de
+licence. L'éditeur de site écrit dans le brief, pas l'inverse.
+
+**Appliqué en base, pas dans chaque lecteur** (`20260927130000`). Six fonctions SQL
+et une douzaine de lecteurs TypeScript lisent la spec du site ; les réécrire un à
+un, c'était six occasions d'oublier le septième. La copie dans
+`site_specs.practice_details` reste, mais **ne peut plus diverger** :
+
+| sens | mécanisme | prouvé par |
+|---|---|---|
+| éditeur → brief | trigger BEFORE sur `site_specs` : l'édition est écrite dans le brief, puis la spec prend la valeur du brief | test SQL §2b, et par le vrai `site_spec_patch` §3 |
+| brief → spec | trigger AFTER sur `project_briefs` | §2c |
+| spec neuve | prend la valeur du brief, quoi qu'on lui passe | §2a |
+| forme invalide | `site_spec_patch` rend `invalid_field` sur `practice_details.license_number`, en mots (« contains at least one digit ») ; la contrainte du brief reste l'arbitre | §1 (la règle en mots et la contrainte, comparées sur 12 cas), §3 |
+
+**La reprise est écrite une fois** (`licence_number_reprise()`, testée) : un numéro
+tapé dans une spec avec un brief vide passe au brief ; en désaccord, le brief
+gagne (compté) ; une forme invalide **arrête** la migration en nommant les lignes.
+Appliquée à la copie de production dans la répétition : 0 cas.
+
+**Aucun autre chemin ne lit une seconde source.** Recensé : une seule colonne
+`license_number` en base ; tous les lecteurs TypeScript passent par
+`site_spec_get` (projection) ou par le brief ; l'empreinte des actifs hache
+`practiceDetails` entier, donc un numéro changé re-rend la signature. Le
+commentaire de `asset-fingerprint.ts` qui disait « `license_number` n'existe nulle
+part » est corrigé.
+
+**Le préalable nomme le champ ET l'écran** : « Settings → Practice details →
+License number (/app/settings), ou l'éditeur de site, panneau Your details ». Le
+champ **manquait aux Réglages** : il y est, et une erreur de forme du serveur
+s'affiche au lieu de « That didn't go through ».
+
+## F62 — FERMÉ PAR LE PRODUIT le 2026-09-27
+
+`api.stripe.com` toujours refusé (403) : le champ n'a pas pu être relevé. Le panier
+kit + Monthly Presence n'est plus vendu (`KIT_AND_MONTHLY_PRESENCE_IN_ONE_CHECKOUT
+= false`) ; le serveur refuse la case avant tout appel à Stripe ; l'abonnement
+s'ajoute depuis le kit. Détail et condition de réouverture : `B5-stripe.md` §6.3.
+
+## F65 — Les contrôles qui comparent deux lectures sans vérifier qu'elles ont eu lieu
+
+Même famille que la table `modalities` certifiée identique (deux vides sont
+égaux), cherchée partout le 2026-09-27.
+
+**Dans les instruments — corrigés, et chacun éprouvé par sa contre-épreuve :**
+
+| instrument | forme creuse | depuis |
+|---|---|---|
+| `local-verify.sh` | le rapport de dérive sortait en erreur sous `pipefail` **avant** la ligne de verdict : une suite rouge et une suite verte sortaient toutes deux en code 1, et « N échecs » ne s'imprimait jamais | l'ajout du rapport de dérive |
+| `A-restaurer.sh` | code de sortie de `pg_restore` ignoré ; journaux à nom fixe dans `/tmp`, donc un `pg_restore` qui ne part pas laisse lire « 0 erreur » dans le journal de la passe précédente ; deux empreintes illisibles comparées égales | sa première version |
+| `C-repetition-a-blanc.sh` | compte de tables et compte de lignes F12 comparés sans vérifier qu'ils existent ; « les N nouvelles appliquées » vrai sur une liste vide ; suite SQL « 0 échec » sur zéro fichier ; **et mon propre contrôle F63**, qui lisait « rien d'ouvert » dans une requête en échec | 2026-09-26 et 2026-09-27 |
+| `check_seed_mirrors.sh` | zéro marqueur lu → « all seed mirrors match » | sa première version |
+| `f12-gate.ts`, `play.ts` (miens) | deux ensembles vides de même taille ; « inchangé » entre deux zéros | 2026-09-27 |
+| le test SQL de F64 (mien, en l'écrivant) | le cas « erreur de champ » se rabattait sur une NOTICE quand la porte de paiement répondait d'abord | corrigé avant commit |
+
+⚠ `A-restaurer.sh`, précisément : une source SEULE illisible était déjà vue (la
+cible non vide faisait un écart). La forme creuse demandait que **les deux** lectures
+échouent, ou une table illisible des deux côtés. Rare, et c'est l'instrument qui
+certifie la sauvegarde de production.
+
+**Dans la suite vitest — 22 formes latentes recensées**, toutes aujourd'hui sur des
+ancres qui existent : aucune ne passe à vide en ce moment, chacune passerait au
+premier renommage. Les douze plus fortes sont gardées (`indexOf` exigé > −1 avant
+un `toBeLessThan` ; tranche exigée non vide avant un `not.toContain` ; `every` sur
+une liste dont on exige la longueur). Dont : l'assainissement SVG avant l'upload —
+**supprimer l'appel à `sanitizeSvg` faisait passer le test qui le garde**
+(`-1 < n`) ; et deux gardes « anti-vacuité » qui étaient elles-mêmes vides
+(`slice(-1).length > 0`, `[].every(...)`).
+
+Restent, notés : `a-post-is-judged-alone` (un post propre ne produit aucun constat,
+la boucle ne tourne pas), `independence` (tranche sur un nom de fonction, gardée
+par un test voisin seulement), `rpc-signatures` (les écritures `.insert(row)` et
+les clés abrégées échappent à l'extraction), `immediate-negation` (se tait si le
+dépôt backend est absent).
+
+## F43 (2026-09-27, après-midi) — temps humain restant
+
+Inchangé à **≈ 2 h** de gestes, avec une ligne qui change de nature : Stripe en test
+(25 min) n'a toujours **pas** été joué contre les serveurs de Stripe. Ses cinq
+lignes de contrôle (B5 §3) sont maintenant les seules choses qui confirmeront ou
+démentiront le harnais — et elles se jouent depuis une machine qui atteint Stripe.
+
+Ce qui n'est plus un blocage de développement : **F64** (appliqué) et **F62**
+(fermé). Reste : `WriterPort`, mercredi.

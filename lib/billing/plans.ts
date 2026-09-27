@@ -231,6 +231,27 @@ export const INCLUDED_MONTHLY_PRESENCE_TRIAL_DAYS = 90;
  * la même question, et le jour où un deuxième tier l'inclut, il y a un seul
  * endroit à changer plutôt que quatre à retrouver.
  */
+/*
+ * ⚠ F62 — LE KIT ET MONTHLY PRESENCE NE S'ACHÈTENT PLUS DANS LA MÊME SESSION.
+ *
+ * Case cochée, le checkout passait en mode `subscription`, où Stripe rend
+ * `payment_intent: null` sur la session : l'argent est sur la facture. L'achat
+ * du kit était écrit sans clé que `charge.refunded` sache retrouver, et un
+ * remboursement ou un litige LAISSAIT LE KIT OUVERT (parcours joué, 2026-09-27).
+ *
+ * Le champ qui relierait la charge à ce kit n'a pas pu être relevé : les
+ * serveurs de Stripe étaient injoignables depuis le bac à sable, et un
+ * correctif écrit sans vrai appel se tromperait d'une façon que seul un vrai
+ * appel révèle. La réponse sûre est donc de ne plus produire ce panier : le kit
+ * se paie seul (mode `payment`, un payment intent que les remboursements
+ * retrouvent), et Monthly Presence s'ajoute ensuite depuis `/app`
+ * (`/api/monthly-presence/checkout`).
+ *
+ * Rouvrir : relever le champ (B5 §3, ligne 2), corriger `handleChargeRefunded`,
+ * puis passer ceci à `true`. Le serveur le relit — l'écran n'est pas l'autorité.
+ */
+export const KIT_AND_MONTHLY_PRESENCE_IN_ONE_CHECKOUT = false;
+
 export function includesMonthlyPresence(tier: KitTier): boolean {
   return tier === "signature";
 }

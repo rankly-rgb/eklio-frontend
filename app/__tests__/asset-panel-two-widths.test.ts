@@ -69,9 +69,12 @@ describe("la feuille est vraiment modale", () => {
      * tabule dans le panneau et ne peut plus revenir à la grille à laquelle
      * il appartient.
      */
-    const trap = source.slice(source.indexOf('if (event.key !== "Tab")'));
-    expect(source).toMatch(/useEffect\(\(\) => \{\s*if \(!isSheet\) return;/);
-    expect(trap.length).toBeGreaterThan(0);
+    // ⚠ `slice(-1).length` vaut 1 : l'ancien garde ne pouvait pas échouer (2026-09-27).
+    // Le piège doit exister ET vivre après le retour anticipé de l'effet feuille.
+    const sheetEffect = source.search(/useEffect\(\(\) => \{\s*if \(!isSheet\) return;/);
+    const trap = source.indexOf('if (event.key !== "Tab")');
+    expect(sheetEffect).toBeGreaterThan(-1);
+    expect(trap, "le piège de tabulation a disparu").toBeGreaterThan(sheetEffect);
   });
 
   it("Échap et le retour du focus valent pour les deux largeurs", () => {

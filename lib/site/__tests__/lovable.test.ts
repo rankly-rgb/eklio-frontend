@@ -621,8 +621,13 @@ describe("la liste d'images", () => {
 
   it("aucun nom de slot n'apparaît sans une instruction qui va avec", () => {
     const { text } = buildLovablePrompt({ ...WITH_SPEC, imageSlots: ALL_SEVEN });
+    expect(text.indexOf("## Imagery")).toBeGreaterThan(-1);
     const block = text.slice(text.indexOf("## Imagery")).split("\n---\n")[0];
-    for (const line of block.split("\n").filter((l) => l.startsWith("- **"))) {
+    const slots = block.split("\n").filter((l) => l.startsWith("- **"));
+    // ⚠ Une boucle qui ne tourne pas ne vérifie rien : les QUATRE images de site
+    // doivent y être (les trois `post_bg_*` sont exclues, test précédent).
+    expect(slots.length).toBe(ALL_SEVEN.filter((s) => !s.startsWith("post_bg")).length);
+    for (const line of slots) {
       expect(line, line).toContain(" — ");
     }
   });
@@ -741,7 +746,11 @@ describe("l'inventaire distingue deux manques", () => {
   it("⚠ le doublon disparaît : le numéro est un marqueur, pas un manque muet", () => {
     const { text } = buildLovablePrompt(NO_NUMBER);
     expect(text).toContain("- [LICENSE_NUMBER] — your license number");
+    // ⚠ Sans ces gardes, une phrase disparue donne une tranche vide, et « vide ne
+    // contient pas » passe (2026-09-27).
+    expect(text.indexOf("Eklio is also missing these")).toBeGreaterThan(-1);
     const second = text.slice(text.indexOf("Eklio is also missing these"));
+    expect(second.indexOf("⚠")).toBeGreaterThan(0);
     expect(second.slice(0, second.indexOf("⚠"))).not.toContain("license number");
   });
 
@@ -753,10 +762,11 @@ describe("l'inventaire distingue deux manques", () => {
 
   it("⚠ ni formation ni numéro ne sont inventés dans le corps", () => {
     const { text } = buildLovablePrompt(NO_NUMBER);
-    const correction = text.slice(
-      text.indexOf("## Sections: corrections"),
-      text.indexOf("## Composition")
-    );
+    const from = text.indexOf("## Sections: corrections");
+    const to = text.indexOf("## Composition");
+    expect(from, "la section de corrections a disparu").toBeGreaterThan(-1);
+    expect(to).toBeGreaterThan(from);
+    const correction = text.slice(from, to);
     expect(correction).not.toContain("Training and licensure**");
   });
 

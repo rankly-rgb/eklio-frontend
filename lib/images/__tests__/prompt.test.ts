@@ -154,6 +154,8 @@ describe("le prompt est déterministe", () => {
     const brief = prompt.indexOf("Wide horizontal composition");
     const palette = prompt.indexOf("The palette appears in the objects");
     const exclusions = prompt.indexOf("Strictly excluded:");
+    // ⚠ -1 est plus petit que tout : chaque marqueur doit exister (2026-09-27).
+    for (const at of [master, brief, palette, exclusions]) expect(at).toBeGreaterThan(-1);
     expect(master).toBeLessThan(brief);
     expect(brief).toBeLessThan(palette);
     expect(palette).toBeLessThan(exclusions);

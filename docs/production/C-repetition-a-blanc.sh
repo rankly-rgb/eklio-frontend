@@ -101,7 +101,9 @@ for f in "$BE"/supabase/tests/*.test.sql; do
   sudo -u postgres psql -q -v ON_ERROR_STOP=1 -d ${DB}_replay -f "$f" >$S/t.log 2>&1 || {
     tf=$((tf+1)); [ -z "$tfirst" ] && tfirst="$(basename $f): $(grep -m1 ERROR $S/t.log | cut -c1-110)"; }
 done
-[ "$tf" -eq 0 ] && ok "$tr fichiers de test, 0 échec" || { ko "$tf/$tr fichiers de test échouent"; echo "      $tfirst"; }
+if [ "$tr" -lt 50 ]; then ko "seulement $tr fichier(s) de test trouvés — la suite n'a pas été lue"
+elif [ "$tf" -eq 0 ]; then ok "$tr fichiers de test, 0 échec"
+else ko "$tf/$tr fichiers de test échouent"; echo "      $tfirst"; fi
 
 echo "═══ ÉTAPE 2 — sauvegarde, et vérifier qu'elle se restaure ═══"
 sudo -u postgres pg_dump -Fc "$DB" > $S/prod.dump 2>$S/d.log \
@@ -125,7 +127,8 @@ for t in section_types site_pages modality_cards; do
 done
 a=$(sudo -u postgres psql -qAt -d "$DB" -c "select count(*) from information_schema.tables where table_schema='public'")
 b=$(sudo -u postgres psql -qAt -d "$BK" -c "select count(*) from information_schema.tables where table_schema='public'")
-[ "$a" = "$b" ] && ok "restauration vérifiée : $a tables de part et d'autre" || ko "restauration: $a vs $b tables"
+# ⚠ Deux comptes illisibles sont deux chaînes vides, et égales (2026-09-27).
+[ -n "$a" ] && [ "$a" != "0" ] && [ "$a" = "$b" ] && ok "restauration vérifiée : $a tables de part et d'autre" || ko "restauration: « $a » vs « $b » tables"
 
 new_count=$(comm -13 <(ls $S/prod-migrations | sort) <(ls $S/target-migrations | grep '\.sql$' | sort) | wc -l)
 echo "═══ ÉTAPE 3 — appliquer les $new_count nouvelles, dans l'ordre, arrêt au premier échec ═══"
@@ -137,12 +140,15 @@ for f in $(comm -13 <(ls $S/prod-migrations | sort) <(ls $S/target-migrations | 
     stopped="$f"; echo "      arrêt sur $f : $(tail -2 $S/m.log | tr '\n' ' ' | cut -c1-140)"; break
   fi
 done
-[ -z "$stopped" ] && ok "les $applied nouvelles appliquées, dans l'ordre" || ko "arrêt après $applied, sur $stopped"
+# ⚠ « Aucun arrêt » sur une liste VIDE n'est pas « tout appliqué » (2026-09-27).
+[ -z "$stopped" ] && [ "$new_count" -gt 0 ] && [ "$applied" = "$new_count" ] \
+  && ok "les $applied nouvelles appliquées, dans l'ordre" \
+  || ko "appliquées : $applied sur $new_count${stopped:+, arrêt sur $stopped}"
 
 echo "═══ ÉTAPE 4 — F12 : la matrice refuse tout tant qu'elle est vide ═══"
 rows=$($Q -c "select count(*) from public.license_type_states")
 nullv=$($Q -c "select count(*) from public.license_type_states where verified_at is null")
-[ "$rows" = "$nullv" ] && ok "les $rows lignes sont à NULL sur une base neuve" || ko "$rows lignes, $nullv à NULL"
+[ -n "$rows" ] && [ "$rows" != "0" ] && [ "$rows" = "$nullv" ] && ok "les $rows lignes sont à NULL sur une base neuve" || ko "« $rows » lignes, « $nullv » à NULL"
 sellable=$($Q -c "select count(*) from public.license_type_states where verified_at is not null")
 [ "$sellable" = "0" ] && ok "aucun État vendable : c'est la bonne réponse, pas une panne" || ko "$sellable déjà marqués"
 
@@ -276,8 +282,18 @@ st=$($Q -c "select status from public.subscriptions where user_id='$u'")
 [ "$st" = "canceled" ] && ok "un event en retard ne rouvre pas un abonnement résilié (F61)" || ko "un event en retard a rouvert l'abonnement : $st"
 $Q -c "delete from public.subscriptions where user_id='$u'; delete from public.purchases where user_id='$u'; delete from auth.users where id='$u'" >/dev/null 2>&1
 # F63 : aucune SECURITY DEFINER du crédit ou de la banque n'est ouverte à anon.
+# ⚠ MON PROPRE CONTRÔLE ÉTAIT CREUX (2026-09-27) : une requête en échec rendait
+# une chaîne vide, et « vide » se lisait « rien d'ouvert ». Il exige maintenant
+# de lire le nombre de fonctions examinées.
+seen=$($Q -c "select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('credit_remaining','credit_plan_for','drawable_count_for_kit','drawable_topics_for_kit','release_stale_topic_assignments','section_types_pages_exist','subscriptions_refuse_stale_event')")
 leak=$($Q -c "select string_agg(p.proname, ', ') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('credit_remaining','credit_plan_for','drawable_count_for_kit','drawable_topics_for_kit','release_stale_topic_assignments','section_types_pages_exist','subscriptions_refuse_stale_event') and has_function_privilege('anon', p.oid, 'execute')")
-[ -z "$leak" ] && ok "crédit, banque et triggers fermés à anon (F63)" || ko "ouvertes à anon : $leak"
+[ "$seen" = "7" ] && [ -z "$leak" ] && ok "crédit, banque et triggers fermés à anon (F63) — 7 fonctions lues" || ko "anon : « $seen » fonction(s) lues sur 7, ouvertes : ${leak:-aucune}"
+
+# F64 : le numéro de licence a une seule autorité, le brief — la spec le reflète.
+fn=$($Q -c "select count(*) from pg_trigger where tgname in ('site_specs_licence_number_from_brief','project_briefs_licence_number_to_specs') and not tgisinternal")
+[ "$fn" = "2" ] && ok "les deux triggers qui tiennent le numéro de licence sur le brief (F64)" || ko "« $fn » trigger(s) de F64 sur 2"
+p=$($Q -c "select public.licence_number_problem('no digits') is not null and public.licence_number_problem('LMFT 12345') is null")
+[ "$p" = "t" ] && ok "la règle de forme du numéro refuse et accepte ce qu'il faut" || ko "licence_number_problem : « $p »"
 
 echo "═══ ÉTAPE 12e — LE CODE QUI A CHANGÉ DEPUIS LA DERNIÈRE PASSE ═══"
 # ⚠ HORS BASE, MAIS C'EST CE QUE LE DÉPLOIEMENT POUSSE. Chaque ligne nomme ce

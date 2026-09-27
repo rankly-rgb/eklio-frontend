@@ -16,6 +16,12 @@
 > Stripe. Les événements ont été construits à la forme de l'API ; **§2 ci-dessous
 > est ce qui reste, et c'est désormais un contrôle, pas une découverte.**
 >
+> **⚠ SECONDE TENTATIVE, 2026-09-27 (après-midi) : toujours 403.** Le brief
+> annonçait `api.stripe.com` autorisé ; le proxy du bac à sable refusait encore
+> le CONNECT. **Rien de ce que le harnais a établi n'a donc été confronté aux
+> serveurs de Stripe** — ni confirmé, ni démenti. §3 reste le seul contrôle qui
+> le fera, et il se joue depuis une machine qui atteint Stripe.
+>
 > **Le premier passage a rendu 8 échecs.** Cinq étaient la fiche qui se
 > trompait, trois étaient le produit — dont un cas F54 réel. Tout est en §6.
 
@@ -153,11 +159,11 @@ qu'on doit voir. Les requêtes de §2.1 ci-dessous restent valides.
       `trialing`, `trial_end` à J+90. ⚠ **Et aucune ligne
       `trois mois inclus NON accordés` dans le log** — c'est l'appel
       `subscriptions.create` que le bac à sable n'a pas pu faire.
-- [ ] **Starter avec la case Monthly Presence cochée.** Noter ce que
-      `checkout.session.completed` porte en `payment_intent` (attendu : `null`)
-      et en `invoice`. **Puis rembourser** depuis Stripe et regarder la réponse
-      au `charge.refunded` : c'est le défaut ouvert §6.3 ; on veut savoir quel
-      champ de la charge permet de retrouver l'achat.
+- [ ] **La case Monthly Presence n'est plus proposée** sur l'écran de paiement
+      d'un kit Starter ou Practice (F62, §6.3) : à sa place, une phrase qui
+      renvoie à l'abonnement depuis le kit. Acheter le kit, puis s'abonner
+      depuis `/app` : deux sessions, deux paiements que les remboursements
+      retrouvent.
 - [ ] **Monthly Presence seul.** `checkout.session.completed` répond
       `ignored — métadonnées de session illisibles` : **c'est normal**, la
       session n'a pas de palier ; l'abonnement vient de
@@ -280,11 +286,27 @@ on ne revient pas à `incomplete` sur le même `stripe_subscription_id`. La lign
 est gardée (le trigger rend `OLD`), pas refusée : lever ferait rejouer Stripe à
 l'infini.
 
-⚠ **Ordre de déploiement** : cette migration **avant** le code. Le code déployé
+⚠ **ORDRE DE DÉPLOIEMENT — À NE PAS PERDRE** : cette migration **avant** le code. Le code déployé
 seul fait répondre 500 à tous les events d'abonnement (`PGRST204`) — rien n'est
 perdu, Stripe rejoue, mais le tableau de bord Stripe se couvre d'échecs.
 
-### 6.3 ⚠ OUVERT — Starter ou Practice acheté AVEC Monthly Presence : un remboursement ne ferme rien
+### 6.3 FERMÉ PAR LE PRODUIT — Starter ou Practice acheté AVEC Monthly Presence : un remboursement ne fermait rien
+
+> **Tranché le 2026-09-27 (après-midi).** Le champ n'a pas pu être relevé :
+> Stripe injoignable. La brief prévoyait ce cas — « si le bon champ n'existe pas,
+> masquer la case serait la réponse » ; un champ qu'on ne peut pas voir ne vaut
+> pas mieux. Le panier combiné n'est plus vendu :
+> `KIT_AND_MONTHLY_PRESENCE_IN_ONE_CHECKOUT = false` (`lib/billing/plans.ts`),
+> l'écran ne montre plus la case, et **le serveur refuse** une requête qui la
+> porte, avant tout appel à Stripe (`CombinedCheckoutClosedError`, test
+> comportemental et contre-épreuve). Monthly Presence s'ajoute depuis le kit
+> (`/api/monthly-presence/checkout`), en mode `subscription` pur : ce paiement-là
+> n'a pas de kit à fermer.
+>
+> **Pour rouvrir** : jouer le panier en test, relever le champ, corriger
+> `handleChargeRefunded`, passer la constante à `true`. Le parcours automatique
+> garde une ligne `⚠ OUVERT` qui dit ce que le webhook ferait d'ici là.
+
 
 Case cochée, le checkout passe en mode `subscription`, et Stripe rend alors
 `payment_intent: null` sur la session : l'argent est sur la facture. L'achat est

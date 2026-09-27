@@ -1,20 +1,20 @@
-RÉPÉTITION À BLANC DE LA MISE EN PRODUCTION — 2026-09-27
+RÉPÉTITION À BLANC DE LA MISE EN PRODUCTION — 2026-09-27 (seconde passe, après F64)
 ═══════════════════════════════════════════════════════
 0 échec sur les étapes jouables.
 
 Reconstruite depuis zéro : 133 migrations de production (origin/main du
-backend), puis les 29 nouvelles dans l'ordre. Les deux clichés se dérivent
+backend), puis les 30 nouvelles dans l'ordre (dont 20260927130000, F64). Les deux clichés se dérivent
 maintenant de git ; la répétition ne dépend plus du scratchpad d'une session
 passée (elle y lisait ses clichés, en dur).
 
 ÉTAPES
   −1  copie de production reconstruite      133 migrations rejouées
    0  correctif de restauration seul        appliqué
-   1  rejeu complet sur base neuve          162 migrations, 0 échec
-  1b  ⚑ la suite SQL sur le rejeu           99 fichiers, 0 échec
+   1  rejeu complet sur base neuve          163 migrations, 0 échec
+  1b  ⚑ la suite SQL sur le rejeu           100 fichiers, 0 échec (moins de 50 = échec)
    2  sauvegarde et restauration            69 tables ; section_types 11, site_pages 4,
                                             modality_cards 14 — de part et d'autre
-   3  les 29 nouvelles, dans l'ordre        appliquées
+   3  les 30 nouvelles, dans l'ordre        appliquées (une liste vide = échec)
    4  F12 : la matrice refuse à vide        240 lignes, 0 État vendable
   7b  les deux tables de F17                présentes
    8  les cinq fonctions de banque          présentes et répondent
@@ -27,7 +27,8 @@ passée (elle y lisait ses clichés, en dur).
  12c  ce qu'un achat Stripe écrit           7 objets, 2 verrous d'idempotence
  12d  ⚑ ce que le parcours Stripe a corrigé Signature trialing = 30 posts (F60) ;
                                             event en retard sans effet (F61) ;
-                                            crédit et banque fermés à anon (F63)
+                                            crédit et banque fermés à anon, 7 lues (F63) ;
+                                            numéro de licence tenu sur le brief (F64)
  12e  ⚑ le code changé depuis              261 tests (orchestrateur, plafond, dues,
                                             préalable, Stripe) ; ancien générateur
                                             retiré ; content-month en 501 et non
@@ -47,3 +48,8 @@ HORS RÉPÉTITION, JOUÉ À PART
     base ; 0 échec, 1 défaut ouvert (F62). Voir B5-parcours-resultat.txt.
   · F12 : scripts/production-path/f12-gate.ts — les deux portes, dans les deux
     sens ; le CSV décrit exactement les 240 couples.
+
+SECONDE PASSE — LES CONTRÔLES CREUX (F65)
+  Chaque comparaison exige maintenant d'avoir LU ses deux côtés : compte de
+  tables, lignes F12, nouvelles migrations, fichiers de test, fonctions
+  examinées pour anon. Voir FOLLOWUP F65.

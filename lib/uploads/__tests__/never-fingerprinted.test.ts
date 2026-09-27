@@ -94,6 +94,9 @@ describe("les octets décident, et le SVG est nettoyé", () => {
 
   it("un SVG est assaini avant l'upload, jamais après", () => {
     const route = code("app/api/brand-kits/[id]/uploads/route.ts");
+    // ⚠ -1 est plus petit que tout : sans ce garde, une chaîne disparue passe (2026-09-27).
+    expect(route.indexOf("sanitizeSvg("), "l'assainissement SVG a disparu").toBeGreaterThan(-1);
+    expect(route.indexOf(".upload("), "l'upload a disparu").toBeGreaterThan(-1);
     expect(route.indexOf("sanitizeSvg(")).toBeLessThan(route.indexOf(".upload("));
   });
 

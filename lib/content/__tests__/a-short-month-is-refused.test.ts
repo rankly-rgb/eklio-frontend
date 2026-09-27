@@ -101,6 +101,8 @@ describe("le nombre écrit est recompté après l'écriture", () => {
   });
 
   it("et il vient après la boucle d'insertion, pas avant", () => {
+    // ⚠ -1 est plus petit que tout : sans ce garde, une chaîne disparue passe (2026-09-27).
+    expect(SOURCE.indexOf("written += 1;"), "le compteur d'insertion a disparu").toBeGreaterThan(-1);
     expect(SOURCE.indexOf("written += 1;"))
       .toBeLessThan(SOURCE.indexOf("const shortOnWrite: Finding[] ="));
   });
