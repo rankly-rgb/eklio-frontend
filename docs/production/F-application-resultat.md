@@ -182,3 +182,38 @@ second collage refusé, 11/11 OK / 11/11 PAS OK).
    `claude/stoic-ritchie-1liqrz` doit être intégrée à la branche (les 14 fichiers
    de migration au minimum), sinon `main` décrira une base qui n'existe pas et un
    `supabase db push` futur ignorerait 14 migrations réelles.
+
+---
+
+## ✓ APPLIQUÉES — 2026-09-27, par Naima, dans l'éditeur SQL de Supabase
+
+`G-migrations-a-coller.sql` collé en entier (9068 lignes, `commit;` en dernière) :
+les 30 migrations appliquées en une transaction, F61 et F64 comprises, chacune
+inscrite au registre sous le nom de son fichier. Reprise F64 :
+`{"taken":0,"brief_won":0}` — aucun numéro à reprendre des specs de site.
+
+`G-verifications.sql` en production : **11/11 OK**.
+
+| contrôle | résultat |
+|---|---|
+| registre : les 177 du dépôt (main + 14 de stoic-ritchie + 30) | 177/177 |
+| registre : total 177, rien de plus | 177/177 |
+| les 30 sous le nom de leur fichier | 30/30 |
+| dérive : fonctions créées, propriétaire et droits exacts | 51/51 |
+| dérive : tables et vues créées, propriétaire, droits, RLS | 20/20 |
+| dérive : colonnes ajoutées au bon type | 158/158 |
+| dérive : triggers / policies ajoutés | 11/11 · 61/61 |
+| F63 : les 4 fonctions privilégiées fermées à `anon` | 4/4 |
+| F61 : `stripe_event_at` et son trigger | 2/2 |
+| F64 : les deux triggers du numéro de licence | 2/2 |
+
+Le code en production reste celui de `main` (`60f7708`) : prouvé compatible avec
+ce schéma (`E-fusion.md` §5), rien n'a été déployé.
+
+### Ce qui reste avant la fusion
+
+1. **L'achat de contrôle** (`B5-stripe.md` §5b) — Naima, carte réelle, remboursé.
+2. **Intégrer `claude/stoic-ritchie-1liqrz`** à la branche, dans les deux dépôts :
+   au minimum les 14 fichiers de migration (sinon `main` décrira une base qui
+   n'existe pas), et décider du sort de ses 14 commits frontend non déployés.
+3. **Le feu vert de Naima pour la fusion** — c'est le déploiement.
