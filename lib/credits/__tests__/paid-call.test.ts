@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   ReserveRefused,
-  aPurchaseWouldHelp,
-  reserveRefusal,
   withOverhead,
   withPaidCall,
   type CreditPort,
-  type ReserveRefusal,
 } from "@/lib/credits/paid-call";
 
 /*

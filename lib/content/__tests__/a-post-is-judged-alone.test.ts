@@ -66,6 +66,7 @@ describe("checkMonth est la somme des deux moitiés", () => {
     ["un mois court", month([post()], { wanted: 30 })],
     ["deux titres identiques", month([post(), post()], { wanted: 2 })],
   ])("%s", (_label, m) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `wanted` est retiré du contexte exprès : un post seul ne connaît pas la taille du mois
     const { posts, wanted, ...context } = m;
     const composed = [
       ...checkAcrossPosts(m),

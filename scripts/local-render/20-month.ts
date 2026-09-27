@@ -52,22 +52,23 @@ import { checkinLeaks } from "../../lib/content/leakage";
 import { capitaliseTitle, eyebrowFor } from "../../lib/content/bands";
 import { licenceMention, licenceMissingMessage } from "../../lib/content/licence";
 import type { ContentCheckin, ContentRegister } from "../../lib/data/content";
-import { redundantAgainst } from "../../lib/content/dedup";
 import { guardBank } from "../../lib/content/bank-guard";
 import {
-  asMonthPost, selectDeliverable, type Deliverable,
+  asMonthPost, selectDeliverable,
 } from "../../lib/content/month/select";
 import {
-  CANDIDATES_PER_ATTEMPT, POSTS_PER_MONTH, SPARE_POOL, USABLE_TARGET,
+  CANDIDATES_PER_ATTEMPT, POSTS_PER_MONTH, USABLE_TARGET,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- importé pour qu'il ne soit jamais redéclaré ici (the-draw-follows-the-consumption lit cet import)
+  SPARE_POOL,
   WINDOW_ROUNDS, type BankDemand,
 } from "../../lib/content/bank";
 import { drawMonth } from "@/lib/content/month/draw";
 import { serverBankGuardPort, serverDrawPort, type DrawRpcClient } from "@/lib/content/month/draw-port";
 import {
-  checkMonth, checkPostAlone, writtenLinesIn, FORMAT_FAMILIES, familyOf,
-  type Finding, type PostUnderCheck,
+  checkPostAlone, writtenLinesIn, FORMAT_FAMILIES,
+  type Finding,
 } from "../../lib/content/month-checks";
-import { undecidedIn, type CompletenessVerdicts } from "../../lib/content/writing-checks";
+import { undecidedIn } from "../../lib/content/writing-checks";
 import { judgeCompleteness } from "../../lib/content/generate/completeness-judge";
 import {
   practitionerLines, identityAllowList, PRACTITIONER_CARDS_PER_MONTH,
@@ -162,10 +163,6 @@ function numberFlag(flag: string, fallback: number): number {
  * au produit, c'est le générateur entier qui n'est pas le même.
  */
 async function guardTheBank(db: ReturnType<typeof admin>, kitId: string): Promise<void> {
-  const rpc = db.rpc as unknown as (
-    n: string, a: Record<string, unknown>
-  ) => Promise<{ data: unknown; error: { message: string } | null }>;
-
   /*
    * ⚠ LA COUTURE EST PARTAGÉE, ET C'EST TOUT L'INTÉRÊT. Ces deux appels étaient
    * écrits ici ; le chemin produit aurait dû les réécrire, avec sa propre idée de

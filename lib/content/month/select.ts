@@ -1,10 +1,9 @@
 import {
   checkMonth,
-  writtenLinesIn,
   type Finding,
   type PostUnderCheck,
 } from "@/lib/content/month-checks";
-import { familyOf, FORMAT_FAMILIES } from "@/lib/content/month-checks";
+import { familyOf } from "@/lib/content/month-checks";
 import type { CompletenessVerdicts } from "@/lib/content/writing-checks";
 import type { DirectionPalette } from "@/lib/compose/palette";
 

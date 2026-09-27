@@ -83,7 +83,6 @@ const HARNESS_ORCHESTRATION = [
   "lib/content/month/compose-card.ts",
 ] as const;
 
-const HARNESS = "scripts/local-render/20-month.ts";
 /*
  * ── LE CÔTÉ PRODUIT, NOMMÉ LUI AUSSI — ET SYMÉTRIQUEMENT ────────────────
  *

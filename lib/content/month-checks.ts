@@ -1002,6 +1002,7 @@ export function checkPostAlone(post: PostUnderCheck, context: PostContext): Find
 }
 
 export function checkMonth(month: MonthUnderCheck): Finding[] {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `wanted` est retiré du contexte exprès : un post seul ne connaît pas la taille du mois
   const { posts, wanted, ...context } = month;
   return [
     ...checkAcrossPosts(month),
