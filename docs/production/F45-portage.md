@@ -502,17 +502,29 @@ la cause est désormais unique : `WriterPort` n'a aucune implémentation côté 
 
 ### Ce qui reste avant que l'abonnement se vende
 
+*Mis à jour le 2026-09-27 : les points 3 et 4 sont faits.*
+
 1. **le transport de rédaction** (F42) et **M0** — dès le 1ᵉʳ octobre ;
 2. **`judgeCompleteness` et `reviseMonth`**, les deux dernières exemptions ;
-3. **le plafond de dépense sur `WriterPort`** (F58) — un orchestrateur sans plafond
-   dépense autant que la banque a de sujets ;
-4. **l'énumération** : quelles abonnées sont dues, dans quel ordre, à quelle
-   cadence — la seule chose que la route dit encore ne pas savoir faire ;
+3. ~~le plafond de dépense sur `WriterPort`~~ — **fait** :
+   `month/spend-ceiling.ts`, deux bornes (le nombre, qui ne dépend d'aucune
+   estimation ; les dollars du mois, reprise comprise), consulté **avant** le port
+   payant, et **obligatoire** dans `OrchestrateInput` ;
+4. ~~l'énumération des abonnées dues~~ — **fait** : `month/due.ts`, abonnement actif
+   par `isEntitledToMonthlyPresence` (pas de seconde règle), quota non épuisé, un
+   mois par compte, `generating` et `failed` dus, `proposed`/`approved` jamais
+   resservis ;
 5. **F57** : décider si le dédoublonnage devient symétrique ou reste réservé à la
    construction.
 
 ### Estimation
 
-**Une session avec solde**, et elle suffit si M0 confirme le tirage : les points 1
-à 3 sont du câblage sur des modules déjà éprouvés. Le point 4 est une décision
-produit, pas du code.
+**Une session avec solde**, et elle suffit si M0 confirme le tirage. Ce qui reste
+au chemin critique se réduit à **une** chose : une implémentation de `WriterPort`.
+Tout ce qui l'entoure — préalable, tirage, composition, contrôles, crédit, journal,
+reprise, plafond, énumération — est écrit et éprouvé.
+
+⚠ **Et le recensement reste rouge pour une seule raison, qui n'est pas du code** :
+`judgeCompleteness` et `reviseMonth` demandent un appel de modèle. Tant que la
+limite d'usage tient, aucune session ne peut rendre le recensement vert, donc
+aucune ne peut lever le 501 — quel que soit le code écrit.
