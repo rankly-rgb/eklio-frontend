@@ -3470,3 +3470,91 @@ qui pouvait passer ; le second a fait annoncer un zéro inventé.
 
 La correction est la même partout : `if (read.error) throw`. Le lanceur le fait
 maintenant sur ses dix lectures.
+
+---
+
+## F58 (suite) — Le plafond est écrit, et il est obligatoire
+
+**Le 2026-09-27**, sur décision explicite : *« le plafond de dépense sur WriterPort
+est un prérequis, pas une finition. Écris-le avant le premier appel réel. »*
+
+`lib/content/month/spend-ceiling.ts`, consulté par l'orchestrateur **avant** le seul
+port qui coûte.
+
+### Deux bornes, parce qu'une seule se laisse contourner
+
+| borne | ce qu'elle tient | ce qu'elle ne tient pas |
+|---|---|---|
+| `maxTopics` | le nombre de sujets rédigés, **sans dépendre d'aucune estimation** | trente posts à dix dollars pièce |
+| `capUsd` + `estimatedCostPerPostUsd` | le total du mois, **reprise comprise** | un prix par post sous-estimé |
+
+Le nombre est testé **avant** les dollars, exprès : « la liste suit la banque » dit
+quoi corriger, « le plafond est franchi » envoie régler le plafond.
+
+### ⚠ Il compte le mois, pas l'appel
+
+Un plafond par appel se contourne en appelant deux fois, et **une reprise le fait
+par construction** : elle repart avec ce que le premier passage a payé. Le plafond
+lit donc `costUsd`, qui porte le coût du journal.
+
+### ⚠ Et il ne peut pas être oublié
+
+`ceiling` est un champ **obligatoire** de `OrchestrateInput`, sans valeur par
+défaut. C'est la leçon de F56 appliquée d'avance : un paramètre facultatif finit par
+ne pas être passé, et une valeur par défaut est un plafond hérité que personne ne
+relit. Deux tests dérivés de la source le gardent — le champ non facultatif, et le
+plafond consulté **avant** `ports.writer.write`.
+
+Un refus ferme la ligne du mois en `failed` et **rend les sujets** : refuser de
+payer en laissant la ligne en `generating` ferait attendre la praticienne
+indéfiniment et garderait ses sujets au segment quatre-vingt-dix jours.
+
+---
+
+## L'énumération des abonnées dues — tranchée le 2026-09-27
+
+> Le cron mensuel ne génère que pour les comptes dont l'abonnement est **actif** et
+> le **quota non épuisé**, un mois par compte et par mois, **idempotent sur
+> (compte, mois)**. Un compte déjà servi n'est jamais resservi, même si le cron
+> rejoue.
+
+C'était la seule chose que `app/api/cron/content-month/route.ts` disait encore ne
+pas savoir faire, depuis sa première version. `lib/content/month/due.ts`.
+
+### « Actif » n'est pas redéfini
+
+`isEntitledToMonthlyPresence` répond déjà à la question, et sa réponse est plus
+subtile qu'une comparaison de statut : un `past_due` garde son délai de grâce tant
+que sa période payée n'est pas close. Une seconde règle ici serait un second
+arbitre — la classe de F27. Un test le prouve en vérifiant précisément ce cas de
+grâce, qu'une règle réécrite à la main n'aurait pas.
+
+### Ce qui compte comme « déjà servi »
+
+| état | verdict | pourquoi |
+|---|---|---|
+| `proposed`, `approved` | **servi** | trente posts attendent sa relecture, ou elle les a validés |
+| `generating` | **dû** | c'est la ligne que le webhook Stripe pose **à l'achat** : le signal « elle a payé et attend » (F54, vu depuis l'autre bout) |
+| `failed` | **dû** | ne pas le reprendre laisserait une praticienne qui a payé sans rien ; le journal porte les réponses déjà payées, donc la reprise est peu coûteuse |
+| absent | **dû** | rien encore |
+
+⚠ **La seule fenêtre où reprendre un `failed` coûte** : passé vingt-neuf jours,
+`abandon_stale_generation_runs()` a fermé le lot, donc la reprise repaie. Le cron
+visant le mois **à venir**, cet écart ne peut apparaître qu'à un rejeu tardif — et
+le plafond de F58 le couvre. Noté plutôt que tu.
+
+### ⚠ Cette sélection ne tient PAS l'idempotence, et un test le dit
+
+Elle **sélectionne**, pour ne pas dépenser inutilement. Ce qui garantit « un mois
+par compte et par mois » est la base : `content_months_kit_month_key` est unique sur
+`(brand_kit_id, month)`, et le journal **rattache** un lot au lieu d'en créer un
+second. Deux invocations simultanées passeraient toutes deux cette sélection ; la
+seconde est refusée par la contrainte.
+
+> La courtoisie évite la dépense ; la garantie empêche le doublon. Les confondre
+> serait croire qu'un test de sélection protège d'une course.
+
+L'ordre des trois lectures compte pour le **message**, pas pour le verdict : un mois
+déjà livré a consommé son quota, donc demander le quota d'abord l'écarterait pour
+« quota épuisé » et enverrait chercher un problème de facturation là où le mois est
+simplement fait.

@@ -18,6 +18,7 @@ import type { PostContext } from "@/lib/content/month-checks";
 import type { CompletenessVerdicts } from "@/lib/content/writing-checks";
 import type { DirectionPalette } from "@/lib/compose/palette";
 import type { RenderInput } from "@/lib/compose/types";
+import { withinCeiling, type SpendCeiling } from "@/lib/content/month/spend-ceiling";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -156,6 +157,13 @@ export type OrchestrateInput = {
   practitionerCap: number;
   practitionerPayload: boolean;
   demand: PreflightInput["demand"];
+  /*
+   * ⚠ OBLIGATOIRE, ET SANS VALEUR PAR DÉFAUT (F58). Sans plafond, l'orchestrateur
+   * fait rédiger autant de sujets que la banque en porte — 1 331 tirables le
+   * 2026-09-26. Une valeur par défaut serait un plafond hérité que personne ne
+   * relit ; le compilateur exige donc que chaque appelant dise le sien.
+   */
+  ceiling: SpendCeiling;
   /* ── ce que la composition et les contrôles demandent ────────────────── */
   direction: DirectionPalette;
   paletteFor(index: number): RenderInput["palette"];
@@ -174,7 +182,7 @@ export type OrchestrateOutcome =
   | {
       ok: false;
       /** `preflight` quand le refus vient de l'étage A, sinon l'étape nommée. */
-      stage: "preflight" | "draw" | "write" | "compose" | "assemble";
+      stage: "preflight" | "draw" | "ceiling" | "write" | "compose" | "assemble";
       /** Les constats de mois qui restaient, quand c'est eux qui refusent. */
       remaining?: Array<{ check: string; detail: string }>;
       refusal: string;
@@ -326,6 +334,41 @@ export async function orchestrateMonth(
 
   const missing = topics.filter((t) => !alreadyWritten.has(t.id));
   if (missing.length > 0) {
+    /*
+     * ══════════════════════════════════════════════════════════════════════
+     *  ⚠ LE PLAFOND, AVANT LE SEUL PORT QUI COÛTE (F58)
+     * ══════════════════════════════════════════════════════════════════════
+     *
+     * Il est ici et nulle part ailleurs : c'est le dernier point du chemin où
+     * refuser ne coûte rien. Un octet plus loin, l'argent est parti — un lot est
+     * facturé à la SOUMISSION, et entre l'envoi et la première réponse il passe
+     * vingt-cinq à trente minutes.
+     *
+     * ⚠ ET IL COMPTE LE DÉJÀ-DÉPENSÉ. `costUsd` porte le coût du journal sur une
+     * reprise : un plafond qui ne regarderait que l'appel courant se contournerait
+     * en reprenant, ce qu'une panne fait toute seule.
+     */
+    const room = withinCeiling(input.ceiling, {
+      topics: missing.length,
+      spentUsd: costUsd,
+    });
+    if (!room.ok) {
+      /*
+       * ⚠ LA LIGNE DU MOIS PASSE EN `failed`, ET LES SUJETS SONT RENDUS. Un mois
+       * laissé en `generating` parce qu'on a refusé de le payer ferait attendre la
+       * praticienne indéfiniment, et garderait ses sujets au segment.
+       */
+      await ports.releaseTopics(drawnIds);
+      await ports.closeMonthRow(monthId, "failed");
+      return {
+        ok: false,
+        stage: "ceiling",
+        refusal: room.refusal,
+        costUsd,
+        nothingWritten: true,
+      };
+    }
+
     const written = await ports.writer.write({
       topics: missing,
       wanted: input.wanted,

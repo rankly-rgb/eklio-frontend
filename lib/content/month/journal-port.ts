@@ -153,8 +153,6 @@ type ResultRow = {
   settled: boolean;
 };
 
-const EMPTY_USAGE: JournalEntry["usage"] = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-
 function usageOf(raw: unknown): JournalEntry["usage"] {
   const u = (raw ?? {}) as Partial<JournalEntry["usage"]>;
   return {

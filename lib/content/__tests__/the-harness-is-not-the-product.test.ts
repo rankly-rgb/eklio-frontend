@@ -163,6 +163,19 @@ const PRODUCT_ORCHESTRATION = [
    * qu'on obtient deux arbitres.
    */
   "lib/content/month/server-ports.ts",
+  /*
+   * ⚠ LE PLAFOND EST UN PRÉREQUIS, PAS UNE FINITION (F58). Sans lui, l'orchestrateur
+   * fait rédiger autant de sujets que la banque en porte — 1 331 tirables le
+   * 2026-09-26. Il est un champ OBLIGATOIRE de `OrchestrateInput` : le compilateur
+   * exige que chaque appelant dise le sien.
+   */
+  "lib/content/month/spend-ceiling.ts",
+  /*
+   * ⚠ L'ÉNUMÉRATION, TRANCHÉE LE 2026-09-27. C'était la seule chose que la route
+   * disait encore ne pas savoir faire. Elle SÉLECTIONNE et ne garantit rien :
+   * l'unicité (compte, mois) est tenue par `content_months_kit_month_key`.
+   */
+  "lib/content/month/due.ts",
 ] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
@@ -755,6 +768,10 @@ const EXTRACTED_NOT_WIRED: Record<string, string> = {
    */
   "lib/content/month/orchestrate.ts":
     "il enchaîne les huit autres et il est éprouvé de bout en bout par une doublure de rédaction ; ce qui manque est une implémentation de WriterPort côté produit, laquelle demande un appel de modèle — le compte fournisseur est sous limite d'usage jusqu'au 2026-10-01 (F44)",
+  "lib/content/month/spend-ceiling.ts":
+    "le plafond est consulté par l'orchestrateur, qui n'a lui-même aucun appelant : il est prêt et il attend le même WriterPort que tout le reste (F58)",
+  "lib/content/month/due.ts":
+    "l'énumération choisit les comptes dus ; son appelant est la route de cron, qui reste en 501 tant que le recensement porte des exemptions — armer la sélection sans la rédaction ferait ouvrir des mois que rien ne remplit",
   "lib/content/month/server-ports.ts":
     "les quatre coutures restantes n'ont de sens qu'appelées par l'orchestrateur ; le lanceur de répétition (scripts/production-path) s'en sert déjà contre la base locale, mais un lanceur n'est pas un point d'entrée du runtime",
   "lib/content/month/compose-card.ts":

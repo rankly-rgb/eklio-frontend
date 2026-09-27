@@ -319,6 +319,16 @@ async function main() {
       practitionerCap: PRACTITIONER_CARDS_PER_MONTH,
       practitionerPayload: false,
       demand: DEMAND,
+      /*
+       * ⚠ LE PLAFOND EST DIT PAR LE LANCEUR, PAS HÉRITÉ (F58). La rédaction est
+       * rejouée donc rien ne se dépense — mais un lanceur qui n'aurait pas eu à
+       * l'écrire serait un lanceur qui ne le poserait pas le jour où il dépense.
+       *
+       * Les chiffres viennent des deux mois livrés du 2026-09-26 : 0,5612 $ et
+       * 0,5868 $ pour 102 candidats, soit 0,0056 $ par candidat. Le plafond à 2 $
+       * laisse trois essais complets et refuse un quatrième.
+       */
+      ceiling: { capUsd: 2, estimatedCostPerPostUsd: 0.006, maxTopics: CANDIDATES_PER_ATTEMPT },
       direction: palette as never,
       paletteFor: (i) => cardPalette(`${TARGET_MONTH}-${i}`, palette as never, false),
       practiceName,
@@ -445,6 +455,16 @@ async function main() {
       practitionerCap: PRACTITIONER_CARDS_PER_MONTH,
       practitionerPayload: false,
       demand: DEMAND,
+      /*
+       * ⚠ LE PLAFOND EST DIT PAR LE LANCEUR, PAS HÉRITÉ (F58). La rédaction est
+       * rejouée donc rien ne se dépense — mais un lanceur qui n'aurait pas eu à
+       * l'écrire serait un lanceur qui ne le poserait pas le jour où il dépense.
+       *
+       * Les chiffres viennent des deux mois livrés du 2026-09-26 : 0,5612 $ et
+       * 0,5868 $ pour 102 candidats, soit 0,0056 $ par candidat. Le plafond à 2 $
+       * laisse trois essais complets et refuse un quatrième.
+       */
+      ceiling: { capUsd: 2, estimatedCostPerPostUsd: 0.006, maxTopics: CANDIDATES_PER_ATTEMPT },
       direction: palette as never,
       paletteFor: (i) => cardPalette(`${resumeMonth}-${i}`, palette as never, false),
       practiceName,

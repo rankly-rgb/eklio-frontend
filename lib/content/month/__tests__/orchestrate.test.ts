@@ -241,6 +241,12 @@ const input = (over: Record<string, unknown> = {}) => ({
   intentCatalogue: [{ id: "behind_the_practice", label: "Behind the practice" }],
   modalities: [] as string[],
   completeness: {},
+  /*
+   * ⚠ LARGE EXPRÈS DANS LES FIXTURES, et éprouvé à part. Un plafond serré ici
+   * ferait échouer des tests qui parlent d'autre chose, et on le desserrerait sans
+   * y penser — c'est ainsi qu'un plafond devient décoratif.
+   */
+  ceiling: { capUsd: 10, estimatedCostPerPostUsd: 0.006, maxTopics: 100 },
   ...over,
 });
 
@@ -649,5 +655,96 @@ describe("deux posts le même jour se comptent", () => {
     expect(out.ok).toBe(true);
     if (!out.ok) return;
     expect(out.month.dateCollisions).toBe(0);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  F58 — LE PLAFOND REFUSE AVANT QUE LA RÉDACTION SOIT APPELÉE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Sans lui, l'orchestrateur fait rédiger autant de sujets que la banque en porte.
+ * Ce qui est éprouvé ici est une ABSENCE D'APPEL : le port de rédaction ne doit pas
+ * avoir été touché, et la ligne du mois ne doit pas rester en « en cours ».
+ */
+describe("F58 — le plafond borne la rédaction", () => {
+  it("trop de sujets : rien n'est rédigé, et le refus nomme le nombre", async () => {
+    const w = world({ stock: 4 });
+    const out = await orchestrateMonth(
+      w.ports,
+      input({ ceiling: { capUsd: 10, estimatedCostPerPostUsd: 0.006, maxTopics: 2 } })
+    );
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.stage).toBe("ceiling");
+    expect(out.costUsd, "de l'argent dépensé alors que le plafond refusait").toBe(0);
+    expect(w.writer.write, "la rédaction a été appelée malgré le plafond").not.toHaveBeenCalled();
+    expect(w.inserted).toEqual([]);
+    expect(w.reserved).toEqual([]);
+    expect(out.refusal).toMatch(/plafond de 2\b/);
+  });
+
+  it("plafond en dollars atteint : rien n'est rédigé non plus", async () => {
+    const w = world({ stock: 4 });
+    const out = await orchestrateMonth(
+      w.ports,
+      input({ ceiling: { capUsd: 0.001, estimatedCostPerPostUsd: 0.006, maxTopics: 100 } })
+    );
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.stage).toBe("ceiling");
+    expect(w.writer.write).not.toHaveBeenCalled();
+  });
+
+  /*
+   * ⚠ ET LE MOIS NE RESTE PAS « EN COURS ». Refuser de payer et laisser la ligne en
+   * `generating` ferait attendre la praticienne indéfiniment, et garderait ses
+   * sujets au segment pendant quatre-vingt-dix jours.
+   */
+  it("la ligne du mois est fermée et les sujets rendus", async () => {
+    const w = world({ stock: 4 });
+    await orchestrateMonth(
+      w.ports,
+      input({ ceiling: { capUsd: 10, estimatedCostPerPostUsd: 0.006, maxTopics: 1 } })
+    );
+    expect(w.months[0].status).toBe("failed");
+    expect(w.released.flat().length, "les sujets restent volés au segment").toBeGreaterThan(0);
+  });
+
+  /*
+   * ⚠ UNE REPRISE COMPTE LE DÉJÀ-DÉPENSÉ. Un plafond qui ne regarderait que l'appel
+   * courant se contournerait en reprenant — ce qu'une panne fait toute seule.
+   */
+  it("une reprise ne repart pas avec un plafond neuf", async () => {
+    const w = world();
+    w.journal.runs.push({
+      id: "run-1",
+      brand_kit_id: KIT,
+      month: MONTH,
+      batch_id: "batch-abc",
+      state: "submitted",
+      cost_usd: 0.95,
+    });
+    w.journal.results.push(
+      { id: "r1", run_id: "run-1", topic_id: "t1", result: written(1), usage: {}, settled: true },
+      { id: "r3", run_id: "run-1", topic_id: "t3", result: null, usage: {}, settled: false }
+    );
+    const out = await orchestrateMonth(
+      w.ports,
+      input({ ceiling: { capUsd: 1, estimatedCostPerPostUsd: 0.1, maxTopics: 100 } })
+    );
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.stage).toBe("ceiling");
+    expect(out.refusal, "le refus ignore ce que la reprise a déjà payé").toContain("0.9500");
+    expect(w.writer.write).not.toHaveBeenCalled();
+  });
+
+  it("un plafond large laisse passer, et le mois sort", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    if (!out.ok) return;
+    expect(out.month.written).toBe(3);
   });
 });
