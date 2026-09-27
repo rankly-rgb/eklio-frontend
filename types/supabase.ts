@@ -2959,6 +2959,7 @@ export type Database = {
           id: string
           status: string
           stripe_price_id: string | null
+          stripe_event_at: string | null
           stripe_subscription_id: string
           trial_end: string | null
           trial_extensions: number
@@ -2978,6 +2979,7 @@ export type Database = {
           id?: string
           status: string
           stripe_price_id?: string | null
+          stripe_event_at?: string | null
           stripe_subscription_id: string
           trial_end?: string | null
           trial_extensions?: number
@@ -2997,6 +2999,7 @@ export type Database = {
           id?: string
           status?: string
           stripe_price_id?: string | null
+          stripe_event_at?: string | null
           stripe_subscription_id?: string
           trial_end?: string | null
           trial_extensions?: number

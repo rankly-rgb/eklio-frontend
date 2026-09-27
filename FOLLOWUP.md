@@ -3558,3 +3558,52 @@ L'ordre des trois lectures compte pour le **message**, pas pour le verdict : un 
 déjà livré a consommé son quota, donc demander le quota d'abord l'écarterait pour
 « quota épuisé » et enverrait chercher un problème de facturation là où le mois est
 simplement fait.
+
+---
+
+## F60 — ⚠ Les trois mois de Signature étaient lus comme un essai gratuit : F54, réel
+
+**Trouvé le 2026-09-27 en JOUANT le parcours Stripe** (`scripts/stripe-path/play.ts`)
+contre la vraie route, la vraie signature et la base rejouée.
+
+F54 avait accordé le préalable et le webhook sur le statut `generating`. Le parcours
+joué montre que les deux bouts ne s'accordaient toujours pas, **par le quota** :
+l'abonnement des mois inclus est un essai Stripe (`trial_period_days: 90`),
+`credit_plan_for` rend `trial` pour tout `trialing`, et `credit_quotas(trial,
+post_generation)` vaut **8**. L'énumération réelle écartait le kit :
+`quota_exhausted — 8 restant(s) pour 30 promis`. Le préalable aurait fait de même.
+
+Chaque bout avait son test vert ; l'énumération n'avait même **aucun port réel**.
+
+**Corrigé** : `20260927100000` (un Signature entitling rend le plan `standard`), et
+`serverDuePort`, qui câble `selectDueMonths` sur la base en choisissant **le même
+kit** que `queueFirstContentMonth`. Détail et requêtes : `B5-stripe.md` §6.1.
+
+## F61 — Un event d'abonnement en retard réécrivait l'état
+
+Stripe ne garantit pas l'ordre ; le webhook faisait un `upsert` aveugle. Un
+`updated` ancien après le `deleted` rouvrait une résiliée ; un `created`
+(incomplete) après l'`updated` (active) coupait une cliente qui vient de payer.
+**Corrigé** par `20260927110000` (`stripe_event_at`, états terminaux), la ligne
+gardée plutôt que refusée. ⚠ Migration **avant** le code au déploiement.
+
+## F62 — ⚠ OUVERT : un kit acheté avec Monthly Presence reste ouvert après remboursement
+
+Case cochée → checkout en mode `subscription` → `payment_intent: null` → l'achat
+n'a pas de clé que `charge.refunded` sache retrouver. Non corrigé sans un vrai
+appel à Stripe (`B5-stripe.md` §6.3 : ce qu'il faut relever, et deux options sûres
+d'ici là).
+
+## F63 — Quatre fonctions SECURITY DEFINER ouvertes à `anon`, et deux tests SQL rouges depuis deux jours
+
+`local-verify.sh` rendait **3 échecs** sur la branche : la fonction de trigger de
+20260924150000 exécutable par un client, et un compte de catalogue écrit en
+littéral (8) resté faux depuis l'ajout d'`overhead`. Le premier bloquait le test de
+surface **avant** son assertion suivante, qui nommait quatre fonctions ouvertes à
+`anon` : `credit_remaining` (le quota de n'importe quel compte),
+`drawable_count_for_kit`, `drawable_topics_for_kit`, `release_stale_topic_assignments`.
+
+Même cause partout : `revoke … from public` ne retire pas l'EXECUTE que Supabase
+accorde **explicitement** à `anon` et `authenticated`. Corrigé par 20260927090000 et
+20260927120000. La répétition à blanc ne lance pas la suite SQL : elle affichait
+0 échec pendant que la suite en comptait trois.

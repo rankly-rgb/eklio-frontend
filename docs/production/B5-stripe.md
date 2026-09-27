@@ -1,13 +1,23 @@
 # Stripe — la fiche de bout en bout
 
-⚠ **Jamais exécuté, ni en test ni en production.** Ce n'est pas « à
-revérifier » : c'est « jamais fait ». C'est aussi le seul chemin qui encaisse de
-l'argent.
-
-**Objectif de cette fiche : ramener l'heure et demie à une demi-heure de gestes
-mécaniques.** Tout ce qui pouvait être établi sans appeler Stripe l'a été — les
-variables, les montants, les tables touchées, les requêtes de vérification. Ce
-qui reste est le parcours dans le navigateur.
+> **⚠ JOUÉ LE 2026-09-27 — EN PARTIE, ET LA PARTIE EST NOMMÉE.**
+>
+> `scripts/stripe-path/play.ts` joue le parcours contre **la vraie route**
+> (`next dev`), **la vraie vérification de signature** (`constructEventAsync`,
+> HMAC sur les octets reçus) et **la vraie base** (PostgREST + les RPC, sur les
+> 162 migrations rejouées). Résultat : `B5-parcours-resultat.txt`, **0 échec,
+> 1 défaut ouvert**.
+>
+> Ce qui n'a PAS été joué : tout ce qui parle aux serveurs de Stripe.
+> `api.stripe.com` était refusé par la politique réseau du bac à sable (403 au
+> CONNECT) — la clé de test était là, le chemin non. Donc : création de la
+> session de checkout, paiement dans le navigateur, `subscriptions.retrieve`,
+> la création chez Stripe des trois mois inclus, un remboursement émis par
+> Stripe. Les événements ont été construits à la forme de l'API ; **§2 ci-dessous
+> est ce qui reste, et c'est désormais un contrôle, pas une découverte.**
+>
+> **Le premier passage a rendu 8 échecs.** Cinq étaient la fiche qui se
+> trompait, trois étaient le produit — dont un cas F54 réel. Tout est en §6.
 
 ---
 
@@ -45,19 +55,13 @@ trois paliers ponctuels — plus l'abonnement.
 | `STRIPE_PRICE_FILL_SOLO` | 59 $ | ✗ | non |
 | `STRIPE_PRICE_FILL_PRACTICE` | 69 $ | ✗ | non |
 
-**`foundation` et `roster` sont le point à traiter.** `kitTierSchema` est un
-`z.enum(KIT_TIERS)` et `KIT_TIERS` porte les cinq paliers ; l'action de checkout
-accepte donc `tier: "foundation"`, puis `requireEnv("STRIPE_PRICE_FOUNDATION")`
-lève. Ce n'est **pas** une fuite d'argent — rien n'est débité — mais c'est un
-500 non géré sur un point d'entrée de paiement. Deux réponses possibles :
-
-1. **poser les deux variables** dans Stripe et dans `.env.example`, si les
-   paliers sont destinés à la vente ;
-2. **restreindre le schéma de l'action** à `LEGACY_KIT_TIERS`, si non.
-
-⚠ La seconde est la bonne tant que la page de tarifs ne les montre pas. Un
-palier achetable par requête et invisible à l'écran est un palier dont personne
-ne connaît le prix.
+**`foundation` et `roster` : ⚠ DÉJÀ TRAITÉ, cette section était périmée.**
+`app/app/checkout/actions.ts` valide `tier` par `sellableKitTierSchema`, et
+`createCheckoutSession` relit `plans.sellable` en base (`refuseIfUnsellable`) :
+`foundation` et `roster` y valent `false`. Une requête forgée reçoit l'erreur
+générique, pas un 500. Vérifié le 2026-09-27 :
+`select tier, sellable from plans` → les trois vendables sont
+`starter`, `practice`, `signature`.
 
 Les quatre derniers vivent dans `lib/billing/offer.ts`, **que rien n'importe** :
 de la configuration morte. Ne pas les poser.
@@ -69,168 +73,131 @@ de la configuration morte. Ne pas les poser.
 | `stripe_events` | le **verrou d'idempotence** : une clé primaire sur `stripe_event_id` |
 | `profiles.stripe_customer_id` | la correspondance customer → utilisateur |
 | `purchases` | la ligne d'achat |
-| `purchase_status_events` | chaque transition de statut, via `record_purchase_status_event` |
+| `purchase_status_events` | les transitions **APRÈS** l'achat (remboursement, litige) — ⚠ **vide à l'achat** : c'est le comportement correct, pas un oubli |
 | `subscriptions` | l'abonnement |
-| `plan_grants` | l'allocation du palier, avec sa propre clé d'idempotence (`grant_key`) |
-| `generation_credits` | `has_paid`, et les compteurs de génération du palier |
+| `plan_grants` | l'allocation du palier ; `grant_key` = **l'id de la session de checkout** (`cs_…`) depuis le 2026-09-27 |
+| `generation_credits` | `plan_tier` = le palier, compteurs remis à zéro — ⚠ **`has_paid` n'est PAS écrit** et rien ne le lit |
 
 Les deux derniers sont écrits par
 `grant_plan_allowance(p_project_id, p_tier, p_grant_key)` — **une RPC, deux
-tables**. Une allocation à moitié posée est le cas qu'on ne pense pas à
-vérifier.
+tables**. Le septième objet, pour tout abonnement, est `content_months` : la
+ligne du mois suivant en `generating`, posée par `customer.subscription.created`
+quand `CONTENT_GENERATION_ARMED=true` (F54).
 
 ---
 
-## 1 · Avant de commencer — cinq minutes
+## 1 · Avant de commencer — dix minutes, une fois
 
-- [ ] **mode test Stripe**, projet Supabase de **développement**. Jamais le
+- [ ] **mode test Stripe**, base **locale** (`eklio_local_verify`). Jamais le
       projet US de production.
-- [ ] les **sept** variables déclarées sont posées dans `.env.local` (0.2).
-- [ ] `stripe listen --forward-to localhost:3000/api/stripe/webhook` tourne, et
-      son `whsec_…` est dans `STRIPE_WEBHOOK_SECRET`.
-- [ ] noter l'`user_id` du compte de test : toutes les requêtes en dépendent.
-
-```sql
--- pose-le une fois, les requêtes suivantes le réutilisent
-\set uid '<user_id>'
-```
-
----
-
-## 2 · Le parcours — vingt minutes
-
-### 2.1 Acheter Signature (249 $)
-
-- [ ] cliquer l'achat sur la page de tarifs, payer avec `4242 4242 4242 4242`
-
-**Ce qui doit se produire**, dans cet ordre :
-
-```sql
--- a) le verrou d'idempotence porte l'event
-select stripe_event_id, type, processed_at
-  from stripe_events order by processed_at desc limit 5;
--- attendu : checkout.session.completed, processed_at non nul
-
--- b) le customer est relié
-select stripe_customer_id from profiles where id = :'uid';
--- attendu : cus_…
-
--- c) l'achat est enregistré, au bon montant
-select tier, kind, amount_cents, currency, status, paid_at
-  from purchases where user_id = :'uid' order by created_at desc limit 1;
--- attendu : signature | … | 24900 | usd | paid (ou l'équivalent) | non nul
--- ⚠ 24900, PAS 249. Une confusion dollars/cents ici se voit sur la facture.
-
--- d) la transition de statut est tracée
-select previous_status, new_status, event_type, amount_cents
-  from purchase_status_events
- where purchase_id = (select id from purchases where user_id = :'uid'
-                       order by created_at desc limit 1)
- order by occurred_at;
--- attendu : au moins une ligne, new_status cohérent avec (c)
-
--- e) l'allocation du palier est ouverte — DEUX tables, pas une
---    `grant_plan_allowance` écrit `plan_grants` ET `generation_credits`.
-with p as (select project_id from purchases where user_id = :'uid'
-            order by created_at desc limit 1)
-select 'plan_grants' as t, tier, grant_key, granted_at::text as detail
-  from plan_grants where project_id = (select project_id from p)
-union all
-select 'generation_credits', plan_tier, has_paid::text,
-       directions_generated || ' directions, ' || regenerations_used || ' régénérations'
-  from generation_credits where project_id = (select project_id from p);
--- attendu : une ligne plan_grants au bon palier ET has_paid = true
--- ⚠ `grant_key` EST LA CLÉ D'IDEMPOTENCE DE L'ALLOCATION, distincte de celle
---    du webhook : un rejeu ne doit pas ouvrir deux fois le même palier.
-```
-
-- [ ] `/app` montre le palier acheté **sans rechargement forcé**
-
-### 2.2 L'abonnement Monthly Presence
-
-- [ ] acheter l'add-on (ou le laisser coché)
-
-```sql
-select stripe_subscription_id, stripe_price_id, status, active,
-       current_period_end, cancel_at_period_end, trial_end
-  from subscriptions where user_id = :'uid';
--- attendu : status actif, active = true, current_period_end dans le futur
-```
-
-⚠ **`trial_end` peut être non nul** : l'offre inclut trois mois. Ce n'est pas
-une anomalie — voir `INCLUDED_MONTHLY_PRESENCE_COPY`.
-
-### 2.3 Rembourser
-
-- [ ] depuis Stripe → le paiement → **Rembourser**
-
-```sql
-select new_status, event_type, amount_cents, occurred_at
-  from purchase_status_events
- where purchase_id = (select id from purchases where user_id = :'uid'
-                       order by created_at desc limit 1)
- order by occurred_at;
--- attendu : une ligne de plus, event_type = charge.refunded
-select status from purchases where user_id = :'uid' order by created_at desc limit 1;
--- attendu : remboursé, PAS supprimé
-```
-
-### 2.4 Annuler l'abonnement
-
-- [ ] depuis Stripe → l'abonnement → **Annuler à la fin de la période**
-
-```sql
-select status, active, cancel_at_period_end, current_period_end
-  from subscriptions where user_id = :'uid';
--- attendu : cancel_at_period_end = true, current_period_end INCHANGÉ
--- ⚠ L'ACCÈS SE FERME À LA FIN DE PÉRIODE, PAS À L'INSTANT. Elle a payé le mois.
-```
-
----
-
-## 3 · Les deux qu'on oublie, et ce sont les deux qui coûtent — cinq minutes
-
-### 3.1 Le rejeu
-
-Stripe rejoue un event tant qu'il n'a pas reçu de 2xx. Un traitement non
-idempotent facture deux fois.
-
-- [ ] dans Stripe → Événements → le `checkout.session.completed` → **Renvoyer**
-
-```sql
--- l'event ne doit apparaître QU'UNE FOIS
-select stripe_event_id, count(*) from stripe_events
- group by 1 having count(*) > 1;
--- attendu : zéro ligne
-
--- et l'achat ne doit pas s'être dédoublé
-select count(*) from purchases where user_id = :'uid';
--- attendu : le même nombre qu'avant le renvoi
-```
-
-⚠ **Le verrou est `recordEvent`, et il a un contrepoids.** Si le traitement
-échoue APRÈS l'enregistrement, `forgetEvent` retire la ligne : sans cela, le
-rejeu verrait « déjà traité » et laisserait un paiement encaissé sans droit
-accordé. **On préfère un rejeu de trop à un droit perdu.** Pour l'éprouver, il
-faut faire échouer le traitement — c'est un test de code, pas de parcours, et il
-existe (`lib/stripe/__tests__/`).
-
-### 3.2 La signature invalide
-
-Une route qui accepte une signature invalide accorde un abonnement que personne
-n'a payé.
+- [ ] dans le tableau de bord Stripe **test** : quatre prix — 79 $, 149 $, 249 $
+      ponctuels, 39 $/mois récurrent. Noter les quatre `price_…`.
+- [ ] la base et la façade :
 
 ```sh
-curl -i -X POST http://localhost:3000/api/stripe/webhook \
-  -H 'stripe-signature: t=1,v1=deadbeef' \
-  -H 'content-type: application/json' \
-  -d '{"id":"evt_forged","type":"checkout.session.completed","data":{"object":{}}}'
+bash ../eklio-backend/scripts/local-verify.sh      # 0 FAILED ; le code 1 final est la dérive attendue
+bash scripts/local-render/edge/up.sh
+sudo -u postgres psql -f scripts/stripe-path/setup.sql
 ```
 
-- [ ] réponse **400**
-- [ ] `select count(*) from stripe_events where stripe_event_id = 'evt_forged';` → **0**
+- [ ] `stripe listen --forward-to localhost:3000/api/stripe/webhook` ; copier le
+      `whsec_…` qu'il imprime.
+- [ ] `next dev`, la clé **passée par la commande**, jamais écrite :
+
+```sh
+. /tmp/eklio-edge/keys.env
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON" \
+SUPABASE_SERVICE_ROLE_KEY="$SERVICE" STRIPE_SECRET_KEY="$EKLIO_STRIPE_TEST_KEY" \
+STRIPE_WEBHOOK_SECRET=whsec_… STRIPE_PRICE_STARTER=price_… STRIPE_PRICE_PRACTICE=price_… \
+STRIPE_PRICE_SIGNATURE=price_… STRIPE_PRICE_MONTHLY_PRESENCE=price_… \
+CONTENT_GENERATION_ARMED=true npx next dev
+```
+
+⚠ `CONTENT_GENERATION_ARMED=true` n'ouvre ici que la **mise en file** du mois
+(`queue.ts`) : aucune clé de modèle n'est posée, la route `cron` reste en 501.
 
 ---
+
+## 2 · Le parcours automatique — deux minutes, sans Stripe
+
+```sh
+WHSEC=whsec_… npx tsx scripts/stripe-path/play.ts
+```
+
+Attendu : `✓ AUCUN ÉCHEC`, et **une** ligne `⚠ OUVERT` (§6.3). Il couvre,
+contre la vraie route et la vraie base :
+
+| | ce qui est éprouvé |
+|---|---|
+| 1 | un achat par palier vendable, les sept objets chacun |
+| 1b | Signature : l'abonnement des mois inclus, `trialing` |
+| 2 | Monthly Presence seul, l'abonnement arrivé **avant** la session |
+| 3 | **F54** : `generating` posé par le webhook, **dû** pour `selectDueMonths` câblé sur la base, puis `already_served` une fois `proposed` |
+| 4 | le rejeu (même id) ; le même event deux fois **en parallèle** ; deux events de succès pour une session |
+| 5 | quatre signatures refusées : inventée, mauvais secret, horodatage d'une heure, corps modifié |
+| 6 | le désordre : un `updated` ancien après le `deleted` ; un `created` (incomplete) après l'`updated` (active) |
+| 7 | le remboursement ; et le remboursement d'un panier Starter + Monthly Presence |
+
+---
+
+## 3 · Ce qui reste à la main — un CONTRÔLE, quinze minutes
+
+Tout ce qui suit est ce que le parcours automatique **n'a pas pu** jouer : le
+dialogue avec les serveurs de Stripe. Chaque ligne dit ce qu'on regarde et ce
+qu'on doit voir. Les requêtes de §2.1 ci-dessous restent valides.
+
+- [ ] **Signature, dans le navigateur** (`4242 4242 4242 4242`). Dans le
+      terminal `stripe listen` : `checkout.session.completed` puis
+      `customer.subscription.created` **200**. En base :
+      `select status, trial_end from subscriptions where user_id = :'uid'` →
+      `trialing`, `trial_end` à J+90. ⚠ **Et aucune ligne
+      `trois mois inclus NON accordés` dans le log** — c'est l'appel
+      `subscriptions.create` que le bac à sable n'a pas pu faire.
+- [ ] **Starter avec la case Monthly Presence cochée.** Noter ce que
+      `checkout.session.completed` porte en `payment_intent` (attendu : `null`)
+      et en `invoice`. **Puis rembourser** depuis Stripe et regarder la réponse
+      au `charge.refunded` : c'est le défaut ouvert §6.3 ; on veut savoir quel
+      champ de la charge permet de retrouver l'achat.
+- [ ] **Monthly Presence seul.** `checkout.session.completed` répond
+      `ignored — métadonnées de session illisibles` : **c'est normal**, la
+      session n'a pas de palier ; l'abonnement vient de
+      `customer.subscription.created`.
+- [ ] **Annuler à la fin de la période** depuis Stripe :
+      `cancel_at_period_end = true`, `current_period_end` **inchangé**.
+- [ ] **Renvoyer** un event depuis Stripe → Événements → **Renvoyer** : réponse
+      `duplicate`.
+
+Si ces cinq lignes sont conformes, le chemin de paiement est vérifié en test.
+
+---
+
+### 2.1 Les requêtes, pour lire les sept objets à la main
+
+```sql
+\set uid '<user_id>'
+select stripe_event_id, type, processed_at from stripe_events order by processed_at desc limit 5;
+select stripe_customer_id from profiles where id = :'uid';
+select tier, kind, amount_cents, currency, status, paid_at
+  from purchases where user_id = :'uid' order by created_at desc limit 1;
+-- ⚠ 24900, PAS 249.
+select previous_status, new_status, event_type, amount_cents
+  from purchase_status_events
+ where purchase_id = (select id from purchases where user_id = :'uid' order by created_at desc limit 1);
+-- ⚠ ZÉRO ligne à l'achat : le journal commence au remboursement.
+with p as (select project_id, stripe_checkout_session_id as cs from purchases
+            where user_id = :'uid' order by created_at desc limit 1)
+select g.tier, g.grant_key = p.cs as cle_est_la_session, c.plan_tier
+  from p join plan_grants g on g.project_id = p.project_id
+         join generation_credits c on c.project_id = p.project_id;
+-- attendu : le palier, true, le palier. (`has_paid` reste false : rien ne l'écrit, rien ne le lit.)
+select stripe_subscription_id, status, active, current_period_end, trial_end, stripe_event_at
+  from subscriptions where user_id = :'uid';
+select month, status from content_months cm join brand_kits k on k.id = cm.brand_kit_id
+  join projects pr on pr.id = k.project_id where pr.user_id = :'uid';
+-- attendu, abonnement ouvert : le mois suivant en `generating`
+select public.credit_remaining(:'uid', 'post_generation', (date_trunc('month', now()) + interval '1 month')::date);
+-- ⚠ Signature en `trialing` : remaining = 30, PAS 8 (§6.1)
+```
 
 ## 4 · Si ça ne marche pas — où chercher, dans l'ordre
 
@@ -239,7 +206,10 @@ curl -i -X POST http://localhost:3000/api/stripe/webhook \
 | le bouton d'achat rend un 500 | une variable de prix absente | le log serveur cite le NOM exact : `StripeConfigError` le porte |
 | paiement encaissé, rien en base | `STRIPE_WEBHOOK_SECRET` faux | la route rend 400 et le dit ; `stripe listen` affiche le bon `whsec_` |
 | l'event est en base, l'achat non | le traitement a levé après le verrou | chercher `forgetEvent` dans le log : si absent, la ligne d'event est restée et le rejeu l'ignorera |
-| l'achat est là, le palier pas ouvert | `grant_plan_allowance` | `plan_grants` vide → l'appeler à la main avec `(project_id, tier, grant_key)` et lire son retour ; `generation_credits.has_paid` faux → c'est la seconde moitié qui a échoué |
+| l'achat est là, le palier pas ouvert | `grant_plan_allowance` | `plan_grants` vide → l'appeler à la main avec `(project_id, tier, '<cs_…>')` et lire son retour ; `generation_credits.plan_tier` pas au palier → c'est la seconde moitié qui a échoué. ⚠ **Pas `has_paid`** : rien ne l'écrit |
+| toute la route rend 500 sur les abonnements, `PGRST204 … stripe_event_at` | le code est déployé **avant** la migration 20260927110000 | appliquer les migrations d'abord ; Stripe rejoue, rien n'est perdu |
+| Signature payé, le mois reste en `generating` | le quota lit l'essai comme gratuit | `credit_remaining` doit rendre 30 ; 8 veut dire que 20260927100000 manque (§6.1) |
+| log `trois mois inclus NON accordés` | l'appel `subscriptions.create` a échoué | poser l'abonnement à la main dans Stripe (prix Monthly Presence, `trial_period_days: 90`, métadonnées de la session) ; le webhook fera le reste |
 | `/app` ne montre rien | cache de page, pas Stripe | recharger ; si ça apparaît, c'est un défaut de revalidation, pas de paiement |
 | tout marche, `credit_month_audit` vide | **attendu** | le crédit de contenu n'est pas branché sur le chemin produit (F45) — ce n'est pas un échec de Stripe |
 
@@ -253,7 +223,7 @@ le crédit — voir F45. Ne pas chercher du côté de Stripe ce qui n'y est pas.
 
 - [ ] le même parcours, **un seul achat**, en clés de production
 - [ ] **remboursement immédiat** depuis Stripe
-- [ ] vérifier 2.3 en base
+- [ ] vérifier en base (§2.1) que l'achat passe en `refunded`
 
 ⚠ **En réel, la seule chose qui change est la clé.** Si le parcours de test est
 vert, un échec en réel est presque toujours une variable posée en portée
@@ -267,9 +237,89 @@ Stripe encaisse. Il n'ouvre pas un mois de contenu.
 
 Le recensement de F45 a montré que le chemin produit de génération n'est pas le
 générateur mesuré : un achat réussi ouvre le palier (`plan_grants`,
-`generation_credits.has_paid`) et **rien de plus**. Le mois qu'une cliente
+`generation_credits.plan_tier`), pose la ligne du mois en `generating` si la
+génération est armée, et **rien de plus**. Le mois qu'une cliente
 attend ensuite ne se génère aujourd'hui que par le harnais, à la main.
 
 Donc : cette fiche verte veut dire « l'argent rentre et le droit s'ouvre ». Elle
 ne veut pas dire « la cliente reçoit son mois ». Les deux sont nécessaires pour
 ouvrir ; ils ne sont pas le même chantier.
+
+---
+
+## 6 · Ce que le parcours joué a démenti — 2026-09-27
+
+Premier passage : **8 échecs**. Aucun n'aurait été vu sans jouer le parcours ;
+chacun avait un test unitaire vert.
+
+### 6.1 ⚠ F54, réel : les trois mois de Signature étaient lus comme un essai gratuit
+
+Le webhook posait bien le mois en `generating`. L'énumération réelle l'écartait :
+**`quota_exhausted — 8 restant(s) pour 30 promis`**. Les trois mois inclus sont
+un essai Stripe (`trial_period_days: 90`), `credit_plan_for` voyait `trialing` et
+rendait le plan `trial`, dont le quota est de 8 posts. Le préalable aurait refusé
+pour la même raison. La cliente qui paie le plus cher attendait un mois qui ne
+viendrait jamais.
+
+**Corrigé** : `20260927100000_a_paid_inclusion_is_not_a_trial.sql` — un achat
+Signature `paid` ou `partially_refunded` rend le plan `standard`. Remboursé, il
+cesse de compter. Test SQL, et le parcours §3 qui le rejoue sur la base.
+
+Et la moitié « énumération » n'avait **aucun port réel** : `selectDueMonths`
+n'était éprouvé qu'entre doublures. `serverDuePort`
+(`lib/content/month/server-ports.ts`) le câble sur la base, sur **le même kit**
+que `queueFirstContentMonth` choisit — le plus récent non supprimé.
+
+### 6.2 Le désordre rouvrait un abonnement résilié
+
+`deleted` puis un `updated` plus ancien → l'abonnement redevenait `active`.
+`updated` (active) puis `created` (incomplete) → il redescendait en `incomplete`.
+**Corrigé** : `20260927110000` — `subscriptions.stripe_event_at` porte
+`event.created`, un event plus ancien ne réécrit rien, `canceled` est terminal et
+on ne revient pas à `incomplete` sur le même `stripe_subscription_id`. La ligne
+est gardée (le trigger rend `OLD`), pas refusée : lever ferait rejouer Stripe à
+l'infini.
+
+⚠ **Ordre de déploiement** : cette migration **avant** le code. Le code déployé
+seul fait répondre 500 à tous les events d'abonnement (`PGRST204`) — rien n'est
+perdu, Stripe rejoue, mais le tableau de bord Stripe se couvre d'échecs.
+
+### 6.3 ⚠ OUVERT — Starter ou Practice acheté AVEC Monthly Presence : un remboursement ne ferme rien
+
+Case cochée, le checkout passe en mode `subscription`, et Stripe rend alors
+`payment_intent: null` sur la session : l'argent est sur la facture. L'achat est
+écrit sans `stripe_payment_intent_id`, et `charge.refunded` — clé sur le
+payment intent — répond `aucun achat pour ce payment_intent`. **Un remboursement
+ou un litige laisse le kit ouvert.**
+
+**Non corrigé, exprès.** Retrouver l'achat depuis la charge passe par la facture,
+dont la forme dépend de la version d'API (`invoice.payments` depuis 2025) : un
+correctif écrit sans pouvoir appeler Stripe se tromperait d'une façon que seul un
+vrai appel révèle — la leçon de `WriterPort`. §3, ligne 2, relève exactement le
+champ qu'il faut. D'ici là, **deux options sûres** : masquer la case (le kit
+seul, puis l'abonnement depuis `/app`), ou traiter un remboursement de ce panier
+à la main (`record_purchase_status_event`).
+
+### 6.4 Une session, deux allocations
+
+`grant_key` était l'id d'**event**. Deux events de succès distincts pour une même
+session (`completed` puis `async_payment_succeeded`, ou un envoi manuel)
+ouvraient deux allocations, et la seconde **remettait à zéro** directions et
+régénérations consommées. **Corrigé** : la clé est la session de checkout. Le cas
+que l'id d'event couvrait — un rejeu après `forgetEvent` — l'est toujours.
+
+### 6.5 La fiche se trompait cinq fois
+
+| la fiche disait | le parcours a montré |
+|---|---|
+| `purchase_status_events` : « au moins une ligne » à l'achat | **zéro** — le journal commence au remboursement ; c'est correct |
+| `generation_credits.has_paid = true` (×3) | `grant_plan_allowance` ne l'écrit pas, et **aucun code ne le lit** : c'est `plan_tier` qui compte |
+| 0.2 : `foundation`/`roster` achetables par requête forgée | déjà fermé par `sellableKitTierSchema` et `plans.sellable` |
+
+### 6.6 Ce qui a tenu du premier coup
+
+Les quatre signatures forgées (400, aucune trace) ; le rejeu (`duplicate`, rien
+de dédoublé) ; le même event **deux fois en parallèle** (un `processed`, un
+`duplicate`, une ligne) ; l'abonnement arrivé avant sa session ; le paiement
+différé (`pending` sans droit, puis `paid`) ; le remboursement complet
+(`paid → refunded`, tracé par le trigger).

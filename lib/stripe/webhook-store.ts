@@ -123,7 +123,7 @@ export function createWebhookPorts(): WebhookPorts {
       if (error) throw error;
     },
 
-    async grantPlanAllowance({ projectId, tier, stripeEventId }): Promise<void> {
+    async grantPlanAllowance({ projectId, tier, grantKey }): Promise<void> {
       /*
        * Sans projet, il n'y a rien à créditer : un checkout lancé depuis
        * `/pricing` vaut pour tous les projets du praticien, et l'allocation se
@@ -133,16 +133,17 @@ export function createWebhookPorts(): WebhookPorts {
       if (!projectId) return;
 
       /*
-       * `p_grant_key` — la clé d'idempotence. La base la fait défaut au dernier
-       * achat du projet à ce palier ; on lui passe plutôt l'id de l'event, qui
-       * couvre notre propre mode de défaillance : un handler qui jette après
-       * cet appel fait désarmer l'idempotence par `forgetEvent`, et Stripe
-       * rejoue le même event. La même clé arrête le second octroi.
+       * `p_grant_key` — la clé d'idempotence : la SESSION DE CHECKOUT. Un achat
+       * ouvre une allocation, quel que soit le nombre d'événements qui le
+       * disent. Elle couvre aussi notre propre défaillance : un handler qui jette
+       * après cet appel fait désarmer l'idempotence par `forgetEvent`, Stripe
+       * rejoue, et la même session arrête le second octroi. L'id d'event, qui
+       * servait de clé jusqu'au 2026-09-27, ne tenait QUE ce second cas.
        */
       const { error } = await supabase.rpc("grant_plan_allowance", {
         p_project_id: projectId,
         p_tier: tier,
-        p_grant_key: stripeEventId,
+        p_grant_key: grantKey,
       });
 
       if (error) throw error;
@@ -243,6 +244,7 @@ export function createWebhookPorts(): WebhookPorts {
           current_period_end: row.currentPeriodEnd,
           cancel_at_period_end: row.cancelAtPeriodEnd,
           trial_end: row.trialEnd,
+          stripe_event_at: row.eventAt,
           updated_at: new Date().toISOString(),
         },
         /*
@@ -315,10 +317,10 @@ export function createWebhookPorts(): WebhookPorts {
       }
     },
 
-    async markSubscriptionPastDue(stripeSubscriptionId): Promise<void> {
+    async markSubscriptionPastDue(stripeSubscriptionId, eventAt): Promise<void> {
       const { error } = await supabase
         .from("subscriptions")
-        .update({ status: "past_due", updated_at: new Date().toISOString() })
+        .update({ status: "past_due", stripe_event_at: eventAt, updated_at: new Date().toISOString() })
         .eq("stripe_subscription_id", stripeSubscriptionId);
 
       if (error) throw error;

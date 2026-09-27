@@ -109,6 +109,13 @@ export type SubscriptionRow = {
    * praticienne avant de la prélever, jamais à décider ce qu'elle peut ouvrir.
    */
   trialEnd: string | null;
+  /**
+   * `event.created` de l'événement qui porte cet état, en ISO. La base refuse
+   * qu'un événement plus ancien réécrive un plus récent (20260927110000) :
+   * Stripe ne garantit pas l'ordre de livraison, et un `upsert` aveugle
+   * rouvrait un abonnement résilié.
+   */
+  eventAt: string | null;
 };
 
 /*
@@ -143,15 +150,19 @@ export type WebhookPorts = {
   /**
    * Ouvre l'allocation du palier acheté.
    *
-   * Idempotente sur l'id d'event côté base : un rejeu de Stripe ne double pas
-   * ce qu'elle a payé. Appelée sur LES DEUX chemins de déverrouillage — le
+   * Idempotente sur la SESSION DE CHECKOUT côté base (`plan_grants.grant_key`) :
+   * un achat ouvre une allocation, quel que soit le nombre d'événements qui le
+   * disent. Elle était clé sur l'id d'event, et le parcours joué le 2026-09-27
+   * l'a démenti : deux événements de succès pour la même session ouvraient deux
+   * allocations, et la seconde remettait à zéro les directions et régénérations
+   * déjà consommées. Appelée sur LES DEUX chemins de déverrouillage — le
    * paiement immédiat et le paiement différé confirmé. C'est le même
    * déverrouillage, et le second a déjà été oublié une fois.
    */
   grantPlanAllowance(input: {
     projectId: string | null;
     tier: KitTier;
-    stripeEventId: string;
+    grantKey: string;
   }): Promise<void>;
   /**
    * L'achat correspondant à un PaymentIntent — LA seconde lecture.
@@ -212,7 +223,7 @@ export type WebhookPorts = {
    */
   queueFirstContentMonth(input: { userId: string }): Promise<void>;
   /** Passe l'abonnement en `past_due` sans toucher au reste de la ligne. */
-  markSubscriptionPastDue(stripeSubscriptionId: string): Promise<void>;
+  markSubscriptionPastDue(stripeSubscriptionId: string, eventAt: string): Promise<void>;
   /** Relit l'abonnement chez Stripe (statut et période à jour). */
   fetchSubscription(id: string): Promise<Stripe.Subscription | null>;
 };
@@ -315,7 +326,7 @@ function subscriptionPriceId(
 export function subscriptionRow(
   subscription: Stripe.Subscription,
   userId: string,
-  { deleted = false }: { deleted?: boolean } = {}
+  { deleted = false, eventCreated = null }: { deleted?: boolean; eventCreated?: number | null } = {}
 ): SubscriptionRow {
   return {
     userId,
@@ -333,6 +344,7 @@ export function subscriptionRow(
     trialEnd: subscription.trial_end
       ? new Date(subscription.trial_end * 1000).toISOString()
       : null,
+    eventAt: eventCreated ? new Date(eventCreated * 1000).toISOString() : null,
   };
 }
 
@@ -373,7 +385,7 @@ async function handleCheckoutSession(
     | "checkout.session.completed"
     | "checkout.session.async_payment_succeeded"
     | "checkout.session.async_payment_failed",
-  eventId: string
+  eventCreated: number
 ): Promise<WebhookOutcome> {
   const metadata = parseCheckoutMetadata(
     session.metadata as Record<string, string> | null
@@ -446,7 +458,7 @@ async function handleCheckoutSession(
     await ports.grantPlanAllowance({
       projectId: metadata.projectId,
       tier: metadata.tier,
-      stripeEventId: eventId,
+      grantKey: session.id,
     });
 
     /*
@@ -482,7 +494,7 @@ async function handleCheckoutSession(
   if (subscriptionId) {
     const subscription = await ports.fetchSubscription(subscriptionId);
     if (subscription) {
-      await ports.upsertSubscription(subscriptionRow(subscription, userId));
+      await ports.upsertSubscription(subscriptionRow(subscription, userId, { eventCreated }));
     }
   }
 
@@ -520,7 +532,7 @@ async function handleCheckoutSession(
      * arrive, par `subscriptionRow()`.
      */
     if (included) {
-      await ports.upsertSubscription(subscriptionRow(included, userId));
+      await ports.upsertSubscription(subscriptionRow(included, userId, { eventCreated }));
     }
   }
 
@@ -555,6 +567,7 @@ async function handleSubscriptionChange(
   await ports.upsertSubscription(
     subscriptionRow(subscription, userId, {
       deleted: event.type === "customer.subscription.deleted",
+      eventCreated: event.created,
     })
   );
 
@@ -591,7 +604,8 @@ async function handleSubscriptionChange(
 
 async function handleInvoiceFailed(
   ports: WebhookPorts,
-  invoice: Stripe.Invoice
+  invoice: Stripe.Invoice,
+  eventCreated: number
 ): Promise<WebhookOutcome> {
   const type = "invoice.payment_failed";
 
@@ -620,7 +634,7 @@ async function handleInvoiceFailed(
    * `customer.subscription.updated` avec l'état définitif (`unpaid`,
    * `canceled`, ou de nouveau `active` après une relance réussie).
    */
-  await ports.markSubscriptionPastDue(subscriptionId);
+  await ports.markSubscriptionPastDue(subscriptionId, new Date(eventCreated * 1000).toISOString());
 
   return { status: "processed", type };
 }
@@ -875,7 +889,7 @@ export async function processStripeEvent(
           ports,
           event.data.object as Stripe.Checkout.Session,
           event.type,
-          event.id
+          event.created
         );
       case "customer.subscription.created":
       case "customer.subscription.updated":
@@ -888,7 +902,8 @@ export async function processStripeEvent(
       case "invoice.payment_failed":
         return await handleInvoiceFailed(
           ports,
-          event.data.object as Stripe.Invoice
+          event.data.object as Stripe.Invoice,
+          event.created
         );
       case "charge.refunded":
         return await handleChargeRefunded(

@@ -258,3 +258,98 @@ export function serverReleaseTopics(db: MonthRpcClient, options: { brandKitId: s
     if (error) throw new Error(`topic_assignments: ${error.message}`);
   };
 }
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  L'ÉNUMÉRATION DES DUES, CÂBLÉE SUR LA BASE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * `selectDueMonths` (`due.ts`) n'avait qu'un port de test : la décision était
+ * écrite, sa lecture de la base ne l'était pas. Le cas F54 — le webhook pose la
+ * ligne en `generating`, l'énumération doit la reconnaître comme due — ne se
+ * vérifiait donc qu'entre deux doublures qui s'accordaient par construction.
+ *
+ * ⚠ LE KIT EST CELUI QUE LE WEBHOOK A CHOISI. `queueFirstContentMonth` pose la
+ * ligne sur le kit NON SUPPRIMÉ LE PLUS RÉCENT du compte. Si l'énumération en
+ * choisissait un autre, la ligne payée resterait en `generating` pour toujours
+ * pendant qu'un second kit serait servi — les deux bouts d'accord chacun avec
+ * son test, et en désaccord entre eux. Même règle ici, et le parcours
+ * `scripts/stripe-path/` la vérifie sur la vraie base.
+ *
+ * ⚠ AUCUNE RÈGLE D'ÉLIGIBILITÉ ICI : le port rend les candidats bruts, et
+ * `isEntitledToMonthlyPresence` décide dans `due.ts`.
+ */
+type DueRead = { data: unknown; error: { message: string } | null };
+
+export type DueDbClient = {
+  from(table: string): {
+    select(columns: string): {
+      in(column: string, values: unknown[]): {
+        is(column: string, value: null): {
+          order(column: string, options: { ascending: boolean }): PromiseLike<DueRead>;
+        };
+      };
+    } & PromiseLike<DueRead>;
+  };
+};
+
+export function serverDuePort(
+  db: DueDbClient & MonthRpcClient
+): import("@/lib/content/month/due").DuePort {
+  const preflightReads = serverPreflightPort(db, { stateCode: null });
+  return {
+    async candidates() {
+      const subs = await db
+        .from("subscriptions")
+        .select("user_id, status, current_period_end, cancel_at_period_end, stripe_subscription_id");
+      if (subs.error) throw new Error(`subscriptions: ${subs.error.message}`);
+      const rows = (subs.data ?? []) as Array<{
+        user_id: string;
+        status: string;
+        current_period_end: string | null;
+        cancel_at_period_end: boolean;
+        stripe_subscription_id: string | null;
+      }>;
+      if (rows.length === 0) return [];
+
+      const kits = await db
+        .from("brand_kits")
+        .select("id, project_id, created_at, projects!inner(user_id)")
+        .in("projects.user_id", rows.map((r) => r.user_id))
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (kits.error) throw new Error(`brand_kits: ${kits.error.message}`);
+
+      /* Le plus récent par compte : la règle de `queueFirstContentMonth`. */
+      const latest = new Map<string, { id: string; project_id: string }>();
+      for (const kit of (kits.data ?? []) as Array<{
+        id: string;
+        project_id: string;
+        projects: { user_id: string } | { user_id: string }[];
+      }>) {
+        const owner = Array.isArray(kit.projects) ? kit.projects[0]?.user_id : kit.projects.user_id;
+        if (owner && !latest.has(owner)) latest.set(owner, kit);
+      }
+
+      return rows.flatMap((row) => {
+        const kit = latest.get(row.user_id);
+        if (!kit) return [];
+        return [
+          {
+            userId: row.user_id,
+            projectId: kit.project_id,
+            brandKitId: kit.id,
+            subscription: {
+              status: row.status,
+              currentPeriodEnd: row.current_period_end,
+              cancelAtPeriodEnd: row.cancel_at_period_end,
+              stripeSubscriptionId: row.stripe_subscription_id,
+            },
+          },
+        ];
+      });
+    },
+    monthStatus: preflightReads.monthStatus,
+    quotaRemaining: preflightReads.creditRemaining,
+  };
+}

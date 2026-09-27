@@ -1,0 +1,87 @@
+exécution rmujn0vrj
+
+═══ 1 · UN ACHAT PAR PALIER VENDABLE — mode payment ═══
+  ✓ trois paliers de kit vendables en base — practice, signature, starter
+  [starter] route → 200 {"status":"processed","type":"checkout.session.completed"}
+  ✓ [starter] la route rend 200 — {"status":"processed","type":"checkout.session.completed"}
+  ✓ stripe_events porte l'event
+  ✓ profiles.stripe_customer_id relié — cus_rmujn0vrj_starter
+  ✓ purchases : starter, 7900 cents, paid — {"tier":"starter","kind":"tier","amount":7900,"status":"paid"}
+  ✓ purchase_status_events : vide à l'achat (le journal commence au remboursement) — 0 ligne(s)
+  ✓ plan_grants : une allocation au palier — 1
+  ✓ generation_credits.plan_tier = starter — {"plan_tier":"starter","has_paid":false}
+  [starter] has_paid = false (la fiche attendait true)
+  [practice] route → 200 {"status":"processed","type":"checkout.session.completed"}
+  ✓ [practice] la route rend 200 — {"status":"processed","type":"checkout.session.completed"}
+  ✓ stripe_events porte l'event
+  ✓ profiles.stripe_customer_id relié — cus_rmujn0vrj_practice
+  ✓ purchases : practice, 14900 cents, paid — {"tier":"practice","kind":"tier","amount":14900,"status":"paid"}
+  ✓ purchase_status_events : vide à l'achat (le journal commence au remboursement) — 0 ligne(s)
+  ✓ plan_grants : une allocation au palier — 1
+  ✓ generation_credits.plan_tier = practice — {"plan_tier":"practice","has_paid":false}
+  [practice] has_paid = false (la fiche attendait true)
+  [signature] route → 200 {"status":"processed","type":"checkout.session.completed"}
+  ✓ [signature] la route rend 200 — {"status":"processed","type":"checkout.session.completed"}
+  ✓ stripe_events porte l'event
+  ✓ profiles.stripe_customer_id relié — cus_rmujn0vrj_signature
+  ✓ purchases : signature, 24900 cents, paid — {"tier":"signature","kind":"tier","amount":24900,"status":"paid"}
+  ✓ purchase_status_events : vide à l'achat (le journal commence au remboursement) — 0 ligne(s)
+  ✓ plan_grants : une allocation au palier — 1
+  ✓ generation_credits.plan_tier = signature — {"plan_tier":"signature","has_paid":false}
+  [signature] has_paid = false (la fiche attendait true)
+
+═══ 1b · SIGNATURE — les trois mois inclus ═══
+  ✓ sans API Stripe joignable, AUCUN abonnement n'est écrit par le checkout — 0 ligne(s) — le webhook a rendu 200 et journalisé « à poser à la main »
+  ✓ customer.subscription.created (trialing) → 200 — {"status":"processed","type":"customer.subscription.created"}
+  ✓ subscriptions : trialing, active, trial_end posé — {"status":"trialing","active":true,"trial_end":"2026-12-26T09:50:10.000Z"}
+
+═══ 2 · MONTHLY PRESENCE SEUL — abonnement, et dans le DÉSORDRE ═══
+  ✓ subscription.created AVANT checkout.session.completed → 200 — {"status":"processed","type":"customer.subscription.created"}
+  ✓ checkout.session.completed ensuite → 200 — {"status":"ignored","type":"checkout.session.completed","reason":"métadonnées de session illisibles (tier manquant)"}
+  ✓ subscriptions : active, période future — {"status":"active","active":true,"current_period_end":"2026-10-27T09:50:10.000Z"}
+  ✓ customer relié par l'abonnement
+  [mp] purchases : 0 — une session sans palier n'écrit pas d'achat (« métadonnées illisibles »)
+
+═══ 3 · F54 — LE WEBHOOK POSE generating, L'ÉNUMÉRATION LE VOIT DÛ ═══
+  ✓ [signature] le webhook a posé 2026-10-01 en generating — {"status":"generating"}
+  ✓ [mp] le webhook a posé 2026-10-01 en generating — {"status":"generating"}
+  ✓ [signature] l'énumération réelle le rend DÛ
+  ✓ [mp] l'énumération réelle le rend DÛ
+  ✓ [starter sans abonnement] absent des dus — pas candidat
+  ✓ [mp] passé en proposed → already_served — {"brandKitId":"ee98ca45-a43a-46ec-bd77-9b7e21fbe208","reason":"already_served","detail":"proposed"}
+
+═══ 4 · LE REJEU — même event, nouvelle signature ═══
+  ✓ rejeu → 200 duplicate — {"status":"duplicate","type":"checkout.session.completed"}
+  ✓ stripe_events : une seule ligne
+  ✓ purchases inchangé
+  ✓ plan_grants inchangé
+  ✓ purchase_status_events inchangé
+
+═══ 4b · LE MÊME EVENT DEUX FOIS, EN MÊME TEMPS ═══
+  ✓ deux 200, un processed et un duplicate — duplicate / processed
+  ✓ une ligne purchases
+  ✓ une ligne plan_grants
+
+═══ 4c · DEUX EVENTS DIFFÉRENTS POUR LA MÊME SESSION ═══
+  ✓ completed non payé → purchases pending, aucun droit — {"status":"pending"}
+  ✓ async_payment_succeeded → paid, une allocation — {"status":"paid"}
+  ✓ Stripe émet le même succès sous un SECOND id d'event → toujours UNE allocation — 1 allocation(s)
+  [async] directions_generated après les deux succès : 0
+
+═══ 5 · LA SIGNATURE FORGÉE ═══
+  ✓ signature inventée → 400 — 400
+  ✓ signature bien formée, mauvais secret → 400 — 400
+  ✓ bonne signature, horodatage d'il y a une heure → 400 — 400
+  ✓ corps modifié après signature → 400 — 400
+  ✓ aucune trace en base
+
+═══ 6 · LE DÉSORDRE QUI COÛTE — un abonnement annulé qui revient ═══
+  ✓ un updated plus ancien, arrivé après le deleted, ne rouvre pas l'abonnement — 200/200 → {"status":"canceled","active":false}
+  ✓ un created (incomplete) arrivé après l'updated (active) ne rétrograde pas — {"status":"active"}
+
+═══ 7 · REMBOURSEMENT ═══
+  ✓ charge.refunded → purchases refunded, trace paid→refunded — {"status":"refunded"} {"previous_status":"paid","new_status":"refunded","event_type":"charge.refunded"}
+  [combo] achat Starter+MP : {"status":"paid","stripe_payment_intent_id":null}
+  ⚠ OUVERT Starter acheté AVEC Monthly Presence, remboursé → l'accès se ferme — {"status":"ignored","type":"charge.refunded","reason":"aucun achat pour ce payment_intent" → {"status":"paid"}
+
+0 échec(s)

@@ -34,7 +34,7 @@ type Recorded = {
   pastDue: string[];
   links: { userId: string; customerId: string }[];
   transitions: StatusTransition[];
-  allowances: { projectId: string | null; tier: string; stripeEventId: string }[];
+  allowances: { projectId: string | null; tier: string; grantKey: string }[];
   /** Les demandes de trois mois offerts, dans l'ordre. */
   included: { customerId: string; checkoutSessionId: string }[];
   /** Les mises en file du premier mois de contenu, dans l'ordre. */
@@ -512,6 +512,7 @@ describe("invoice.payment_failed", () => {
   function invoiceEvent(parent: unknown, id = "evt_inv_1"): Stripe.Event {
     return {
       id,
+      created: 1790000000,
       type: "invoice.payment_failed",
       data: { object: { id: "in_test_1", object: "invoice", parent } },
     } as unknown as Stripe.Event;
@@ -1100,7 +1101,7 @@ describe("grant_plan_allowance", () => {
     await processStripeEvent(ports, checkoutEvent({}, "evt_grant_1"));
 
     expect(recorded.allowances).toEqual([
-      { projectId: PROJECT, tier: "practice", stripeEventId: "evt_grant_1" },
+      { projectId: PROJECT, tier: "practice", grantKey: "cs_test_1" },
     ]);
   });
 
@@ -1120,7 +1121,7 @@ describe("grant_plan_allowance", () => {
     await processStripeEvent(ports, settled);
 
     expect(recorded.allowances).toEqual([
-      { projectId: PROJECT, tier: "practice", stripeEventId: "evt_grant_3" },
+      { projectId: PROJECT, tier: "practice", grantKey: "cs_test_1" },
     ]);
   });
 
@@ -1134,13 +1135,18 @@ describe("grant_plan_allowance", () => {
     expect(recorded.allowances).toEqual([]);
   });
 
-  it("porte l'id de l'event — c'est sur lui que la base est idempotente", async () => {
-    const { ports, recorded } = makePorts();
+  it("porte la SESSION — un achat, une allocation, quel que soit le nombre d'events", async () => {
+    const seen = new Set<string>();
+    const { ports, recorded } = makePorts({}, seen);
     await processStripeEvent(ports, checkoutEvent({}, "evt_grant_5"));
+    const again = checkoutEvent({}, "evt_grant_6");
+    (again as { type: string }).type = "checkout.session.async_payment_succeeded";
+    await processStripeEvent(ports, again);
 
-    // Un rejeu ne doit pas doubler ce qu'elle a payé, et c'est la base qui le
-    // garantit : encore faut-il lui donner de quoi le faire.
-    expect(recorded.allowances[0].stripeEventId).toBe("evt_grant_5");
+    // Deux events distincts, donc le verrou de `stripe_events` laisse passer
+    // les deux : c'est la clé d'allocation qui doit être la même. Clé sur l'id
+    // d'event, le parcours joué le 2026-09-27 ouvrait DEUX allocations.
+    expect(recorded.allowances.map((a) => a.grantKey)).toEqual(["cs_test_1", "cs_test_1"]);
   });
 });
 
@@ -1211,6 +1217,7 @@ describe("indépendance de l'achat et de l'abonnement", () => {
 
     await processStripeEvent(ports, {
       id: "evt_ind_invoice",
+      created: 1790000000,
       type: "invoice.payment_failed",
       data: {
         object: {
