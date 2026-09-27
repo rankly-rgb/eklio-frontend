@@ -19,7 +19,10 @@ rd = lambda n: [l.rstrip("\n") for l in open(f"{work}/{n}") if l.strip()]
 main, new = rd("main.txt"), rd("new.txt")
 objs, cols, trgs, pols = rd("exp_objects.txt"), rd("exp_columns.txt"), rd("exp_triggers.txt"), rd("exp_policies.txt")
 esc = lambda s: s.replace("'", "''")
-values = lambda rows: ",\n    ".join("(" + ",".join(f"'{esc(c)}'" for c in r) + ")" for r in rows)
+# ⚠ UNE LISTE PAR LIGNE, pas une valeur par ligne : le fichier doit tenir sous
+# 100 lignes. Le collage de la version à 616 lignes s'arrêtait deux fois à la
+# ligne 100 (2026-09-27) — la copie, pas l'éditeur, qui a reçu 9068 lignes.
+values = lambda rows: ", ".join("(" + ",".join(f"'{esc(c)}'" for c in r) + ")" for r in rows)
 split = lambda f: (f.split("_", 1)[0], f.split("_", 1)[1][: -len(".sql")])
 
 all_mig = [split(f) for f in main + new]
@@ -149,6 +152,15 @@ select controle as "contrôle",
        case when bad = 0 then total || '/' || total else coalesce(detail, (total - bad) || '/' || total) end as "détail"
   from checks order by ordre;
 """
+# Repli : l'en-tête réduit à deux lignes, chaque ligne de continuation (indentée)
+# rattachée à la précédente — le SQL ignore les retours à la ligne, et le corps ne
+# porte aucun commentaire qu'un repli pourrait avaler (vérifié ci-dessous).
+import re
+head, _, body = sql.partition("\nwith\n")
+assert "--" not in body.replace("'-'", ""), "un commentaire dans le corps : le repli l'avalerait"
+sql = ("-- G — VÉRIFICATIONS, à coller APRÈS G-migrations-a-coller.sql. Lecture seule. Généré par G-generer.sh.\n"
+       "-- Une ligne par contrôle : OK ou PAS OK, et le détail. Éprouvé : 11 OK sur copie migrée, 11 PAS OK sinon.\n"
+       "with\n" + re.sub(r"\n[ \t]+", " ", body))
 text = sql
 # ⚠ LE COLLAGE SE TRONQUE SANS RIEN DIRE (constaté le 2026-09-27 : un aperçu ne
 # copiait que les 100 premières lignes). La première ligne dit donc combien il y
