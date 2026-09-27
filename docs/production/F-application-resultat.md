@@ -107,3 +107,38 @@ Rien n'a été lu ni écrit en production. Deux voies :
    session**.
 
 L'achat de contrôle d'après est écrit dans `B5-stripe.md` §5b.
+
+---
+
+## Voie G — l'éditeur SQL de Supabase (2026-09-27)
+
+Aucun environnement n'atteignant Postgres, les migrations passent par
+l'éditeur SQL du tableau de bord. Deux fichiers, régénérés et éprouvés par
+`G-generer.sh` (ne pas les éditer à la main) :
+
+| fichier | quoi |
+|---|---|
+| `G-migrations-a-coller.sql` | garde-fou, les 30 migrations chacune suivie de son inscription au registre, les droits explicites des 71 objets créés, contrôles avant commit — **une seule transaction** |
+| `G-verifications.sql` | 11 contrôles en lecture seule, OK / PAS OK et le détail |
+
+**Le rôle de l'éditeur.** Les privilèges par défaut de Supabase sont attachés à
+`postgres` : sous un autre rôle, les 19 tables créées n'auraient aucun droit pour
+l'application et les 51 fonctions seraient exécutables par PUBLIC. Le fichier
+passe donc en `postgres` pour la transaction et pose explicitement les droits des
+71 objets ; si le rôle de l'éditeur ne peut pas devenir `postgres`, il s'arrête
+sur la première ligne utile.
+
+**Éprouvé sur une copie de la production reconstruite** :
+
+| cas | résultat |
+|---|---|
+| collé en `postgres` | identique à la référence : 1396 objets, droits, propriétaires, policies, triggers, colonnes ; registre 163 |
+| collé par un rôle membre de `postgres` | identique, 0 écart |
+| collé par un rôle étranger à `postgres` | arrêt à `set local role postgres`, rien de fait |
+| une migration qui échoue au milieu | tout annulé, y compris les tables des migrations précédentes ; registre 133 |
+| collé une seconde fois | refusé : « déjà enregistrées », rien de changé |
+| vérifications, copie migrée / non migrée | 11/11 OK / 11/11 PAS OK |
+| un droit accordé à un rôle tiers / F63 rouverte à `anon` | pas de fausse alerte / signalée deux fois |
+
+**Taille : 466 Ko.** Si l'éditeur refuse un texte de cette taille, ne pas le
+découper — la transaction unique est ce qui rend l'échec sans conséquence.
