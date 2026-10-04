@@ -264,7 +264,8 @@ describe("la banque ne détient jamais les lignes d'une praticienne", () => {
    * correction qui manquait : le prompt avait changé, le validateur non.
    */
   it("le prompt de banque ne réclame aucun corps pour la carte praticienne", () => {
-    const source = readFileSync("scripts/local-render/10-topic-bank.ts", "utf8");
+    /* ⚠ La consigne a déménagé le 2026-10-04, mot pour mot, pour être partagée avec la banque OpenAI. */
+    const source = readFileSync("scripts/local-render/bank-prompt.ts", "utf8");
     const branch = source.slice(
       source.indexOf('archetypeKey === "practitioner_card"'),
       source.indexOf("archetypeInstruction(archetypeKey)")

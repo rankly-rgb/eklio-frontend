@@ -1,0 +1,86 @@
+{
+  "label": "chemin produit, base locale, OpenAI — relu par le chemin de lecture (get_content_month sous l'identité de la praticienne, reviewCardFor, render) ; palette du brief à la place des directions du kit ; SVG sans rasterisation",
+  "month": "2026-12-01",
+  "readPath": {
+    "items": 30,
+    "statuses": {
+      "proposed": 30
+    }
+  },
+  "licence": {
+    "mentionReadFromDatabase": "LMFT 123456",
+    "onFooter": 30,
+    "inEverySvg": 30
+  },
+  "cards": {
+    "composed": 30,
+    "vector": 30,
+    "slides": 38,
+    "errors": [],
+    "byArchetype": {
+      "carousel": 3,
+      "comparison_pair": 4,
+      "concentric_control": 4,
+      "surface_and_beneath": 3,
+      "numbered_strategies": 2,
+      "single_statement": 9,
+      "practitioner_card": 2,
+      "annotated_curve": 2,
+      "quadrant_model": 1
+    }
+  },
+  "checks": {
+    "month": [],
+    "alone": []
+  },
+  "ledger": {
+    "byEntry": [
+      {
+        "entry_type": "reservation",
+        "n": 30,
+        "delta": -30,
+        "actual": null
+      },
+      {
+        "entry_type": "settlement",
+        "n": 30,
+        "delta": 0,
+        "actual": 0.77271
+      }
+    ],
+    "audit": [
+      {
+        "user_id": "e05fc872-bfca-4416-b6f5-e341b8af7c4d",
+        "month": "2026-12-01T00:00:00.000Z",
+        "kind": "post_generation",
+        "reservations": "30",
+        "settlements": "30",
+        "releases": "0",
+        "cost_usd": "0.77271"
+      }
+    ],
+    "remaining": {
+      "limit": 30,
+      "month": "2026-12-01",
+      "consumed": 30,
+      "remaining": 0,
+      "unlimited": false
+    }
+  },
+  "quotaProbe": {
+    "outcome": {
+      "ok": false,
+      "reason": "quota_exhausted"
+    },
+    "ledgerRowsBefore": 60,
+    "ledgerRowsAfter": 60
+  },
+  "resume": {
+    "runState": "published",
+    "runCostUsd": 0.7727,
+    "topicsInRun": 57,
+    "topicsWrittenMoreThanOnce": [],
+    "topicsWrittenOnce": 55,
+    "reservations": 30
+  }
+}

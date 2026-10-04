@@ -70,10 +70,25 @@ export type BankVerdict = {
 export async function guardBank(
   port: BankGuardPort,
   kitId: string,
-  demand: BankDemand
+  demand: BankDemand,
+  /**
+   * Les sujets que CE mois détient déjà, par archétype — ceux d'un passage
+   * journalisé qu'on reprend.
+   *
+   * ⚠ TROUVÉ LE 2026-10-04 EN TUANT UN MOIS À MI-RÉDACTION. Les 57 sujets du
+   * passage tué restent assignés au kit, donc ne sont plus « tirables » : la
+   * garde voyait 72 sujets là où le mois en avait 129 au départ, et REFUSAIT la
+   * reprise — qui ne tire rien, puisqu'elle relit ses sujets au journal. Un mois
+   * à moitié payé restait bloqué jusqu'au balai des trois heures.
+   *
+   * Les compter comme siens fait juger la MÊME banque qu'au départ du mois : le
+   * seuil ne bouge pas, seul l'état jugé est le bon.
+   */
+  held: Record<string, number> = {}
 ): Promise<BankVerdict> {
   const released = await port.releaseStale();
-  const drawable = await port.drawableCounts(kitId);
+  const drawable = { ...(await port.drawableCounts(kitId)) };
+  for (const [archetype, n] of Object.entries(held)) drawable[archetype] = (drawable[archetype] ?? 0) + n;
   const short = bankShortfall(drawable, { ...demand, attempts: 1, rounds: 1 });
 
   const entries = Object.entries(drawable).sort((a, b) => a[1] - b[1]);

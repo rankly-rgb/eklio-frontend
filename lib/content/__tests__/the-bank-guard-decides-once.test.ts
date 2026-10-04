@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { guardBank, type BankGuardPort } from "@/lib/content/bank-guard";
-import { CANDIDATES_PER_ATTEMPT, fillTrigger, type BankDemand } from "@/lib/content/bank";
+import { CANDIDATES_PER_ATTEMPT, bankTarget, fillTrigger, type BankDemand } from "@/lib/content/bank";
 import { FORMAT_FAMILIES } from "@/lib/content/month-checks";
 
 /*
@@ -142,5 +142,37 @@ describe("le seuil est celui d'UN tour, pas la cible du segment", () => {
       .reduce((a, b) => a + b, 0);
     expect(total).toBeGreaterThan(CANDIDATES_PER_ATTEMPT);
     expect(total).toBeLessThan(CANDIDATES_PER_ATTEMPT * 2.5);
+  });
+});
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  2026-10-04 — UNE REPRISE N'EST PAS REFUSÉE PAR LA BANQUE QU'ELLE DÉTIENT
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Un mois tué à mi-rédaction garde ses 57 sujets assignés : la banque ne les
+ * compte plus comme tirables, et la garde refusait la reprise — qui ne tire
+ * rien. Les sujets détenus par CE mois sont comptés comme siens : la garde juge
+ * la banque telle qu'elle était au départ, au même seuil.
+ */
+describe("les sujets détenus par le mois repris", () => {
+  const demand = { practitioners: 1, attempts: 1, rounds: 1 };
+  const full = bankTarget(demand);
+  const heldByRun = Object.fromEntries(Object.entries(full).map(([k, n]) => [k, Math.ceil(n / 2)]));
+  const leftInBank = Object.fromEntries(Object.entries(full).map(([k, n]) => [k, n - Math.ceil(n / 2)]));
+  const bankPort = { releaseStale: async () => 0, drawableCounts: async () => ({ ...leftInBank }) };
+
+  it("sans eux, la reprise est refusée pour une pénurie qu'elle a créée", async () => {
+    expect((await guardBank(bankPort, "kit", demand)).ok).toBe(false);
+  });
+
+  it("avec eux, la même banque qu'au départ passe", async () => {
+    expect((await guardBank(bankPort, "kit", demand, heldByRun)).ok).toBe(true);
+  });
+
+  /* ⚠ ET LE SEUIL NE BOUGE PAS : détenir peu ne suffit pas à passer une banque vide. */
+  it("détenir quelques sujets ne fait pas passer une banque à sec", async () => {
+    const empty = { releaseStale: async () => 0, drawableCounts: async () => ({}) };
+    expect((await guardBank(empty, "kit", demand, { single_statement: 3 })).ok).toBe(false);
   });
 });

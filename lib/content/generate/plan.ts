@@ -3,7 +3,7 @@ import {
   type ContentCadence,
   type ContentRegister,
   type ImageArchetype,
-} from "@/lib/data/content";
+} from "@/lib/data/content-catalogue";
 
 /*
  * ── THE ORDER IS REVERSED, AND THAT IS THE WHOLE POINT ──────────────────

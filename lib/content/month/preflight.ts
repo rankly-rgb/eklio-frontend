@@ -152,6 +152,12 @@ export type PreflightInput = {
   demand: BankDemand;
   /** Combien de posts ce mois doit livrer. Par défaut `POSTS_PER_MONTH`. */
   wanted?: number;
+  /**
+   * Les sujets qu'un passage journalisé de CE mois détient déjà, par archétype.
+   * Voir `guardBank` : sans eux, une reprise est refusée pour une banque qu'elle
+   * a elle-même vidée.
+   */
+  heldByThisMonth?: Record<string, number>;
 };
 
 export type PreflightVerdict =
@@ -245,7 +251,7 @@ export async function preflight(
   }
 
   /* ── 4. la banque, et c'est elle qui écrit ──────────────────────────── */
-  const bank = await guardBank(port.bank, input.brandKitId, input.demand);
+  const bank = await guardBank(port.bank, input.brandKitId, input.demand, input.heldByThisMonth ?? {});
   if (!bank.ok) {
     return {
       ok: false,

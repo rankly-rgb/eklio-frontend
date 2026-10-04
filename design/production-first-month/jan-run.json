@@ -1,0 +1,132 @@
+{
+  "palette": {
+    "family": "clay_sand",
+    "primary": "#B4674A",
+    "secondary": "#C08A3E",
+    "light": "#F4EEE3",
+    "dark": "#2B2A27",
+    "paper": "#FAF6EE"
+  },
+  "label": "chemin produit, base locale, OpenAI — transport SQL de Bun à la place de PostgREST ; banque et compte posés par le harnais",
+  "at": "2026-10-04T14:21:57.485Z",
+  "month": "2027-01-01",
+  "model": "gpt-5.6-terra",
+  "worstCasePerPostUsd": 0.034744,
+  "sessionSpentBeforeUsd": 3.0704080000000036,
+  "sessionSpentAfterUsd": 3.7639640000000036,
+  "thisRunUsdFromMeter": 0.6935560000000001,
+  "callsThisRun": 58,
+  "usageThisRun": {
+    "input": 119666,
+    "output": 37852,
+    "cacheRead": 108459,
+    "cacheWrite": 6277
+  },
+  "writerLedger": {
+    "attempted": 48,
+    "answered": 48,
+    "conformantFirstCall": 47,
+    "repaired": 1,
+    "refused": [],
+    "fromBrief": 1,
+    "usage": {
+      "input": 110761,
+      "output": 31475,
+      "cacheRead": 108459,
+      "cacheWrite": 1999
+    },
+    "costUsd": 0.5992219999999999
+  },
+  "outcome": {
+    "ok": true,
+    "monthId": "9d04ec72-f8b3-4a98-a69d-7828584f462d",
+    "runId": "f3c0016c-b23c-4472-ad54-b4990f865cb4",
+    "costUsd": 0.6935560000000001,
+    "written": 30,
+    "resumed": {
+      "reattached": false,
+      "reused": 0,
+      "settledOnly": 0
+    },
+    "writing": {
+      "asked": 49,
+      "returned": 49,
+      "refusedInJournal": 0,
+      "stopped": null
+    },
+    "editing": {
+      "revised": 8,
+      "revisionRefused": 0,
+      "revisionSkipped": false,
+      "judged": 300,
+      "judgedAnswered": 260,
+      "judgedIncomplete": 4,
+      "costUsd": 0.094334
+    },
+    "gate": {
+      "arrived": 49,
+      "passedAlone": 44,
+      "byCheck": {
+        "text.unfinished": 3,
+        "text.acronym": 2,
+        "text.echo": 1
+      },
+      "refused": [
+        {
+          "topic": "The Competence Myth",
+          "checks": [
+            "text.unfinished",
+            "text.acronym"
+          ],
+          "detail": "« A CARE check-in » — payload.items[2].gloss s'arrête avant son sens : « can feel costly »; « A CARE check-in » — payload.items[3].gloss s'arrête avant son sens : « is worth noticing »; « A CARE check"
+        },
+        {
+          "topic": "A SAFE Off-Duty Check",
+          "checks": [
+            "text.acronym"
+          ],
+          "detail": "« An off-duty check-in » — « WIND » n'est pas une technique nommée, c'est un sigle fabriqué depuis les initiales des tuiles"
+        },
+        {
+          "topic": "Deadline Mode Isn’t Rest",
+          "checks": [
+            "text.unfinished"
+          ],
+          "detail": "« Deadline mode isn’t rest » — payload.rings[1].gloss s'arrête avant son sens : « may allow small choices »; « Deadline mode isn’t rest » — payload.rings[2].gloss s'arrête avant son sens : « can be pr"
+        },
+        {
+          "topic": "EMDR at Unwanted Crossroads",
+          "checks": [
+            "text.unfinished"
+          ],
+          "detail": "« At an unwanted crossroads » — payload.rings[2].gloss s'arrête avant son sens : « is worth noticing »"
+        },
+        {
+          "topic": "Before Bilateral Stimulation",
+          "checks": [
+            "text.echo"
+          ],
+          "detail": "payload.statement reprend la ligne de carte : « Careful pacing first »"
+        }
+      ]
+    },
+    "selection": {
+      "remaining": []
+    },
+    "inserts": {
+      "refused": [],
+      "replacements": 0
+    },
+    "creditRefusal": null,
+    "dateCollisions": 0,
+    "fallbacks": [
+      {
+        "topicId": "e9e060bd-7d2c-4b4f-888f-ef28541624d2",
+        "from": "single_statement",
+        "to": "single_statement",
+        "steps": "single_statement → single_statement (one line)"
+      }
+    ],
+    "released": 19
+  }
+}

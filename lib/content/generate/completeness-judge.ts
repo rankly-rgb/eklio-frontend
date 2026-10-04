@@ -112,9 +112,25 @@ export async function judgeCompleteness(
 
   try {
     const parsed = JSON.parse(answer.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, ""));
+    /*
+     * ⚠ LA CLEF EST RAPPROCHÉE DE LA LIGNE DEMANDÉE, PUCE RETIRÉE.
+     *
+     * Mesuré le 2026-10-04 sur le premier mois OpenAI : un lot de quarante lignes
+     * est revenu complet, JSON valide — et AUCUN verdict n'a été retenu, parce que
+     * le modèle avait recopié chaque ligne AVEC la puce « - » sous laquelle on la
+     * lui présente. Quarante lignes passaient donc non jugées, en silence ; c'est
+     * très probablement aussi ce qui a rendu « zéro ligne inachevée » sur les 352
+     * lignes de décembre.
+     *
+     * ⚠ ET SEULES LES LIGNES DEMANDÉES SONT GARDÉES. Une clef que rien ne rapproche
+     * d'une ligne soumise n'est pas un verdict sur ce mois.
+     */
+    const asked = new Set(lines);
     const verdicts: CompletenessVerdicts = {};
-    for (const [line, verdict] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof verdict === "boolean") verdicts[line] = verdict;
+    for (const [key, verdict] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof verdict !== "boolean") continue;
+      const line = [key, key.trim(), key.replace(/^\s*[-•*]\s+/, "").trim()].find((k) => asked.has(k));
+      if (line !== undefined) verdicts[line] = verdict;
     }
     return { verdicts, usage: answer.usage, costUsd: answer.costUsd };
   } catch {

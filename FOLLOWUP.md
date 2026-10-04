@@ -3893,3 +3893,109 @@ il reste à le voir tenir sur onze clefs d'archétype.
    seulement que le drapeau marche ; elle ne lève pas ce prérequis.
 3. Brancher `judgeCompleteness` et `reviseMonth`, recensement, puis seulement la route.
 4. Le mois de trente sur le chemin produit, avec la planche dans `design/production-first-month/`.
+
+---
+
+## F69 (suite) — le tarif a été transmis, le domaine reste refusé
+
+Le 2026-10-04, l'opératrice a lu sur la page officielle et transmis : `gpt-5.6-sol` 4 $ / 20 $,
+`gpt-5.6-terra` 2 $ / 12 $, `gpt-5.6-luna` 0,20 $ / 1,20 $ par MTok. Seul `gpt-5.6-terra`
+(retenu) est inscrit dans `MODEL_RATES` et daté dans `PRICE_VERIFIED_ON`.
+`developers.openai.com` reste refusé à l'agent. **Le tarif de l'entrée en cache n'a pas été
+transmis** : `CACHED_INPUT_PER_MTOK` est vide, et tous les coûts OpenAI de ce dépôt facturent
+le cache plein. Ce sont des bornes hautes (91 % de l'entrée du mois de janvier a été lue en
+cache). À lire et à inscrire : c'est le plus gros écart possible sur le coût par mois.
+
+## F70 — deux « exemples conformes » contredisent la consigne par défaut
+
+`lib/content/generate/fixtures/conforming-examples.json` : `comparison_pair#3` (trois paires)
+et `numbered_strategies#0` (quatre stratégies). `SHAPES` en demande deux et trois, et le schéma
+strict suit `SHAPES`. Ces exemples ne sont montrés que sous `CONTENT_EXAMPLES=on` (éteint) ;
+allumés, ils montreraient une forme que la sortie stricte interdit. La liste est fermée dans
+`strict-schema-follows-parse.test.ts`. Décision : retirer les deux exemples, ou faire suivre la
+consigne. Hors périmètre.
+
+## F71 — ⚠ un mois refusé rend ses sujets, et reste reprenable
+
+Sur un refus (plafond, composition, assemblage), l'orchestrateur rend les sujets tirés
+(`releaseTopics`) et ferme la ligne du mois en `failed`, mais le run reste en `collected`,
+donc reprenable. Une reprise relit ses sujets au journal et **publie des posts dont les sujets
+ne sont plus assignés**. L'exclusivité de 90 jours ne tient que par `topic_assignments` : ces
+sujets redeviennent tirables par une collègue du même État et de la même modalité, et par ce
+même kit le mois suivant.
+
+Le mois de novembre local est dans cet état ; il n'a pas été repris pour cette raison.
+`assign_topic_to_kit` ne sait pas réassigner un sujet précis.
+
+Proposition : une RPC `reassert_topic_assignment(kit, topic, month)`, qui refuse si un autre kit
+détient le sujet, appelée par la reprise avant l'assemblage ; ou passer le run en `abandoned`
+quand on rend ses sujets. Migration backend : hors périmètre.
+
+## F72 — ⚠ trois des six familles de palette échouent le contrôle de teintes
+
+`scripts/production-path/openai-month/checks/palette-tints.ts` (sans appel) :
+
+| famille | clair | sombre |
+|---|---|---|
+| clay_sand | ok | ok |
+| ochre_paper | ok | quadrant |
+| ink_blue_chalk | quadrant | quadrant |
+| olive_chalk | quadrant, cycle, concentrique | quadrant |
+| plum_bone, slate_bone | quadrant, cycle, concentrique | tous les diagrammes |
+
+Une praticienne dont la direction vient de ces familles voit ses diagrammes tomber au
+portillon (`tints.tooClose`) ; le mois ne garde que des phrases seules et tombe sur `mix.*`.
+C'est ce qui est arrivé au mois de novembre avec la palette d'épreuve de l'orchestrateur
+(25/57 au portillon). Cette même palette sert aux tests de l'orchestrateur, qui ne composent
+que des `single_statement` : aucun test ne met les teintes à l'épreuve.
+
+Je ne sais pas si les directions réelles s'écartent de leur famille ; à vérifier sur des kits
+de production. Décision de design (`cardPalette` ou palettes) : hors périmètre.
+
+## F73 — un numéro de licence saisi avec son sigle double la mention
+
+`licenceMention` compose `${abréviation} ${numéro}`. Un numéro saisi « LMFT 123456 » donne
+« LMFT LMFT 123456 » sur toutes les cartes, et **aucun contrôle ne le voit** : `checkLicence`
+vérifie seulement que la mention figure au pied, et elle y figure. Trouvé sur le mois de
+décembre local, par relecture et non par un contrôle (la donnée fautive venait de `setup.ts`,
+elle a été corrigée).
+
+À décider : normaliser le numéro à la saisie (CHECK ou formulaire), ou retirer un sigle en
+tête dans `licenceMention`.
+
+## F74 — ce que la reprise repaie quand même : les appels en vol
+
+Le journal ne repaie rien de ce qu'il a reçu. En revanche, les appels **en vol** au moment
+d'une panne (jusqu'à la concurrence moins un, soit 5) sont facturés par OpenAI, jamais reçus,
+et redemandés à la reprise. Le journal de dépense ne peut pas les voir. Ils y sont inscrits à
+leur pire coût (0,0352 $ chacun, 10 au total), et c'est une estimation, pas une mesure.
+
+Seul remède connu : le mode `background` de `/v1/responses`, dont on journalise l'id avant
+d'attendre. Mais il exige `store: true`, que le pipeline refuse délibérément (textes publiés
+sous licence). Décision : hors périmètre.
+
+## F75 — le chemin produit n'écrit pas de thèmes
+
+`serverMonthRowPort.open` pose `themes: []`, et l'orchestrateur ne dérive aucun thème
+(`deriveThemes` n'est appelé que par le harnais). Le surtitre retombe sur le catalogue
+d'intentions, ce qui marche. Mais l'écran du mois n'a pas de thèmes à afficher.
+
+## F76 — l'environnement de cette session, et ce qu'il a substitué
+
+Le registre npm (`host_not_allowed`), PyPI, Docker Hub, ghcr et ECR sont refusés. Ni
+`node_modules`, ni Next, ni le client Supabase, ni PostgREST. Ce qui a été employé à la place,
+nommé sur la planche :
+
+- **Bun** pour les tests (3 900 et plus passent ; 57 fichiers ne se chargent pas, faute de `zod`
+  ou `@supabase/*`) et pour les lanceurs ;
+- **`tsc` global** en vérification différentielle contre le commit d'origine ;
+- **PostgreSQL 16 nu**, avec une amorce minimale de `auth`, `storage` et des rôles (dans le
+  dossier de travail de la session, pas dans le dépôt) : les 177 migrations s'y appliquent ;
+- **`scripts/production-path/local-db.ts`** à la place de PostgREST.
+
+Restent **non vérifiés** dans cette session : `next build`, `npm run lint`, et les tests
+vitest non chargeables. À relancer dans un environnement où le registre npm est ouvert, avant
+toute fusion.
+
+Les 16 titres en double dans la banque (sur 129) viennent du remplissage sur deux segments
+aux mêmes intentions ; le tirage en écarte une partie (janvier : 49 tirés pour 57 demandés).

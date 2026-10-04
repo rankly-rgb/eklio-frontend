@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cardPalette } from "@/lib/compose/palette";
 import {
+  JUDGE_BATCH,
   orchestrateMonth,
   type OrchestratePorts,
   type WriterPort,
@@ -915,7 +916,8 @@ describe("le juge et la relecture sont appelés sur le mois produit", () => {
       .filter((a: TextAsk) => a.system.includes("SYNTACTICALLY COMPLETE"))
       .flatMap((a: TextAsk) => a.user.split("\n").map((l: string) => l.replace(/^- /, "")));
     expect(judgedLines.length, "ce monde ne soumet rien au juge : le test serait vide").toBeGreaterThan(0);
-    const verdicts = Object.fromEntries(judgedLines.map((l: string) => [l, false]));
+    /* ⚠ UNE seule ligne inachevée : le mois a un post de rechange, il doit l'échanger au portillon. */
+    const verdicts = { [judgedLines[0]]: false };
     const editor: TextModel = {
       ask: vi.fn(async ({ system }: TextAsk) => ({
         text: system.includes("SYNTACTICALLY COMPLETE") ? JSON.stringify(verdicts) : "{}",
@@ -925,13 +927,17 @@ describe("le juge et la relecture sont appelés sur le mois produit", () => {
     };
     const w = world({ editor });
     const out = await orchestrateMonth(w.ports, input());
-    if (out.ok) {
-      expect(out.editing.judgedIncomplete).toBeGreaterThan(0);
-      expect(out.month.written, "un verdict « inachevé » n'a rien refusé").toBeLessThan(probe.month.written);
-    } else {
-      expect(out.stage, "le mois tombe, mais pas au portillon").toBe("assemble");
-      expect(out.refusal).toMatch(/unfinished|inachev|complet/i);
-    }
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    if (!out.ok) return;
+    expect(out.editing.judgedIncomplete).toBe(1);
+    /*
+     * ⚠ ET C'EST LE PORTILLON QUI LE VOIT, pas seulement le contrôle du mois.
+     * Le contexte de ce monde ne porte pas de verdicts : c'est l'orchestrateur
+     * qui les y pose — et le post fautif est échangé contre le remplaçant.
+     */
+    expect(out.month.gate.refused.length, "le portillon n'a pas reçu les verdicts du juge").toBe(1);
+    expect(out.month.inserted.map((p) => p.cardLine)).not.toContain(judgedLines[0]);
+    expect(out.month.written).toBe(3);
   });
 
   it("une reprise qui n'a rien rédigé ne repaie pas la relecture", async () => {
@@ -946,5 +952,33 @@ describe("le juge et la relecture sont appelés sur le mois produit", () => {
     const first = await orchestrateMonth({ ...w.ports, writer: { write: vi.fn() } as never }, input());
     if (!first.ok) throw new Error(first.refusal);
     expect(first.editing.revisionSkipped).toBe(false);
+  });
+});
+
+
+describe("le juge rend compte de ce qu'il a rendu", () => {
+  /*
+   * ⚠ MESURÉ SUR LE PREMIER MOIS OPENAI : un juge à qui l'on soumet trois cent
+   * cinquante lignes d'un coup peut rendre un verdict partiel ou vide, et il ne
+   * refuse alors rien. Les lots bornent le risque ; le compte le rend visible.
+   */
+  it("un juge muet est compté comme tel, pas comme un mois sans ligne inachevée", async () => {
+    const editor: TextModel = {
+      ask: vi.fn(async () => ({ text: "", usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, costUsd: 0 })),
+    };
+    const w = world({ editor });
+    const out = await orchestrateMonth(w.ports, input());
+    if (!out.ok) throw new Error(out.refusal);
+    expect(out.editing.judged).toBeGreaterThan(0);
+    expect(out.editing.judgedAnswered, "un juge muet passe pour un juge qui n'a rien trouvé").toBe(0);
+  });
+
+  it("les lignes partent par lots de quarante au plus", async () => {
+    const w = world();
+    await orchestrateMonth(w.ports, input());
+    const judgeCalls = (w.ports.editor.ask as ReturnType<typeof vi.fn>).mock.calls
+      .map((c: unknown[]) => c[0] as TextAsk)
+      .filter((a: TextAsk) => a.system.includes("SYNTACTICALLY COMPLETE"));
+    for (const call of judgeCalls) expect(call.user.split("\n").length).toBeLessThanOrEqual(JUDGE_BATCH);
   });
 });

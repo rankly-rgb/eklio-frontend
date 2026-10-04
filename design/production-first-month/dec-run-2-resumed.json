@@ -1,0 +1,100 @@
+{
+  "palette": {
+    "family": "clay_sand",
+    "primary": "#B4674A",
+    "secondary": "#C08A3E",
+    "light": "#F4EEE3",
+    "dark": "#2B2A27",
+    "paper": "#FAF6EE"
+  },
+  "label": "chemin produit, base locale, OpenAI — transport SQL de Bun à la place de PostgREST ; banque et compte posés par le harnais",
+  "at": "2026-10-04T14:14:29.267Z",
+  "month": "2026-12-01",
+  "model": "gpt-5.6-terra",
+  "worstCasePerPostUsd": 0.034744,
+  "sessionSpentBeforeUsd": 2.413630000000002,
+  "sessionSpentAfterUsd": 2.840200000000003,
+  "thisRunUsdFromMeter": 0.4265700000000008,
+  "callsThisRun": 32,
+  "usageThisRun": {
+    "input": 67233,
+    "output": 24342,
+    "cacheRead": 59602,
+    "cacheWrite": 7535
+  },
+  "writerLedger": {
+    "attempted": 30,
+    "answered": 30,
+    "conformantFirstCall": 30,
+    "repaired": 0,
+    "refused": [],
+    "fromBrief": 2,
+    "usage": {
+      "input": 59692,
+      "output": 18030,
+      "cacheRead": 59602,
+      "cacheWrite": 0
+    },
+    "costUsd": 0.33574399999999993
+  },
+  "outcome": {
+    "ok": true,
+    "monthId": "d962c87e-dbc7-49a8-a4d3-59da28d04639",
+    "runId": "eb84de96-2b48-419c-9401-cdbee5972afc",
+    "costUsd": 0.7726999999999998,
+    "written": 30,
+    "resumed": {
+      "reattached": true,
+      "reused": 25,
+      "settledOnly": 25
+    },
+    "writing": {
+      "asked": 32,
+      "returned": 32,
+      "refusedInJournal": 0,
+      "stopped": null
+    },
+    "editing": {
+      "revised": 20,
+      "revisionRefused": 2,
+      "revisionSkipped": false,
+      "judged": 352,
+      "judgedIncomplete": 0,
+      "costUsd": 0.09082599999999999
+    },
+    "gate": {
+      "arrived": 57,
+      "passedAlone": 55,
+      "byCheck": {
+        "text.acronym": 2
+      },
+      "refused": [
+        {
+          "topic": "A SAFE Off-Duty Check",
+          "checks": [
+            "text.acronym"
+          ],
+          "detail": "« A SAGE off-duty check » — « SAGE » n'est pas une technique nommée, c'est un sigle fabriqué depuis les initiales des tuiles"
+        },
+        {
+          "topic": "The Competence Myth",
+          "checks": [
+            "text.acronym"
+          ],
+          "detail": "« A response to hidden strain » — « CARE » n'est pas une technique nommée, c'est un sigle fabriqué depuis les initiales des tuiles"
+        }
+      ]
+    },
+    "selection": {
+      "remaining": []
+    },
+    "inserts": {
+      "refused": [],
+      "replacements": 0
+    },
+    "creditRefusal": null,
+    "dateCollisions": 0,
+    "fallbacks": [],
+    "released": 27
+  }
+}

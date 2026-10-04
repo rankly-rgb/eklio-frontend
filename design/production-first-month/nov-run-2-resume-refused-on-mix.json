@@ -1,0 +1,53 @@
+{
+  "label": "chemin produit, base locale, OpenAI — transport SQL de Bun à la place de PostgREST ; banque et compte posés par le harnais",
+  "at": "2026-10-04T14:08:52.843Z",
+  "month": "2026-11-01",
+  "model": "gpt-5.6-terra",
+  "worstCasePerPostUsd": 0.034744,
+  "sessionSpentBeforeUsd": 1.3759520000000003,
+  "sessionSpentAfterUsd": 1.8533280000000003,
+  "thisRunUsdFromMeter": 0.477376,
+  "callsThisRun": 37,
+  "usageThisRun": {
+    "input": 78626,
+    "output": 26677,
+    "cacheRead": 66865,
+    "cacheWrite": 11650
+  },
+  "writerLedger": {
+    "attempted": 35,
+    "answered": 35,
+    "conformantFirstCall": 35,
+    "repaired": 0,
+    "refused": [],
+    "fromBrief": 2,
+    "usage": {
+      "input": 71230,
+      "output": 19563,
+      "cacheRead": 66865,
+      "cacheWrite": 4260
+    },
+    "costUsd": 0.377216
+  },
+  "outcome": {
+    "ok": false,
+    "stage": "assemble",
+    "refusal": "le mois garde 3 constat(s) après les échanges : mix.distinct — 5 archétypes distincts sur 30 posts, minimum 7 ; mix.dominant — single_statement occupe 40.0 % du mois (12/30), plafond 30 % ; mix.loneSentence — phrases seules à 40.0 %, plafond 40 %",
+    "remaining": [
+      {
+        "check": "mix.distinct",
+        "detail": "5 archétypes distincts sur 30 posts, minimum 7"
+      },
+      {
+        "check": "mix.dominant",
+        "detail": "single_statement occupe 40.0 % du mois (12/30), plafond 30 %"
+      },
+      {
+        "check": "mix.loneSentence",
+        "detail": "phrases seules à 40.0 %, plafond 40 %"
+      }
+    ],
+    "costUsd": 0.7617160000000001,
+    "nothingWritten": true
+  }
+}

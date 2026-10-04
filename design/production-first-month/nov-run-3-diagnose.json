@@ -1,0 +1,284 @@
+{
+  "label": "chemin produit, base locale, OpenAI — transport SQL de Bun à la place de PostgREST ; banque et compte posés par le harnais",
+  "at": "2026-10-04T14:09:45.591Z",
+  "month": "2026-11-01",
+  "model": "gpt-5.6-terra",
+  "worstCasePerPostUsd": 0.034744,
+  "sessionSpentBeforeUsd": 1.8533280000000003,
+  "sessionSpentAfterUsd": 1.8913100000000003,
+  "thisRunUsdFromMeter": 0.03798199999999996,
+  "callsThisRun": 1,
+  "usageThisRun": {
+    "input": 2533,
+    "output": 2743,
+    "cacheRead": 0,
+    "cacheWrite": 2530
+  },
+  "writerLedger": {
+    "attempted": 0,
+    "answered": 0,
+    "conformantFirstCall": 0,
+    "repaired": 0,
+    "refused": [],
+    "fromBrief": 0,
+    "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "costUsd": 0
+  },
+  "outcome": {
+    "ok": false,
+    "stage": "assemble",
+    "refusal": "le mois garde 3 constat(s) après les échanges : mix.distinct — 5 archétypes distincts sur 30 posts, minimum 7 ; mix.dominant — single_statement occupe 40.0 % du mois (12/30), plafond 30 % ; mix.loneSentence — phrases seules à 40.0 %, plafond 40 %",
+    "remaining": [
+      {
+        "check": "mix.distinct",
+        "detail": "5 archétypes distincts sur 30 posts, minimum 7"
+      },
+      {
+        "check": "mix.dominant",
+        "detail": "single_statement occupe 40.0 % du mois (12/30), plafond 30 %"
+      },
+      {
+        "check": "mix.loneSentence",
+        "detail": "phrases seules à 40.0 %, plafond 40 %"
+      }
+    ],
+    "diagnostics": {
+      "fallbacks": [
+        {
+          "topicId": "e9e060bd-7d2c-4b4f-888f-ef28541624d2",
+          "from": "single_statement",
+          "to": "single_statement",
+          "steps": "single_statement → single_statement (one line)"
+        }
+      ],
+      "gate": {
+        "arrived": 57,
+        "passedAlone": 31,
+        "byCheck": {
+          "tints.tooClose": 25,
+          "text.echo": 1,
+          "text.acronym": 2
+        }
+      },
+      "selectedArchetypes": {
+        "carousel": 7,
+        "practitioner_card": 2,
+        "single_statement": 12,
+        "comparison_pair": 5,
+        "surface_and_beneath": 4
+      },
+      "composedArchetypes": {
+        "carousel": 7,
+        "practitioner_card": 2,
+        "quadrant_model": 5,
+        "single_statement": 14,
+        "annotated_curve": 6,
+        "comparison_pair": 5,
+        "lettered_technique": 4,
+        "numbered_strategies": 3,
+        "cycle": 2,
+        "surface_and_beneath": 4,
+        "concentric_control": 5
+      },
+      "dropped": [
+        {
+          "title": "Capability Can Hide Strain",
+          "why": "mix.distinct — 5 archétypes distincts sur 30 posts, minimum 7"
+        }
+      ],
+      "gateRefused": [
+        {
+          "topic": "When Life Takes a Turn",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A19B sont à 6 de distance, minimum 15; #95918C et #A4A19B sont à 6 de distance, minimum 15"
+        },
+        {
+          "topic": "EMDR Beyond the Obvious Crisis",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "Why EMDR Pacing Matters",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "The Cost of Looking Fine",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "The Competence Myth",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A19B sont à 6 de distance, minimum 15; #95918C et #A4A19B sont à 6 de distance, minimum 15"
+        },
+        {
+          "topic": "Before EMDR Begins",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "The Hidden Cost Grid",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A19B sont à 6 de distance, minimum 15; #95918C et #A4A19B sont à 6 de distance, minimum 15"
+        },
+        {
+          "topic": "Functioning Versus Felt Safety",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A19B sont à 6 de distance, minimum 15; #95918C et #A4A19B sont à 6 de distance, minimum 15"
+        },
+        {
+          "topic": "Grieving the Old Blueprint",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "The Pressure Map",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "When Change Reactivates Old Alarms",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "Before Bilateral Stimulation",
+          "checks": [
+            "text.echo"
+          ],
+          "detail": "payload.statement reprend la ligne de carte : « Pacing comes first »"
+        },
+        {
+          "topic": "When Life Changes Without Consent",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "EMDR Isn't Only One Memory",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "When Rest Feels Unsafe",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "Three Rings at a Crossroads",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "The competence-and-rest map",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "EMDR Is Not Only Backward-Looking",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "You Needn't Have a Plan",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A19B sont à 6 de distance, minimum 15; #95918C et #A4A19B sont à 6 de distance, minimum 15"
+        },
+        {
+          "topic": "A SAFE Off-Duty Check",
+          "checks": [
+            "text.acronym",
+            "tints.tooClose"
+          ],
+          "detail": "« An off-duty check » — « REST » n'est pas une technique nommée, c'est un sigle fabriqué depuis les initiales des tuiles; #AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A19B sont "
+        },
+        {
+          "topic": "When the Plan Ends",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "The Unchosen Crossroads Map",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A19B sont à 6 de distance, minimum 15; #95918C et #A4A19B sont à 6 de distance, minimum 15"
+        },
+        {
+          "topic": "EMDR’s Three Directions After Change",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "The Load Behind Competence",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A19B sont à 6 de distance, minimum 15; #95918C et #A4A19B sont à 6 de distance, minimum 15"
+        },
+        {
+          "topic": "After the Plan Changes",
+          "checks": [
+            "tints.tooClose"
+          ],
+          "detail": "#AFA495 et #95918C sont à 10 de distance, minimum 15"
+        },
+        {
+          "topic": "When Competence Masks Exhaustion",
+          "checks": [
+            "text.acronym",
+            "tints.tooClose"
+          ],
+          "detail": "« When strain needs support » — « CARE » n'est pas une technique nommée, c'est un sigle fabriqué depuis les initiales des tuiles; #AFA495 et #95918C sont à 10 de distance, minimum 15; #AFA495 et #A4A1"
+        }
+      ]
+    },
+    "costUsd": 0.7997019999999999,
+    "nothingWritten": true
+  }
+}

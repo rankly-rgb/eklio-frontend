@@ -1,0 +1,64 @@
+{
+  "step": "bank (harnais, OpenAI)",
+  "model": "gpt-5.6-terra",
+  "asked": 128,
+  "answered": 128,
+  "written": 128,
+  "drawable": 128,
+  "repaired": 0,
+  "failures": [],
+  "stopped": null,
+  "sessionSpentUsd": 0.91542,
+  "usage": {
+    "input": 141519,
+    "output": 51037,
+    "cacheRead": 45780,
+    "cacheWrite": 2566
+  },
+  "drawableAfter": [
+    {
+      "archetype_key": "practitioner_card",
+      "drawable": 5
+    },
+    {
+      "archetype_key": "concentric_control",
+      "drawable": 7
+    },
+    {
+      "archetype_key": "lettered_technique",
+      "drawable": 7
+    },
+    {
+      "archetype_key": "annotated_curve",
+      "drawable": 9
+    },
+    {
+      "archetype_key": "comparison_pair",
+      "drawable": 9
+    },
+    {
+      "archetype_key": "cycle",
+      "drawable": 9
+    },
+    {
+      "archetype_key": "numbered_strategies",
+      "drawable": 9
+    },
+    {
+      "archetype_key": "quadrant_model",
+      "drawable": 9
+    },
+    {
+      "archetype_key": "surface_and_beneath",
+      "drawable": 9
+    },
+    {
+      "archetype_key": "carousel",
+      "drawable": 18
+    },
+    {
+      "archetype_key": "single_statement",
+      "drawable": 38
+    }
+  ]
+}

@@ -244,6 +244,22 @@ export type OrchestrateOutcome =
       stage: "preflight" | "draw" | "ceiling" | "write" | "compose" | "assemble";
       /** Les constats de mois qui restaient, quand c'est eux qui refusent. */
       remaining?: Array<{ check: string; detail: string }>;
+      /**
+       * ⚠ CE QUI A MENÉ AU REFUS, QUAND C'EST L'ASSEMBLAGE QUI REFUSE. Trouvé le
+       * 2026-10-04 : le premier mois OpenAI est tombé sur `mix.*` — cinq
+       * archétypes sur trente — alors que le tirage en portait onze. Le refus ne
+       * disait pas si la variété s'était perdue au repli de composition ou au
+       * portillon ; il fallait le redemander. Un refus qui ne dit pas où se
+       * trouve sa cause envoie la chercher au mauvais endroit.
+       */
+      diagnostics?: {
+        fallbacks: Array<{ topicId: string; from: string; to: string; steps: string }>;
+        gate: { arrived: number; passedAlone: number; byCheck: Record<string, number> };
+        selectedArchetypes: Record<string, number>;
+        composedArchetypes: Record<string, number>;
+        dropped: Array<{ title: string; why: string }>;
+        gateRefused: Array<{ topic: string; checks: string[]; detail: string }>;
+      };
       refusal: string;
       /** Ce qui a été dépensé avant le refus. Zéro quand le préalable refuse. */
       costUsd: number;
@@ -270,6 +286,8 @@ export type OrchestrateOutcome =
         revisionRefused: number;
         revisionSkipped: boolean;
         judged: number;
+        /** ⚠ Combien de lignes ont REÇU un verdict. Inférieur à `judged`, le juge s'est tu en partie. */
+        judgedAnswered: number;
         judgedIncomplete: number;
         costUsd: number;
       };
@@ -291,8 +309,27 @@ export async function orchestrateMonth(
   ports: OrchestratePorts,
   input: OrchestrateInput
 ): Promise<OrchestrateOutcome> {
+  /*
+   * ── 0. CE QUE CE MOIS DÉTIENT DÉJÀ, LU AVANT LE PRÉALABLE ──────────────
+   *
+   * ⚠ EN LECTURE SEULE, ET AVANT. Le préalable juge la banque ; une reprise
+   * détient des sujets assignés que la banque ne compte plus comme tirables, et
+   * le préalable la refusait pour une pénurie qu'elle a elle-même créée (trouvé
+   * le 2026-10-04 en tuant un mois à mi-rédaction). La lecture du journal ne
+   * dépense rien et n'écrit rien : elle peut précéder le préalable.
+   */
+  const resumable = await findResumableRun(ports.journal, input.brandKitId, input.month);
+  const heldByThisMonth: Record<string, number> = {};
+  if (resumable) {
+    for (const id of resumable.topicIds) {
+      const held = await ports.draw.topic(id);
+      if (held) heldByThisMonth[held.archetype_key] = (heldByThisMonth[held.archetype_key] ?? 0) + 1;
+    }
+  }
+
   /* ── 1. le préalable : rien n'est dépensé avant qu'il passe ──────────── */
   const verdict = await preflight(ports.preflight, {
+    heldByThisMonth,
     brandKitId: input.brandKitId,
     projectId: input.projectId,
     userId: input.userId,
@@ -323,7 +360,6 @@ export async function orchestrateMonth(
   });
 
   /* ── 3. la reprise : un lot déjà payé ne se resoumet pas ────────────── */
-  const resumable = await findResumableRun(ports.journal, input.brandKitId, input.month);
   const { runId } = resumable
     ? { runId: resumable.runId }
     : await openRun(ports.journal, input.brandKitId, input.month);
@@ -541,7 +577,7 @@ export async function orchestrateMonth(
    * rien de neuf n'est arrivé, la relecture est déjà faite et payée.
    */
   const editing = {
-    revised: 0, revisionRefused: 0, revisionSkipped: false, judged: 0, judgedIncomplete: 0, costUsd: 0,
+    revised: 0, revisionRefused: 0, revisionSkipped: false, judged: 0, judgedAnswered: 0, judgedIncomplete: 0, costUsd: 0,
   };
   const inOrder = topics.filter((t) => alreadyWritten.has(t.id));
   const alreadyRevised = !wroteSomethingNew && inOrder.every((t) => alreadyWritten.get(t.id)!.revisionSeen === true);
@@ -682,11 +718,27 @@ export async function orchestrateMonth(
       }))
     )
   );
-  const judged = await judgeCompleteness(ports.editor, toJudge);
+  /*
+   * ⚠ PAR LOTS DE QUARANTE LIGNES, ET LE NOMBRE DE VERDICTS EST COMPTÉ.
+   *
+   * Mesuré le 2026-10-04 sur le premier mois OpenAI : 352 lignes en UN appel, zéro
+   * ligne refusée — et rejoué sur les trente posts publiés, le même juge en refuse
+   * une (« EMDR does not erase »), qui était partie. Un juge qui ne rend pas tous
+   * ses verdicts ne refuse rien, par construction ; le seul moyen de le voir est
+   * de compter ce qu'il a rendu. Quarante est la taille de lot que le harnais
+   * employait déjà pour la même raison (`15-examples.ts`).
+   */
+  const verdicts: Record<string, boolean> = {};
+  for (let i = 0; i < toJudge.length; i += JUDGE_BATCH) {
+    const judged = await judgeCompleteness(ports.editor, toJudge.slice(i, i + JUDGE_BATCH));
+    Object.assign(verdicts, judged.verdicts);
+    editing.costUsd += judged.costUsd;
+    costUsd += judged.costUsd;
+  }
+  const judged = { verdicts };
   editing.judged = toJudge.length;
-  editing.judgedIncomplete = Object.values(judged.verdicts).filter((v) => v === false).length;
-  editing.costUsd += judged.costUsd;
-  costUsd += judged.costUsd;
+  editing.judgedAnswered = toJudge.filter((line) => line in verdicts).length;
+  editing.judgedIncomplete = Object.values(verdicts).filter((v) => v === false).length;
 
   /* ── 7. l'assemblage : portillon, sélection, écriture, crédit ───────── */
   const assemblePorts = ports.assembleFor(monthId);
@@ -694,7 +746,29 @@ export async function orchestrateMonth(
     prepared,
     wanted: input.wanted,
     dates: input.dates,
-    context: input.context,
+    /*
+     * ⚠ LE PORTILLON REÇOIT CE QUE L'ORCHESTRATEUR SAIT, PAS SEULEMENT CE QUE
+     * L'APPELANT A PENSÉ À PASSER.
+     *
+     * Trouvé le 2026-10-04 : `checkPostAlone` lit la mention de licence et les
+     * verdicts du juge dans `context`, et chaque champ y est FACULTATIF — absent,
+     * le contrôle se tait. Le lanceur de rejeu passait un contexte sans mention
+     * ni verdicts : le portillon ne vérifiait donc ni l'une ni les autres, et seul
+     * le contrôle du mois, en aval, les rattrapait — trop tard pour échanger le
+     * post fautif contre un remplaçant. Les valeurs que l'orchestrateur détient
+     * (la mention lue par le préalable, les verdicts qu'il vient d'obtenir)
+     * l'emportent ici sur celles de l'appelant.
+     */
+    context: {
+      ...input.context,
+      direction: input.direction,
+      practiceName: input.practiceName,
+      identityAllowList: input.identityAllowList,
+      modalities: input.modalities,
+      eyebrowCatalogue: input.intentCatalogue,
+      licenceMention: verdict.licenceMention,
+      completeness: judged.verdicts,
+    },
     direction: input.direction,
     practiceName: input.practiceName,
     identityAllowList: input.identityAllowList,
@@ -727,6 +801,14 @@ export async function orchestrateMonth(
         `le mois garde ${month.selection.remaining.length} constat(s) après les échanges : ` +
         month.selection.remaining.map((f) => `${f.check} — ${f.detail}`).join(" ; "),
       remaining: month.selection.remaining,
+      diagnostics: {
+        fallbacks: composeFallbacks,
+        gate: { arrived: month.gate.arrived, passedAlone: month.gate.passedAlone, byCheck: month.gate.byCheck },
+        selectedArchetypes: tally(month.selection.chosen.map((p) => p.composeArchetype)),
+        composedArchetypes: tally(prepared.map((p) => p.composeArchetype)),
+        dropped: month.selection.dropped,
+        gateRefused: month.gate.refused,
+      },
       costUsd,
       nothingWritten: true,
     };
@@ -785,4 +867,13 @@ export async function orchestrateMonth(
   return {
     ok: true, month, costUsd, resumed, fallbacks: composeFallbacks, released, runId, monthId, editing, writing,
   };
+}
+
+/** La taille d'un lot de lignes soumis au juge de complétude. */
+export const JUDGE_BATCH = 40;
+
+function tally(keys: string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const k of keys) out[k] = (out[k] ?? 0) + 1;
+  return out;
 }

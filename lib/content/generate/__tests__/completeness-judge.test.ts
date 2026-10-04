@@ -87,4 +87,30 @@ describe("le juge de complétude", () => {
     expect(called).toBe(0);
     expect(usage).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
+
+  /*
+   * ⚠ MESURÉ SUR LE PREMIER MOIS OPENAI : le modèle a recopié les lignes avec la
+   * puce sous laquelle on les lui présente, et quarante verdicts ont été perdus.
+   */
+  it("une clef recopiée avec sa puce est rapprochée de sa ligne", async () => {
+    const { verdicts } = await judgeCompleteness(
+      clientThat(() => ({
+        content: [{ type: "text", text: '{"- EMDR does not erase": false, "- Back at work": true}' }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+      })),
+      ["EMDR does not erase", "Back at work"]
+    );
+    expect(verdicts).toEqual({ "EMDR does not erase": false, "Back at work": true });
+  });
+
+  it("une clef qui ne correspond à aucune ligne demandée n'est pas un verdict", async () => {
+    const { verdicts } = await judgeCompleteness(
+      clientThat(() => ({
+        content: [{ type: "text", text: '{"une ligne jamais soumise": false}' }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+      })),
+      ["Back at work"]
+    );
+    expect(verdicts).toEqual({});
+  });
 });
