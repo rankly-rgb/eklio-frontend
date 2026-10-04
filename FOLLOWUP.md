@@ -3831,3 +3831,65 @@ parité avec un front qui n'est pas celui-ci. Le sens de l'écart est le sûr �
 base, barrière finale, bloque plus que le code ; un texte refusé l'est à
 l'écriture, avec une erreur, jamais publié — mais c'est une décision : importer
 la seule règle (≈ 40 lignes de `lib/ethics/rules.ts`), ou l'assumer.
+
+---
+
+## F69 — ⚠ LA BASCULE OPENAI EST JOIGNABLE, MAIS SON TARIF NE SE LIT TOUJOURS PAS
+
+**Rencontré le** 2026-10-04, en ouvrant la session « WriterPort sur OpenAI ». Rien n'a été
+modifié dans le code : `priceRefusal()` tient, la route reste à 501.
+
+### Ce qui est désormais en place
+
+- `EKLIO_OPENAI_API_KEY` est présente (passée par commande, jamais affichée).
+- `api.openai.com` répond : `GET /v1/models` → 200, 133 modèles. Le catalogue du compte
+  confirme de **première main** ce que `OPENAI_COPY_CANDIDATES` supposait d'après le SDK :
+  `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` existent (ainsi que `gpt-6-astra`,
+  `gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol`). Le commentaire de `provider.ts` qui dit
+  `api.openai.com` refusé n'est plus vrai pour l'API ; il l'est toujours pour la doc.
+
+### Ce qui bloque, et qui est un réglage d'environnement, pas du code
+
+1. **`developers.openai.com` est refusé** par la politique d'egress (403 au CONNECT, en curl
+   comme via WebFetch). `platform.openai.com`, `openai.com`, `cdn.openai.com` aussi.
+   Le tarif ne peut donc pas être lu à la source, et le brief interdit chiffres mémorisés et
+   agrégateurs. **Remède** : ajouter `developers.openai.com` aux hôtes autorisés de
+   l'environnement.
+2. **La clé n'a pas le scope `api.usage.read`** : `/v1/organization/costs` et
+   `/v1/organization/usage/*` → 403. La dépense réelle n'est donc pas lisible côté
+   fournisseur non plus. Sans tarif ni facture, le plafond de 5 $ ne peut pas être
+   **vérifié**, seulement supposé. **Remède** (facultatif, mais il rend le plafond
+   contrôlable) : une clé en lecture d'usage, ou un tarif lu à la source.
+
+### Ce qui a été éprouvé quand même : deux appels de sonde, bornés
+
+`POST /v1/responses` sur `gpt-5.6-terra`, `store:false`, `prompt_cache_key` fixe,
+`text.format` en `json_schema` avec **`strict: true`**, préfixe d'environ 1 970 tokens :
+
+| appel | input | cache_write | cached (lu) | output | JSON strict |
+|---|---|---|---|---|---|
+| 1 | 1 972 | 1 969 | 0 | 62 | parse OK |
+| 2 | 1 972 | 0 | 1 969 | 49 | parse OK |
+
+Total : 3 944 tokens en entrée, 111 en sortie. Le coût en dollars n'est **pas** chiffré, par
+construction (voir ci-dessus). Il reste négligeable à n'importe quel tarif plausible.
+
+Ce que ça établit : la sortie structurée stricte et la mise en cache du préfixe marchent sur ce
+modèle, et `openAiUsage()` lit les bons champs (`cached_tokens`, `cache_write_tokens`). Le compte
+a du solde : pas de `insufficient_quota`.
+
+⚠ **Règle de F48, appliquée à la sonde.** Les deux légendes citent la licence de la
+clinicienne, mais c'est le préfixe qui le demandait. Ça ne dit **rien** de la mention de licence
+par le chemin de lecture, qui est une propriété du produit, pas du modèle. Et un préfixe de
+2 000 tokens avec un schéma à deux champs n'est pas le préfixe du pipeline : le cache tient ici,
+il reste à le voir tenir sur onze clefs d'archétype.
+
+### Ce qui reste à faire, dans l'ordre, une fois le tarif lisible
+
+1. Lire `gpt-5.6-terra` (et `-sol`, `-luna` pour comparer) sur la page des tarifs. Ajouter le
+   modèle à `MODEL_RATES`, le dater dans `PRICE_VERIFIED_ON`.
+2. `WriterPort` produit sur `openAiBody`. Passer `copyEnvelopeFormat` en `strict: true` reste
+   bloqué par l'absence de schéma machine des archétypes (voir `provider.ts`). La sonde montre
+   seulement que le drapeau marche ; elle ne lève pas ce prérequis.
+3. Brancher `judgeCompleteness` et `reviseMonth`, recensement, puis seulement la route.
+4. Le mois de trente sur le chemin produit, avec la planche dans `design/production-first-month/`.
