@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { reviseMonth, revisionOn, type Revisable } from "@/lib/content/generate/revise";
+import { anthropicTextModel } from "@/lib/content/generate/provider";
+
+/** La passe prend un `TextModel` ; ses doublures restent des clients Anthropic, traduits par le port. */
+const viaAnthropic = (client: unknown) => anthropicTextModel(client as never, "test-model", () => 0);
 
 /*
  * ── ⚠ VINGT-TROIS CONTRÔLES, ET L'ÉCRITURE RESTE À 1,6 SUR 5 ───────────
@@ -25,14 +29,14 @@ const POSTS: Revisable[] = [
 ];
 
 /** Un client qui rend ce qu'on lui dit de rendre. */
-const clientSaying = (text: string) => ({
+const clientSaying = (text: string) => viaAnthropic({
   messages: {
     create: async () => ({
       content: [{ type: "text", text }],
       usage: { input_tokens: 100, output_tokens: 50 },
     }),
   },
-}) as never;
+});
 
 afterEach(() => {
   delete process.env.CONTENT_REVISION;
@@ -48,10 +52,12 @@ describe("elle peut être éteinte, et c'est ce qui la rend mesurable", () => {
     process.env.CONTENT_REVISION = "off";
     expect(revisionOn()).toBe(false);
     const out = await reviseMonth(
-      { messages: { create: async () => { throw new Error("elle a appelé"); } } } as never,
+      viaAnthropic({ messages: { create: async () => { throw new Error("elle a appelé"); } } }),
       POSTS
     );
-    expect(out).toEqual({ revisions: [], refused: [], usage: { input: 0, output: 0 } });
+    expect(out).toEqual({
+      revisions: [], refused: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, costUsd: 0,
+    });
   });
 
   it("elle est allumée par défaut", () => {
@@ -74,7 +80,7 @@ describe("ce qu'elle rend", () => {
     expect(out.revisions).toHaveLength(1);
     expect(out.revisions[0].cardLine).toBe("Looking fine, running empty");
     expect(out.refused).toEqual([]);
-    expect(out.usage).toEqual({ input: 100, output: 50 });
+    expect(out.usage).toEqual({ input: 100, output: 50, cacheRead: 0, cacheWrite: 0 });
   });
 
   /*
@@ -132,10 +138,12 @@ describe("ce qu'elle rend", () => {
 
   it("une panne d'appel ne lève pas", async () => {
     const out = await reviseMonth(
-      { messages: { create: async () => { throw new Error("502"); } } } as never,
+      viaAnthropic({ messages: { create: async () => { throw new Error("502"); } } }),
       POSTS
     );
-    expect(out).toEqual({ revisions: [], refused: [], usage: { input: 0, output: 0 } });
+    expect(out).toEqual({
+      revisions: [], refused: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, costUsd: 0,
+    });
   });
 
   it("une liste vide est une réponse valable", async () => {

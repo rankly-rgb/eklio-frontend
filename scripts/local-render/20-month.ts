@@ -85,6 +85,16 @@ import {
 } from "../../lib/credits/paid-call";
 
 /*
+ * ⚠ LE JUGE, LA RÉVISION ET LA RÉPARATION PRENNENT UN `TextModel` DEPUIS LE
+ * 2026-10-04 : ils sont branchés côté produit sur OpenAI. Le harnais reste sur
+ * Anthropic et passe par le même port, au même coût qu'avant (`syncCostUsd`).
+ */
+import { anthropicTextModel as _anthropicTextModel } from "../../lib/content/generate/provider";
+import { massCopyModel as _massCopyModel, syncCostUsd as _syncCostUsd } from "../../lib/content/generate/copy-batch";
+const textModelOf = (client: Parameters<typeof _anthropicTextModel>[0]) =>
+  _anthropicTextModel(client, _massCopyModel(), _syncCostUsd);
+
+/*
  * ⚠ LE MÊME 30 QUE `bank.ts`, PAS UN SECOND. Il était écrit ici en littéral et
  * là-bas sous le nom `POSTS_PER_MONTH` ; deux 30 qui se trouvent égaux ne sont
  * pas une garantie qu'ils le resteront.
@@ -1246,7 +1256,7 @@ async function main() {
      */
     const repair = (await overhead(`repair ${candidate.topic.archetype_key}`, async () => {
       const value = await repairPayload(
-        (params) => client.messages.create(params),
+        textModelOf(client),
         candidate.topic.archetype_key,
         result.payload
       );
@@ -1309,7 +1319,7 @@ async function main() {
    * faille les relire est notre affaire, pas un post de moins pour elle.
    */
   const revision = (await overhead("revision pass", async () => {
-    const value = await reviseMonth(client, prepared.map((c) => ({
+    const value = await reviseMonth(textModelOf(client), prepared.map((c) => ({
       archetype: c.topic.archetype_key,
       cardLine: c.result!.cardLine ?? c.topic.title,
       payload: c.result!.payload,
@@ -1597,7 +1607,7 @@ async function main() {
   })));
   const toJudge = undecidedIn(allWritten);
   const judged = (await overhead("completeness judge", async () => {
-    const value = await judgeCompleteness(client, toJudge);
+    const value = await judgeCompleteness(textModelOf(client), toJudge);
     return { value, usage: { ...value.usage, cacheRead: 0, cacheWrite: 0 } };
   })).value;
   judgeUsage.input += judged.usage.input;

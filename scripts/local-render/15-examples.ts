@@ -43,6 +43,16 @@ import { undecidedIn } from "../../lib/content/writing-checks";
 import { judgeCompleteness } from "../../lib/content/generate/completeness-judge";
 import Anthropic from "@anthropic-ai/sdk";
 
+/*
+ * ⚠ LE JUGE, LA RÉVISION ET LA RÉPARATION PRENNENT UN `TextModel` DEPUIS LE
+ * 2026-10-04 : ils sont branchés côté produit sur OpenAI. Le harnais reste sur
+ * Anthropic et passe par le même port, au même coût qu'avant (`syncCostUsd`).
+ */
+import { anthropicTextModel as _anthropicTextModel } from "../../lib/content/generate/provider";
+import { massCopyModel as _massCopyModel, syncCostUsd as _syncCostUsd } from "../../lib/content/generate/copy-batch";
+const textModelOf = (client: Parameters<typeof _anthropicTextModel>[0]) =>
+  _anthropicTextModel(client, _massCopyModel(), _syncCostUsd);
+
 type Row = {
   archetype: string; month: string; topic: string; hook: string; intent: string;
   card_line: string; payload: unknown; caption: string; alt_text: string; rationale: string;
@@ -141,7 +151,7 @@ async function main() {
   console.error(`▸ ${undecided.length} lignes indécises sur ${lines.length} candidates`);
   const verdicts: Record<string, boolean> = {};
   for (let i = 0; i < undecided.length; i += 40) {
-    const { verdicts: v, usage } = await judgeCompleteness(client, undecided.slice(i, i + 40));
+    const { verdicts: v, usage } = await judgeCompleteness(textModelOf(client), undecided.slice(i, i + 40));
     Object.assign(verdicts, v);
     console.error(`  jugé ${Object.keys(v).length} · ${usage.input} in / ${usage.output} out`);
   }

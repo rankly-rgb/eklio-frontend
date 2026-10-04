@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { payloadSchema } from "@/lib/compose/archetypes/schema";
 import {
   OPENAI_BATCH,
   OPENAI_COPY_CANDIDATES,
@@ -13,6 +14,8 @@ import {
   openAiText,
   openAiUsage,
   priceRefusal,
+  PRICE_VERIFIED_ON,
+  OPENAI_COPY_MODEL,
   priceVerified,
   type CopyCall,
 } from "@/lib/content/generate/provider";
@@ -104,28 +107,32 @@ describe("les deux traductions portent les mêmes cinq choses", () => {
   });
 });
 
-describe("l'enveloppe est contrainte, le payload reste libre", () => {
-  const format = copyEnvelopeFormat() as {
+describe("l'enveloppe ET le payload sont contraints, en strict", () => {
+  const format = copyEnvelopeFormat("quadrant_model") as {
     type: string; name: string; strict: boolean;
-    schema: { properties: Record<string, unknown>; required: string[] };
+    schema: { properties: Record<string, unknown>; required: string[]; additionalProperties: boolean };
   };
 
   it("les cinq champs de l'enveloppe sont exigés", () => {
     expect(format.type).toBe("json_schema");
     expect(format.schema.required.sort()).toEqual(["alt_text", "caption", "card_line", "payload", "rationale"]);
+    expect(format.schema.additionalProperties).toBe(false);
   });
 
   /*
-   * ⚠ `strict: false`, ET LA RAISON EST DANS LE FICHIER. `strict: true` exige
-   * `additionalProperties: false` sur chaque objet, donc un schéma complet par
-   * archétype — onze schémas écrits à la main, c'est-à-dire une seconde source
-   * de vérité pour la forme des cartes. Ce test fixe la décision pour qu'on ne
-   * la retourne pas sans relire pourquoi.
+   * ⚠ `strict: true` DEPUIS LE 2026-10-04, ET LA RAISON DE `false` EST LEVÉE.
+   * Elle était l'absence de schéma machine des archétypes ; il vit dans
+   * `lib/compose/archetypes/schema.ts`, tenu aligné sur les `parse()` par
+   * `strict-schema-follows-parse.test.ts`.
    */
-  it("le payload n'est pas contraint, et le drapeau strict est à false", () => {
-    expect(format.strict).toBe(false);
-    expect(format.schema.properties.payload).toMatchObject({ type: "object" });
-    expect(Object.keys(format.schema.properties.payload as object)).not.toContain("properties");
+  it("le payload est le schéma de l'archétype, et le drapeau strict est à true", () => {
+    expect(format.strict).toBe(true);
+    expect(format.schema.properties.payload).toEqual(payloadSchema("quadrant_model"));
+  });
+
+  it("le corps OpenAI porte le schéma de SON archétype", () => {
+    const body = openAiBody(CALL) as { text: { format: { schema: { properties: { payload: unknown } } } } };
+    expect(body.text.format.schema.properties.payload).toEqual(payloadSchema(CALL.archetypeKey));
   });
 });
 
@@ -212,12 +219,21 @@ describe("un tarif non lu ne peut pas produire un coût", () => {
   });
 
   /*
-   * ⚠ LES DEUX CANDIDATS SONT DÉLIBÉRÉMENT NON VÉRIFIÉS. Tous les domaines
-   * d'OpenAI sont refusés par la politique d'egress de cet environnement ; le
-   * tarif n'a donc PAS pu être lu. Ce test tombe le jour où quelqu'un le lit et
-   * le date — et c'est exactement l'intention.
+   * ⚠ UN SEUL DES DEUX CANDIDATS EST VÉRIFIÉ, ET C'EST LE RETENU. Le tarif de
+   * `gpt-5.6-terra` a été lu à la source le 2026-10-04 ; celui de `gpt-5.6-luna`
+   * a été transmis en même temps mais n'est PAS inscrit — un tarif inscrit est un
+   * tarif qu'un coût peut employer. Ce test tombe le jour où l'on inscrit luna
+   * sans l'avoir retenu.
    */
-  it.each(Object.values(OPENAI_COPY_CANDIDATES))("« %s » refuse de se chiffrer", (model) => {
+  it("le modèle retenu est chiffrable, et daté", () => {
+    expect(OPENAI_COPY_MODEL).toBe(OPENAI_COPY_CANDIDATES.quality);
+    expect(priceVerified(OPENAI_COPY_MODEL)).toBe(true);
+    expect(priceRefusal(OPENAI_COPY_MODEL)).toBeNull();
+    expect(PRICE_VERIFIED_ON[OPENAI_COPY_MODEL]).toBe("2026-10-04");
+  });
+
+  it("le candidat non retenu refuse toujours de se chiffrer", () => {
+    const model = OPENAI_COPY_CANDIDATES.economy;
     expect(priceVerified(model)).toBe(false);
     const refusal = priceRefusal(model);
     expect(refusal).toContain(model);

@@ -295,6 +295,69 @@ export async function rememberBatch(
   if (rows.error) throw new JournalError(`content_generation_results insert: ${rows.error.message}`);
 }
 
+/**
+ * Inscrit les sujets d'un passage AVANT de les faire rédiger, sans lot.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ *  ⚠ SANS ELLE, UN RÉDACTEUR SYNCHRONE N'ÉCRIVAIT RIEN AU JOURNAL
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Trouvé le 2026-10-04 en branchant le premier rédacteur synchrone.
+ * `rememberResult` fait un UPDATE sur la ligne (run_id, topic_id), et seule
+ * `rememberBatch` créait ces lignes — appelée par l'orchestrateur uniquement
+ * quand le port rendait un `batchId`. Un rédacteur sans lot rend `null` : les
+ * trente UPDATE touchaient zéro ligne, sans erreur, et le journal restait vide.
+ *
+ * ⚠ ET UN JOURNAL VIDE NE SE CONTENTE PAS DE NE RIEN SAUVER. À la reprise,
+ * `findResumableRun` rend une liste de sujets VIDE : l'orchestrateur refait donc
+ * son TIRAGE, rédige d'autres sujets, et paie une seconde fois — exactement la
+ * panne du 2026-09-23 que ces deux tables existent pour empêcher.
+ *
+ * Les lignes sont donc posées avant le premier appel, `result` à `null`. Une
+ * réponse qui arrive les remplit une par une, et une reprise sait ce qui reste.
+ */
+export async function rememberTopics(
+  db: JournalDb,
+  runId: string,
+  topicIds: string[]
+): Promise<void> {
+  if (topicIds.length === 0) return;
+  const rows = await db
+    .from("content_generation_results")
+    .insert(topicIds.map((topicId) => ({ run_id: runId, topic_id: topicId, result: null })))
+    .then((r) => r);
+  if (rows.error) throw new JournalError(`content_generation_results insert: ${rows.error.message}`);
+}
+
+/**
+ * L'identifiant d'un lot, quand le port en rend un, pour des sujets DÉJÀ inscrits.
+ *
+ * ⚠ IL N'INSÈRE AUCUNE LIGNE, À LA DIFFÉRENCE DE `rememberBatch`. Les sujets sont
+ * inscrits par `rememberTopics` avant l'appel ; les réinsérer ici heurterait
+ * l'unicité (run_id, topic_id).
+ */
+export async function rememberBatchId(db: JournalDb, runId: string, batchId: string): Promise<void> {
+  const patched = await db
+    .from("content_generation_runs")
+    .update({ batch_id: batchId, updated_at: new Date().toISOString() })
+    .eq("id", runId)
+    .then((r) => r);
+  if (patched.error) throw new JournalError(`content_generation_runs update: ${patched.error.message}`);
+}
+
+/**
+ * Le résultat d'un sujet dont la rédaction a été PAYÉE et REFUSÉE.
+ *
+ * ⚠ IL EST JOURNALISÉ POUR NE PAS ÊTRE REPAYÉ. Sans lui, une reprise voit une
+ * ligne sans résultat et la refait rédiger : le même sujet, le même refus
+ * probable, une seconde facture.
+ */
+export type RefusedResult = { refused: true; reason: string; family?: string };
+
+export function isRefusedResult(result: unknown): result is RefusedResult {
+  return Boolean(result && typeof result === "object" && (result as { refused?: unknown }).refused === true);
+}
+
 /** Écrit un résultat dès qu'il arrive, sans attendre les suivants. */
 export async function rememberResult(
   db: JournalDb,
@@ -400,6 +463,8 @@ export function resumePlan(journal: RunJournal): {
   for (const topicId of journal.topicIds) {
     const entry = journal.entries[topicId];
     if (!entry) toWrite.push(topicId);
+    /* ⚠ Un refus payé n'est ni à réécrire ni à solder : il ne porte aucun post. */
+    else if (isRefusedResult(entry.result)) continue;
     else if (entry.settled) done.push(topicId);
     else toSettle.push(topicId);
   }

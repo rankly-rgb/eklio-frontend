@@ -1,6 +1,6 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { CopyUsage, TextModel } from "@/lib/content/generate/provider";
 import {
-  massCopyModel, copyEffort, validateCopy, CARD_LINE_MAX, type CopyResult,
+  copyEffort, validateCopy, CARD_LINE_MAX, type CopyResult,
 } from "@/lib/content/generate/copy-batch";
 import { repeatedAcross } from "@/lib/content/month-checks";
 
@@ -104,7 +104,9 @@ export type RevisionOutcome = {
   revisions: Revision[];
   /** Ce que la passe a proposé et qui n'a pas tenu la validation. */
   refused: Array<{ index: number; why: string; because: string }>;
-  usage: { input: number; output: number };
+  usage: CopyUsage;
+  /** Ce que la passe a coûté, dit par le fournisseur qui a répondu. */
+  costUsd: number;
 };
 
 /**
@@ -120,10 +122,12 @@ export type RevisionOutcome = {
  * l'améliorer. Ce qui ne valide pas est ÉCARTÉ, et l'original est gardé.
  */
 export async function reviseMonth(
-  client: Pick<Anthropic, "messages">,
+  model: TextModel,
   posts: Revisable[]
 ): Promise<RevisionOutcome> {
-  const empty: RevisionOutcome = { revisions: [], refused: [], usage: { input: 0, output: 0 } };
+  const empty: RevisionOutcome = {
+    revisions: [], refused: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, costUsd: 0,
+  };
   if (posts.length === 0 || !revisionOn()) return empty;
 
   const listing = posts
@@ -155,32 +159,29 @@ export async function reviseMonth(
         ...repeats.slice(0, 30).map((r) => `  "${r.text}" — on posts ${r.posts.map((n) => `#${n}`).join(", ")}`),
       ];
 
-  let message: Anthropic.Message;
+  let answer: Awaited<ReturnType<TextModel["ask"]>>;
   try {
-    message = await client.messages.create({
-      model: massCopyModel(),
-      max_tokens: Math.min(16000, 2000 + posts.length * 200),
-      output_config: { effort: copyEffort() },
+    answer = await model.ask({
+      maxTokens: Math.min(16000, 2000 + posts.length * 200),
+      effort: copyEffort(),
       system: PROMPT,
-      messages: [{ role: "user", content: [listing, ...repeated].join("\n") }],
+      user: [listing, ...repeated].join("\n"),
     });
   } catch {
     return empty;
   }
 
-  const usage = { input: message.usage.input_tokens, output: message.usage.output_tokens };
-  const raw = message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("");
+  const usage = answer.usage;
+  const costUsd = answer.costUsd;
+  const raw = answer.text;
 
   let parsed: { revisions?: unknown };
   try {
     parsed = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, ""));
   } catch {
-    return { ...empty, usage };
+    return { ...empty, usage, costUsd };
   }
-  if (!Array.isArray(parsed.revisions)) return { ...empty, usage };
+  if (!Array.isArray(parsed.revisions)) return { ...empty, usage, costUsd };
 
   const revisions: Revision[] = [];
   const refused: RevisionOutcome["refused"] = [];
@@ -229,5 +230,5 @@ export async function reviseMonth(
     revisions.push({ index, why, cardLine: verdict.cardLine ?? cardLine, payload: verdict.payload });
   }
 
-  return { revisions, refused, usage };
+  return { revisions, refused, usage, costUsd };
 }

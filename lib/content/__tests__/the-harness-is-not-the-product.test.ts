@@ -175,6 +175,14 @@ const PRODUCT_ORCHESTRATION = [
    * l'unicité (compte, mois) est tenue par `content_months_kit_month_key`.
    */
   "lib/content/month/due.ts",
+  /*
+   * ⚠ LE SEUL ACCÈS PAYANT, ENFIN ÉCRIT CÔTÉ PRODUIT (2026-10-04). `WriterPort`
+   * sur OpenAI : un appel strict par sujet, `validateCopy`, la réparation, et le
+   * journal au fil des réponses. Il ne porte aucun mécanisme du harnais que le
+   * recensement compte — il est ici pour que la règle « pas de CLI-isme » et la
+   * serrure F50 le voient.
+   */
+  "lib/content/month/openai-writer.ts",
 ] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
@@ -272,10 +280,16 @@ const ONLY_IN_HARNESS: Record<string, string> = {
    * enregistre, c'est qu'ils n'ont plus besoin d'une RAISON de manquer — pas
    * qu'un mois produit les traverse.
    */
-  judgeCompleteness:
-    "juge la complétude d'une LIGNE de carte de trente caractères ; le chemin produit n'écrit pas de lignes de carte",
-  reviseMonth:
-    "réécrit les libellés répétés d'un payload d'archétype — il n'y a aucun payload côté produit",
+  /*
+   * ⚠ `judgeCompleteness` ET `reviseMonth` NE SONT PLUS ICI (2026-10-04), et
+   * c'étaient les deux dernières. Leurs raisons — « le chemin produit n'écrit pas
+   * de lignes de carte », « il n'y a aucun payload côté produit » — étaient vraies
+   * du générateur retiré par F45 et fausses depuis que l'orchestrateur compose
+   * des cartes d'archétype. `month/orchestrate.ts` appelle désormais la relecture
+   * avant la composition et le juge après, par un `TextModel` injecté, sur le
+   * fournisseur retenu. C'est ce test-ci (« aucune exemption ne couvre un
+   * mécanisme que le produit appelle déjà ») qui a exigé leur retrait.
+   */
   /*
    * ⚠ `composeWithFallback` N'EST PLUS ICI, ET C'ÉTAIT LA PLUS GRAVE.
    * `month/compose-card.ts` l'appelle, le harnais passe par lui, et le module
@@ -568,16 +582,25 @@ describe("la barrière", () => {
   });
 
   /*
-   * ⚠ LA ROUTE RESTE EN 501 TANT QUE LE RECENSEMENT PORTE DES EXEMPTIONS. Armer
-   * une route qui appellerait `generateMonth` mettrait en vente des publicités
-   * sans mention de licence — ce que la Californie interdit.
+   * ── ⚠ LA CARTE D'EXEMPTIONS EST VIDE, ET CE TEST EST RETOURNÉ (2026-10-04) ─
+   *
+   * Il exigeait qu'il RESTE des exemptions tant que la route rendait 501, et
+   * disait lui-même : « plus aucune exemption : la route peut générer ». Les deux
+   * dernières sont tombées en branchant le juge et la relecture. Il garde
+   * désormais l'inverse : la carte reste vide.
+   *
+   * ⚠ ET VIDE NE VEUT PAS DIRE ARMÉE. La route reste en 501 : c'est la seconde
+   * serrure, F50 ci-dessous, qui la tient — aucun point d'entrée n'atteint encore
+   * l'orchestrateur. Une exemption ajoutée demain ferait rougir ce test avant de
+   * se faire oublier dans une carte qu'on croyait close.
    */
-  it("la route rend 501 tant qu'il reste des exemptions", () => {
-    const exemptions = Object.keys(ONLY_IN_HARNESS).length;
-    expect(exemptions, "plus aucune exemption : la route peut générer").toBeGreaterThan(0);
+  it("aucune exemption ne revient", () => {
+    expect(
+      Object.keys(ONLY_IN_HARNESS),
+      "une exemption est revenue : un mécanisme du harnais manque de nouveau au produit"
+    ).toEqual([]);
     const src = readFileSync(ROUTE, "utf8");
-    expect(src, `${exemptions} mécanisme(s) sans équivalent produit, et la route ne rend pas 501`)
-      .toContain("{ status: 501 }");
+    expect(src, "la route a quitté le 501 alors que la serrure F50 tient encore").toContain("{ status: 501 }");
   });
 
   /*
@@ -766,9 +789,11 @@ const EXTRACTED_NOT_WIRED: Record<string, string> = {
    * écrire, c'est un appel de modèle à pouvoir faire.
    */
   "lib/content/month/orchestrate.ts":
-    "il enchaîne les huit autres et il est éprouvé de bout en bout par une doublure de rédaction ; ce qui manque est une implémentation de WriterPort côté produit, laquelle demande un appel de modèle — le compte fournisseur est sous limite d'usage jusqu'au 2026-10-01 (F44)",
+    "il enchaîne les huit autres, appelle la relecture et le juge, et sa rédaction a une implémentation produit (openai-writer.ts) éprouvée par de vrais appels ; son appelant est la route de cron, et l'y brancher est l'acte d'armement lui-même — il se décide sur la lecture d'un mois sorti, pas en écrivant du code",
   "lib/content/month/spend-ceiling.ts":
-    "le plafond est consulté par l'orchestrateur, qui n'a lui-même aucun appelant : il est prêt et il attend le même WriterPort que tout le reste (F58)",
+    "le plafond est consulté par l'orchestrateur, et l'orchestrateur n'est appelé que par un lanceur de répétition : il borne chaque mois que ce lanceur fait sortir, et bornera la route le jour où elle l'appellera (F58)",
+  "lib/content/month/openai-writer.ts":
+    "le rédacteur est fourni à l'orchestrateur par son appelant ; le seul appelant est le lanceur de répétition contre la base locale, et un lanceur n'est pas un point d'entrée du runtime",
   "lib/content/month/due.ts":
     "l'énumération choisit les comptes dus ; son appelant est la route de cron, qui reste en 501 tant que le recensement porte des exemptions — armer la sélection sans la rédaction ferait ouvrir des mois que rien ne remplit",
   "lib/content/month/server-ports.ts":

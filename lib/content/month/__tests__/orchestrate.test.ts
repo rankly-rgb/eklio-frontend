@@ -9,6 +9,32 @@ import {
 import type { DrawnTopic } from "@/lib/content/month/draw";
 import type { CreditPort } from "@/lib/credits/paid-call";
 import type { JournalDb } from "@/lib/content/month/journal-port";
+import type { TextAsk, TextModel } from "@/lib/content/generate/provider";
+import type { WriteRequest } from "@/lib/content/month/orchestrate";
+
+/**
+ * Un relecteur qui ne trouve rien : la révision ne réécrit rien, le juge ne
+ * tranche rien. ⚠ IL RÉPOND, il ne lève pas — un relecteur qui lèverait serait
+ * avalé par le contrat « ne lève jamais » du juge, et les tests ne verraient pas
+ * qu'il a été appelé.
+ */
+const EDIT_USD = 0.001;
+
+/** Ce que la relecture et le juge ont coûté dans ce monde : un appel, un prix. */
+function editedUsd(w: { ports: OrchestratePorts }): number {
+  return (w.ports.editor.ask as ReturnType<typeof vi.fn>).mock.calls.length * EDIT_USD;
+}
+
+function quietEditor(): TextModel & { asked: string[] } {
+  const asked: string[] = [];
+  return {
+    asked,
+    ask: vi.fn(async ({ system }: TextAsk) => {
+      asked.push(system.slice(0, 40));
+      return { text: "{}", usage: { input: 10, output: 2, cacheRead: 0, cacheWrite: 0 }, costUsd: EDIT_USD };
+    }),
+  };
+}
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -130,7 +156,7 @@ function journal() {
   return { db: { from: table } as unknown as JournalDb, runs, results };
 }
 
-function world(over: { verified?: boolean; stock?: number; writer?: WriterPort } = {}) {
+function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; editor?: TextModel } = {}) {
   const j = journal();
   const inserted: string[] = [];
   const reserved: string[] = [];
@@ -186,6 +212,7 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort }
     },
     journal: j.db,
     writer,
+    editor: over.editor ?? quietEditor(),
     openMonthRow: vi.fn(async () => {
       months.push({ id: "month-1", status: "generating" });
       return "month-1";
@@ -240,7 +267,6 @@ const input = (over: Record<string, unknown> = {}) => ({
   identityAllowList: [] as string[],
   intentCatalogue: [{ id: "behind_the_practice", label: "Behind the practice" }],
   modalities: [] as string[],
-  completeness: {},
   /*
    * ⚠ LARGE EXPRÈS DANS LES FIXTURES, et éprouvé à part. Un plafond serré ici
    * ferait échouer des tests qui parlent d'autre chose, et on le desserrerait sans
@@ -293,7 +319,8 @@ describe("un mois sort de bout en bout", () => {
     expect(out.ok).toBe(true);
     expect(w.journal.runs).toHaveLength(1);
     expect(w.journal.runs[0].state).toBe("published");
-    expect(Number(w.journal.runs[0].cost_usd)).toBeCloseTo(0.32, 5);
+    /* ⚠ La rédaction, PLUS la relecture et le juge : ils sont payés aussi. */
+    expect(Number(w.journal.runs[0].cost_usd)).toBeCloseTo(0.32 + editedUsd(w), 5);
   });
 });
 
@@ -416,8 +443,8 @@ describe("une interruption reprend sans repayer", () => {
     const out = await orchestrateMonth(w.ports, input());
     expect(out.ok).toBe(true);
     if (!out.ok) return;
-    /* 0,19 $ déjà payés + 0,32 $ pour le seul sujet manquant. */
-    expect(out.costUsd).toBeCloseTo(0.51, 5);
+    /* 0,19 $ déjà payés + 0,32 $ pour le seul sujet manquant, + la relecture et le juge. */
+    expect(out.costUsd).toBeCloseTo(0.51 + editedUsd(w), 5);
   });
 });
 
@@ -583,7 +610,7 @@ describe("F55 — un mois qui garde un constat ne s'écrit pas", () => {
     expect(w.months[0].status).toBe("failed");
     expect(w.released.flat().length, "les sujets restent volés au segment").toBeGreaterThan(0);
     /* ⚠ Le coût engagé est dit : les jetons ont bien été dépensés. */
-    if (!out.ok) expect(out.costUsd).toBeCloseTo(0.2, 5);
+    if (!out.ok) expect(out.costUsd).toBeCloseTo(0.2 + editedUsd(w), 5);
   });
 });
 
@@ -746,5 +773,178 @@ describe("F58 — le plafond borne la rédaction", () => {
     expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
     if (!out.ok) return;
     expect(out.month.written).toBe(3);
+  });
+});
+
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  2026-10-04 — CE QUE LE PREMIER RÉDACTEUR RÉEL A FAIT TROUVER
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Deux défauts du journal, invisibles tant que les seules doublures rendaient un
+ * `batchId` et tout leur travail d'un coup ; et deux exemptions du recensement,
+ * levées en appelant enfin le juge et la relecture.
+ */
+describe("un rédacteur synchrone écrit au journal, au fil des réponses", () => {
+  /** Un rédacteur qui rend ses posts un par un, sans lot, et s'arrête où on lui dit. */
+  function streaming(stopAfter: number | null = null): WriterPort & { asked: string[][] } {
+    const asked: string[][] = [];
+    return {
+      asked,
+      write: vi.fn(async ({ topics, sink }: WriteRequest) => {
+        asked.push(topics.map((t: DrawnTopic) => t.id));
+        const posts: WrittenPost[] = [];
+        for (const t of topics) {
+          if (stopAfter !== null && posts.length >= stopAfter) throw new Error("processus tué");
+          const post = written(Number(t.id.slice(1)));
+          await sink.post(post);
+          await sink.spent(0.1);
+          posts.push(post);
+        }
+        return { posts, batchId: null, costUsd: 0.1 * posts.length };
+      }),
+    };
+  }
+
+  /*
+   * ⚠ LE DÉFAUT : `rememberResult` met à jour des lignes que seul `rememberBatch`
+   * créait, et seulement quand le port rendait un identifiant de lot. Sans lot, le
+   * journal restait vide.
+   */
+  it("sans lot, les sujets sont inscrits et chaque réponse est gardée", async () => {
+    const w = world({ writer: streaming() });
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    const kept = w.journal.results.filter((r) => r.result !== null);
+    expect(kept.length, "aucune réponse d'un rédacteur synchrone n'est entrée au journal").toBe(4);
+  });
+
+  it("une panne au troisième post garde les deux premiers, payés", async () => {
+    const w = world({ writer: streaming(2) });
+    await expect(orchestrateMonth(w.ports, input())).rejects.toThrow("processus tué");
+    const kept = w.journal.results.filter((r) => r.result !== null).map((r) => r.topic_id);
+    expect(kept.sort(), "les réponses payées avant la panne sont perdues").toEqual(["t1", "t2"]);
+    expect(Number(w.journal.runs[0].cost_usd), "le coût engagé avant la panne n'est pas au journal").toBeCloseTo(0.2, 5);
+  });
+
+  it("la reprise ne redemande que ce que la panne a laissé, et compte ce qui était payé", async () => {
+    const w = world({ writer: streaming(2) });
+    await expect(orchestrateMonth(w.ports, input())).rejects.toThrow("processus tué");
+
+    const writer = streaming();
+    const out = await orchestrateMonth({ ...w.ports, writer }, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    expect(writer.asked, "la reprise repaie des réponses déjà au journal").toEqual([["t3", "t4"]]);
+    if (!out.ok) return;
+    expect(out.resumed.reattached).toBe(true);
+    expect(out.costUsd).toBeCloseTo(0.4 + editedUsd(w), 5);
+  });
+
+  /*
+   * ⚠ UN REFUS PAYÉ N'EST PAS REPAYÉ. Il est au journal ; une reprise ne le
+   * renvoie pas au fournisseur, et il ne devient pas un post.
+   */
+  it("un sujet refusé au journal n'est ni réécrit ni publié", async () => {
+    const refusing: WriterPort = {
+      write: vi.fn(async ({ topics, sink }: WriteRequest) => {
+        const posts: WrittenPost[] = [];
+        for (const t of topics) {
+          if (t.id === "t2") {
+            await sink.refused(t.id, "payload_shape", "refused");
+            continue;
+          }
+          if (t.id === "t4") throw new Error("processus tué");
+          const post = written(Number(t.id.slice(1)));
+          await sink.post(post);
+          posts.push(post);
+        }
+        return { posts, batchId: null, costUsd: 0 };
+      }),
+    };
+    const w = world({ writer: refusing });
+    await expect(orchestrateMonth(w.ports, input())).rejects.toThrow("processus tué");
+
+    const writer = streaming();
+    await orchestrateMonth({ ...w.ports, writer }, input());
+    expect(writer.asked, "le refus payé est renvoyé au fournisseur").toEqual([["t4"]]);
+    expect(w.journal.results.find((r) => r.topic_id === "t2")!.result).toMatchObject({ refused: true });
+  });
+});
+
+describe("le juge et la relecture sont appelés sur le mois produit", () => {
+  it("les deux passent par le port de texte, et leur coût est compté", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.editing.revisionSkipped).toBe(false);
+    expect(out.editing.costUsd).toBeCloseTo(editedUsd(w), 5);
+    expect(editedUsd(w), "ni la relecture ni le juge n'ont été appelés").toBeGreaterThan(0);
+  });
+
+  it("une réécriture de la relecture change ce qui est composé", async () => {
+    const editor: TextModel = {
+      ask: vi.fn(async ({ system }: TextAsk) => ({
+        text: system.includes("rereading a month")
+          ? JSON.stringify({ revisions: [{ index: 0, why: "test", card_line: "A quieter first line", payload: { statement: "Rest arrives late, and it still counts." } }] })
+          : "{}",
+        usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+        costUsd: 0,
+      })),
+    };
+    const w = world({ editor });
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    if (!out.ok) return;
+    expect(out.editing.revised).toBe(1);
+    const lines = out.month.inserted.map((p) => p.cardLine);
+    expect(lines, "la réécriture n'a pas atteint la carte").toContain("A quieter first line");
+  });
+
+  /*
+   * ⚠ LE VERDICT DU JUGE ATTEINT LE PORTILLON. Il était une ENTRÉE que chaque
+   * appelant passait vide : un juge jamais appelé ne refuse rien.
+   */
+  it("une ligne que le juge dit inachevée est refusée au portillon", async () => {
+    const w0 = world();
+    const probe = await orchestrateMonth(w0.ports, input());
+    if (!probe.ok) throw new Error(probe.refusal);
+    const judgedLines = (w0.ports.editor.ask as ReturnType<typeof vi.fn>).mock.calls
+      .map((c: unknown[]) => c[0] as TextAsk)
+      .filter((a: TextAsk) => a.system.includes("SYNTACTICALLY COMPLETE"))
+      .flatMap((a: TextAsk) => a.user.split("\n").map((l: string) => l.replace(/^- /, "")));
+    expect(judgedLines.length, "ce monde ne soumet rien au juge : le test serait vide").toBeGreaterThan(0);
+    const verdicts = Object.fromEntries(judgedLines.map((l: string) => [l, false]));
+    const editor: TextModel = {
+      ask: vi.fn(async ({ system }: TextAsk) => ({
+        text: system.includes("SYNTACTICALLY COMPLETE") ? JSON.stringify(verdicts) : "{}",
+        usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+        costUsd: 0,
+      })),
+    };
+    const w = world({ editor });
+    const out = await orchestrateMonth(w.ports, input());
+    if (out.ok) {
+      expect(out.editing.judgedIncomplete).toBeGreaterThan(0);
+      expect(out.month.written, "un verdict « inachevé » n'a rien refusé").toBeLessThan(probe.month.written);
+    } else {
+      expect(out.stage, "le mois tombe, mais pas au portillon").toBe("assemble");
+      expect(out.refusal).toMatch(/unfinished|inachev|complet/i);
+    }
+  });
+
+  it("une reprise qui n'a rien rédigé ne repaie pas la relecture", async () => {
+    const w = world({ writer: {
+      write: vi.fn(async ({ topics, sink }: WriteRequest) => {
+        for (const t of topics) await sink.post(written(Number(t.id.slice(1))));
+        throw new Error("processus tué après la rédaction");
+      }),
+    } });
+    await expect(orchestrateMonth(w.ports, input())).rejects.toThrow();
+    /* La première reprise relit : les posts n'ont pas encore été relus. */
+    const first = await orchestrateMonth({ ...w.ports, writer: { write: vi.fn() } as never }, input());
+    if (!first.ok) throw new Error(first.refusal);
+    expect(first.editing.revisionSkipped).toBe(false);
   });
 });

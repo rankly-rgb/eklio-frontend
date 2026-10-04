@@ -1,6 +1,6 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { budgetErrors, words, type BudgetError } from "@/lib/compose/budget";
-import { copyEffort, massCopyModel } from "@/lib/content/generate/copy-batch";
+import { copyEffort } from "@/lib/content/generate/copy-batch";
+import type { TextModel } from "@/lib/content/generate/provider";
 
 /*
  * ── RÉÉCRIRE LE CHAMP QUI DÉPASSE, ET RIEN D'AUTRE ──────────────────────
@@ -34,6 +34,8 @@ export type RepairOutcome = {
   remaining: BudgetError[];
   usage: RepairUsage;
   calls: number;
+  /** Ce que la réparation a coûté, dit par le fournisseur qui a répondu. */
+  costUsd: number;
 };
 
 /* ── Lire et écrire une valeur par son chemin ──────────────────────────── */
@@ -116,9 +118,12 @@ function ask(path: string, text: string, allowed: number, said: number): string 
   ].join("\n");
 }
 
-export type RepairPort = (
-  params: Anthropic.Messages.MessageCreateParamsNonStreaming
-) => Promise<Anthropic.Message>;
+/**
+ * ⚠ LE PORT ÉTAIT UN `messages.create` D'ANTHROPIC, ET C'EST UN `TextModel`
+ * DÉSORMAIS. La réparation est le troisième appel court du mois, avec le juge et
+ * la révision ; les trois passent par le même port, donc par le même compteur.
+ */
+export type RepairPort = TextModel;
 
 export async function repairPayload(
   port: RepairPort,
@@ -131,11 +136,12 @@ export async function repairPayload(
   let current = payload;
   let passes = 0;
   let calls = 0;
+  let costUsd = 0;
 
   while (passes < maxPasses) {
     const errors = budgetErrors(archetypeKey, current);
     if (errors.length === 0) {
-      return { payload: current, ok: true, passes, rewritten, remaining: [], usage, calls };
+      return { payload: current, ok: true, passes, rewritten, remaining: [], usage, calls, costUsd };
     }
     passes += 1;
 
@@ -148,19 +154,19 @@ export async function repairPayload(
       errors.map(async (error) => {
         const text = readPath(current, error.path);
         if (text === null) return null;
-        const message = await port({
-          model: massCopyModel(),
-          max_tokens: 80,
+        const answer = await port.ask({
+          maxTokens: 80,
           // ⚠ MÊME EFFORT QUE LA RÉDACTION. Une réparation qui raisonnerait
           // plus que l'écriture qu'elle répare coûterait plus qu'elle.
-          output_config: { effort: copyEffort() },
+          effort: copyEffort(),
           system: SYSTEM,
-          messages: [{ role: "user", content: ask(error.path, text, error.allowed, error.said) }],
+          user: ask(error.path, text, error.allowed, error.said),
         });
-        usage.input += message.usage.input_tokens;
-        usage.output += message.usage.output_tokens;
-        usage.cacheRead += message.usage.cache_read_input_tokens ?? 0;
-        usage.cacheWrite += message.usage.cache_creation_input_tokens ?? 0;
+        usage.input += answer.usage.input;
+        usage.output += answer.usage.output;
+        usage.cacheRead += answer.usage.cacheRead;
+        usage.cacheWrite += answer.usage.cacheWrite;
+        costUsd += answer.costUsd;
         /*
          * ⚠ LA PREMIÈRE LIGNE, ET SANS LE DÉCOMPTE QU'IL AJOUTE.
          *
@@ -173,10 +179,7 @@ export async function repairPayload(
          * On lit sa réponse, on ne la répare pas : la première ligne EST la
          * phrase, et la parenthèse finale est un commentaire sur elle.
          */
-        const reply = message.content
-          .filter((block): block is Anthropic.TextBlock => block.type === "text")
-          .map((block) => block.text)
-          .join("")
+        const reply = answer.text
           .trim()
           .split("\n")[0]
           .trim()
@@ -216,5 +219,5 @@ export async function repairPayload(
   }
 
   const remaining = budgetErrors(archetypeKey, current);
-  return { payload: current, ok: remaining.length === 0, passes, rewritten, remaining, usage, calls };
+  return { payload: current, ok: remaining.length === 0, passes, rewritten, remaining, usage, calls, costUsd };
 }

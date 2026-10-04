@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { readPath, writePath, repairPayload } from "@/lib/content/generate/repair";
 import { budgetErrors } from "@/lib/compose/budget";
+import { anthropicTextModel } from "@/lib/content/generate/provider";
+
+/** La réparation prend un `TextModel` ; la doublure reste un `messages.create`, traduit par le port. */
+const viaAnthropic = (create: unknown) => anthropicTextModel({ messages: { create } } as never, "test-model", () => 0);
 
 /*
  * ── CE QUE LA RÉPARATION A DÛ APPRENDRE À LIRE ──────────────────────────
@@ -42,7 +46,7 @@ describe("la réparation lit la réponse du modèle", () => {
 
   it("⚠ LE DÉCOMPTE QUE LE MODÈLE AJOUTE N'EST PAS LA PHRASE", async () => {
     const port = vi.fn(async () => message("Rest is learned, not forced\n\n(5 words)"));
-    const out = await repairPayload(port, "single_statement", tooLong);
+    const out = await repairPayload(viaAnthropic(port), "single_statement", tooLong);
     expect(out.ok).toBe(true);
     expect((out.payload as { statement: string }).statement).toBe("Rest is learned, not forced");
     expect(out.passes).toBe(1);
@@ -50,13 +54,13 @@ describe("la réparation lit la réponse du modèle", () => {
 
   it("les guillemets qu'il met autour non plus", async () => {
     const port = vi.fn(async () => message('"Rest is learned, not forced"'));
-    const out = await repairPayload(port, "single_statement", tooLong);
+    const out = await repairPayload(viaAnthropic(port), "single_statement", tooLong);
     expect((out.payload as { statement: string }).statement).toBe("Rest is learned, not forced");
   });
 
   it("une réponse qui ne raccourcit rien est refusée, et la boucle s'arrête", async () => {
     const port = vi.fn(async () => message("This statement runs on well past the twenty four word limit that the database enforces on a single statement card and so it must come back shorter than it is"));
-    const out = await repairPayload(port, "single_statement", tooLong);
+    const out = await repairPayload(viaAnthropic(port), "single_statement", tooLong);
     expect(out.ok).toBe(false);
     expect(out.rewritten).toEqual([]);
     expect(port).toHaveBeenCalledTimes(1);
@@ -75,7 +79,7 @@ describe("la réparation lit la réponse du modèle", () => {
     ];
     let call = 0;
     const port = vi.fn(async () => message(replies[Math.min(call++, replies.length - 1)]));
-    const out = await repairPayload(port, "single_statement", tooLong);
+    const out = await repairPayload(viaAnthropic(port), "single_statement", tooLong);
     expect(out.ok).toBe(true);
     expect(out.passes).toBe(2);
     expect(budgetErrors("single_statement", out.payload)).toEqual([]);

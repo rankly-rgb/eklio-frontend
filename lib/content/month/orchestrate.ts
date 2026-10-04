@@ -7,15 +7,21 @@ import {
   markSettled,
   openRun,
   publishRun,
-  rememberBatch,
+  isRefusedResult,
+  rememberBatchId,
   rememberCost,
   rememberResult,
+  rememberTopics,
   resumePlan,
   type JournalDb,
   type RunJournal,
 } from "@/lib/content/month/journal-port";
 import type { PostContext } from "@/lib/content/month-checks";
-import type { CompletenessVerdicts } from "@/lib/content/writing-checks";
+import { undecidedIn } from "@/lib/content/writing-checks";
+import { writtenLinesIn } from "@/lib/content/month-checks";
+import { judgeCompleteness } from "@/lib/content/generate/completeness-judge";
+import { reviseMonth } from "@/lib/content/generate/revise";
+import type { TextModel } from "@/lib/content/generate/provider";
 import type { DirectionPalette } from "@/lib/compose/palette";
 import type { RenderInput } from "@/lib/compose/types";
 import { withinCeiling, type SpendCeiling } from "@/lib/content/month/spend-ceiling";
@@ -79,6 +85,40 @@ export type WrittenPost = {
   eyebrow: string;
   /** Ce que cet appel a consommé, pour que le coût reste juste après reprise. */
   usage: { input: number; output: number; cacheRead: number; cacheWrite: number };
+  /**
+   * Ce que ce post a coûté, réparation comprise, dit par le fournisseur qui a
+   * répondu. Facultatif : un rejeu n'a rien payé.
+   */
+  costUsd?: number;
+  /**
+   * ⚠ LA PASSE DE RÉVISION L'A DÉJÀ LU. Posé après la révision et journalisé avec
+   * le post, pour qu'une reprise qui n'a rien rédigé de neuf ne repaie pas une
+   * relecture que le journal porte déjà.
+   */
+  revisionSeen?: boolean;
+};
+
+/**
+ * Ce que le port de rédaction dit au journal PENDANT qu'il rédige.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ *  ⚠ L'EN-TÊTE DE CE FICHIER LE PROMETTAIT, ET LE CODE NE LE FAISAIT PAS
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * « Chaque réponse entre au journal DÈS SON ARRIVÉE. » Mesuré le 2026-10-04 en
+ * branchant le premier rédacteur réel : l'orchestrateur écrivait au journal
+ * APRÈS que `write()` était revenu, c'est-à-dire après la dernière réponse. Une
+ * panne au vingtième appel perdait les dix-neuf réponses payées — la panne du
+ * 2026-09-23, à la même place.
+ *
+ * Le port reçoit donc ce puits et l'appelle à chaque réponse : un post rédigé,
+ * un refus payé, une dépense. L'orchestrateur, lui, écrit en base.
+ */
+export type WriteSink = {
+  post(post: WrittenPost): Promise<void>;
+  refused(topicId: string, reason: string, family?: string): Promise<void>;
+  /** Une dépense, en dollars, dès qu'elle est connue — refus compris. */
+  spent(deltaUsd: number): Promise<void>;
 };
 
 export type WriteRequest = {
@@ -86,6 +126,8 @@ export type WriteRequest = {
   /** Ce que le mois promet, pour que le port sache combien il écrit. */
   wanted: number;
   month: string;
+  /** Le journal, au fil des réponses. Un port qui ne l'appelle pas reste juste, mais perd tout sur une panne. */
+  sink: WriteSink;
 };
 
 export type WriteResult = {
@@ -102,6 +144,14 @@ export type WriteResult = {
   batchId: string | null;
   /** Ce que la rédaction a coûté en tout, en dollars. */
   costUsd: number;
+  /**
+   * Pourquoi le port s'est arrêté avant d'avoir tout tenté, s'il l'a fait.
+   *
+   * ⚠ UN ARRÊT N'EST PAS UN REFUS DE RÉDACTION. Un plafond atteint ou un solde
+   * épuisé laissent des sujets JAMAIS tentés ; les compter comme refusés ferait
+   * mesurer un taux de réussite sur des appels qui n'ont pas eu lieu.
+   */
+  stopped?: { reason: "spend_cap" | "no_credit" | "unavailable"; detail: string; untried: number };
 };
 
 export type WriterPort = {
@@ -113,6 +163,16 @@ export type OrchestratePorts = {
   draw: DrawPorts;
   journal: JournalDb;
   writer: WriterPort;
+  /**
+   * ⚠ LE SECOND ACCÈS PAYANT : LA RELECTURE DU MOIS ET LE JUGE DE COMPLÉTUDE.
+   *
+   * Ils étaient les deux dernières exemptions du recensement (« il n'y a aucun
+   * payload côté produit ») et une ENTRÉE figée — `completeness: {}` — que les
+   * appelants passaient vide. Un juge qu'on n'appelle pas ne refuse rien : chaque
+   * ligne coupée avant son sens passait le portillon. Ils sont appelés ici, sur
+   * les posts de CE mois, par le même port de texte que le fournisseur retenu.
+   */
+  editor: TextModel;
   /*
    * ⚠ LA LIGNE DU MOIS, ET PERSONNE NE L'ÉCRIVAIT CÔTÉ PRODUIT.
    *
@@ -175,7 +235,6 @@ export type OrchestrateInput = {
   identityAllowList: string[];
   intentCatalogue: Array<{ id: string; label: string }>;
   modalities: string[];
-  completeness: CompletenessVerdicts;
 };
 
 export type OrchestrateOutcome =
@@ -205,6 +264,17 @@ export type OrchestrateOutcome =
       runId: string;
       /** La ligne `content_months`, pour que l'appelant sache quoi relire. */
       monthId: string;
+      /** Ce que la relecture et le juge ont fait, pour que le rapport le dise. */
+      editing: {
+        revised: number;
+        revisionRefused: number;
+        revisionSkipped: boolean;
+        judged: number;
+        judgedIncomplete: number;
+        costUsd: number;
+      };
+      /** Ce que la rédaction de CE passage a dit d'elle-même. */
+      writing: { asked: number; returned: number; refusedInJournal: number; stopped: WriteResult["stopped"] | null };
     };
 
 /** Un post rédigé ET composé, prêt pour l'assemblage. */
@@ -315,6 +385,8 @@ export async function orchestrateMonth(
 
   /* ── 5. la rédaction : le seul port qui coûte ───────────────────────── */
   const alreadyWritten = new Map<string, WrittenPost>();
+  /* ⚠ Les sujets dont la rédaction a été payée et refusée : ni réécrits, ni publiés. */
+  const refusedInJournal = new Set<string>();
   let toSettle: string[] = [];
 
   if (fromJournal) {
@@ -323,6 +395,10 @@ export async function orchestrateMonth(
     resumed.settledOnly = plan.toSettle.length;
     toSettle = plan.toSettle;
     for (const [topicId, entry] of Object.entries(fromJournal.entries)) {
+      if (isRefusedResult(entry.result)) {
+        refusedInJournal.add(topicId);
+        continue;
+      }
       /*
        * ⚠ LE RÉSULTAT DU JOURNAL EST RELU, PAS REDEMANDÉ. C'est tout l'objet des
        * deux tables : le travail payé survit à la panne, et la publication reste
@@ -332,7 +408,11 @@ export async function orchestrateMonth(
     }
   }
 
-  const missing = topics.filter((t) => !alreadyWritten.has(t.id));
+  const missing = topics.filter((t) => !alreadyWritten.has(t.id) && !refusedInJournal.has(t.id));
+  let writing: { asked: number; returned: number; refusedInJournal: number; stopped: WriteResult["stopped"] | null } = {
+    asked: 0, returned: 0, refusedInJournal: refusedInJournal.size, stopped: null,
+  };
+  let wroteSomethingNew = false;
   if (missing.length > 0) {
     /*
      * ══════════════════════════════════════════════════════════════════════
@@ -369,28 +449,70 @@ export async function orchestrateMonth(
       };
     }
 
+    /*
+     * ⚠ LES SUJETS SONT INSCRITS AVANT LE PREMIER APPEL, pas après le dernier.
+     * Voir `rememberTopics` : sans ces lignes, aucune réponse d'un rédacteur
+     * synchrone n'entrait au journal, et une reprise refaisait son tirage.
+     */
+    if (!fromJournal) await rememberTopics(ports.journal, runId, missing.map((t) => t.id));
+
+    const journaled = new Set<string>();
+    const writeBase = costUsd;
+    let streamedUsd = 0;
+    const sink: WriteSink = {
+      async post(post) {
+        await rememberResult(ports.journal, runId, post.topicId, { result: post, usage: post.usage });
+        journaled.add(post.topicId);
+        alreadyWritten.set(post.topicId, post);
+      },
+      async refused(topicId, reason, family) {
+        const result: Record<string, unknown> = { refused: true, reason, ...(family ? { family } : {}) };
+        await rememberResult(ports.journal, runId, topicId, {
+          result,
+          usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        });
+        refusedInJournal.add(topicId);
+      },
+      async spent(deltaUsd) {
+        streamedUsd += deltaUsd;
+        /*
+         * ⚠ LE COÛT SUIT LES RÉPONSES, ET L'ÉTAT RESTE `submitted`. Une reprise
+         * qui relit ce chiffre le compte comme déjà dépensé — c'est ce qui
+         * empêche un plafond de se contourner par une panne.
+         */
+        await rememberCost(ports.journal, runId, writeBase + streamedUsd, "submitted");
+      },
+    };
+
     const written = await ports.writer.write({
       topics: missing,
       wanted: input.wanted,
       month: input.month,
+      sink,
     });
-    costUsd += written.costUsd;
+    costUsd = writeBase + written.costUsd;
+    writing = {
+      asked: missing.length,
+      returned: written.posts.length,
+      refusedInJournal: refusedInJournal.size,
+      stopped: written.stopped ?? null,
+    };
 
+    if (written.batchId) await rememberBatchId(ports.journal, runId, written.batchId);
     /*
-     * ⚠ L'IDENTIFIANT DU LOT ET LA LISTE DE SES SUJETS, DANS LE MÊME GESTE, et
-     * AVANT toute attente. Un `batch_id` sans sa liste ne se reprend pas : on
-     * aurait sauvé de quoi RETROUVER le travail payé, pas de quoi le RECONNAÎTRE.
+     * ⚠ UN PORT QUI N'A PAS APPELÉ LE PUITS EST RATTRAPÉ ICI. Il reste juste —
+     * ses posts entrent au journal — mais il perd tout sur une panne, et c'est
+     * à lui de le dire, pas à l'orchestrateur de le cacher.
      */
-    if (written.batchId && !fromJournal) {
-      await rememberBatch(ports.journal, runId, written.batchId, missing.map((t) => t.id));
-    }
     for (const post of written.posts) {
+      if (journaled.has(post.topicId)) continue;
       await rememberResult(ports.journal, runId, post.topicId, {
         result: post,
         usage: post.usage,
       });
       alreadyWritten.set(post.topicId, post);
     }
+    wroteSomethingNew = written.posts.length > 0;
     await rememberCost(ports.journal, runId, costUsd, "collected");
   }
 
@@ -399,10 +521,61 @@ export async function orchestrateMonth(
     return {
       ok: false,
       stage: "write",
-      refusal: "la rédaction n'a rendu aucun post : rien à composer, rien à publier",
+      refusal: writing.stopped
+        ? `la rédaction s'est arrêtée avant d'avoir rien rendu : ${writing.stopped.detail}`
+        : "la rédaction n'a rendu aucun post : rien à composer, rien à publier",
       costUsd,
       nothingWritten: true,
     };
+  }
+
+  /*
+   * ── 5b. LA RELECTURE DU MOIS, AVANT LA COMPOSITION ──────────────────────
+   *
+   * ⚠ AVANT, PARCE QU'ELLE CHANGE CE QUI SERA DESSINÉ. Elle réécrit une ligne de
+   * carte ou un libellé répété ; composer d'abord puis réviser ferait dessiner
+   * une carte qu'on jette.
+   *
+   * ⚠ ET ELLE NE SE REPAIE PAS SUR UNE REPRISE QUI N'A RIEN RÉDIGÉ. Les posts
+   * qu'elle a lus portent `revisionSeen` au journal ; si tous le portent et que
+   * rien de neuf n'est arrivé, la relecture est déjà faite et payée.
+   */
+  const editing = {
+    revised: 0, revisionRefused: 0, revisionSkipped: false, judged: 0, judgedIncomplete: 0, costUsd: 0,
+  };
+  const inOrder = topics.filter((t) => alreadyWritten.has(t.id));
+  const alreadyRevised = !wroteSomethingNew && inOrder.every((t) => alreadyWritten.get(t.id)!.revisionSeen === true);
+  if (alreadyRevised) {
+    editing.revisionSkipped = true;
+  } else {
+    const revision = await reviseMonth(
+      ports.editor,
+      inOrder.map((t) => {
+        const post = alreadyWritten.get(t.id)!;
+        return {
+          archetype: t.archetype_key,
+          cardLine: post.cardLine,
+          payload: post.payload,
+          caption: post.caption,
+          altText: post.altText,
+        };
+      })
+    );
+    editing.costUsd += revision.costUsd;
+    editing.revised = revision.revisions.length;
+    editing.revisionRefused = revision.refused.length;
+    for (const r of revision.revisions) {
+      const topic = inOrder[r.index];
+      const post = alreadyWritten.get(topic.id)!;
+      alreadyWritten.set(topic.id, { ...post, cardLine: r.cardLine, payload: r.payload });
+    }
+    for (const topic of inOrder) {
+      const post = { ...alreadyWritten.get(topic.id)!, revisionSeen: true };
+      alreadyWritten.set(topic.id, post);
+      await rememberResult(ports.journal, runId, topic.id, { result: post, usage: post.usage });
+    }
+    costUsd += revision.costUsd;
+    await rememberCost(ports.journal, runId, costUsd, "collected");
   }
 
   /* ── 6. la composition : le pied porte la licence ───────────────────── */
@@ -489,6 +662,32 @@ export async function orchestrateMonth(
     };
   }
 
+  /*
+   * ── 6b. LE JUGE DE COMPLÉTUDE, SUR CE QUI A ÉTÉ COMPOSÉ ─────────────────
+   *
+   * ⚠ APRÈS LA COMPOSITION, PARCE QU'IL JUGE CE QUI SERA IMPRIMÉ. Un repli de
+   * composition change l'archétype, donc les lignes ; juger le payload rédigé
+   * plutôt que le composé jugerait une carte qui ne sortira pas.
+   *
+   * ⚠ ET SEULES LES LIGNES INDÉCISES LUI SONT SOUMISES. Le lexique tranche le
+   * reste, gratuitement ; `undecidedIn` est la même sélection que le harnais.
+   */
+  const toJudge = undecidedIn(
+    writtenLinesIn(
+      prepared.map((p) => ({
+        archetype: p.composeArchetype,
+        title: p.candidate.topic.title,
+        cardLine: p.cardLine,
+        payload: p.payload,
+      }))
+    )
+  );
+  const judged = await judgeCompleteness(ports.editor, toJudge);
+  editing.judged = toJudge.length;
+  editing.judgedIncomplete = Object.values(judged.verdicts).filter((v) => v === false).length;
+  editing.costUsd += judged.costUsd;
+  costUsd += judged.costUsd;
+
   /* ── 7. l'assemblage : portillon, sélection, écriture, crédit ───────── */
   const assemblePorts = ports.assembleFor(monthId);
   const month = await assembleMonth(assemblePorts, {
@@ -502,7 +701,7 @@ export async function orchestrateMonth(
     intentCatalogue: input.intentCatalogue,
     licenceMention: verdict.licenceMention,
     modalities: input.modalities,
-    completeness: input.completeness,
+    completeness: judged.verdicts,
     userId: input.userId,
     month: input.month,
   });
@@ -583,5 +782,7 @@ export async function orchestrateMonth(
   const released = drawnIds.filter((id) => !kept.has(id));
   if (released.length > 0) await ports.releaseTopics(released);
 
-  return { ok: true, month, costUsd, resumed, fallbacks: composeFallbacks, released, runId, monthId };
+  return {
+    ok: true, month, costUsd, resumed, fallbacks: composeFallbacks, released, runId, monthId, editing, writing,
+  };
 }

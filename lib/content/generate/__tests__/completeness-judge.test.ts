@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { judgeCompleteness } from "@/lib/content/generate/completeness-judge";
+import { anthropicTextModel } from "@/lib/content/generate/provider";
+
+/** Le juge prend un `TextModel` ; ses doublures restent des clients Anthropic, traduits par le port. */
+const viaAnthropic = (client: unknown) => anthropicTextModel(client as never, "test-model", () => 0);
 
 /*
  * ── ⚠ UN JUGE EN PANNE NE REFUSE PAS UN MOIS ───────────────────────────
@@ -9,8 +13,8 @@ import { judgeCompleteness } from "@/lib/content/generate/completeness-judge";
  * « L'absence de verdict n'est pas un verdict » est la règle, et elle est
  * testée ici parce que c'est le seul endroit où elle peut se perdre.
  */
-const clientThat = (behaviour: () => unknown) => ({
-  messages: { create: async () => behaviour() } as never,
+const clientThat = (behaviour: () => unknown) => viaAnthropic({
+  messages: { create: async () => behaviour() },
 });
 
 describe("le juge de complétude", () => {
@@ -23,7 +27,7 @@ describe("le juge de complétude", () => {
       ["The thing that works costs", "Back at work"]
     );
     expect(verdicts).toEqual({ "The thing that works costs": false, "Back at work": true });
-    expect(usage).toEqual({ input: 120, output: 18 });
+    expect(usage).toEqual({ input: 120, output: 18, cacheRead: 0, cacheWrite: 0 });
   });
 
   it("supporte un JSON entouré d'un fence", async () => {
@@ -43,11 +47,15 @@ describe("le juge de complétude", () => {
       ["The thing that works costs"]
     );
     expect(verdicts).toEqual({});
-    expect(usage).toEqual({ input: 0, output: 0 });
+    expect(usage).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
 
-  it("ne lève pas sur une réponse illisible", async () => {
-    const { verdicts } = await judgeCompleteness(
+  /*
+   * ⚠ ET LA RÉPONSE ILLISIBLE GARDE SON COÛT. Elle a été facturée ; la version
+   * d'avant rendait un usage nul, et le mois ne comptait pas ce qu'il avait payé.
+   */
+  it("ne lève pas sur une réponse illisible, et la compte quand même", async () => {
+    const { verdicts, usage } = await judgeCompleteness(
       clientThat(() => ({
         content: [{ type: "text", text: "Sure! Here are my thoughts:" }],
         usage: { input_tokens: 5, output_tokens: 5 },
@@ -55,6 +63,7 @@ describe("le juge de complétude", () => {
       ["x y"]
     );
     expect(verdicts).toEqual({});
+    expect(usage.output).toBe(5);
   });
 
   /* ⚠ Une valeur non booléenne n'est pas un verdict : elle est ignorée. */
@@ -72,10 +81,10 @@ describe("le juge de complétude", () => {
   it("aucune ligne indécise : aucun appel", async () => {
     let called = 0;
     const { usage } = await judgeCompleteness(
-      { messages: { create: async () => { called += 1; return {}; } } as never },
+      viaAnthropic({ messages: { create: async () => { called += 1; return {}; } } }),
       []
     );
     expect(called).toBe(0);
-    expect(usage).toEqual({ input: 0, output: 0 });
+    expect(usage).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
 });

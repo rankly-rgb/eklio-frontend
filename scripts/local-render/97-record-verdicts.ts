@@ -14,6 +14,16 @@ import { completenessOf } from "../../lib/content/writing-checks";
 import { syncCostUsd } from "../../lib/content/generate/copy-batch";
 import { anthropicKeyOrDie } from "./lib";
 
+/*
+ * ⚠ LE JUGE, LA RÉVISION ET LA RÉPARATION PRENNENT UN `TextModel` DEPUIS LE
+ * 2026-10-04 : ils sont branchés côté produit sur OpenAI. Le harnais reste sur
+ * Anthropic et passe par le même port, au même coût qu'avant (`syncCostUsd`).
+ */
+import { anthropicTextModel as _anthropicTextModel } from "../../lib/content/generate/provider";
+import { massCopyModel as _massCopyModel, syncCostUsd as _syncCostUsd } from "../../lib/content/generate/copy-batch";
+const textModelOf = (client: Parameters<typeof _anthropicTextModel>[0]) =>
+  _anthropicTextModel(client, _massCopyModel(), _syncCostUsd);
+
 const arg = (name: string): string | null => {
   const i = process.argv.indexOf(`--${name}`);
   return i === -1 ? null : (process.argv[i + 1] ?? null);
@@ -24,7 +34,7 @@ async function main() {
   if (lines.length === 0) throw new Error("rien à juger : passer --lines \"a|b|c\"");
 
   const client = new Anthropic({ apiKey: anthropicKeyOrDie() });
-  const { verdicts, usage } = await judgeCompleteness(client, lines);
+  const { verdicts, usage } = await judgeCompleteness(textModelOf(client), lines);
 
   console.log(JSON.stringify({
     step: "record-verdicts",

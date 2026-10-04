@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { payloadSchema } from "@/lib/compose/archetypes/schema";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -62,6 +63,72 @@ export type CopyUsage = {
   cacheRead: number;
   cacheWrite: number;
 };
+
+/* ── 0. Un appel de texte court, dit sans vocabulaire de fournisseur ──── */
+
+/**
+ * Ce que le juge de complétude, la passe de révision et la réparation demandent.
+ *
+ * ⚠ ILS PRENAIENT UN CLIENT ANTHROPIC, ET C'EST CE QUI LES TENAIT HORS DU
+ * PRODUIT. `judgeCompleteness` et `reviseMonth` appelaient `client.messages.create`
+ * : les brancher sur OpenAI aurait voulu dire écrire un faux client Anthropic
+ * autour d'OpenAI, c'est-à-dire un second vocabulaire de fournisseur caché dans
+ * une doublure. Le port est donc le plus petit dénominateur des deux — une
+ * consigne, un message, un plafond — et chaque fournisseur le traduit.
+ */
+export type TextAsk = {
+  system: string;
+  user: string;
+  maxTokens: number;
+  effort?: CopyCall["effort"];
+};
+
+export type TextAnswer = {
+  text: string;
+  usage: CopyUsage;
+  /**
+   * ⚠ LE COÛT VIENT DU FOURNISSEUR QUI A RÉPONDU, PAS DE L'APPELANT. Les deux
+   * déclarent leurs tokens différemment (voir `openAiCostUsd`) ; un appelant qui
+   * recalculerait le coût depuis `usage` choisirait une des deux formules, et la
+   * mauvaise une fois sur deux.
+   */
+  costUsd: number;
+};
+
+export type TextModel = {
+  ask(request: TextAsk): Promise<TextAnswer>;
+};
+
+/**
+ * Le port, sur Anthropic. Le harnais s'en sert ; le produit passe par OpenAI.
+ *
+ * ⚠ LE COÛT EST INJECTÉ, pour que ce module reste sans dépendance vers
+ * `copy-batch.ts`, qui l'importe déjà.
+ */
+export function anthropicTextModel(
+  client: Pick<Anthropic, "messages">,
+  model: string,
+  costOf: (usage: CopyUsage) => number
+): TextModel {
+  return {
+    async ask({ system, user, maxTokens, effort }) {
+      const message = await client.messages.create({
+        model,
+        max_tokens: maxTokens,
+        ...(effort ? { output_config: { effort } } : {}),
+        system,
+        messages: [{ role: "user", content: user }],
+      } as Anthropic.Messages.MessageCreateParamsNonStreaming);
+      const blocks = (message.content ?? []) as Array<{ type: string; text?: string }>;
+      const text = blocks
+        .filter((b) => b.type === "text" && typeof b.text === "string")
+        .map((b) => b.text as string)
+        .join("");
+      const usage = anthropicUsage(message.usage);
+      return { text, usage, costUsd: costOf(usage) };
+    },
+  };
+}
 
 /* ── 1. La traduction vers Anthropic ─────────────────────────────────── */
 
@@ -133,7 +200,7 @@ export function openAiBody(call: CopyCall): Record<string, unknown> {
     reasoning: { effort: call.effort },
     prompt_cache_key: `eklio-copy-${call.archetypeKey}`,
     prompt_cache_retention: "24h",
-    text: { format: copyEnvelopeFormat() },
+    text: { format: copyEnvelopeFormat(call.archetypeKey) },
     /*
      * ⚠ ON NE STOCKE PAS LA RÉPONSE CHEZ LE FOURNISSEUR. Ce sont des textes
      * publiés sous la licence d'une clinicienne ; les garder côté fournisseur
@@ -145,40 +212,35 @@ export function openAiBody(call: CopyCall): Record<string, unknown> {
 }
 
 /**
- * Le schéma de sortie : l'ENVELOPPE, pas le payload.
+ * Le schéma de sortie : l'enveloppe ET le payload de l'archétype, en strict.
  *
- * ── ⚠ POURQUOI `strict: false` ET NON `true` ────────────────────────────
+ * ── ⚠ IL ÉTAIT EN `strict: false`, ET LA RAISON A ÉTÉ LEVÉE ─────────────
  *
- * La sortie structurée stricte est le meilleur argument d'OpenAI pour ce
- * pipeline : la classe d'échec « not_json / champ manquant » disparaît par
- * construction. Mais `strict: true` exige `additionalProperties: false` sur
- * CHAQUE objet du schéma — donc un schéma complet pour le payload de chacun des
- * onze archétypes.
+ * `strict: true` exige `additionalProperties: false` sur CHAQUE objet, donc un
+ * schéma complet du payload de chaque archétype. La version précédente s'arrêtait
+ * à l'enveloppe, faute de « définition machine » des archétypes, et laissait le
+ * payload libre — c'est-à-dire là où vivaient les échecs de forme mesurables.
  *
- * Or les formes d'archétype n'ont PAS de définition machine dans ce dépôt :
- * `SHAPES` (copy-batch.ts) les décrit en prose à l'intention du modèle, et le
- * moteur de composition les lit champ par champ. Écrire onze schémas JSON à la
- * main créerait une SECONDE SOURCE DE VÉRITÉ pour la forme des cartes — et
- * celle des deux qu'on oublie de mettre à jour est celle qui décide.
+ * Le schéma vit désormais dans `lib/compose/archetypes/schema.ts`, à côté des
+ * modules dont il traduit la forme, et un test le tient aligné sur leurs
+ * `parse()` et sur les comptes écrits dans la consigne. Il ne décide de rien :
+ * `validateCopy` repasse sur chaque réponse, budget de mots compris.
  *
- * L'enveloppe, elle, est fixe et identique pour les onze. Elle est donc
- * contrainte ici, strictement dans son esprit sinon dans son drapeau, et le
- * payload reste libre. C'est là que vivaient les échecs de forme mesurables :
- * un champ absent, une clef mal nommée, du texte avant l'accolade.
- *
- * Le jour où les archétypes gagnent une définition machine — un schéma zod
- * dans `lib/compose/archetypes` que le moteur ET le prompt liraient — ce
- * schéma-ci devient dérivable et `strict: true` devient gratuit. Consigné.
+ * ⚠ UNE ENTRÉE DE CACHE PAR ARCHÉTYPE, ET C'EST POUR ÇA QUE LE SCHÉMA EN DÉPEND.
+ * `text_format_changed` est un motif d'invalidation déclaré : un schéma constant
+ * par clef d'archétype garde le cache, et `prompt_cache_key` est déjà par
+ * archétype.
  */
-export function copyEnvelopeFormat(): Record<string, unknown> {
+export function copyEnvelopeFormat(archetypeKey: string): Record<string, unknown> {
   return {
     type: "json_schema",
     name: "eklio_copy",
-    strict: false,
+    strict: true,
     schema: {
       type: "object",
+      additionalProperties: false,
       properties: {
-        payload: { type: "object", description: "the archetype's shape, exactly as the prefix describes it" },
+        payload: payloadSchema(archetypeKey),
         card_line: { type: "string" },
         caption: { type: "string" },
         alt_text: { type: "string" },
@@ -305,6 +367,22 @@ export const OPENAI_COPY_CANDIDATES = {
   quality: "gpt-5.6-terra",
 } as const;
 
+/**
+ * Le modèle de rédaction RETENU côté OpenAI, le 2026-10-04.
+ *
+ * ── ⚠ RETENU SUR TROIS CRITÈRES, ET LE PRIX N'EST QUE LE TROISIÈME ──────
+ *
+ *   la sortie stricte   éprouvée par un vrai appel le 2026-10-04 (F69)
+ *   le cache du préfixe éprouvé par le même : 1 969 tokens écrits, puis relus
+ *   le tarif            2 $ / 12 $ par MTok, contre 2 $ / 10 $ pour
+ *                       `claude-sonnet-5` : même entrée, sortie 20 % plus chère
+ *
+ * `gpt-5.6-luna` (0,20 $ / 1,20 $) et `gpt-5.6-sol` (4 $ / 20 $) ont été lus en
+ * même temps et ne sont PAS inscrits dans `MODEL_RATES` : un tarif inscrit est un
+ * tarif qu'un coût peut employer, et seul celui-ci a été retenu et éprouvé.
+ */
+export const OPENAI_COPY_MODEL = OPENAI_COPY_CANDIDATES.quality;
+
 /** Où le tarif se lit. Écrit ici pour qu'un message d'erreur puisse le citer. */
 export const PRICE_SOURCE = "https://developers.openai.com/api/docs/pricing";
 
@@ -330,7 +408,27 @@ export const PRICE_VERIFIED_ON: Record<string, string> = {
   "claude-haiku-4-5": "2026-09-21",
   "claude-haiku-4-5-20251001": "2026-09-21",
   "claude-opus-5": "2026-09-21",
+  /*
+   * ⚠ LU SUR LA PAGE OFFICIELLE PAR L'OPÉRATRICE DE LA SESSION, PAS PAR L'AGENT.
+   * `developers.openai.com` reste refusé par l'egress de cet environnement (F69) ;
+   * le tarif a été lu à la source par une personne, daté, et transmis tel quel :
+   * 2 $ l'entrée, 12 $ la sortie, par MTok. La page est `PRICE_SOURCE`.
+   *
+   * ⚠ LE TARIF DE L'ENTRÉE MISE EN CACHE N'A PAS ÉTÉ TRANSMIS. Il n'est donc pas
+   * employé : `openAiCostUsd` facture les tokens lus en cache au tarif plein de
+   * l'entrée. C'est une BORNE HAUTE, dite comme telle partout où elle sort.
+   */
+  "gpt-5.6-terra": "2026-10-04",
 };
+
+/**
+ * Les tarifs d'entrée en cache, quand ils ont été lus.
+ *
+ * ⚠ VIDE POUR OPENAI, ET C'EST VOULU. Un tarif de cache supposé — « un dixième,
+ * comme chez Anthropic » — ferait paraître le mois moins cher qu'il n'est, dans
+ * le sens exact où l'instrument a flatté cinq fois (F48).
+ */
+export const CACHED_INPUT_PER_MTOK: Record<string, number> = {};
 
 export function priceVerified(model: string): boolean {
   return Boolean(PRICE_VERIFIED_ON[model]);

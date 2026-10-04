@@ -48,6 +48,7 @@ import {
 } from "@/lib/content/month/server-ports";
 import { serverCreditPort } from "@/lib/credits/server-port";
 import { orchestrateMonth, type WriterPort, type WrittenPost } from "@/lib/content/month/orchestrate";
+import type { TextModel } from "@/lib/content/generate/provider";
 import type { JournalDb } from "@/lib/content/month/journal-port";
 import { cardPalette } from "@/lib/compose/palette";
 import { cardBands, licenceMentionFor } from "@/lib/content/review";
@@ -88,6 +89,20 @@ if (!/127\.0\.0\.1|localhost/.test(localEnv("NEXT_PUBLIC_SUPABASE_URL") ?? "")) 
   console.error("Refusing: NEXT_PUBLIC_SUPABASE_URL is not local.");
   process.exit(1);
 }
+
+/*
+ * ⚠ UN REJEU N'A PAS DE RELECTEUR, ET IL LE DIT EN LEVANT. La relecture et le juge
+ * sont désormais appelés par l'orchestrateur (2026-10-04) ; ce lanceur ne parle à
+ * aucun modèle. Le juge et la relecture ne lèvent jamais : ils rendent un verdict
+ * vide, qui ne refuse rien — exactement le comportement du rejeu d'avant, où
+ * `completeness: {}` était passé à la main. Le mois rejoué n'est donc PAS jugé, et
+ * l'étiquette du lanceur le dit déjà : « rédaction rejouée ».
+ */
+const REPLAY_EDITOR: TextModel = {
+  async ask() {
+    throw new Error("rejeu : aucun modèle n'est appelé par ce lanceur");
+  },
+};
 
 type Report = Record<string, unknown>;
 
@@ -297,6 +312,7 @@ async function main() {
       },
       journal: rpc as unknown as JournalDb,
       writer,
+      editor: REPLAY_EDITOR,
       openMonthRow: (i) => monthRow.open(i),
       closeMonthRow: (id, status) => monthRow.close(id, status),
       assembleFor: (monthId) => ({
@@ -348,7 +364,6 @@ async function main() {
       identityAllowList: [],
       intentCatalogue: catalogue,
       modalities,
-      completeness: {},
     }
   );
 
@@ -427,6 +442,7 @@ async function main() {
         },
       },
       journal: rpc as unknown as JournalDb,
+      editor: REPLAY_EDITOR,
       writer: {
         async write(request) {
           writeCalls += request.topics.length;
@@ -478,7 +494,6 @@ async function main() {
       identityAllowList: [],
       intentCatalogue: catalogue,
       modalities,
-      completeness: {},
     }
   );
 

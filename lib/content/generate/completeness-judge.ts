@@ -1,5 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
-import { massCopyModel } from "@/lib/content/generate/copy-batch";
+import type { CopyUsage, TextModel } from "@/lib/content/generate/provider";
 import type { CompletenessVerdicts } from "@/lib/content/writing-checks";
 
 /*
@@ -75,15 +74,24 @@ const PROMPT = [
  * tomber parce qu'un appel de contrôle a échoué.
  */
 export async function judgeCompleteness(
-  client: Pick<Anthropic, "messages">,
+  model: TextModel,
   lines: string[]
-): Promise<{ verdicts: CompletenessVerdicts; usage: { input: number; output: number } }> {
-  const empty = { verdicts: {} as CompletenessVerdicts, usage: { input: 0, output: 0 } };
+): Promise<{ verdicts: CompletenessVerdicts; usage: CopyUsage; costUsd: number }> {
+  const zero: CopyUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const empty = { verdicts: {} as CompletenessVerdicts, usage: zero, costUsd: 0 };
   if (lines.length === 0) return empty;
 
+  /*
+   * ⚠ UN APPEL PAYÉ DONT LA RÉPONSE EST ILLISIBLE GARDE SON COÛT. La version
+   * d'avant rendait `empty` sur un JSON tronqué, usage compris : la réponse
+   * avait été facturée et le mois ne la comptait pas. Le verdict reste vide —
+   * l'absence de verdict ne refuse rien — mais la dépense, elle, est dite.
+   */
+  let answer: Awaited<ReturnType<TextModel["ask"]>>;
   try {
-    const message = await client.messages.create({
-      model: massCopyModel(),
+    answer = await model.ask({
+      system: PROMPT,
+      user: lines.map((l) => `- ${l}`).join("\n"),
       /*
        * ⚠ 1500 ÉTAIT UNE CONSTANTE, ET ELLE A FAIT TAIRE LE JUGE. Mesuré en
        * choisissant les exemples : sur des lots de quarante lignes, la réponse
@@ -96,24 +104,20 @@ export async function judgeCompleteness(
        * plafond suit donc le nombre de lignes : une ligne rendue coûte une
        * clé et un booléen, soit une soixantaine de jetons avec sa ponctuation.
        */
-      max_tokens: Math.min(16000, 400 + lines.length * 60),
-      system: PROMPT,
-      messages: [{ role: "user", content: lines.map((l) => `- ${l}`).join("\n") }],
+      maxTokens: Math.min(16000, 400 + lines.length * 60),
     });
-    const raw = message.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-    const parsed = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, ""));
+  } catch {
+    return empty;
+  }
+
+  try {
+    const parsed = JSON.parse(answer.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, ""));
     const verdicts: CompletenessVerdicts = {};
     for (const [line, verdict] of Object.entries(parsed as Record<string, unknown>)) {
       if (typeof verdict === "boolean") verdicts[line] = verdict;
     }
-    return {
-      verdicts,
-      usage: { input: message.usage.input_tokens, output: message.usage.output_tokens },
-    };
+    return { verdicts, usage: answer.usage, costUsd: answer.costUsd };
   } catch {
-    return empty;
+    return { verdicts: {}, usage: answer.usage, costUsd: answer.costUsd };
   }
 }

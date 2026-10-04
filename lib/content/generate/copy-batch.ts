@@ -107,6 +107,15 @@ export const MODEL_RATES: Record<string, { inputPerMTok: number; outputPerMTok: 
   "claude-haiku-4-5": { inputPerMTok: 1.0, outputPerMTok: 5.0 },
   "claude-haiku-4-5-20251001": { inputPerMTok: 1.0, outputPerMTok: 5.0 },
   "claude-opus-5": { inputPerMTok: 5.0, outputPerMTok: 25.0 },
+  /*
+   * ⚠ LU À LA SOURCE LE 2026-10-04 (developers.openai.com), daté dans
+   * `PRICE_VERIFIED_ON`. ⚠ ET IL NE SE LIT PAS AVEC `syncCostUsd` : chez OpenAI,
+   * `input_tokens` CONTIENT les tokens lus et écrits en cache, alors que chez
+   * Anthropic ils s'y ajoutent. Le coût d'un appel OpenAI passe par
+   * `openAiCostUsd` (`lib/content/generate/openai.ts`), et un test vérifie que
+   * les deux formules ne se croisent pas.
+   */
+  "gpt-5.6-terra": { inputPerMTok: 2.0, outputPerMTok: 12.0 },
 };
 
 /**
@@ -1168,6 +1177,25 @@ export function clampCardLine(line: string): string {
 }
 
 /**
+ * ⚠ CES DEUX FORMULES SONT CELLES D'ANTHROPIC, ET ELLES REFUSENT UN MODÈLE OPENAI.
+ *
+ * Elles AJOUTENT les lectures et écritures de cache à `input`, parce que c'est
+ * ainsi qu'Anthropic les déclare. OpenAI les COMPTE DANS `input_tokens` : passer
+ * un usage OpenAI ici facturerait le préfixe deux fois — une fois plein, une fois
+ * au tarif du cache — et le mois paraîtrait plus cher qu'il n'est, sans que rien
+ * ne le dise. Le coût OpenAI passe par `openAiCostUsd`.
+ */
+function anthropicShapedModel(model: string): string {
+  if (/^(gpt-|o\d)/.test(model)) {
+    throw new Error(
+      `copy-batch: ${model} est un modèle OpenAI — son coût passe par openAiCostUsd, ` +
+        `pas par la formule d'Anthropic qui ajoute le cache à l'entrée`
+    );
+  }
+  return model;
+}
+
+/**
  * Ce qu'un batch a coûté, en dollars, depuis ses `usage`.
  *
  * ⚠ LE CACHE ET LE BATCH SE CUMULENT, et l'ordre des multiplications le dit :
@@ -1177,7 +1205,7 @@ export function clampCardLine(line: string): string {
 export function batchCostUsd(
   usages: Array<{ input: number; output: number; cacheRead: number; cacheWrite: number }>
 ): number {
-  const rate = rateFor(massCopyModel());
+  const rate = rateFor(anthropicShapedModel(massCopyModel()));
   const m = RATE_SHAPE.batchMultiplier;
   let total = 0;
   for (const u of usages) {
@@ -1205,7 +1233,7 @@ export function batchCostUsd(
 export function syncCostUsd(
   usage: { input: number; output: number; cacheRead: number; cacheWrite: number }
 ): number {
-  const rate = rateFor(massCopyModel());
+  const rate = rateFor(anthropicShapedModel(massCopyModel()));
   return (
     (usage.input / 1e6) * rate.inputPerMTok +
     (usage.output / 1e6) * rate.outputPerMTok +
