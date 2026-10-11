@@ -1,6 +1,6 @@
 import { CLEARANCE, LINE_HEIGHT, TYPE } from "@/lib/compose/constants";
 import { blockWidth, measure, round2, wrap } from "@/lib/compose/measure";
-import { tintFor } from "@/lib/compose/palette";
+import { inkOnTintFor, tintFor } from "@/lib/compose/palette";
 import type { Band, Box, FontRole, Line, Palette, Placed, Stroke } from "@/lib/compose/types";
 
 /*
@@ -154,7 +154,7 @@ export function cell(
   if (!labelFit) return null;
 
   const lines = linesFrom(
-    labelFit, box.x + pad, box.y + pad, innerW, "sans", 600, palette.inkOnTint, "start"
+    labelFit, box.x + pad, box.y + pad, innerW, "sans", 600, inkOnTintFor(palette, tintIndex), "start"
   );
 
   if (hasGloss) {
@@ -175,7 +175,7 @@ export function cell(
     lines.push(
       ...linesFrom(
         glossFit, box.x + pad, round2(box.y + pad + labelFit.height + 8), innerW,
-        "sans", 400, palette.inkOnTint, "start"
+        "sans", 400, inkOnTintFor(palette, tintIndex), "start"
       )
     );
   }

@@ -2,7 +2,7 @@ import { CLEARANCE, TYPE } from "@/lib/compose/constants";
 import { fitText, linesFrom, FIELD_RADIUS } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
 import { door, mirrored, variantOf } from "@/lib/compose/illustrations";
-import { tintFor } from "@/lib/compose/palette";
+import { inkOnTintFor, tintFor } from "@/lib/compose/palette";
 import type { Line, Placed } from "@/lib/compose/types";
 import type { ArchetypeModule } from "@/lib/compose/archetypes/types";
 
@@ -51,7 +51,7 @@ export const practitionerCard: ArchetypeModule<PractitionerCard> = {
     const lines: Line[] = [];
     let y = round2(content.y + pad);
     for (let i = 0; i < fits.length; i += 1) {
-      lines.push(...linesFrom(fits[i]!, round2(content.x + pad), y, innerW, "sans", i === 0 ? 600 : 400, palette.inkOnTint, "start"));
+      lines.push(...linesFrom(fits[i]!, round2(content.x + pad), y, innerW, "sans", i === 0 ? 600 : 400, inkOnTintFor(palette, 0), "start"));
       y = round2(y + fits[i]!.height + gapBetween);
     }
 

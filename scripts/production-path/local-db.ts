@@ -49,7 +49,7 @@ type Result<T> = { data: T; error: DbError | null };
 const ROLE = "service_role";
 
 export function localDb(
-  url = "postgres://postgres@127.0.0.1:54322/postgres?sslmode=disable",
+  url = "postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable",
   /**
    * ⚠ LIRE COMME ELLE LIT. Avec un identifiant, chaque requête tourne en rôle
    * `authenticated` avec `sub` = cet identifiant — ce que PostgREST fait avec le

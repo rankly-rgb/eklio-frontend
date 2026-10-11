@@ -68,8 +68,8 @@ export type Palette = {
   /** Two or three tints. Never more: a fourth is a second brand. */
   tints: string[];
   ink: string;
-  /** Ink on a tinted field, which is not always the same as ink on paper. */
-  inkOnTint: string;
+  /** Ink on each tinted field (same index as `tints`), computed per field. */
+  inkOnTints: string[];
   dark: boolean;
 };
 

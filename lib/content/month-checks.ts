@@ -1,6 +1,6 @@
 
 import { checkEthics } from "@/lib/ethics/rules";import { DANGLING } from "@/lib/content/generate/copy-batch";
-import type { DirectionPalette } from "@/lib/compose/palette";
+import { colourDistance, TINT_MIN_DISTANCE, type DirectionPalette } from "@/lib/compose/palette";
 import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
 import { footerCarriesLicence } from "@/lib/content/licence";
 import {
@@ -73,7 +73,7 @@ export const MONTH_LIMITS = {
    * se lisent comme un seul ; au-dessus, la séparation tient même sur les
    * fonds sombres, où les écarts sont naturellement plus serrés.
    */
-  minTintDistance: 15,
+  minTintDistance: TINT_MIN_DISTANCE,
   /**
    * ⚠ COMBIEN DE FOIS LE MÊME VISUEL PEUT PARAÎTRE DANS UN MOIS. MESURÉ.
    *
@@ -467,50 +467,11 @@ export function checkInventedIdentity(
 
 /* ── 6. La saturation des teintes ────────────────────────────────────── */
 
-const rgbOf = (hex: string): [number, number, number] | null => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
-
-/**
- * La distance perceptuelle entre deux couleurs — ΔE76, dans l'espace Lab.
- *
- * ── ⚠ LA DISTANCE RGB DISAIT « 43 » LÀ OÙ L'ŒIL VOIT « PRESQUE PAREIL » ──
- *
- * Le contrôle mesurait une distance euclidienne en RGB, avec un seuil de 24.
- * `#DDC096` et `#D1AA73` en sont à 43 : il les déclarait distinctes. Un
- * évaluateur indépendant les a pourtant relevées comme « quasi identiques,
- * même teinte », et il avait raison — en ΔE76 elles ne sont qu'à **11,7**.
- *
- * Le RGB n'est pas perceptuel : il compte les bits, pas ce qu'on voit. Deux
- * jaunes séparés de 43 unités RGB se ressemblent beaucoup plus que deux bleus
- * séparés d'autant. Lab est fait pour cette question-là, et c'est l'unité dans
- * laquelle la remarque a été formulée.
+/*
+ * La distance perceptuelle (ΔE76) vit dans `lib/compose/palette.ts` : la
+ * dérivation des aplats et ce contrôle mesurent avec la même fonction.
  */
-function toLab(hex: string): [number, number, number] | null {
-  const rgb = rgbOf(hex);
-  if (!rgb) return null;
-  const lin = rgb.map((c) => {
-    const v = c / 255;
-    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  }) as [number, number, number];
-  // sRGB → XYZ (D65), puis XYZ → Lab.
-  const x = (0.4124 * lin[0] + 0.3576 * lin[1] + 0.1805 * lin[2]) / 0.95047;
-  const y = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-  const z = (0.0193 * lin[0] + 0.1192 * lin[1] + 0.9505 * lin[2]) / 1.08883;
-  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
-  const [fx, fy, fz] = [f(x), f(y), f(z)];
-  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
-}
-
-export function colourDistance(a: string, b: string): number {
-  const x = toLab(a);
-  const y = toLab(b);
-  if (!x || !y) return Number.POSITIVE_INFINITY;
-  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
-}
+export { colourDistance };
 
 /** Les remplissages écrits dans un SVG, dédoublonnés, sans `none`. */
 export function fillsIn(svg: string): string[] {

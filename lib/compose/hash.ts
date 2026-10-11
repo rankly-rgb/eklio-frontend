@@ -43,7 +43,7 @@ export function contentHash(archetype: string, payload: unknown, palette: Palett
       paper: palette.paper,
       tints: palette.tints,
       ink: palette.ink,
-      inkOnTint: palette.inkOnTint,
+      inkOnTints: palette.inkOnTints,
       dark: palette.dark,
     },
     typography: TYPE,

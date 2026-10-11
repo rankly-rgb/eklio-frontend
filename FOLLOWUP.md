@@ -3999,3 +3999,42 @@ toute fusion.
 
 Les 16 titres en double dans la banque (sur 129) viennent du remplissage sur deux segments
 aux mêmes intentions ; le tirage en écarte une partie (janvier : 49 tirés pour 57 demandés).
+
+## F72 — FERMÉ le 2026-10-11 : les six familles passent, en clair et en sombre
+
+**Ce qui a été corrigé : la dérivation, pas le contrôle.** `checkTints` et son seuil (15 en
+ΔE76) sont inchangés. `cardPalette` ne pose plus des taux fixes réglés sur clay_sand :
+`solveTints` garde, pour chaque emplacement, sa couleur de marque et son taux de départ, et ne
+bouge le taux que si le jeu ne tient pas. Les taux restent différents d'un emplacement à
+l'autre ; c'est l'écart entre aplats qui est cherché, mesuré sur l'hexadécimal écrit.
+
+- **Fond clair : adoucissement seul**, vers le papier (le premier aplat reste foncé vers
+  l'encre, comme avant). Il suffit aux six familles ; on ne fonce jamais la marque vers le noir.
+- **Fond sombre : l'aplat peut aussi s'éclaircir vers le papier.** Adoucir vers le fond une
+  couleur déjà presque aussi sombre que lui (plum, slate, ink blue, olive) ne la sépare de rien :
+  aucun taux dans ce seul sens ne tient sur ces quatre familles.
+- **Une encre par aplat** (`Palette.inkOnTints`, `inkOnTintFor`), la meilleure des deux encres
+  de la marque, calculée sur cet aplat. Avec une encre unique, le problème est géométriquement
+  impossible en fond sombre sur slate (quatre gris-bleus distants de 15, tous assez sombres
+  pour l'encre papier, dans ~40 unités de luminance).
+
+**Un plancher ajouté, pas abaissé : 3:1** entre chaque aplat et son encre
+(`TINT_INK_MIN_CONTRAST`). Il n'en existait aucun, et la palette de référence le violait :
+**en fond sombre, l'encre papier tombait à 1,34:1 sur l'aplat tiré de `light`** — sur clay_sand,
+la palette de toutes les épreuves. ⚠ Le 4,5:1 du texte courant est hors d'atteinte sans
+changer la marque : ink_blue et slate n'ont aucune solution, et la référence elle-même mesure
+3,59 en clair. À décider côté design (taille de la glose, ou palettes) : hors périmètre.
+
+Mesuré sur les six familles réelles (base locale migrée, diagrammes composés) : toutes `ok`,
+écart minimal 16,0 à 20,8, contraste minimal 3,01. Clay_sand clair bouge à peine
+(`#D8B788`→`#D9B889`, `#D8B19F`→`#D0A08C`, `#ABA8A2`→`#ACAAA3`).
+
+**Le test :** `lib/compose/__tests__/palette-catalogue.test.ts` lit le catalogue dans la
+migration qui l'insère (et échoue si une migration réécrit un rôle), compose les cinq
+diagrammes en clair et en sombre pour chaque famille, et passe `checkTints` sur le SVG. Un cas
+négatif rejoue les anciens taux fixes sur slate et doit être refusé.
+
+⚠ **F48 appliquée.** « Les six passent » ne dit rien des directions réelles des kits, qui
+peuvent s'écarter de leur famille : `cardPalette` reçoit la direction du kit, pas la famille.
+Le cache de `solveTints` est indexé par direction ; une direction sans solution retombe sur les
+taux de départ et le portillon la refuse, visiblement.
