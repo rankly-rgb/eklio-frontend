@@ -1,0 +1,41 @@
+# Aucun commit n'atteint main ni Vercel sans `npm run verify` vert en entier :
+# typecheck, lint, tests, build — sur un clone frais, sans aucune variable du
+# chantier. Deux commits sont passés sans typecheck parce que rien ne l'exigeait.
+name: verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: eklio-frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: eklio-frontend
+      # Certains tests relisent les migrations du backend en chemin relatif
+      # (../eklio-backend) : on reproduit la disposition côte à côte.
+      - uses: actions/checkout@v4
+        with:
+          repository: rankly-rgb/eklio-backend
+          ref: main
+          path: eklio-backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: eklio-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run verify
