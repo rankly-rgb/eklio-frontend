@@ -44,3 +44,6 @@ export const mono = IBM_Plex_Mono({
 
 /** Classes de variables à poser sur <html>. */
 export const fontVariables = `${display.variable} ${sans.variable} ${mono.variable}`;
+
+// Preuve négative de la CI : erreur de typage volontaire, branche jetable.
+export const ciNegativeProof: number = "pas un nombre";
