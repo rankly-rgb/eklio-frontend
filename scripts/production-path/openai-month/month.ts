@@ -34,6 +34,7 @@ import {
   serverMonthRowPort,
   serverPreflightPort,
   serverReleaseTopics,
+  serverReassertTopics,
 } from "@/lib/content/month/server-ports";
 import { serverCreditPort } from "@/lib/credits/server-port";
 import type { JournalDb } from "@/lib/content/month/journal-port";
@@ -182,6 +183,7 @@ async function main() {
         credits: serverCreditPort(rpc, { provider: "openai", model: MODEL, month: MONTH }),
       }),
       releaseTopics: serverReleaseTopics(rpc, { brandKitId: KIT! }),
+      reassertTopics: serverReassertTopics(rpc, { brandKitId: KIT! }),
     },
     {
       brandKitId: KIT!,

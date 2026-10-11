@@ -259,6 +259,25 @@ export function serverReleaseTopics(db: MonthRpcClient, options: { brandKitId: s
   };
 }
 
+/**
+ * Les sujets d'une reprise que ce kit détient encore, rafraîchis (F71).
+ *
+ * ⚠ LA DÉCISION EST EN BASE. `reassert_topic_assignments` applique la même
+ * règle que le balai (`topic_assignment_holds`) : la poser ici en ferait un
+ * second endroit, et celui qu'on oublie est celui qui décide.
+ */
+export function serverReassertTopics(db: MonthRpcClient, options: { brandKitId: string }) {
+  return async (topicIds: string[]): Promise<string[]> => {
+    if (topicIds.length === 0) return [];
+    const { data, error } = await db.rpc("reassert_topic_assignments", {
+      p_brand_kit_id: options.brandKitId,
+      p_topic_ids: topicIds,
+    });
+    if (error) throw new Error(`reassert_topic_assignments: ${error.message}`);
+    return Array.isArray(data) ? (data as string[]) : [];
+  };
+}
+
 /*
  * ══════════════════════════════════════════════════════════════════════════
  *  L'ÉNUMÉRATION DES DUES, CÂBLÉE SUR LA BASE

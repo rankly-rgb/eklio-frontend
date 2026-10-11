@@ -39,7 +39,7 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { admin, localEnv } from "../local-render/lib";
 import { drawMonth } from "@/lib/content/month/draw";
 import { serverDrawPort, serverBankGuardPort, type DrawRpcClient } from "@/lib/content/month/draw-port";
-import {
+import { serverReassertTopics,
   serverPreflightPort,
   serverInsertPort,
   serverMonthRowPort,
@@ -320,6 +320,12 @@ async function main() {
         credits: serverCreditPort(rpc as never, { model: "replayed", month: TARGET_MONTH }),
       }),
       releaseTopics: release,
+      /*
+       * ⚠ LA VRAIE RÈGLE, PAS UNE DOUBLURE (F71). Un sujet posé au journal sans
+       * être assigné à ce kit n'est pas repris : le run est abandonné et le mois
+       * repart d'un tirage. Ce harnais le montre au lieu de le contourner.
+       */
+      reassertTopics: serverReassertTopics(rpc as never, { brandKitId: KIT }),
     },
     {
       brandKitId: KIT,
@@ -456,6 +462,12 @@ async function main() {
         credits: serverCreditPort(rpc as never, { model: "replayed", month: resumeMonth }),
       }),
       releaseTopics: release,
+      /*
+       * ⚠ LA VRAIE RÈGLE, PAS UNE DOUBLURE (F71). Un sujet posé au journal sans
+       * être assigné à ce kit n'est pas repris : le run est abandonné et le mois
+       * repart d'un tirage. Ce harnais le montre au lieu de le contourner.
+       */
+      reassertTopics: serverReassertTopics(rpc as never, { brandKitId: KIT }),
     },
     {
       brandKitId: KIT,

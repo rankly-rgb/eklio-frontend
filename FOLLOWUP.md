@@ -4059,3 +4059,38 @@ taux de départ et le portillon la refuse, visiblement.
 `license_label` + `license_number` sans passer par `licenceMention`. Un numéro enregistré avec
 son sigle avant ce correctif s'y affiche toujours doublé. Corriger ces lignes en production
 serait une écriture que cette session ne fait pas ; la prochaine édition du champ les normalise.
+
+## F71 — FERMÉ le 2026-10-11 : un mois refusé ne se reprend pas, une reprise réaffirme ses sujets
+
+**Tranché : non reprenable, et une reprise ne repart qu'avec ce qu'elle détient.** Pourquoi :
+
+1. Les causes d'un refus (plafond atteint, composition, assemblage) ne se règlent pas en
+   reprenant les mêmes sujets : reprendre au plafond, c'est dépenser au-delà ; reprendre une
+   composition refusée, c'est la refuser encore.
+2. Ses sujets ont été rendus au segment au moment du refus. Les réclamer ensuite, c'est courir
+   contre une collègue qui a pu les tirer entre-temps ; l'exclusivité de 90 jours ne se reprend
+   pas.
+3. **La même porte s'ouvrait sans refus** : le balai rend au bout de trois heures les
+   assignations qui n'ont rien livré. Un mois tué puis repris le lendemain publiait lui aussi
+   des sujets qui n'étaient plus à lui. La règle couvre les deux cas.
+
+Ce que ça coûte : la rédaction payée d'un mois refusé est perdue. Elle reste comptée — le
+plafond additionne les runs abandonnés du même mois, sans quoi refuser puis relancer remettait
+le compteur à zéro.
+
+**Backend (`20261011090000_a_refused_month_is_not_resumed`) :**
+- `content_generation_runs_unique` devient `content_generation_runs_open_unique`, unique sur
+  `(brand_kit_id, month) where state <> 'abandoned'`. L'ancienne unicité bloquait le mois après
+  n'importe quel abandon, y compris ceux de `abandon_stale_generation_runs()`.
+- `reassert_topic_assignments(kit, topics[])` rend les sujets encore détenus (règle de
+  `topic_assignment_holds`, la même que le balai) et rafraîchit leur `assigned_at`, pour qu'une
+  reprise longue ne se fasse pas balayer. Elle ne reprend rien de rendu. `service_role`
+  seulement.
+
+**Frontend :** les trois refus qui rendent leurs sujets (plafond, composition, assemblage)
+passent le run en `abandoned`. À la reprise, l'orchestrateur réaffirme les sujets du journal ;
+s'il en manque un, il rend les autres, abandonne le run et repart d'un tirage neuf dans un run
+neuf. Trois tests d'orchestration, qui échouent sur l'ancien code ; un test SQL.
+
+⚠ **Le mois de novembre local** (dans cet état depuis le 2026-10-04) ne se reprendra donc pas :
+une nouvelle tentative le retire de neuf.

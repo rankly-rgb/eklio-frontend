@@ -3635,6 +3635,10 @@ export type Database = {
         }
         Returns: Json
       }
+      reassert_topic_assignments: {
+        Args: { p_brand_kit_id: string; p_topic_ids: string[] }
+        Returns: string[]
+      }
       release_generation_credit: {
         Args: { p_brand_kit_id: string }
         Returns: boolean

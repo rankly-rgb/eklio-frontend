@@ -3,7 +3,9 @@ import { drawMonth, type DrawPorts, type DrawnTopic } from "@/lib/content/month/
 import { composeCard, ComposeRefused } from "@/lib/content/month/compose-card";
 import { assembleMonth, type AssemblePorts, type AssembleOutcome, type Assemblable } from "@/lib/content/month/assemble";
 import {
+  abandonRun,
   findResumableRun,
+  spentByAbandonedRuns,
   markSettled,
   openRun,
   publishRun,
@@ -199,6 +201,11 @@ export type OrchestratePorts = {
   assembleFor(monthId: string): AssemblePorts;
   /** Rend les sujets tirés mais non retenus. Un sujet gardé pour rien bloque le segment. */
   releaseTopics(topicIds: string[]): Promise<void>;
+  /**
+   * Les sujets de la liste que ce kit détient ENCORE, leur assignation
+   * rafraîchie (`reassert_topic_assignments`). Un sujet rendu n'est pas repris.
+   */
+  reassertTopics(topicIds: string[]): Promise<string[]>;
 };
 
 export type OrchestrateInput = {
@@ -318,7 +325,33 @@ export async function orchestrateMonth(
    * le 2026-10-04 en tuant un mois à mi-rédaction). La lecture du journal ne
    * dépense rien et n'écrit rien : elle peut précéder le préalable.
    */
-  const resumable = await findResumableRun(ports.journal, input.brandKitId, input.month);
+  let resumable = await findResumableRun(ports.journal, input.brandKitId, input.month);
+  let spentBefore = await spentByAbandonedRuns(ports.journal, input.brandKitId, input.month);
+
+  /*
+   * ── ⚠ F71 — UNE REPRISE NE PUBLIE QUE DES SUJETS QU'ELLE DÉTIENT ────────
+   *
+   * Un mois refusé rendait ses sujets et restait reprenable ; un mois tué voit
+   * les siens rendus par le balai au bout de trois heures. Dans les deux cas la
+   * reprise relisait le journal et publiait des posts dont les sujets ne lui
+   * étaient plus assignés — tirables, entre-temps, par une collègue du segment.
+   *
+   * Tranché : la reprise réaffirme ses sujets. S'il en manque UN, elle ne
+   * reprend pas : le run est abandonné (sa dépense reste comptée par le plafond),
+   * les sujets encore détenus sont rendus, et le mois repart d'un tirage neuf.
+   * Reprendre en partie laisserait un mois court, que l'assemblage refuserait
+   * après avoir payé la rédaction des remplaçants.
+   */
+  if (resumable && resumable.topicIds.length > 0) {
+    const held = new Set(await ports.reassertTopics(resumable.topicIds));
+    if (resumable.topicIds.some((id) => !held.has(id))) {
+      if (held.size > 0) await ports.releaseTopics([...held]);
+      await abandonRun(ports.journal, resumable.runId, resumable.costUsd);
+      spentBefore += resumable.costUsd;
+      resumable = null;
+    }
+  }
+
   const heldByThisMonth: Record<string, number> = {};
   if (resumable) {
     for (const id of resumable.topicIds) {
@@ -466,7 +499,8 @@ export async function orchestrateMonth(
      */
     const room = withinCeiling(input.ceiling, {
       topics: missing.length,
-      spentUsd: costUsd,
+      /* ⚠ ET CE QUE LES TENTATIVES ABANDONNÉES DE CE MOIS ONT PAYÉ (F71). */
+      spentUsd: costUsd + spentBefore,
     });
     if (!room.ok) {
       /*
@@ -476,6 +510,8 @@ export async function orchestrateMonth(
        */
       await ports.releaseTopics(drawnIds);
       await ports.closeMonthRow(monthId, "failed");
+      /* ⚠ SES SUJETS SONT RENDUS : IL NE SE REPREND PLUS (F71). */
+      await abandonRun(ports.journal, runId, costUsd);
       return {
         ok: false,
         stage: "ceiling",
@@ -689,6 +725,8 @@ export async function orchestrateMonth(
      * un travail qui n'existe pas.
      */
     await ports.closeMonthRow(monthId, "failed");
+    /* ⚠ SES SUJETS SONT RENDUS : IL NE SE REPREND PLUS (F71). */
+    await abandonRun(ports.journal, runId, costUsd);
     return {
       ok: false,
       stage: "compose",
@@ -793,7 +831,11 @@ export async function orchestrateMonth(
   if (month.selection.remaining.length > 0) {
     await ports.releaseTopics(drawnIds);
     await ports.closeMonthRow(monthId, "failed");
-    await rememberCost(ports.journal, runId, costUsd, "collected");
+    /*
+     * ⚠ `abandoned`, PLUS `collected` (F71). `collected` le laissait reprenable :
+     * une reprise republiait des posts dont les sujets venaient d'être rendus.
+     */
+    await abandonRun(ports.journal, runId, costUsd);
     return {
       ok: false,
       stage: "assemble",

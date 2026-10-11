@@ -164,6 +164,16 @@ function usageOf(raw: unknown): JournalEntry["usage"] {
 }
 
 /**
+ * Les états d'un run qui occupe encore son mois.
+ *
+ * ⚠ `abandoned` N'OCCUPE PLUS RIEN (F71). L'unicité en base porte sur les runs
+ * non abandonnés (`content_generation_runs_open_unique`) : un mois refusé ou
+ * périmé laisse sa ligne comme trace de ce qu'il a coûté, et le mois suivant
+ * ouvre un run neuf au lieu de repartir sur celle-là.
+ */
+const NOT_ABANDONED: RunState[] = ["submitted", "collected", "published"];
+
+/**
  * Le journal d'un mois s'il en existe un de REPRENABLE, sinon `null`.
  *
  * ── ⚠ « REPRENABLE » EXCLUT `published` ET `abandoned` ──────────────────
@@ -185,6 +195,7 @@ export async function findResumableRun(
     .select("id, batch_id, state, cost_usd")
     .eq("brand_kit_id", brandKitId)
     .eq("month", firstOfMonth(month))
+    .in("state", NOT_ABANDONED)
     .maybeSingle();
 
   if (error) throw new JournalError(`content_generation_runs: ${error.message}`);
@@ -230,8 +241,9 @@ export async function findResumableRun(
 /**
  * Ouvre la ligne du mois, ou rend celle qui existe.
  *
- * ⚠ ELLE NE FORCE RIEN. `content_generation_runs_unique (brand_kit_id, month)`
- * est l'arbitre : deux invocations simultanées voient l'une un insert accepté,
+ * ⚠ ELLE NE FORCE RIEN. `content_generation_runs_open_unique (brand_kit_id,
+ * month) where state <> 'abandoned'` est l'arbitre (F71 : un run abandonné
+ * n'occupe plus son mois) : deux invocations simultanées voient l'une un insert accepté,
  * l'autre un refus, et la seconde relit. Un `upsert` écraserait le `batch_id` de
  * la première — c'est-à-dire l'identifiant d'un lot déjà payé.
  */
@@ -245,6 +257,7 @@ export async function openRun(
     .select("id, batch_id, state, cost_usd")
     .eq("brand_kit_id", brandKitId)
     .eq("month", firstOfMonth(month))
+    .in("state", NOT_ABANDONED)
     .maybeSingle();
   if (existing.error) throw new JournalError(`content_generation_runs: ${existing.error.message}`);
   if (existing.data) return { runId: (existing.data as RunRow).id, created: false };
@@ -416,6 +429,36 @@ export async function rememberCost(
     .eq("id", runId)
     .then((r) => r);
   if (patched.error) throw new JournalError(`content_generation_runs cost: ${patched.error.message}`);
+}
+
+/**
+ * Le run ne sera pas repris : il passe `abandoned` et se ferme (F71).
+ *
+ * ⚠ IL N'EST PAS SUPPRIMÉ. Son `cost_usd` est ce que ce mois a déjà payé, et le
+ * plafond le compte encore (`spentByAbandonedRuns`) : sans quoi refuser puis
+ * relancer remettrait le compteur à zéro à chaque tentative.
+ */
+export async function abandonRun(db: JournalDb, runId: string, costUsd: number): Promise<void> {
+  const now = new Date().toISOString();
+  const patched = await db
+    .from("content_generation_runs")
+    .update({ state: "abandoned", cost_usd: costUsd, closed_at: now, updated_at: now })
+    .eq("id", runId)
+    .then((r) => r);
+  if (patched.error) throw new JournalError(`content_generation_runs abandon: ${patched.error.message}`);
+}
+
+/** Ce que les tentatives abandonnées de ce mois ont déjà coûté. */
+export async function spentByAbandonedRuns(db: JournalDb, brandKitId: string, month: string): Promise<number> {
+  const rows = await db
+    .from("content_generation_runs")
+    .select("cost_usd")
+    .eq("brand_kit_id", brandKitId)
+    .eq("month", firstOfMonth(month))
+    .in("state", ["abandoned"])
+    .then((r) => r);
+  if (rows.error) throw new JournalError(`content_generation_runs: ${rows.error.message}`);
+  return (rows.data ?? []).reduce<number>((sum, r) => sum + Number((r as { cost_usd?: unknown }).cost_usd ?? 0), 0);
 }
 
 /**

@@ -228,10 +228,25 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
     }),
     releaseTopics: vi.fn(async (ids) => {
       released.push(ids);
+      /* Rendu, il redevient tirable : la banque le reprend. */
+      for (const id of ids) {
+        const at = assigned.findIndex((t) => t.id === id);
+        if (at >= 0) free.unshift(...assigned.splice(at, 1));
+      }
     }),
+    /* Ce que le kit détient encore : assigné, et pas rendu depuis. */
+    reassertTopics: vi.fn(async (ids: string[]) => ids.filter((id) => assigned.some((t) => t.id === id))),
   };
 
-  return { ports, journal: j, inserted, reserved, released, writer, credits, months };
+  /** Ces sujets sont assignés à ce kit, comme un mois tué les laisse. */
+  const hold = (ids: string[]) => {
+    for (const id of ids) {
+      const at = free.findIndex((t) => t.id === id);
+      if (at >= 0) assigned.push(...free.splice(at, 1));
+    }
+  };
+
+  return { ports, journal: j, inserted, reserved, released, writer, credits, months, hold };
 }
 
 const input = (over: Record<string, unknown> = {}) => ({
@@ -389,6 +404,8 @@ describe("une interruption reprend sans repayer", () => {
       { id: "r2", run_id: "run-1", topic_id: "t2", result: written(2), usage: {}, settled: false },
       { id: "r3", run_id: "run-1", topic_id: "t3", result: null, usage: {}, settled: false }
     );
+    /* Un mois tué détient encore ses sujets : c'est ce qui le rend reprenable (F71). */
+    w.hold(["t1", "t2", "t3"]);
   });
 
   it("elle rattache le lot payé au lieu d'en créer un second", async () => {
@@ -446,6 +463,63 @@ describe("une interruption reprend sans repayer", () => {
     if (!out.ok) return;
     /* 0,19 $ déjà payés + 0,32 $ pour le seul sujet manquant, + la relecture et le juge. */
     expect(out.costUsd).toBeCloseTo(0.51 + editedUsd(w), 5);
+  });
+});
+
+describe("F71 — un mois refusé ne se reprend pas, une reprise ne publie que ce qu'elle détient", () => {
+  it("refusé au plafond, le run est abandonné et le mois suivant repart d'un run neuf", async () => {
+    const w = world({ stock: 4 });
+    const refused = await orchestrateMonth(
+      w.ports,
+      input({ ceiling: { capUsd: 10, estimatedCostPerPostUsd: 0.006, maxTopics: 2 } })
+    );
+    expect(refused.ok).toBe(false);
+    expect(w.journal.runs).toHaveLength(1);
+    expect(w.journal.runs[0].state, "un mois refusé reste reprenable").toBe("abandoned");
+
+    const again = await orchestrateMonth(w.ports, input());
+    expect(again.ok, again.ok ? "" : again.refusal).toBe(true);
+    if (!again.ok) return;
+    expect(again.resumed.reattached, "il a repris un run refusé").toBe(false);
+    expect(again.runId).not.toBe(w.journal.runs[0].id);
+    expect(w.journal.runs).toHaveLength(2);
+  });
+
+  it("une reprise dont un sujet a été rendu abandonne le run et retire de nouveaux sujets", async () => {
+    const w = world({ stock: 4 });
+    w.journal.runs.push({ id: "run-1", brand_kit_id: KIT, month: MONTH, batch_id: null, state: "collected", cost_usd: 0.19 });
+    w.journal.results.push(
+      { id: "r1", run_id: "run-1", topic_id: "t1", result: written(1), usage: {}, settled: false },
+      { id: "r2", run_id: "run-1", topic_id: "t2", result: written(2), usage: {}, settled: false },
+      { id: "r3", run_id: "run-1", topic_id: "t3", result: written(3), usage: {}, settled: false }
+    );
+    /* t3 a été rendu (refus, ou balai des trois heures) : seul t1 et t2 sont encore à elle. */
+    w.hold(["t1", "t2"]);
+
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    if (!out.ok) return;
+    const first = w.journal.runs.find((r) => r.id === "run-1")!;
+    expect(first.state).toBe("abandoned");
+    expect(first.cost_usd, "la dépense du run abandonné est effacée").toBe(0.19);
+    expect(w.released[0], "les sujets encore détenus n'ont pas été rendus avant le nouveau tirage").toEqual(["t1", "t2"]);
+    expect(out.resumed.reattached).toBe(false);
+    expect(out.runId).not.toBe("run-1");
+    expect(w.writer.write, "le nouveau tirage n'a pas été rédigé").toHaveBeenCalledTimes(1);
+  });
+
+  it("le plafond compte ce que les tentatives abandonnées de ce mois ont payé", async () => {
+    const ceiling = { capUsd: 1, estimatedCostPerPostUsd: 0.1, maxTopics: 100 };
+    const fresh = world({ stock: 4 });
+    expect((await orchestrateMonth(fresh.ports, input({ ceiling }))).ok, "le cas témoin doit passer").toBe(true);
+
+    const w = world({ stock: 4 });
+    w.journal.runs.push({ id: "run-0", brand_kit_id: KIT, month: MONTH, batch_id: null, state: "abandoned", cost_usd: 0.95 });
+    const out = await orchestrateMonth(w.ports, input({ ceiling }));
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.stage, "refuser puis relancer remettait le compteur à zéro").toBe("ceiling");
+    expect(w.writer.write).not.toHaveBeenCalled();
   });
 });
 
