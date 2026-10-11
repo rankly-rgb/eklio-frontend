@@ -183,6 +183,13 @@ const PRODUCT_ORCHESTRATION = [
    * serrure F50 le voient.
    */
   "lib/content/month/openai-writer.ts",
+  /*
+   * ⚠ LA PORTE ET L'ORCHESTRATEUR SE REJOIGNENT ICI (2026-10-11). Il lit le compte,
+   * construit les ports produit et appelle `orchestrateMonth` ; la route de cron
+   * l'appelle pour chaque compte dû. C'est ce module qui rend les douze autres
+   * atteignables depuis un point d'entrée.
+   */
+  "lib/content/month/run-for-kit.ts",
 ] as const;
 
 /** La chaîne transitive d'un fichier, par ses imports locaux. */
@@ -594,13 +601,20 @@ describe("la barrière", () => {
    * l'orchestrateur. Une exemption ajoutée demain ferait rougir ce test avant de
    * se faire oublier dans une carte qu'on croyait close.
    */
-  it("aucune exemption ne revient", () => {
+  /*
+   * ⚠ ET LA ROUTE GÉNÈRE DEPUIS LE 2026-10-11 — par l'orchestrateur, et par lui
+   * seul. Les deux serrures sont levées : la carte d'exemptions est vide, et F50
+   * ci-dessous ne trouve plus aucun module porté sans appelant. Ce test garde
+   * désormais les deux conditions ENSEMBLE : une exemption qui revient fait
+   * rougir ici, avant d'être oubliée dans une route qui génère.
+   */
+  it("aucune exemption ne revient, et la route passe par l'orchestrateur", () => {
     expect(
       Object.keys(ONLY_IN_HARNESS),
       "une exemption est revenue : un mécanisme du harnais manque de nouveau au produit"
     ).toEqual([]);
     const src = readFileSync(ROUTE, "utf8");
-    expect(src, "la route a quitté le 501 alors que la serrure F50 tient encore").toContain("{ status: 501 }");
+    expect(src, "la route génère sans passer par l'orchestrateur produit").toContain("orchestrateMonthForKit(");
   });
 
   /*
@@ -766,41 +780,14 @@ const PRODUCT_ENTRY_POINTS = [
  * ⚠ CHAQUE LIGNE EST UNE DETTE, PAS UNE DISPENSE. Elle sort d'ici le jour où un
  * point d'entrée l'atteint — jamais parce qu'on a réécrit la raison.
  */
-const EXTRACTED_NOT_WIRED: Record<string, string> = {
-  "lib/content/month/preflight.ts":
-    "l'étage A s'exécute avant la rédaction ; la route ne peut l'appeler qu'en ouvrant le mois, ce que le verrou d'armement interdit tant que le recensement porte des exemptions",
-  "lib/credits/server-port.ts":
-    "le port de crédit n'a de sens qu'appelé par un orchestrateur qui écrit des posts ; réserver sans rédiger débiterait pour rien",
-  "lib/content/bank-guard.ts":
-    "atteint par preflight.ts, qui n'est lui-même atteint par aucune porte — la garde est juste, sa chaîne s'arrête un cran plus haut",
-  "lib/content/month/select.ts":
-    "la sélection prend des posts déjà rédigés ; il n'y a rien à sélectionner avant que la rédaction existe côté produit",
-  "lib/content/month/assemble.ts":
-    "l'assemblage prend des posts déjà rédigés : son appelant est l'orchestrateur, qui a besoin de la rédaction, laquelle attend une clé (F44). Éprouvé par doublures en attendant",
-  "lib/content/month/draw.ts":
-    "le tirage choisit les sujets À ÉCRIRE : tirer sans écrire retirerait trente-six sujets au segment pour quatre-vingt-dix jours sans rien en faire. Son appelant est l'orchestrateur, et le harnais l'appelle déjà",
-  "lib/content/month/draw-port.ts":
-    "la couture du tirage n'a de sens qu'appelée par le tirage, qui attend l'orchestrateur. Le harnais y passe déjà, donc il n'y a plus qu'une implémentation de ces deux RPC",
-  /*
-   * ⚠ ET C'EST LA DERNIÈRE LIGNE QUI COMPTE VRAIMENT, parce qu'elle a changé de
-   * nature. Les huit autres attendaient l'orchestrateur ; l'orchestrateur, lui,
-   * n'attend plus qu'UNE implémentation de `WriterPort` — le seul port payant de
-   * tout l'enchaînement. Ce qui manque au chemin produit n'est plus du code à
-   * écrire, c'est un appel de modèle à pouvoir faire.
-   */
-  "lib/content/month/orchestrate.ts":
-    "il enchaîne les huit autres, appelle la relecture et le juge, et sa rédaction a une implémentation produit (openai-writer.ts) éprouvée par de vrais appels ; son appelant est la route de cron, et l'y brancher est l'acte d'armement lui-même — il se décide sur la lecture d'un mois sorti, pas en écrivant du code",
-  "lib/content/month/spend-ceiling.ts":
-    "le plafond est consulté par l'orchestrateur, et l'orchestrateur n'est appelé que par un lanceur de répétition : il borne chaque mois que ce lanceur fait sortir, et bornera la route le jour où elle l'appellera (F58)",
-  "lib/content/month/openai-writer.ts":
-    "le rédacteur est fourni à l'orchestrateur par son appelant ; le seul appelant est le lanceur de répétition contre la base locale, et un lanceur n'est pas un point d'entrée du runtime",
-  "lib/content/month/due.ts":
-    "l'énumération choisit les comptes dus ; son appelant est la route de cron, qui reste en 501 tant que le recensement porte des exemptions — armer la sélection sans la rédaction ferait ouvrir des mois que rien ne remplit",
-  "lib/content/month/server-ports.ts":
-    "les quatre coutures restantes n'ont de sens qu'appelées par l'orchestrateur ; le lanceur de répétition (scripts/production-path) s'en sert déjà contre la base locale, mais un lanceur n'est pas un point d'entrée du runtime",
-  "lib/content/month/compose-card.ts":
-    "⚠ LA PLUS GRAVE DES SIX. Elle pose le pied de licence, et rien côté produit ne l'atteint : tant que l'orchestrateur n'existe pas, aucun mois produit ne peut être composé — ce qui est heureux, puisqu'un mois composé sans elle serait une publicité sans numéro de licence (B&P §651)",
-};
+/*
+ * ⚠ VIDE DEPUIS LE 2026-10-11. Les treize lignes qui étaient ici attendaient
+ * toutes l'orchestrateur, puis un appelant de l'orchestrateur : la route de cron
+ * l'appelle désormais par `month/run-for-kit.ts`. Aucune n'a été retirée en
+ * réécrivant sa raison — le test « aucune raison ne survit au branchement »
+ * exigeait leur retrait, module par module, dès qu'ils devenaient atteints.
+ */
+const EXTRACTED_NOT_WIRED: Record<string, string> = {};
 
 describe("F50 — extraire n'est pas brancher", () => {
   it("chaque point d'entrée exporte vraiment un handler que le runtime appelle", () => {
@@ -848,13 +835,31 @@ describe("F50 — extraire n'est pas brancher", () => {
    * serrure, indépendante des exemptions : un recensement pourrait devenir vert
    * en exemptions tout en n'ayant toujours aucun appelant.
    */
-  it("la route reste en 501 tant qu'un module porté n'a pas d'appelant", () => {
+  /*
+   * ── ⚠ LA SERRURE EST LEVÉE (2026-10-11), ET ELLE SE REFERME TOUTE SEULE ──
+   *
+   * `orchestrateMonthForKit` (`month/run-for-kit.ts`) relie la route de cron à
+   * l'orchestrateur : les treize modules de la liste sont atteints depuis un
+   * point d'entrée, et `EXTRACTED_NOT_WIRED` est vide. La route quitte donc le
+   * 501 — à ce moment-là et pas avant, et derrière le drapeau d'armement.
+   *
+   * ⚠ LE TEST RESTE CONDITIONNEL. Un module porté qui perdrait son appelant
+   * devra être nommé ci-dessus, et sa seule présence exige de nouveau le 501.
+   */
+  it("la route ne quitte le 501 que si aucun module porté n'est sans appelant", () => {
     const stranded = Object.keys(EXTRACTED_NOT_WIRED).length;
-    expect(stranded, "tout est branché : cette serrure peut se lever").toBeGreaterThan(0);
+    const src = readFileSync("app/api/cron/content-month/route.ts", "utf8");
+    if (stranded > 0) {
+      expect(src, `${stranded} module(s) porté(s) sans appelant, et la route ne rend pas 501`).toContain("{ status: 501 }");
+      return;
+    }
+    expect(src, "tout est branché et la route rend encore 501").not.toContain("{ status: 501 }");
+    expect(src, "la route ne choisit pas les comptes dus").toContain("selectDueMonths(");
+    expect(src, "la route n'appelle pas l'orchestrateur").toContain("orchestrateMonthForKit(");
     expect(
-      readFileSync("app/api/cron/content-month/route.ts", "utf8"),
-      `${stranded} module(s) porté(s) sans appelant, et la route ne rend pas 501`
-    ).toContain("{ status: 501 }");
+      src.indexOf("contentGenerationArmed()"),
+      "la route génère avant de lire le drapeau d'armement"
+    ).toBeLessThan(src.indexOf("orchestrateMonthForKit("));
   });
 });
 

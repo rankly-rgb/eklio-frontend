@@ -1,7 +1,5 @@
 import { z } from "zod";
-import Anthropic from "@anthropic-ai/sdk";
-import { authenticate, badRequest, generationErrorResponse, readJson, serverError } from "@/lib/api/handler";
-import { getAnthropicClient } from "@/lib/ai/client";
+import { authenticate, badRequest, readJson, serverError } from "@/lib/api/handler";
 import { contentResponse } from "@/lib/content/respond";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import {
@@ -12,7 +10,9 @@ import {
 } from "@/lib/data/content";
 import { applyWrite, beginWrite, releaseWrite, suggestedTopicSchema } from "@/lib/data/on-demand";
 import { runOnDemandWrite, toTopicRequest, writeAction } from "@/lib/content/generate/on-demand";
-import { syncCostUsd } from "@/lib/content/generate/copy-batch";
+import { openAiTransport, ProviderRejected, ProviderUnavailable, spendMeter } from "@/lib/content/generate/openai";
+import { OPENAI_COPY_MODEL } from "@/lib/content/generate/provider";
+import { openAiWriteOne } from "@/lib/content/generate/write-one-openai";
 import { ethicsRulesFor } from "@/lib/content/generate/ethics-rules";
 
 /*
@@ -35,6 +35,9 @@ import { ethicsRulesFor } from "@/lib/content/generate/ethics-rules";
  */
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+/** Ce qu'un clic peut coûter au plus, relance comprise. */
+const ON_DEMAND_CAP_USD = 0.25;
 
 const bodySchema = z.object({
   /** La clef que le client génère pour CETTE intention. 8 à 128 caractères. */
@@ -89,12 +92,23 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
     if (!kit) return Response.json({ error: "No such post.", code: "not_found" }, { status: 404 });
 
     /*
-     * ⚠ LE CLIENT EST CONSTRUIT AVANT LA RÉSERVATION. Une clef absente doit
-     * répondre « pas activé » sans avoir touché au journal de crédits : sinon
-     * un environnement non configuré consommerait le quota de la cliente à
-     * chaque clic.
+     * ⚠ LA CLEF EST LUE AVANT LA RÉSERVATION. Une clef absente doit répondre
+     * « pas activé » sans avoir touché au journal de crédits : sinon un
+     * environnement non configuré consommerait le quota de la cliente à chaque
+     * clic. ⚠ C'EST LA CLEF OPENAI, celle du fournisseur retenu pour la
+     * rédaction (F69) : la clef Anthropic n'existe dans aucun environnement, et
+     * le bouton restait éteint pour cette seule raison.
      */
-    const anthropic = getAnthropicClient();
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) {
+      return Response.json(
+        {
+          error: "Generation isn't available right now — that's on us, not your answers. Try again shortly.",
+          code: "generation_unavailable",
+        },
+        { status: 503 }
+      );
+    }
 
     const begun = await beginWrite(supabase, id, body.data.idempotencyKey);
     if (!begun.ok) return contentResponse(begun);
@@ -147,10 +161,34 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
       existingCaption: item.caption,
     });
 
-    const written = await runOnDemandWrite(
-      { create: (params) => anthropic.messages.create(params) },
-      { brand, request: req }
-    );
+    /*
+     * ⚠ UN CLIC A SON PLAFOND. Le compteur réserve le pire coût de chaque appel
+     * avant de le faire : une relance comprise, un post ne peut pas coûter plus
+     * que `ON_DEMAND_CAP_USD`, quoi que réponde le fournisseur.
+     */
+    const meter = spendMeter(ON_DEMAND_CAP_USD);
+    let written;
+    try {
+      written = await runOnDemandWrite(
+        openAiWriteOne({ transport: openAiTransport(key), meter, model: OPENAI_COPY_MODEL }),
+        { brand, request: req }
+      );
+    } catch (error) {
+      /*
+       * ⚠ LE CRÉDIT REVIENT AUSSI QUAND LE FOURNISSEUR NE RÉPOND PAS. Sans ce
+       * relâchement, une panne réseau garderait une réservation ouverte sur un
+       * post qui n'a rien reçu. Ce que le compteur a déjà facturé entre au livre.
+       */
+      await releaseWrite(supabase, begun.data.write_id, meter.spentUsd());
+      if (error instanceof ProviderUnavailable || error instanceof ProviderRejected) {
+        console.error(`[api] POST /api/content-items/[id]/write: model call failed`, error.message);
+        return Response.json(
+          { error: "The model didn't respond just now. Try again — this isn't about your answers.", code: "model_call_failed" },
+          { status: 502 }
+        );
+      }
+      throw error;
+    }
 
     if (!written.ok) {
       /*
@@ -165,7 +203,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
        * livre comptait ce qui réussit et perdait ce qui rate, c'est-à-dire
        * la majorité.
        */
-      await releaseWrite(supabase, begun.data.write_id, syncCostUsd(written.usage));
+      await releaseWrite(supabase, begun.data.write_id, written.costUsd ?? meter.spentUsd());
       return Response.json(
         {
           error: refusalMessage(written.reason),
@@ -193,7 +231,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
        * comptait le crédit et perdait l'argent, et le premier rendu réel
        * l'a découvert en essayant d'y lire une dépense.
        */
-      costUsd: syncCostUsd(written.usage),
+      costUsd: written.costUsd ?? meter.spentUsd(),
     });
     if (!applied.ok) {
       /*
@@ -205,15 +243,12 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
        * ⚠ ET LE COÛT AUSSI, ICI. L'appel a bien eu lieu et il a bien été
        * facturé ; c'est l'écriture en base qui a refusé après coup.
        */
-      await releaseWrite(supabase, begun.data.write_id, syncCostUsd(written.usage));
+      await releaseWrite(supabase, begun.data.write_id, written.costUsd ?? meter.spentUsd());
       return contentResponse(applied);
     }
 
     return contentResponse(await getContentItem(supabase, id));
   } catch (error) {
-    if (error instanceof Anthropic.APIError || (error as Error)?.name === "AnthropicNotConfiguredError") {
-      return generationErrorResponse("POST /api/content-items/[id]/write", error);
-    }
     return serverError("POST /api/content-items/[id]/write", error);
   }
 }

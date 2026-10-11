@@ -1,5 +1,5 @@
 import type { BrandContext, TopicRequest } from "@/lib/content/generate/copy-batch";
-import { writeOnePost, type WriteOnePort } from "@/lib/content/generate/write-one";
+import type { WriteOneInput, WriteOneResult } from "@/lib/content/generate/write-one";
 import type { SuggestedTopic } from "@/lib/data/on-demand";
 
 /*
@@ -117,16 +117,24 @@ export type OnDemandWrite = {
   onImageText?: string;
   usage: { input: number; output: number; cacheRead: number; cacheWrite: number };
   retried: boolean;
+  /** Ce que l'appel a coûté au tarif du fournisseur qui l'a fait, quand il le dit. */
+  costUsd?: number;
 };
 
+/**
+ * ⚠ LE RÉDACTEUR EST INJECTÉ, PAS SON FOURNISSEUR. `writeOnePost` (Anthropic) et
+ * `openAiWriteOne` tiennent le même contrat ; ce module ne choisit pas entre eux.
+ */
+export type WriteOne = (input: WriteOneInput) => Promise<WriteOneResult & { costUsd?: number }>;
+
 export async function runOnDemandWrite(
-  port: WriteOnePort,
+  writeOne: WriteOne,
   input: {
     brand: BrandContext;
     request: TopicRequest;
   }
 ): Promise<OnDemandWrite> {
-  const result = await writeOnePost(port, { brand: input.brand, topic: input.request });
+  const result = await writeOne({ brand: input.brand, topic: input.request });
 
   if (!result.ok) {
     return {
@@ -135,6 +143,7 @@ export async function runOnDemandWrite(
       archetypeKey: input.request.archetypeKey,
       usage: result.usage,
       retried: result.retried,
+      costUsd: result.costUsd,
     };
   }
 
@@ -177,6 +186,7 @@ export async function runOnDemandWrite(
     onImageText: displayTitle(input.request, result.payload),
     usage: result.usage,
     retried: result.retried,
+    costUsd: result.costUsd,
   };
 }
 

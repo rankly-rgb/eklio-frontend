@@ -1,3 +1,4 @@
+import { writeOnePost } from "@/lib/content/generate/write-one";
 import { describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import { validateCopy, type BrandContext } from "@/lib/content/generate/copy-batch";
@@ -151,7 +152,7 @@ describe("⚠ DOUBLE CLIC : UNE SEULE ÉCRITURE, UN SEUL CRÉDIT", () => {
 
   it("un seul « Write it » n'appelle le modèle qu'une fois quand la sortie est valide", async () => {
     const port = portReturning(STATEMENT);
-    const result = await runOnDemandWrite(port, {
+    const result = await runOnDemandWrite((i) => writeOnePost(port, i), {
       brand: BRAND,
       request: {
         topicId: "free-idea",
@@ -189,7 +190,7 @@ describe("⚠ UNE IDÉE LIBRE NE CONTOURNE PAS LA DÉONTOLOGIE", () => {
       },
     };
 
-    await runOnDemandWrite(port, {
+    await runOnDemandWrite((i) => writeOnePost(port, i), {
       brand: BRAND,
       request: toTopicRequest({
         topic: null,
@@ -211,7 +212,7 @@ describe("⚠ UNE IDÉE LIBRE NE CONTOURNE PAS LA DÉONTOLOGIE", () => {
      * carte que rien n'a relu.
      */
     const port = portReturning(STATEMENT);
-    const result = await runOnDemandWrite(port, {
+    const result = await runOnDemandWrite((i) => writeOnePost(port, i), {
       brand: BRAND,
       request: toTopicRequest({
         topic: null,

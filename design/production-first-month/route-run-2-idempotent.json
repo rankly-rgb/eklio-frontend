@@ -1,0 +1,20 @@
+{
+  "label": "route de cron produit, pile Supabase locale (PostgREST), OpenAI",
+  "startedAt": "2026-10-11T20:07:13.823Z",
+  "finishedAt": "2026-10-11T20:07:13.876Z",
+  "status": 200,
+  "body": {
+    "armed": true,
+    "month": "2026-11-01",
+    "generated": 0,
+    "served": [],
+    "skipped": [
+      {
+        "brandKitId": "58eb4af3-fd95-47a8-858e-dd06faf14509",
+        "reason": "already_served",
+        "detail": "proposed"
+      }
+    ],
+    "deferred": []
+  }
+}

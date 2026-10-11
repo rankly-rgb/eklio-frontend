@@ -20,8 +20,14 @@ import {
   type SpendMeter,
 } from "@/lib/content/generate/openai";
 
-export const SESSION_CAP_USD = 5;
-export const SPEND_LOG = "design/production-first-month/openai-calls.jsonl";
+/*
+ * ⚠ UN JOURNAL ET UN PLAFOND PAR SESSION. Le 2026-10-04 : 5 $, 3,82 $ dépensés,
+ * dans `openai-calls.jsonl`. Le 2026-10-11 : 8 $ toutes clefs confondues, dans
+ * son propre journal — sinon la dépense d'une session amputerait le plafond de
+ * la suivante, et le compte de chacune ne se lirait plus.
+ */
+export const SESSION_CAP_USD = 8;
+export const SPEND_LOG = "design/production-first-month/openai-calls-2026-10-11.jsonl";
 
 type Line = { at: string; label: string; usd: number; input: number; output: number; cacheRead: number; cacheWrite: number };
 

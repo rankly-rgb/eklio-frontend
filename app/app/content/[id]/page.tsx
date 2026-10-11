@@ -10,6 +10,7 @@ import { ReviewSurface, type LayoutChoice } from "@/components/content/review-su
 import { Breadcrumb } from "@/components/app/breadcrumb";
 import { MonthFailedToLoad, MonthNotDeployed } from "@/components/content/month-states";
 import { WritePanel, type WriteAvailability } from "@/components/content/write-panel";
+import { onDemandWriterConfigured } from "@/lib/content/generate/write-one-openai";
 import { suggestTopics } from "@/lib/data/on-demand";
 import { contentGenerationArmed } from "@/lib/content/generate/armed";
 import { getCreditMeter } from "@/lib/billing/credits";
@@ -216,7 +217,7 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
    * règle générale du dépôt depuis `CONTENT_BUG_REPORT.md` §2.2.
    */
   const armedFlag = contentGenerationArmed();
-  const keyPresent = Boolean(process.env.ANTHROPIC_API_KEY);
+  const keyPresent = onDemandWriterConfigured();
   const offReason = writeOffReason({ armedFlag, keyPresent });
 
   const screen = writeScreen({

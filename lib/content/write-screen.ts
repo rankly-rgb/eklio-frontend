@@ -110,7 +110,7 @@ export function writeStateFor(input: {
  */
 export function writeOffDetail(reason: WriteOffReason): string {
   const FLAG = 'CONTENT_GENERATION_ARMED is not exactly "true"';
-  const KEY = "ANTHROPIC_API_KEY is not set";
+  const KEY = "OPENAI_API_KEY is not set";
   if (reason === "both") return `${FLAG}, and ${KEY}`;
   return reason === "flag" ? FLAG : KEY;
 }

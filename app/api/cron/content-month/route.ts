@@ -1,38 +1,60 @@
 import { NextResponse } from "next/server";
 import { authorizeCron } from "@/lib/api/cron";
+import { createAdminClient } from "@/lib/supabase/server";
 import { ARMED_ENV_VAR, contentGenerationArmed } from "@/lib/content/generate/armed";
+import { nextMonthKey } from "@/lib/content/generate/queue";
+import { openAiTransport, spendMeter } from "@/lib/content/generate/openai";
+import { selectDueMonths } from "@/lib/content/month/due";
+import { serverDuePort } from "@/lib/content/month/server-ports";
+import { MONTH_CAP_USD, orchestrateMonthForKit } from "@/lib/content/month/run-for-kit";
+import { POSTS_PER_MONTH } from "@/lib/content/bank";
 
 /*
- * ── THE MONTHLY FILL, SHIPPED DISARMED ──────────────────────────────────
+ * ── LE REMPLISSAGE MENSUEL ──────────────────────────────────────────────
  *
- * Written now so that arming it is one line of configuration rather than a
- * lot of work under time pressure at the end of a billing month. It does not
- * run: `vercel.json` has no entry for this path, and `CONTENT_GENERATION_ARMED`
- * is not set. See `lib/content/generate/armed.ts` for both locks and why there
- * are two.
+ * Énumère les comptes dus pour le mois qui vient (`selectDueMonths`), puis fait
+ * sortir un mois par compte par l'orchestrateur produit (`orchestrateMonthForKit`). Tout
+ * ce qui refuse, tire, rédige, contrôle et publie est dans `lib/content/month/` ;
+ * cette route n'est que la porte.
  *
- * ── WHAT IT WILL DO WHEN IT IS ARMED ────────────────────────────────────
+ * ── ⚠ DEUX VERROUS, TOUJOURS ────────────────────────────────────────────
  *
- * For each kit with a live Monthly Presence subscription and saved content
- * preferences, and no `content_months` row for the coming month: pick three
- * themes, run `runMonthForKit`, persist the result as `proposed`, and notify
- * her that a month is waiting. `content_months_kit_month_key` is unique on
- * `(brand_kit_id, month)`, so a double fire cannot produce two months — the
- * second insert is refused by the database rather than by a flag someone
- * remembered to check.
+ * `vercel.json` ne planifie pas cette route, et `CONTENT_GENERATION_ARMED` doit
+ * valoir exactement `"true"` (voir `lib/content/generate/armed.ts`). Sans le
+ * drapeau, elle répond 503 en nommant l'interrupteur, et rien n'est dépensé :
+ * le déploiement de ce code ne change rien pour personne.
  *
- * ── WHY IT ANSWERS 503 AND NOT 404 ──────────────────────────────────────
+ * ── ⚠ IDEMPOTENTE, PAR LA BASE ──────────────────────────────────────────
  *
- * A 404 would say the route does not exist, and whoever set `CRON_SECRET`
- * correctly and got nothing would go looking for a deployment problem. 503
- * with the variable's name says what is actually true: this exists, it is
- * switched off, and here is the switch.
+ * Un compte servi (`proposed`, `approved`) n'est pas dû ; un mois en cours
+ * reprend son journal (F71 : seulement s'il détient encore ses sujets) ; la clé
+ * `content_months_kit_month_key` refuse un second mois. Deux déclenchements ne
+ * font pas deux mois, et un déclenchement tué reprend au suivant.
  *
- * The `authorizeCron` check comes FIRST regardless — an unauthorised caller
- * learns nothing about what is or is not armed here.
+ * ── ⚠ UN COMPTE APRÈS L'AUTRE, ET PAS AU-DELÀ DU TEMPS ──────────────────
+ *
+ * Un mois prend deux à trois minutes. On n'en COMMENCE pas un nouveau quand le
+ * temps restant ne suffit plus : le compte suivant attend le déclenchement
+ * suivant, et la réponse le dit (`deferred`). Un mois coupé par la plateforme
+ * n'est pas perdu — son journal le reprend — mais on ne le provoque pas.
  */
 
 export const maxDuration = 300;
+
+/**
+ * On ne commence plus de mois passé ce délai. Mesuré : le mois de janvier local a
+ * pris 127 s d'appels (58 appels, 2026-10-04), composition et assemblage en plus.
+ */
+const START_BUDGET_MS = 30_000;
+
+type Served = {
+  brandKitId: string;
+  ok: boolean;
+  stage?: string;
+  refusal?: string;
+  written?: number;
+  costUsd: number;
+};
 
 export async function GET(request: Request) {
   const denied = authorizeCron(request);
@@ -50,32 +72,73 @@ export async function GET(request: Request) {
   }
 
   /*
-   * ⚠ THE THEMES ARE NO LONGER THE MISSING PIECE. `deriveThemes` reads her
-   * check-in's own free-text answer, or the brief and the calendar when she did
-   * not answer, and `runMonthForKit` calls it by default — in production a
-   * therapist never types three themes, and if she had to, the sixty-second
-   * promise would be gone.
-   *
-   * What is still not written here is the ENUMERATION: which subscribers are
-   * due, in what order, with what rate limit, and what happens to a kit whose
-   * month fails halfway. That is a scheduling question, and it waits on the
-   * first generated month being read — because whether this should run at all
-   * is a decision that follows from reading one, not from writing more code.
-   *
-   * So the flag exists, the locks exist, the route exists, and the generator
-   * behind it is finished and tested. Arming it today gets an honest 501
-   * rather than a sweep nobody has decided the shape of.
+   * ⚠ LA CLÉ AVANT TOUTE LECTURE. Armée sans clé, la route ne doit ni énumérer
+   * ni ouvrir de mois : elle dirait « en cours » à des comptes que rien ne
+   * remplira.
    */
-  return NextResponse.json(
-    {
-      armed: true,
-      generated: 0,
-      reason:
-        "The generator is written and the themes are derived, but the monthly " +
-        "sweep is not: which subscribers are due, in what order, and what " +
-        "happens to a kit whose month fails halfway. That waits on the first " +
-        "generated month being read. Nothing was generated and nothing was spent.",
-    },
-    { status: 501 }
-  );
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    return NextResponse.json(
+      { armed: true, generated: 0, reason: "OPENAI_API_KEY is not set. Nothing was generated and nothing was spent." },
+      { status: 503 }
+    );
+  }
+
+  const started = Date.now();
+  const month = nextMonthKey(new Date());
+  const admin = createAdminClient();
+
+  const { due, skipped } = await selectDueMonths(serverDuePort(admin as never), {
+    month,
+    posts: POSTS_PER_MONTH,
+  });
+
+  const transport = openAiTransport(key);
+  const served: Served[] = [];
+  const deferred: string[] = [];
+
+  for (const account of due) {
+    if (Date.now() - started > START_BUDGET_MS) {
+      deferred.push(account.brandKitId);
+      continue;
+    }
+    /* ⚠ UN COMPTEUR PAR COMPTE : le plafond d'un mois ne se partage pas. */
+    const meter = spendMeter(MONTH_CAP_USD);
+    try {
+      const outcome = await orchestrateMonthForKit(admin as never, account, month, { transport, meter });
+      served.push(
+        outcome.ok
+          ? { brandKitId: account.brandKitId, ok: true, written: outcome.month.written, costUsd: outcome.costUsd }
+          : {
+              brandKitId: account.brandKitId,
+              ok: false,
+              stage: outcome.stage,
+              refusal: outcome.refusal,
+              costUsd: outcome.costUsd,
+            }
+      );
+    } catch (error) {
+      /*
+       * ⚠ UN COMPTE QUI LÈVE N'ARRÊTE PAS LES AUTRES, ET IL EST DIT. Ce qu'il a
+       * payé est au journal et au compteur ; son mois reprendra au déclenchement
+       * suivant.
+       */
+      served.push({
+        brandKitId: account.brandKitId,
+        ok: false,
+        stage: "error",
+        refusal: (error as Error).message,
+        costUsd: meter.spentUsd(),
+      });
+    }
+  }
+
+  return NextResponse.json({
+    armed: true,
+    month,
+    generated: served.filter((s) => s.ok).length,
+    served,
+    skipped,
+    deferred,
+  });
 }

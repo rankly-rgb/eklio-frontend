@@ -4094,3 +4094,46 @@ neuf. Trois tests d'orchestration, qui échouent sur l'ancien code ; un test SQL
 
 ⚠ **Le mois de novembre local** (dans cet état depuis le 2026-10-04) ne se reprendra donc pas :
 une nouvelle tentative le retire de neuf.
+
+## Phase 2 — L'orchestrateur est branché (2026-10-11)
+
+**La route de génération** (`app/api/cron/content-month/route.ts`) quitte le 501 : derrière
+`CRON_SECRET`, puis le drapeau `CONTENT_GENERATION_ARMED`, puis `OPENAI_API_KEY`, elle énumère
+les comptes dus du mois qui vient (`selectDueMonths`) et fait sortir un mois par compte par
+`orchestrateMonthForKit` (`lib/content/month/run-for-kit.ts`), qui construit les ports produit
+et appelle `orchestrateMonth`. Un compte après l'autre ; on n'en commence plus passé 30 s ; un
+compte qui lève n'arrête pas les autres ; un compteur et un plafond de 3 $ par mois (F58) ; la
+garde de banque est dans le préalable de l'orchestrateur. ⚠ Le nom `runMonthForKit` était celui
+du générateur retiré par F45 : la garde de la barrière l'interdit, la fonction s'appelle donc
+`orchestrateMonthForKit`.
+
+**Le recensement est vert sans exemption contournée.** `ONLY_IN_HARNESS` était déjà vide ;
+`EXTRACTED_NOT_WIRED` s'est vidé parce que le test « aucune raison ne survit au branchement »
+a exigé le retrait de chaque ligne dès que son module est devenu atteignable depuis la route.
+Les deux tests de serrure ont été retournés comme leurs propres commentaires l'annonçaient, et
+la serrure F50 reste conditionnelle : un module porté qui perdrait son appelant exigerait de
+nouveau le 501.
+
+**« Write it »** (`/api/content-items/[id]/write`) passe sur OpenAI (`openAiWriteOne`) : la clé
+Anthropic n'existe dans aucun environnement et le bouton restait éteint pour cette seule raison.
+Même contrat que le rédacteur unitaire (archétype vérifié avant l'appel, une relance, sortie
+stricte, `validateCopy`), coût au tarif lu, plafond de 0,25 $ par clic, crédit relâché si le
+fournisseur ne répond pas.
+
+**Éprouvé pour de vrai** — le handler `GET` de la route, appelé contre la pile Supabase locale
+migrée depuis zéro (vrai PostgREST, client supabase-js du produit), sur un kit dont la direction
+retenue est **slate_bone** (la famille la plus dure de F72) :
+- 30 posts `proposed` en 138 s pour **0,78 $** ; onze archétypes dont 3 `quadrant_model` ;
+- relu par le chemin de lecture sous son identité, recomposé avec la palette que la page
+  affiche : 30 cartes vectorielles, mention « LMFT 123456 » au pied et dans les 30 SVG,
+  **zéro constat** de mois ou par post ;
+- livre : 30 réservations, 30 règlements, coût réel au livre ; quota épuisé refusé par le SQL ;
+- second déclenchement : `already_served`, aucun appel, une seule ligne de mois.
+
+⚠ **F48 appliquée, et elle a trouvé quelque chose.** `verify.ts` contrôlait les teintes sur la
+famille du brief, pas sur la direction du kit : le premier « zéro constat » comptait une palette
+que la praticienne ne voit pas. Corrigé (`readPathPalette`), relancé : toujours zéro.
+
+**Non fait, et pourquoi :** `vercel.json` ne planifie toujours pas la route (verrou 1 de B3). Le
+brief exige que le déploiement ne change rien pour personne ; le premier mois se déclenche à la
+main, et la planification s'ajoute une fois ce mois lu (B3, étape 6).

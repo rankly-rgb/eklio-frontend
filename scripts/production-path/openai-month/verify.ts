@@ -22,6 +22,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { localDb } from "../local-db";
 import { arg } from "./session";
 import { licenceMentionFor, reviewCardFor } from "@/lib/content/review";
+import { readPathPalette } from "@/lib/content/month/run-for-kit";
 import { carouselSlides } from "@/lib/content/slides";
 import { render } from "@/lib/compose/engine";
 import { footerCarriesLicence } from "@/lib/content/licence";
@@ -49,9 +50,19 @@ async function main() {
 
   const brief = (await service.read<{ practice_name: string; city: string; state: string; modality_ids: string[]; palette_family_ids: string[] }>(
     "select practice_name, city, state, modality_ids, palette_family_ids from public.project_briefs where project_id = $1", [kitRow.project_id]))[0];
+  /*
+   * ⚠ LA PALETTE QUE LA PAGE RECOMPOSE, QUAND LE KIT EN A UNE (2026-10-11). La
+   * première version prenait la famille du brief : sur un kit dont la direction
+   * retenue est slate_bone et le brief clay_sand, les teintes étaient contrôlées
+   * sur une palette que la praticienne ne voit pas. Le kit local de `setup.ts` n'a
+   * pas de directions : c'est seulement là que la famille du brief sert.
+   */
+  const kitRowDirections = (await service.read<{ selected_direction_id: string | null; directions: unknown }>(
+    "select selected_direction_id, directions from public.brand_kits where id = $1", [KIT]))[0];
   const fam = (await service.read<Record<string, string>>(
     "select primary_hex, secondary_hex, light_hex, dark_hex, paper_hex from public.palette_families where id = $1", [brief.palette_family_ids[0]]))[0];
-  const palette = { primary: fam.primary_hex, secondary: fam.secondary_hex, light: fam.light_hex, dark: fam.dark_hex, paper: fam.paper_hex };
+  const palette = readPathPalette(kitRowDirections) ??
+    { primary: fam.primary_hex, secondary: fam.secondary_hex, light: fam.light_hex, dark: fam.dark_hex, paper: fam.paper_hex };
 
   /* ⚠ LA MENTION EST RELUE EN BASE PAR LA FONCTION DE LA ROUTE, pas reprise du lanceur. */
   const mention = await licenceMentionFor(her as never, kitRow.project_id);
@@ -146,6 +157,7 @@ async function main() {
       where user_id = $1 and month = $2::date and kind = 'post_generation' and entry_type = 'reservation'`, [kitRow.user_id, MONTH]);
 
   const report = {
+    palette,
     label: "chemin produit, base locale, OpenAI — relu par le chemin de lecture (get_content_month sous l'identité de la praticienne, reviewCardFor, render) ; palette du brief à la place des directions du kit ; SVG sans rasterisation",
     month: MONTH,
     readPath: { items: month.items.length, statuses: month.items.reduce<Record<string, number>>((a, i) => ((a[i.status] = (a[i.status] ?? 0) + 1), a), {}) },

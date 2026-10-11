@@ -18,10 +18,12 @@
 -- identique » voulait dire éditer ce fichier, donc changer le script entre
 -- deux preuves, donc ne plus comparer la même chose.
 --
---   psql -v email="'quelquun@eklio-test.invalid'" -f 00-account.sql
+--   psql -v email=quelquun@eklio-test.invalid -f 00-account.sql   (:'email' cite déjà la valeur)
 
-insert into auth.users (email)
-     values (:'email')
+-- ⚠ `id` EXPLICITE : le vrai `auth.users` de Supabase n'a pas de défaut sur la
+-- colonne (seule l'amorce minimale du 2026-10-04 en avait un).
+insert into auth.users (id, email)
+     values (gen_random_uuid(), :'email')
 on conflict do nothing;
 
 insert into public.comp_grants (user_id, reason, granted_by, generation_credits, expires_at)

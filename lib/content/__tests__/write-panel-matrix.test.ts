@@ -154,7 +154,7 @@ describe("ce qui désarme l'écriture", () => {
   it("les deux ensemble se disent ensemble", () => {
     expect(writeOffReason({ armedFlag: false, keyPresent: false })).toBe("both");
     expect(writeOffDetail("both")).toContain("CONTENT_GENERATION_ARMED");
-    expect(writeOffDetail("both")).toContain("ANTHROPIC_API_KEY");
+    expect(writeOffDetail("both")).toContain("OPENAI_API_KEY");
   });
 
   it("armé et pourvu, le quota peut décider", () => {
