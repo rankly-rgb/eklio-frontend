@@ -59,9 +59,15 @@ async function main() {
   const cards: Array<{ id: string; title: string; archetype: string; footer: string; svgs: string[]; vector: boolean; licenceOnFooter: boolean; licenceInSvg: boolean; error?: string }> = [];
   const posts: PostUnderCheck[] = [];
   for (const item of month.items) {
+    /* Un post sans titre ne se relit pas : il sort en erreur au rapport, il n'est pas contrôlé sous un titre inventé. */
+    const title = item.title?.trim();
+    if (!title) {
+      cards.push({ id: item.id, title: "(sans titre)", archetype: "?", footer: "", svgs: [], vector: false, licenceOnFooter: false, licenceInSvg: false, error: "titre absent au chemin de lecture" });
+      continue;
+    }
     const card = await reviewCardFor(her as never, item, palette, brief.practice_name, mention);
     if (!card) {
-      cards.push({ id: item.id, title: item.title, archetype: "?", footer: "", svgs: [], vector: false, licenceOnFooter: false, licenceInSvg: false, error: "reviewCardFor a rendu null" });
+      cards.push({ id: item.id, title, archetype: "?", footer: "", svgs: [], vector: false, licenceOnFooter: false, licenceInSvg: false, error: "reviewCardFor a rendu null" });
       continue;
     }
     let svgs: string[] = [];
@@ -82,13 +88,13 @@ async function main() {
     const vector = svgs.length > 0 && svgs.every((s) => s.trimStart().startsWith("<svg") && !/<image\b|data:image\//i.test(s));
     const digits = (mention ?? "").replace(/\D/g, "");
     cards.push({
-      id: item.id, title: item.title, archetype: card.archetypeKey, footer: card.footer, svgs, vector,
+      id: item.id, title, archetype: card.archetypeKey, footer: card.footer, svgs, vector,
       licenceOnFooter: Boolean(mention) && footerCarriesLicence(card.footer, mention!),
       licenceInSvg: digits.length > 0 && svgs.length > 0 && svgs.every((s) => s.includes(digits)),
       ...(error ? { error } : {}),
     });
     posts.push({
-      archetype: card.archetypeKey, title: item.title, cardLine: item.title, payload: card.payload,
+      archetype: card.archetypeKey, title, cardLine: title, payload: card.payload,
       svg: svgs[0], eyebrow: card.eyebrow, footer: card.footer,
       caption: item.caption ?? undefined, altText: item.alt_text ?? undefined,
     });

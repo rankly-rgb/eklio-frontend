@@ -70,7 +70,7 @@ function writer(transport: OpenAiTransport, capUsd = 5, over: Record<string, unk
 
 describe("chaque appel est strict, et sur le schéma de SON archétype", () => {
   it("le corps porte strict: true et le payload de l'archétype", async () => {
-    const transport = vi.fn(async () => answer({ statement: "Rest can be learned, slowly and on purpose." }));
+    const transport = vi.fn<OpenAiTransport>(async () => answer({ statement: "Rest can be learned, slowly and on purpose." }));
     await writer(transport).write({ topics: [topic("t1")], wanted: 1, month: "2027-07-01", sink: sink() });
     const body = transport.mock.calls[0][0] as { model: string; text: { format: { strict: boolean; schema: { properties: { payload: unknown } } } } };
     expect(body.model).toBe(OPENAI_COPY_MODEL);

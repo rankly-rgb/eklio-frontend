@@ -16,8 +16,8 @@ confirmOrDie("la contre-vérification du juge");
 const db = localDb();
 const rows = await db.read<{ title: string; payload: unknown; compose_archetype: string }>(
   "select title, payload, compose_archetype from public.content_items where month_id = $1", [process.argv[2]]);
-const lines = undecidedIn(writtenLinesIn(rows.map((r) => ({ archetype: r.compose_archetype, title: r.title, cardLine: r.title, payload: r.payload }))));
 const all = writtenLinesIn(rows.map((r) => ({ archetype: r.compose_archetype, title: r.title, cardLine: r.title, payload: r.payload })));
+const lines = undecidedIn(all);
 const seen: Array<{ status?: string; reason?: string; chars: number; output: number }> = [];
 const transport = transportFromEnv(); const meter = sessionMeter();
 const probe: TextModel = { async ask({ system, user, maxTokens }) {
@@ -38,5 +38,5 @@ for (let i = 0; i < lines.length; i += 40) {
   const missing = slice.filter((l) => !(l in out.verdicts)).slice(0, 3);
   batches.push({ asked: slice.length, matched, returned: returnedKeys.length, call: seen[before], incomplete: Object.entries(out.verdicts).filter(([, v]) => v === false).map(([l]) => l), unmatchedKeys, missing });
 }
-console.log(JSON.stringify({ posts: rows.length, sentToJudge: lines.length, batches }, null, 1));
+console.log(JSON.stringify({ posts: rows.length, writtenLines: all.length, sentToJudge: lines.length, batches }, null, 1));
 await db.close();
