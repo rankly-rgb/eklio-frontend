@@ -4038,3 +4038,24 @@ négatif rejoue les anciens taux fixes sur slate et doit être refusé.
 peuvent s'écarter de leur famille : `cardPalette` reçoit la direction du kit, pas la famille.
 Le cache de `solveTints` est indexé par direction ; une direction sans solution retombe sur les
 taux de départ et le portillon la refuse, visiblement.
+
+## F73 — FERMÉ le 2026-10-11 : le sigle ne paraît qu'une fois
+
+- **À la saisie :** `normaliseLicenceNumber` retire en tête un sigle de licence connu (autant de
+  fois qu'il y en a, avec `#`, `:`, `.`, `-`, espaces). Branché sur la seule route d'écriture,
+  `PATCH /api/brand-kits/[id]/site-spec` (Réglages et éditeur de site y passent tous deux ; le
+  trigger porte la valeur dans `project_briefs.license_number`). « LMFT 123456 », « PSY29384 »,
+  « LMFT LMFT 123456 » arrivent en base sans sigle. Un sigle sans chiffre derrière n'est pas
+  retiré : la contrainte de forme de la base juge.
+- **À la lecture :** `licenceMention` relit le numéro sans le sigle de la praticienne ni les
+  sigles connus. Les numéros déjà saisis avec leur sigle ne doublent plus la mention, sans
+  réécrire de donnée en production.
+- **Le contrôle manquant :** `licence.repeated` dans `checkLicence` compte, dans chaque pied de
+  carte, le sigle de la mention (ramené à son motif de base s'il est lui-même doublé) et chaque
+  sigle connu. Le pied « LMFT LMFT 123456 » de décembre est refusé ; `licence.missing` le
+  laissait passer.
+
+⚠ **Reste ouvert, hors du chemin du mois :** le site et la signature e-mail composent
+`license_label` + `license_number` sans passer par `licenceMention`. Un numéro enregistré avec
+son sigle avant ce correctif s'y affiche toujours doublé. Corriger ces lignes en production
+serait une écriture que cette session ne fait pas ; la prochaine édition du champ les normalise.

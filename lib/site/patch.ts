@@ -1,3 +1,4 @@
+import { normaliseLicenceNumber } from "@/lib/content/licence";
 import { COLOR_ROLE_KEYS, isDerivedToken } from "@/lib/site/colors";
 
 /*
@@ -68,4 +69,23 @@ export function sanitizePatch<T extends object>(patch: T): Partial<T> {
     out[key] = value;
   }
   return out as Partial<T>;
+}
+
+/**
+ * Le numéro de licence, sans le sigle tapé devant (F73).
+ *
+ * ⚠ C'EST LA SEULE ENTRÉE. Réglages et l'éditeur de site écrivent tous deux
+ * `practice_details.license_number` par cette route ; le trigger de la base le
+ * porte dans `project_briefs.license_number`. Normalisé ici, il arrive propre
+ * à l'autorité, et le pied de carte ne double plus le sigle.
+ */
+export function normaliseLicenceInPatch<T extends object>(patch: T): T {
+  const details = (patch as { practice_details?: unknown }).practice_details;
+  if (!details || typeof details !== "object") return patch;
+  const typed = (details as { license_number?: unknown }).license_number;
+  if (typeof typed !== "string" || typed.trim() === "") return patch;
+  return {
+    ...patch,
+    practice_details: { ...details, license_number: normaliseLicenceNumber(typed) },
+  };
 }

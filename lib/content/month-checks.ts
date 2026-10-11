@@ -2,7 +2,7 @@
 import { checkEthics } from "@/lib/ethics/rules";import { DANGLING } from "@/lib/content/generate/copy-batch";
 import { colourDistance, TINT_MIN_DISTANCE, type DirectionPalette } from "@/lib/compose/palette";
 import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
-import { footerCarriesLicence } from "@/lib/content/licence";
+import { footerCarriesLicence, repeatedLicenceTitles } from "@/lib/content/licence";
 import {
   checkUnfinished, checkCarouselPanels, checkBorrowed, checkClinicalClaim,
   checkSellsSlots, checkStraightQuotes, checkAcronym,
@@ -1075,6 +1075,19 @@ export function checkLicence(posts: PostUnderCheck[], mention: string | undefine
         detail:
           `« ${post.cardLine || post.title} » ne porte pas « ${mention} » en pied de carte ` +
           `(pied : « ${post.footer ?? "aucun"} »)`,
+      });
+    }
+    /*
+     * ⚠ LE SIGLE UNE SEULE FOIS (F73). « LMFT LMFT 123456 » porte la mention,
+     * puisque la mention elle-même était doublée : `licence.missing` se taisait.
+     */
+    const repeated = post.footer ? repeatedLicenceTitles(post.footer, mention) : [];
+    if (repeated.length > 0) {
+      out.push({
+        check: "licence.repeated",
+        detail:
+          `« ${post.cardLine || post.title} » porte ${repeated.map((t) => `« ${t} »`).join(", ")} plus d'une fois ` +
+          `en pied de carte (pied : « ${post.footer} »)`,
       });
     }
   }

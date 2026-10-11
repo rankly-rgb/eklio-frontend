@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { authenticate, badRequest, readJson } from "@/lib/api/handler";
 import { siteSpecGet, siteSpecPatch } from "@/lib/site/rpc";
 import { ifNoneMatch, notModified, siteResponse } from "@/lib/site/respond";
-import { patchAreas, sanitizePatch } from "@/lib/site/patch";
+import { normaliseLicenceInPatch, patchAreas, sanitizePatch } from "@/lib/site/patch";
 import { track } from "@/lib/analytics";
 
 /*
@@ -55,7 +55,7 @@ export async function PATCH(
 
   // Garde de composant, pas validation : la base refuserait une variante
   // dérivée avec `unknown_field`, mais sur un contrôle qui n'existe pas.
-  const patch = sanitizePatch(body as object);
+  const patch = normaliseLicenceInPatch(sanitizePatch(body as object));
   const result = await siteSpecPatch(auth.session.supabase, id, patch);
   if (!result.ok) return siteResponse(result);
 
