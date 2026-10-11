@@ -116,7 +116,7 @@ type Account = { userId: string; projectId: string; brandKitId: string; customer
 async function account(label: string): Promise<Account> {
   const email = `${RUN}-${label}@eklio-test.invalid`;
   const user = await one<{ id: string }>(
-    "insert into auth.users (email) values ($1) returning id",
+    "insert into auth.users (id, email) values (gen_random_uuid(), $1) returning id",
     [email]
   );
   const project = await one<{ id: string }>(

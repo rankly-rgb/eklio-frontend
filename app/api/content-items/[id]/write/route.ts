@@ -13,6 +13,7 @@ import { runOnDemandWrite, toTopicRequest, writeAction } from "@/lib/content/gen
 import { openAiTransport, ProviderRejected, ProviderUnavailable, spendMeter } from "@/lib/content/generate/openai";
 import { OPENAI_COPY_MODEL } from "@/lib/content/generate/provider";
 import { openAiWriteOne } from "@/lib/content/generate/write-one-openai";
+import { contentGenerationArmed } from "@/lib/content/generate/armed";
 import { ethicsRulesFor } from "@/lib/content/generate/ethics-rules";
 
 /*
@@ -99,8 +100,15 @@ export async function POST(request: Request, ctx: RouteContext<"/api/content-ite
      * rédaction (F69) : la clef Anthropic n'existe dans aucun environnement, et
      * le bouton restait éteint pour cette seule raison.
      */
+    /*
+     * ⚠ LE DRAPEAU AUSSI, ET PAS SEULEMENT SUR LA PAGE. Le bouton était éteint par
+     * `writeOffReason`, mais la ROUTE ne lisait pas le drapeau : seule l'absence de
+     * clé Anthropic la fermait. Passée sur la clé OpenAI — qui peut déjà exister
+     * pour les images —, elle aurait écrit et débité sur un simple POST dès le
+     * déploiement. Les deux verrous de la page sont donc aussi ceux de la route.
+     */
     const key = process.env.OPENAI_API_KEY;
-    if (!key) {
+    if (!contentGenerationArmed() || !key) {
       return Response.json(
         {
           error: "Generation isn't available right now — that's on us, not your answers. Try again shortly.",

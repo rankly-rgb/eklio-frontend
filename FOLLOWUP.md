@@ -4137,3 +4137,12 @@ que la praticienne ne voit pas. Corrigé (`readPathPalette`), relancé : toujour
 **Non fait, et pourquoi :** `vercel.json` ne planifie toujours pas la route (verrou 1 de B3). Le
 brief exige que le déploiement ne change rien pour personne ; le premier mois se déclenche à la
 main, et la planification s'ajoute une fois ce mois lu (B3, étape 6).
+
+### ⚠ Trouvé avant la fusion : « Write it » aurait dépensé sans le drapeau
+
+La route `/api/content-items/[id]/write` ne lisait pas `CONTENT_GENERATION_ARMED` : la page
+éteignait le bouton, mais la route n'était fermée que par l'absence de clé Anthropic. Passée sur
+`OPENAI_API_KEY` — clé qui peut déjà exister en production pour les images —, elle aurait écrit
+et débité sur un simple POST dès le déploiement, contre la consigne « le déploiement ne change
+rien pour personne ». Corrigé avant la fusion : la route exige le drapeau ET la clé, avant toute
+réservation ; `lib/content/generate/__tests__/write-route-armed.test.ts` l'appelle (et échoue sans le verrou).
