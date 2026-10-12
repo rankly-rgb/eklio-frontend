@@ -128,3 +128,5 @@
 {"at":"2026-10-11T20:03:37.260Z","label":"banque lettered_technique","usd":0.00791,"input":1105,"output":475,"cacheRead":1034,"cacheWrite":68}
 {"at":"2026-10-11T20:03:41.734Z","label":"banque lettered_technique","usd":0.010154,"input":1105,"output":662,"cacheRead":1034,"cacheWrite":68}
 {"at":"2026-10-11T20:06:36.141Z","label":"route content-month 58eb4af3-fd95-47a8-858e-dd06faf14509","usd":0.7815559999999997,"input":0,"output":0,"cacheRead":0,"cacheWrite":0}
+{"at":"2026-10-12T06:49:59.842Z","label":"banque single_statement","usd":0.003774,"input":831,"output":176,"cacheRead":0,"cacheWrite":0}
+{"at":"2026-10-12T06:50:01.244Z","label":"banque single_statement","usd":0.004552,"input":836,"output":240,"cacheRead":0,"cacheWrite":0}

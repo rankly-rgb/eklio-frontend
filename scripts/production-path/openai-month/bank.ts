@@ -14,6 +14,22 @@
  * produit — plutôt que par une relance de l'objet entier.
  *
  *   EKLIO_OPENAI_API_KEY=… bun scripts/production-path/openai-month/bank.ts --kit <id> --confirm
+ *
+ * ── ⚠ EN PRODUCTION (2026-10-11) ────────────────────────────────────────
+ *
+ *   EKLIO_DB_URL=postgresql://…  EKLIO_OPENAI_API_KEY=…  bun …/bank.ts --kit <id> \
+ *     --db-url-env EKLIO_DB_URL --cap 3 --log …/openai-calls-bank-production.jsonl \
+ *     [--also-state] [--dry-run] --confirm
+ *
+ *   la base     l'URL est lue dans la variable NOMMÉE par `--db-url-env`, jamais
+ *               imprimée ; chaque écriture passe en `service_role`, comme PostgREST.
+ *   les segments ceux du brief du kit (modalités × populations × son État), créés
+ *               s'ils manquent — la règle de `setup.ts`. Aucun produit ne les crée.
+ *   la cible    `bankTarget` sur TROIS tours (la fenêtre de 90 jours), moins ce que
+ *               le kit tire déjà ; `--also-state` complète ensuite chaque autre
+ *               segment existant de l'État, segment par segment.
+ *   le plafond  `--cap` dollars, journal `--log` : le compteur s'arrête net au plafond.
+ *   `--dry-run` imprime le plan (sujets par archétype, coût estimé) et n'appelle rien.
  */
 import { localDb } from "../local-db";
 import { INTENTS, prefix, variable, type Seg } from "../../local-render/bank-prompt";
@@ -21,7 +37,7 @@ import { payloadSchema } from "@/lib/compose/archetypes/schema";
 import { budgetErrors } from "@/lib/compose/budget";
 import { checkEthics } from "@/lib/ethics/rules";
 import { bankPayloadFor, PRACTITIONER_ARCHETYPE } from "@/lib/content/practitioner";
-import { bankTarget } from "@/lib/content/bank";
+import { bankTarget, WINDOW_ROUNDS } from "@/lib/content/bank";
 import { meteredCall, openAiRefusal, openAiTextModel, SpendCapReached } from "@/lib/content/generate/openai";
 import { openAiText, OPENAI_COPY_MODEL } from "@/lib/content/generate/provider";
 import { repairPayload } from "@/lib/content/generate/repair";
@@ -31,7 +47,16 @@ confirmOrDie("le remplissage de banque");
 const KIT = arg("--kit");
 if (!KIT) throw new Error("--kit <brand_kit_id> manquant");
 const MODEL = OPENAI_COPY_MODEL;
-const DEMAND = { practitioners: 1, attempts: 1, rounds: 1 };
+/* ⚠ TROIS TOURS PAR DÉFAUT : ce qu'une praticienne prend reste bloqué 90 jours (F13). */
+const DEMAND = { practitioners: 1, attempts: 1, rounds: Number(arg("--rounds") ?? WINDOW_ROUNDS) };
+const DB_URL_ENV = arg("--db-url-env");
+const CAP = arg("--cap") ? Number(arg("--cap")) : undefined;
+const LOG = arg("--log") ?? undefined;
+const DRY = process.argv.includes("--dry-run");
+/* Mesuré le 2026-10-11 : 129 sujets pour 0,9025 $. Ne sert qu'au plan imprimé. */
+const MEASURED_USD_PER_TOPIC = 0.0070;
+/* ⚠ HORS DE LA BASE LOCALE, LE PLAFOND ET LE JOURNAL SE DISENT À L'APPEL : aucun défaut hérité. */
+if (DB_URL_ENV && (CAP === undefined || !LOG)) throw new Error("--db-url-env exige --cap <dollars> et --log <fichier>");
 
 function bankFormat(archetype: string): Record<string, unknown> {
   const properties: Record<string, unknown> = {
@@ -51,14 +76,40 @@ function bankFormat(archetype: string): Record<string, unknown> {
 }
 
 async function main() {
-  const db = localDb();
-  const transport = transportFromEnv();
-  const meter = sessionMeter();
-  const repairModel = openAiTextModel(transport, meter, MODEL, "banque : réparation");
+  let db: ReturnType<typeof localDb>;
+  if (DB_URL_ENV) {
+    const url = process.env[DB_URL_ENV];
+    if (!url) throw new Error(`${DB_URL_ENV} absente de l'environnement — rien n'a été lu ni écrit`);
+    db = localDb(url);
+  } else {
+    db = localDb();
+  }
 
-  const segRead = await db.from("content_segments").select("id, modality_id, persona_id, state_code").eq("modality_id", "emdr").eq("state_code", "CA");
-  if (segRead.error) throw new Error(segRead.error.message);
-  const segments = segRead.data as Seg[];
+  /* ── les segments du kit : modalités × populations × son État ───────── */
+  const kitRow = (await db.from("brand_kits").select("id, project_id").eq("id", KIT).maybeSingle()).data as { project_id: string } | null;
+  if (!kitRow) throw new Error(`kit ${KIT} introuvable`);
+  const brief = (await db.from("project_briefs").select("modality_ids, client_persona_ids, state").eq("project_id", kitRow.project_id).maybeSingle()).data as {
+    modality_ids: string[] | null; client_persona_ids: string[] | null; state: string | null;
+  } | null;
+  const state = brief?.state?.trim().toUpperCase() || null;
+  if (!brief || !state || !brief.modality_ids?.length || !brief.client_persona_ids?.length) {
+    throw new Error("le brief du kit n'a pas de modalité, de population ou d'État : aucun segment à remplir");
+  }
+  const segments: Seg[] = [];
+  for (const modality of brief.modality_ids) {
+    for (const persona of brief.client_persona_ids) {
+      const found = (await db.from("content_segments").select("id, modality_id, persona_id, state_code")
+        .eq("modality_id", modality).eq("persona_id", persona).eq("state_code", state).maybeSingle()).data as Seg | null;
+      if (found) segments.push(found);
+      else if (DRY) segments.push({ id: "(à créer)", modality_id: modality, persona_id: persona, state_code: state } as Seg);
+      else {
+        const made = await db.from("content_segments").insert({ modality_id: modality, persona_id: persona, state_code: state })
+          .select("id, modality_id, persona_id, state_code").single();
+        if (made.error) throw new Error(`content_segments insert: ${made.error.message}`);
+        segments.push(made.data as Seg);
+      }
+    }
+  }
   const modalities = (await db.from("modality_cards").select("id, label")).data as Array<{ id: string; label: string }>;
   const personas = (await db.from("client_persona_cards").select("id, label, description")).data as Array<{ id: string; label: string; description: string }>;
   const rules = (await db.from("ethics_rules").select("id, short_label, description")).data as Array<{ id: string; short_label: string; description: string }>;
@@ -79,6 +130,44 @@ async function main() {
       jobs.push({ seg, archetype, intent: INTENTS[(jobs.length) % INTENTS.length], angle: i + 1 });
     }
   }
+  const forKit = jobs.length;
+
+  /*
+   * ── `--also-state` : CHAQUE AUTRE SEGMENT EXISTANT DE L'ÉTAT, APRÈS LE KIT ──
+   *
+   * ⚠ APRÈS, ET PAS ENTRE. Le kit d'abord, parce que c'est lui dont le mois doit
+   * sortir ; le plafond arrête ensuite là où l'argent s'arrête. Ce qu'un segment
+   * porte déjà (sujets relus) est déduit, segment par segment.
+   */
+  if (process.argv.includes("--also-state")) {
+    const others = ((await db.from("content_segments").select("id, modality_id, persona_id, state_code").eq("state_code", state)).data ?? []) as Seg[];
+    for (const seg of others.filter((o) => !segments.some((m) => m.id === o.id))) {
+      const rows = ((await db.from("content_topics").select("archetype_key, ethics_reviewed_at").eq("segment_id", seg.id)).data ?? []) as Array<{ archetype_key: string; ethics_reviewed_at: string | null }>;
+      for (const [archetype, total] of Object.entries(target)) {
+        const owned = rows.filter((r) => r.archetype_key === archetype && r.ethics_reviewed_at).length;
+        for (let i = 0; i < Math.max(0, total - owned); i += 1) {
+          jobs.push({ seg, archetype, intent: INTENTS[jobs.length % INTENTS.length], angle: owned + i + 1 });
+        }
+      }
+    }
+  }
+
+  const byArchetype = jobs.slice(0, forKit).reduce<Record<string, number>>((a, j) => ((a[j.archetype] = (a[j.archetype] ?? 0) + 1), a), {});
+  const plan = {
+    state, segmentsOfKit: segments.map((g) => `${g.modality_id}/${g.persona_id}/${g.state_code} ${g.id}`),
+    rounds: DEMAND.rounds, alreadyDrawableForKit: Object.fromEntries(have), toWriteForKit: forKit, byArchetype,
+    toWriteElsewhereInState: jobs.length - forKit,
+    estimatedUsd: Number((jobs.length * MEASURED_USD_PER_TOPIC).toFixed(2)), cap: CAP ?? null,
+  };
+  console.error(`▸ plan ${JSON.stringify(plan)}`);
+  if (DRY) {
+    console.log(JSON.stringify({ step: "bank — plan seul (--dry-run), aucun appel, aucune écriture", ...plan }, null, 2));
+    await db.close();
+    return;
+  }
+  const transport = transportFromEnv();
+  const meter = sessionMeter(LOG, CAP);
+  const repairModel = openAiTextModel(transport, meter, MODEL, "banque : réparation");
   const only = arg("--only");
   if (only) jobs.splice(0, jobs.length, ...jobs.filter((j) => j.archetype === only));
   const limit = Number(arg("--limit") ?? Infinity);
