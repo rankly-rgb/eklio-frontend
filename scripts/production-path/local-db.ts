@@ -56,10 +56,18 @@ export function localDb(
    * JWT de la praticienne. `get_content_month` vérifie l'accès par `auth.uid()` :
    * le lire en `service_role` aurait éprouvé un chemin qu'aucune cliente ne prend.
    */
-  asUser: string | null = null
+  asUser: string | null = null,
+  /**
+   * ⚠ LE SEUL PASSAGE VERS UNE BASE DISTANTE, ET IL SE DIT À L'APPEL. Sans
+   * `remote: "production"` écrit en toutes lettres par l'appelant, toute URL qui
+   * n'est pas locale est refusée, comme avant. Aucun défaut, aucune variable
+   * d'environnement ne l'ouvre : c'est au lanceur de le demander, sur un drapeau
+   * que la personne tape (`bank.ts --allow-remote-db`).
+   */
+  options: { remote?: "production" } = {}
 ) {
   if (asUser !== null && !/^[0-9a-f-]{36}$/.test(asUser)) throw new Error("localDb: identifiant d'utilisatrice invalide");
-  if (!/127\.0\.0\.1|localhost/.test(url)) {
+  if (options.remote !== "production" && !/127\.0\.0\.1|localhost/.test(url)) {
     throw new Error("localDb: refus — ce transport n'écrit que sur une base locale");
   }
   const sql = new SQL(url);

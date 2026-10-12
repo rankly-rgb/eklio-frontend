@@ -18,11 +18,15 @@
  * ── ⚠ EN PRODUCTION (2026-10-11) ────────────────────────────────────────
  *
  *   EKLIO_DB_URL=postgresql://…  EKLIO_OPENAI_API_KEY=…  bun …/bank.ts --kit <id> \
- *     --db-url-env EKLIO_DB_URL --cap 3 --log …/openai-calls-bank-production.jsonl \
- *     [--also-state] [--dry-run] --confirm
+ *     --db-url-env EKLIO_DB_URL --allow-remote-db --cap 3 \
+ *     --log …/openai-calls-bank-production.jsonl [--also-state] [--dry-run] --confirm
  *
  *   la base     l'URL est lue dans la variable NOMMÉE par `--db-url-env`, jamais
  *               imprimée ; chaque écriture passe en `service_role`, comme PostgREST.
+ *   le verrou   `localDb` refuse toute base non locale. `--allow-remote-db` est le
+ *               seul drapeau qui le lève, et seulement avec `--db-url-env`, `--cap`
+ *               et `--log` ; sans lui, une URL distante est refusée avant toute
+ *               connexion, `--dry-run` compris.
  *   les segments ceux du brief du kit (modalités × populations × son État), créés
  *               s'ils manquent — la règle de `setup.ts`. Aucun produit ne les crée.
  *   la cible    `bankTarget` sur TROIS tours (la fenêtre de 90 jours), moins ce que
@@ -57,6 +61,10 @@ const DRY = process.argv.includes("--dry-run");
 const MEASURED_USD_PER_TOPIC = 0.0070;
 /* ⚠ HORS DE LA BASE LOCALE, LE PLAFOND ET LE JOURNAL SE DISENT À L'APPEL : aucun défaut hérité. */
 if (DB_URL_ENV && (CAP === undefined || !LOG)) throw new Error("--db-url-env exige --cap <dollars> et --log <fichier>");
+/* ⚠ LA BASE DISTANTE SE DEMANDE EN TOUTES LETTRES : `--allow-remote-db`, jamais par défaut. */
+const ALLOW_REMOTE = process.argv.includes("--allow-remote-db");
+if (ALLOW_REMOTE && !DB_URL_ENV) throw new Error("--allow-remote-db exige --db-url-env <VARIABLE>");
+if (CAP !== undefined && !(CAP > 0)) throw new Error("--cap doit être un nombre de dollars positif");
 
 function bankFormat(archetype: string): Record<string, unknown> {
   const properties: Record<string, unknown> = {
@@ -80,7 +88,7 @@ async function main() {
   if (DB_URL_ENV) {
     const url = process.env[DB_URL_ENV];
     if (!url) throw new Error(`${DB_URL_ENV} absente de l'environnement — rien n'a été lu ni écrit`);
-    db = localDb(url);
+    db = ALLOW_REMOTE ? localDb(url, null, { remote: "production" }) : localDb(url);
   } else {
     db = localDb();
   }
