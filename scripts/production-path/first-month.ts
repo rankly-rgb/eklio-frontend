@@ -135,24 +135,17 @@ async function main() {
    */
   const briefRead = await db
     .from("project_briefs")
-    .select("practice_name, state, license_state_code, modality_ids")
+    .select("practice_name, state, modality_ids")
     .eq("project_id", projectId)
     .maybeSingle();
   if (briefRead.error) throw new Error(`project_briefs: ${briefRead.error.message}`);
   const brief = briefRead.data as {
     practice_name?: string | null;
     state?: string | null;
-    license_state_code?: string | null;
     modality_ids?: string[] | null;
   } | null;
   if (!brief) throw new Error(`no project_brief for ${projectId}`);
   const practiceName = brief.practice_name ?? "Practice";
-  /*
-   * ⚠ LE MÊME REPLI QUE LE PRÉALABLE ET QUE LE HARNAIS : `license_state_code ??
-   * state`. Un brief rempli avant que le champ dédié existe porte l'État du
-   * cabinet, et c'est le seul État qu'on ait de lui.
-   */
-  const stateCode = brief.license_state_code || brief.state || null;
   const modalities = brief.modality_ids ?? [];
 
   /* ══ 1. LE TIRAGE, CONTRE LA VRAIE BANQUE ══════════════════════════════ */
@@ -293,7 +286,7 @@ async function main() {
     const topicsForRun = [...order];
     return await orchestrateMonth(
     {
-      preflight: serverPreflightPort(rpc, { stateCode }),
+      preflight: serverPreflightPort(rpc),
       /*
        * ⚠ LE TIRAGE EST COURT-CIRCUITÉ ICI, ET L'ÉTIQUETTE LE DIT. Les sujets sont
        * ceux du mois source : les retirer de la banque donnerait des sujets dont on
@@ -332,7 +325,6 @@ async function main() {
       projectId,
       userId,
       month: TARGET_MONTH,
-      stateCode,
       wanted: POSTS_PER_MONTH,
       candidates: replayed.length,
       perFamily: replayed.length,
@@ -426,7 +418,7 @@ async function main() {
   let writeCalls = 0;
   const resumeOutcome = await orchestrateMonth(
     {
-      preflight: serverPreflightPort(rpc, { stateCode }),
+      preflight: serverPreflightPort(rpc),
       draw: {
         /*
          * ⚠ LE TIRAGE DOIT RESTER MUET SUR UNE REPRISE. S'il est appelé, c'est que
@@ -474,7 +466,6 @@ async function main() {
       projectId,
       userId,
       month: resumeMonth,
-      stateCode,
       wanted: POSTS_PER_MONTH,
       candidates: replayed.length,
       perFamily: replayed.length,

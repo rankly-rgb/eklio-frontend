@@ -248,19 +248,18 @@ export async function licenceMentionFor(
 ): Promise<string | null> {
   const brief = await supabase
     .from("project_briefs")
-    .select("license_type_id, license_number, license_state_code, state")
+    .select("license_type_id, license_number, state")
     .eq("project_id", projectId)
     .maybeSingle();
   if (brief.error || !brief.data) return null;
   const row = brief.data as {
     license_type_id: string | null;
     license_number: string | null;
-    license_state_code: string | null;
     state: string | null;
   };
 
-  /* ⚠ Le même repli que le préalable et que le harnais : le champ dédié, sinon l'État du cabinet. */
-  const stateCode = (row.license_state_code || row.state || "").toUpperCase();
+  /* ⚠ `project_briefs.state`, la seule autorité (F76) — le même État que le préalable. */
+  const stateCode = (row.state ?? "").trim().toUpperCase();
   let abbreviation: string | null = null;
   if (row.license_type_id && stateCode) {
     const matrix = await supabase
@@ -278,4 +277,29 @@ export async function licenceMentionFor(
     licenseNumber: row.license_number,
     abbreviation,
   });
+}
+
+/**
+ * Ce post peut-il sortir en image ? Son cachet d'État doit être l'État qui fait
+ * autorité maintenant.
+ *
+ * ── ⚠ UN NUMÉRO CALIFORNIEN SOUS UNE LECTURE DE L'OREGON (F76) ───────────
+ *
+ * La mention est relue sur le brief à chaque export. Un post tiré et signé pour
+ * un État, puis exporté après que la praticienne a changé d'État, porterait une
+ * mention calculée pour le second sur un texte écrit et vérifié (F46) pour le
+ * premier. La règle est dans la base (`content_item_licence_state_problem`, la
+ * même comparaison que le passage à « ready ») ; cet appel ne la réécrit pas.
+ *
+ * ⚠ ÉCHOUE FERMÉ : une erreur de lecture refuse, elle ne laisse pas passer.
+ */
+export async function licenceStateProblem(
+  supabase: SupabaseClient<Database>,
+  itemId: string
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc("content_item_licence_state_problem", { p_id: itemId });
+  if (error) return "We could not check this post's licence line, so it is not exported. Try again in a moment.";
+  const verdict = (data ?? {}) as { ok?: boolean; code?: string; message?: string };
+  if (verdict.ok === true) return null;
+  return verdict.message ?? "This post's licence line cannot be checked, so it is not exported.";
 }

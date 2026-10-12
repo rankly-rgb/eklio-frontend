@@ -26,6 +26,12 @@ const FIELDS: Array<{ key: Field; label: string; hint?: string }> = [
     label: "License number",
     hint: "As your board prints it. California requires it on every post.",
   },
+  /*
+   * ⚠ L'ÉTAT ET LA VILLE S'ÉCRIVENT AUSSI DANS LE BRIEF (F76). Le trigger
+   * `site_specs_place_from_brief` les porte dans `project_briefs`, la seule
+   * autorité : la banque, la porte F46 et la mention de licence lisent l'État
+   * qu'elle tape ICI. Avant lui, ils s'arrêtaient dans la spec du site.
+   */
   { key: "city", label: "City" },
   { key: "state", label: "State", hint: "Two letters." },
   { key: "email", label: "Email" },

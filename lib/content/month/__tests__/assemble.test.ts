@@ -70,6 +70,7 @@ const input = (prepared: Assemblable[], wanted = 3) => ({
   identityAllowList: [] as string[],
   intentCatalogue: [{ id: "behind_the_practice", label: "Behind the practice" }],
   licenceMention: "LMFT 12345",
+  licenceStateCode: "CA",
   modalities: [] as string[],
   completeness: {},
   userId: "user",

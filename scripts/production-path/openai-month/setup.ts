@@ -51,7 +51,6 @@ async function main() {
     state: "CA",
     license_type_id: "lmft",
     license_number: "123456",
-    license_state_code: "CA",
     degree_id: "ma",
     tone_card_id: "quiet_confidence",
     type_pairing_id: "newsreader_work",

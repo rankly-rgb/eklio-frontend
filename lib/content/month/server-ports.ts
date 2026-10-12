@@ -62,10 +62,7 @@ export type MonthRpcClient = DrawRpcClient & {
  * BRIEF. C'est la matrice qui dit comment un type de licence s'écrit dans un État
  * donné, vérifiée à la main État par État (F12). Un brief ne l'invente pas.
  */
-export function serverPreflightPort(
-  db: MonthRpcClient,
-  options: { stateCode: string | null }
-): PreflightPort {
+export function serverPreflightPort(db: MonthRpcClient): PreflightPort {
   return {
     async monthStatus(brandKitId, month) {
       const { data, error } = await db
@@ -82,23 +79,22 @@ export function serverPreflightPort(
     async licenceFacts(projectId) {
       const brief = await db
         .from("project_briefs")
-        .select("license_type_id, license_number, license_state_code, state")
+        .select("license_type_id, license_number, state")
         .eq("project_id", projectId)
         .maybeSingle();
       if (brief.error) throw new Error(`project_briefs: ${brief.error.message}`);
       const row = (brief.data ?? {}) as {
         license_type_id?: string | null;
         license_number?: string | null;
-        license_state_code?: string | null;
         state?: string | null;
       };
 
       /*
-       * ⚠ LE MÊME REPLI QUE LE HARNAIS : `license_state_code ?? state`. Un brief
-       * rempli avant que le champ dédié existe porte l'État du cabinet, et c'est
-       * le seul État qu'on ait de lui.
+       * ⚠ `project_briefs.state`, ET RIEN D'AUTRE (F76). `license_state_code` est
+       * retirée, et ce port ne prend plus d'État en paramètre : un appelant qui en
+       * passait un pouvait faire vérifier un État et tirer la mention d'un autre.
        */
-      const stateCode = (options.stateCode ?? row.license_state_code ?? row.state ?? "").toUpperCase();
+      const stateCode = (row.state ?? "").trim().toUpperCase();
 
       let abbreviation: string | null = null;
       if (row.license_type_id && stateCode) {
@@ -116,6 +112,7 @@ export function serverPreflightPort(
         licenseTypeId: row.license_type_id ?? null,
         licenseNumber: row.license_number ?? null,
         abbreviation,
+        stateCode: stateCode || null,
       };
     },
 
@@ -181,6 +178,8 @@ export function serverInsertPort(
       alt_text: row.altText,
       rationale: row.rationale,
       scheduled_for: row.scheduledFor,
+      /* ⚠ L'État que le préalable a vérifié ; la base le compare à l'autorité (F76). */
+      licence_state_code: row.licenceStateCode,
     });
     return error?.message ?? null;
   };
@@ -315,7 +314,7 @@ export type DueDbClient = {
 export function serverDuePort(
   db: DueDbClient & MonthRpcClient
 ): import("@/lib/content/month/due").DuePort {
-  const preflightReads = serverPreflightPort(db, { stateCode: null });
+  const preflightReads = serverPreflightPort(db);
   return {
     async candidates() {
       const subs = await db

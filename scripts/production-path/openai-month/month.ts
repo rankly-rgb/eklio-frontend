@@ -77,8 +77,8 @@ async function main() {
   const kit = await must("brand_kits", db.from("brand_kits").select("id, project_id").eq("id", KIT).single()) as { id: string; project_id: string };
   const project = await must("projects", db.from("projects").select("id, user_id").eq("id", kit.project_id).single()) as { id: string; user_id: string };
   const brief = await must("project_briefs", db.from("project_briefs")
-    .select("practice_name, city, state, license_state_code, modality_ids, palette_family_ids").eq("project_id", project.id).single()) as {
-    practice_name: string | null; city: string | null; state: string | null; license_state_code: string | null; modality_ids: string[] | null;
+    .select("practice_name, city, state, modality_ids, palette_family_ids").eq("project_id", project.id).single()) as {
+    practice_name: string | null; city: string | null; state: string | null; modality_ids: string[] | null;
     palette_family_ids: string[] | null;
   };
   /*
@@ -108,7 +108,6 @@ async function main() {
   const rules = await must("ethics_rules", db.from("ethics_rules").select("id, short_label, description")) as Array<{ id: string; short_label: string; description: string }>;
 
   const practiceName = brief.practice_name ?? "Practice";
-  const stateCode = brief.license_state_code || brief.state || null;
   const facts: PractitionerFacts = {
     practiceName: brief.practice_name,
     city: brief.city,
@@ -171,7 +170,7 @@ async function main() {
 
   const outcome = await orchestrateMonth(
     {
-      preflight: serverPreflightPort(rpc, { stateCode }),
+      preflight: serverPreflightPort(rpc),
       draw: serverDrawPort(rpc, { kitId: KIT!, month: MONTH }),
       journal: db as unknown as JournalDb,
       writer: killing,
@@ -190,7 +189,6 @@ async function main() {
       projectId: project.id,
       userId: project.user_id,
       month: MONTH,
-      stateCode,
       wanted: POSTS_PER_MONTH,
       candidates: CANDIDATES_PER_ATTEMPT,
       perFamily: Math.ceil(CANDIDATES_PER_ATTEMPT / 3),

@@ -427,7 +427,7 @@ async function main() {
    */
   const { data: brief } = await db
     .from("project_briefs")
-    .select("practice_name, positioning, usp_statement, city, state, modality_ids, license_type_id, license_number, license_state_code")
+    .select("practice_name, positioning, usp_statement, city, state, modality_ids, license_type_id, license_number")
     .eq("project_id", projectId)
     .single();
   if (!preferences || !rules?.length || !brief) throw new Error("the account is not complete");
@@ -454,7 +454,7 @@ async function main() {
   )
     .select("abbreviation")
     .eq("license_type_id", brief.license_type_id ?? "")
-    .eq("state_code", (brief.license_state_code ?? brief.state ?? "").toUpperCase())
+    .eq("state_code", (brief.state ?? "").trim().toUpperCase())
     .maybeSingle();
 
   const licence = {

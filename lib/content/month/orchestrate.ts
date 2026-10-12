@@ -214,7 +214,6 @@ export type OrchestrateInput = {
   userId: string;
   /** Le premier du mois, `YYYY-MM-DD`. */
   month: string;
-  stateCode: string | null;
   wanted: number;
   /** Combien de candidats tirer — surgénération comprise. */
   candidates: number;
@@ -367,7 +366,6 @@ export async function orchestrateMonth(
     projectId: input.projectId,
     userId: input.userId,
     month: input.month,
-    stateCode: input.stateCode,
     demand: input.demand,
     wanted: input.wanted,
   });
@@ -812,6 +810,7 @@ export async function orchestrateMonth(
     identityAllowList: input.identityAllowList,
     intentCatalogue: input.intentCatalogue,
     licenceMention: verdict.licenceMention,
+    licenceStateCode: verdict.stateCode,
     modalities: input.modalities,
     completeness: judged.verdicts,
     userId: input.userId,

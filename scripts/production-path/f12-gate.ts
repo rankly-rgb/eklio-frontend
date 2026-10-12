@@ -37,7 +37,7 @@ function check(label: string, ok: boolean, detail = "") {
 async function main() {
   await sql.connect();
   const db = admin();
-  const port = serverPreflightPort(db as unknown as MonthRpcClient, { stateCode: null });
+  const port = serverPreflightPort(db as unknown as MonthRpcClient);
 
   console.log("═══ le fichier décrit-il la matrice ? ═══");
   const csv = readFileSync("docs/production/F12-license-type-states.csv", "utf8").trim().split("\n").slice(1);

@@ -821,6 +821,7 @@ export type Database = {
           compose_archetype: string | null
           created_at: string
           id: string
+          licence_state_code: string | null
           image_slot: string | null
           month_id: string | null
           on_image_text: string | null
@@ -844,6 +845,7 @@ export type Database = {
           compose_archetype?: string | null
           created_at?: string
           id?: string
+          licence_state_code?: string | null
           image_slot?: string | null
           month_id?: string | null
           on_image_text?: string | null
@@ -867,6 +869,7 @@ export type Database = {
           compose_archetype?: string | null
           created_at?: string
           id?: string
+          licence_state_code?: string | null
           image_slot?: string | null
           month_id?: string | null
           on_image_text?: string | null
@@ -2245,7 +2248,6 @@ export type Database = {
       project_briefs: {
         Row: {
           license_number: string | null
-          license_state_code: string | null
           builder_target_id: string | null
           city: string | null
           client_persona_ids: string[]
@@ -2285,7 +2287,6 @@ export type Database = {
         }
         Insert: {
           license_number?: string | null
-          license_state_code?: string | null
           builder_target_id?: string | null
           city?: string | null
           client_persona_ids?: string[]
@@ -2325,7 +2326,6 @@ export type Database = {
         }
         Update: {
           license_number?: string | null
-          license_state_code?: string | null
           builder_target_id?: string | null
           city?: string | null
           client_persona_ids?: string[]
@@ -3367,6 +3367,10 @@ export type Database = {
       custom_visual_path: {
         Args: { p_brand_kit_id: string; p_prompt_hash: string }
         Returns: string
+      }
+      content_item_licence_state_problem: {
+        Args: { p_id: string }
+        Returns: Json
       }
       content_item_json: { Args: { p_id: string }; Returns: Json }
       content_kit_access: { Args: { p_brand_kit_id: string }; Returns: string }

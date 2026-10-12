@@ -39,7 +39,7 @@ locale, dans les deux sens, et rend la base telle qu'il l'a trouvée :
 | porte | lit | ouvre quand |
 |---|---|---|
 | **kit** — `project_state_is_sellable` (409 sinon) | `project_briefs.state` | **TOUTES** les lignes de l'État sont vérifiées |
-| **mois** — `stateVerified` du préalable (F46) | `license_state_code ?? state` | **CE couple** (titre, État) est vérifié |
+| **mois** — `stateVerified` du préalable (F46) | `project_briefs.state` (seule autorité depuis F76) | **CE couple** (titre, État) est vérifié |
 
 Trois conséquences pour le geste :
 

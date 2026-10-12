@@ -75,6 +75,11 @@ export type ContentItemRow = {
   altText: string;
   rationale: string;
   scheduledFor: string;
+  /**
+   * L'État pour lequel la mention de ce post a été tirée (F76). La base refuse
+   * la ligne s'il n'est plus celui de `project_briefs.state` au moment d'écrire.
+   */
+  licenceStateCode: string;
 };
 
 export type AssemblePorts = {
@@ -97,6 +102,8 @@ export type AssembleInput<T extends Assemblable> = {
   identityAllowList: string[];
   intentCatalogue: Array<{ id: string; label: string }>;
   licenceMention: string;
+  /** L'État pour lequel `licenceMention` a été tirée (F76) : le cachet de chaque post écrit. */
+  licenceStateCode: string;
   modalities: string[];
   completeness: CompletenessVerdicts;
   /** Ce qui sera lu au livre de crédit. */
@@ -259,6 +266,7 @@ export async function assembleMonth<T extends Assemblable>(
       altText: candidate.result?.altText ?? "",
       rationale: candidate.result?.rationale ?? "",
       scheduledFor: input.dates[index] ?? input.dates[input.dates.length - 1] ?? input.month,
+      licenceStateCode: input.licenceStateCode,
     });
 
     if (error) {

@@ -97,8 +97,12 @@ export type PreflightPort = {
    * ⚠ L'ABRÉVIATION VIENT DE `license_type_states`, PAS DU BRIEF. C'est la
    * matrice qui dit comment un type de licence s'écrit dans un État donné, et
    * elle est vérifiée à la main, État par État (F12). Un brief ne l'invente pas.
+   *
+   * ⚠ ET L'ÉTAT VIENT DE LA MÊME LECTURE (F76). `project_briefs.state` est la
+   * seule autorité ; le lire ici, avec le numéro, ferme la porte à un appelant qui
+   * passerait un autre État que celui dont la mention est tirée.
    */
-  licenceFacts(projectId: string): Promise<LicenceFacts>;
+  licenceFacts(projectId: string): Promise<LicenceFacts & { stateCode: string | null }>;
   /**
    * L'État de licence a-t-il été vérifié à la main contre son board ?
    *
@@ -140,14 +144,6 @@ export type PreflightInput = {
   userId: string;
   /** Le premier jour du mois, `YYYY-MM-DD`. */
   month: string;
-  /**
-   * L'État de licence, `license_state_code` ou à défaut l'État du cabinet.
-   *
-   * ⚠ LE MÊME REPLI QUE LE HARNAIS : `license_state_code ?? state`. Un brief
-   * rempli avant que le champ dédié existe porte l'État du cabinet, et c'est
-   * presque toujours le bon.
-   */
-  stateCode: string | null;
   /** Ce que le tirage demandera. */
   demand: BankDemand;
   /** Combien de posts ce mois doit livrer. Par défaut `POSTS_PER_MONTH`. */
@@ -165,6 +161,11 @@ export type PreflightVerdict =
       ok: true;
       /** La mention à poser au pied de chaque carte. Jamais vide quand `ok`. */
       licenceMention: string;
+      /**
+       * L'État pour lequel la mention a été tirée et vérifiée (F46) — celui que
+       * chaque post écrit porte en cachet (`content_items.licence_state_code`).
+       */
+      stateCode: string;
       bank: BankVerdict;
       quota: { remaining: number | null; unlimited: boolean };
     }
@@ -224,7 +225,8 @@ export async function preflight(
 
   /* ── 2b. l'État est-il vérifié ? ────────────────────────────────────── */
   const typeId = facts.licenseTypeId!.trim();
-  const stateCode = (input.stateCode ?? "").trim().toUpperCase();
+  /* ⚠ L'État de la LECTURE DU BRIEF, pas d'un paramètre : une seule source (F76). */
+  const stateCode = (facts.stateCode ?? "").trim().toUpperCase();
   if (stateCode === "" || !(await port.stateVerified(typeId, stateCode))) {
     return {
       ok: false,
@@ -263,5 +265,5 @@ export async function preflight(
     };
   }
 
-  return { ok: true, licenceMention: mention, bank, quota };
+  return { ok: true, licenceMention: mention, stateCode, bank, quota };
 }

@@ -20,6 +20,7 @@ const GOOD_LICENCE = {
   licenseTypeId: "lmft",
   licenseNumber: "12345",
   abbreviation: "LMFT",
+  stateCode: "CA",
 };
 
 function port(over: Partial<PreflightPort> = {}): PreflightPort {
@@ -41,7 +42,6 @@ const INPUT = {
   projectId: "proj",
   userId: "user",
   month: "2027-07-01",
-  stateCode: "CA",
   demand: DEMAND,
 };
 
@@ -133,8 +133,24 @@ describe("les quatre refus, et leur ordre", () => {
     expect(p.bank.releaseStale).not.toHaveBeenCalled();
   });
 
+  /*
+   * ⚠ F76 : L'ÉTAT VÉRIFIÉ EST CELUI DE LA LECTURE DU BRIEF, ET LE VERDICT LE
+   * PORTE. Le préalable ne prend plus d'État en paramètre : un appelant pouvait
+   * faire vérifier un État et tirer la mention d'un autre.
+   */
+  it("l'État vérifié est celui du brief, et le verdict le rend pour le cachet des posts", async () => {
+    const p = port({ licenceFacts: vi.fn().mockResolvedValue({ ...GOOD_LICENCE, stateCode: "ca" }) });
+    const verdict = await preflight(p, INPUT);
+    expect(p.stateVerified).toHaveBeenCalledWith("lmft", "CA");
+    if (!verdict.ok) throw new Error("attendu ok");
+    expect(verdict.stateCode).toBe("CA");
+  });
+
   it("un État absent du brief refuse aussi", async () => {
-    const verdict = await preflight(port(), { ...INPUT, stateCode: null });
+    const verdict = await preflight(
+      port({ licenceFacts: vi.fn().mockResolvedValue({ ...GOOD_LICENCE, stateCode: null }) }),
+      INPUT
+    );
     expect(verdict.ok).toBe(false);
     if (verdict.ok) return;
     expect(verdict.code).toBe("state_unverified");

@@ -162,7 +162,7 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
   const inserted: string[] = [];
   const reserved: string[] = [];
   const months: Array<{ id: string; status: string }> = [];
-  const insertPort = vi.fn(async (row: { topicId: string }) => {
+  const insertPort = vi.fn(async (row: { topicId: string; licenceStateCode?: string }) => {
     inserted.push(row.topicId);
     return null;
   });
@@ -194,6 +194,7 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
         licenseTypeId: "lmft",
         licenseNumber: "12345",
         abbreviation: "LMFT",
+        stateCode: "CA",
       }),
       stateVerified: async () => over.verified ?? true,
       creditRemaining: async () => ({ remaining: 30, unlimited: false }),
@@ -254,7 +255,6 @@ const input = (over: Record<string, unknown> = {}) => ({
   projectId: "proj-1",
   userId: "user-1",
   month: MONTH,
-  stateCode: "CA",
   wanted: 3,
   candidates: 4,
   perFamily: 4,
@@ -306,6 +306,15 @@ describe("un mois sort de bout en bout", () => {
       expect(post.svg, "une carte sans SVG : elle n'est pas vectorielle").toContain("<svg");
       expect(post.svg).toContain("12345");
     }
+  });
+
+  it("chaque post écrit porte en cachet l'État que le préalable a vérifié (F76)", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(true);
+    const insert = vi.mocked(w.ports.assembleFor("m").insert);
+    expect(insert.mock.calls.length).toBe(3);
+    for (const [row] of insert.mock.calls) expect(row.licenceStateCode).toBe("CA");
   });
 
   it("un crédit par post écrit, pas un par tentative", async () => {
@@ -539,7 +548,7 @@ describe("la mention de licence arrête le mois entier, pas une carte", () => {
     const broken = world();
     broken.ports.preflight = {
       ...broken.ports.preflight,
-      licenceFacts: async () => ({ licenseTypeId: null, licenseNumber: null, abbreviation: null }),
+      licenceFacts: async () => ({ licenseTypeId: null, licenseNumber: null, abbreviation: null, stateCode: null }),
     } as never;
     const second = await orchestrateMonth(broken.ports, input());
     expect(second.ok).toBe(false);

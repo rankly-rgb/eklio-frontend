@@ -1,7 +1,7 @@
 import { authenticate, serverError } from "@/lib/api/handler";
 import { loadBrandKit } from "@/lib/data/brand-kit";
 import { getContentItem } from "@/lib/data/content";
-import { licenceMentionFor, reviewCardFor } from "@/lib/content/review";
+import { licenceMentionFor, licenceStateProblem, reviewCardFor } from "@/lib/content/review";
 import { carouselSlides } from "@/lib/content/slides";
 import { render, CompositionError } from "@/lib/compose/engine";
 import { BudgetExceededError } from "@/lib/compose/budget";
@@ -30,7 +30,8 @@ import { composeFontFiles, composeToPng } from "@/lib/kit/render/compose-raster"
  * Trois refus, et ils sont différents :
  *   404  l'item n'est pas à elle, ou n'existe pas — la base décide, pas nous
  *   409  il n'y a rien à composer, ou ça ne tient pas aux planchers
- *        typographiques. C'est une réponse du système, pas une panne.
+ *        typographiques, ou le post a été signé pour un autre État que celui
+ *        de son brief (F76). C'est une réponse du système, pas une panne.
  *   500  les polices manquent. Rendre sans elles produirait une carte dont les
  *        clearances ont été prouvées sur un autre document, ce qui est pire
  *        qu'une erreur visible.
@@ -60,6 +61,18 @@ export async function GET(
     const kit = await loadBrandKit(supabase, item.brand_kit_id, auth.session.userId);
     if (!kit) {
       return Response.json({ error: { code: "not_found" } }, { status: 404 });
+    }
+
+    /*
+     * ⚠ AVANT DE COMPOSER : LE POST A-T-IL ÉTÉ SIGNÉ POUR L'ÉTAT D'AUJOURD'HUI ?
+     * (F76) Un désaccord n'atteint pas un fichier publiable.
+     */
+    const stateProblem = await licenceStateProblem(supabase, item.id);
+    if (stateProblem) {
+      return Response.json(
+        { error: { code: "licence_state_mismatch", message: stateProblem } },
+        { status: 409 }
+      );
     }
 
     const direction = kit.selectedDirection?.palette ?? kit.directions?.[0]?.palette ?? null;

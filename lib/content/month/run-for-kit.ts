@@ -130,12 +130,11 @@ export async function orchestrateMonthForKit(
     practice_name: string | null;
     city: string | null;
     state: string | null;
-    license_state_code: string | null;
     modality_ids: string[] | null;
   } | null>(
     "project_briefs",
     from("project_briefs")
-      .select("practice_name, city, state, license_state_code, modality_ids")
+      .select("practice_name, city, state, modality_ids")
       .eq("project_id", account.projectId)
       .maybeSingle()
   );
@@ -160,7 +159,6 @@ export async function orchestrateMonthForKit(
   )) ?? [];
 
   const practiceName = brief.practice_name ?? "Practice";
-  const stateCode = brief.license_state_code || brief.state || null;
   const facts: PractitionerFacts = {
     practiceName: brief.practice_name,
     city: brief.city,
@@ -215,7 +213,7 @@ export async function orchestrateMonthForKit(
 
   return orchestrateMonth(
     {
-      preflight: serverPreflightPort(rpc, { stateCode }),
+      preflight: serverPreflightPort(rpc),
       draw: serverDrawPort(rpc, { kitId: KIT, month }),
       journal: db as unknown as JournalDb,
       writer,
@@ -234,7 +232,6 @@ export async function orchestrateMonthForKit(
       projectId: account.projectId,
       userId: account.userId,
       month,
-      stateCode,
       wanted: POSTS_PER_MONTH,
       candidates: CANDIDATES_PER_ATTEMPT,
       perFamily: Math.ceil(CANDIDATES_PER_ATTEMPT / 3),
