@@ -55,6 +55,13 @@ type Served = {
   written?: number;
   /** Les cartes gardées à la génération, et combien ne l'ont pas été (novembre 2026). */
   cards?: { stored: number; failed: number };
+  /**
+   * L'entonnoir du mois, servi ou refusé (F77) : un mois court ne doit plus se lire
+   * `ok` sans qu'on voie où les posts se sont perdus.
+   */
+  funnel?: { arrived: number; passedAlone: number; selected: number; attempted: number; written: number };
+  /** Les constats qui ont refusé le mois, par nom. */
+  findings?: string[];
   costUsd: number;
 };
 
@@ -115,6 +122,7 @@ export async function GET(request: Request) {
               ok: true,
               written: outcome.month.written,
               cards: { stored: outcome.cards.stored, failed: outcome.cards.failed.length },
+              funnel: outcome.month.funnel,
               costUsd: outcome.costUsd,
             }
           : {
@@ -122,6 +130,10 @@ export async function GET(request: Request) {
               ok: false,
               stage: outcome.stage,
               refusal: outcome.refusal,
+              ...("remaining" in outcome && outcome.remaining
+                ? { findings: outcome.remaining.map((f: { check: string }) => f.check) }
+                : {}),
+              ...("diagnostics" in outcome && outcome.diagnostics?.funnel ? { funnel: outcome.diagnostics.funnel } : {}),
               costUsd: outcome.costUsd,
             }
       );

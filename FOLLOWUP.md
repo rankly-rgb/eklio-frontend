@@ -4221,3 +4221,36 @@ jour où ce cache sert une image. `cardKey` (`card-store.ts`) couvre la carte en
 
 `first-month.ts` et `openai-month/month.ts` visent une base locale sans seau : leur port
 `storeCards` rend un échec nommé (« le harnais ne dépose pas de cartes »), pas un succès simulé.
+
+## F77 — FERMÉ le 2026-10-31 : un mois qui n'atteint pas son compte est refusé, pas livré court
+
+Décidé : refusé. `assembleMonth` recompte APRÈS l'écriture ; sous le compte attendu, il retire
+ce qu'il a écrit (`AssemblePorts.remove`, borné au mois et aux sujets du passage), libère les
+réservations encore ouvertes (`settle_credit(…, false)`) et rend un constat de mois
+`count.written`. L'orchestrateur le traite comme les autres constats : sujets rendus, ligne en
+`failed`, run abandonné (F71). La réponse du cron porte `findings` et `funnel`
+(arrivés → passés seuls → retenus → tentés → écrits).
+
+Une écriture refusée est classée par son code SQL : `check_violation` (23514, les gâchettes de
+contenu de `content_items`) est un refus de contenu ; tout le reste est une erreur technique.
+Les deux sont comptées à part dans le constat.
+
+Rejeu (`lib/content/month/__tests__/november-2026-replay.test.ts`) sur les 57 réponses
+enregistrées : 54 tentées, **30 écritures refusées par la base** (erreur technique, `null value
+in column "archetype"`), 24 écrites puis retirées, 24 réservations libérées, mois refusé. 30 et
+non 28 : le juge de complétude a écarté 2 posts ce jour-là et ses verdicts ne sont journalisés
+nulle part (F78) ; les 28 refus enregistrés sont dans les 30. Preuve négative faite : sans la
+garde, le rejeu échoue.
+
+## F81 — régénérer un mois : `withdraw_content_month` et le mouvement `refund`
+
+Le mois de novembre ne pouvait pas être régénéré : ses 24 crédits sont RÉGLÉS et le livre n'avait
+aucun mouvement pour les rendre (une réservation, une issue ; ajout seul). Migration
+`20261031090000_a_month_eklio_got_wrong_is_withdrawn` : un quatrième mouvement, `refund` (l'avoir
+d'une réservation réglée, au plus un par réservation), et `withdraw_content_month(month_id,
+reason)`, service_role seulement, qui refuse un mois qu'elle a touché. Empreinte attendue après
+application : `schema_fingerprint.f81_expected.txt` ; schema-drift est rouge sur main jusque-là.
+
+⚠ Reste ouvert : les cartes déposées dans `content-assets/{kit}/cards/{item}/` d'un mois retiré
+ne sont pas supprimées (le SQL ne doit pas écrire dans `storage.objects`). Inoffensif — la clé
+inclut l'identifiant du post, qui n'existe plus — mais ce sont des octets orphelins.

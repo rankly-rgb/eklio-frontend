@@ -41,6 +41,7 @@ function post(n: number, over: Partial<Assemblable> = {}): Assemblable {
 function ports(over: Partial<AssemblePorts> = {}) {
   const inserted: string[] = [];
   const reserved: string[] = [];
+  const removed: string[][] = [];
   const credits: CreditPort = {
     reserve: vi.fn(async (spec) => {
       reserved.push(spec.reason);
@@ -53,10 +54,13 @@ function ports(over: Partial<AssemblePorts> = {}) {
       inserted.push(row.topicId);
       return null;
     }),
+    remove: vi.fn(async (ids: string[]) => {
+      removed.push(ids);
+    }),
     credits,
     ...over,
   };
-  return { ports: p, inserted, reserved };
+  return { ports: p, inserted, reserved, removed };
 }
 
 const input = (prepared: Assemblable[], wanted = 3) => ({
@@ -130,14 +134,19 @@ describe("un insert refusé prend un remplaçant, au même créneau", () => {
         dates.push(`${row.topicId}@${row.scheduledFor}`);
         if (first) {
           first = false;
-          return "Advertising ethics: guarantee";
+          return { code: "23514", message: "Advertising ethics: guarantee" };
         }
         return null;
       }),
     });
     const out = await assembleMonth(p, input([post(1), post(2), post(3), post(4)]));
     expect(out.inserts.replacements).toBe(1);
-    expect(out.inserts.refused[0]).toContain("Sujet 1");
+    expect(out.inserts.refused[0].topic).toBe("Sujet 1");
+    /* ⚠ `check_violation` : un refus de CONTENU par la base, pas une erreur technique (F77). */
+    expect(out.inserts.refused[0].kind).toBe("content");
+    expect(out.inserts.content).toBe(1);
+    expect(out.inserts.technical).toBe(0);
+    expect(out.shortfall).toBeNull();
     /*
      * ⚠ LA MÊME DATE. Décaler le remplaçant d'un rang ferait sortir un mois de
      * trente posts sur vingt-neuf jours.
@@ -148,15 +157,53 @@ describe("un insert refusé prend un remplaçant, au même créneau", () => {
   });
 
   /*
-   * ⚠ ET SANS REMPLAÇANT, LE MOIS SORT COURT — ce que `checkCount` refuse. On ne
-   * livre pas vingt-neuf posts en silence.
+   * ⚠ F77 — SANS REMPLAÇANT, LE MOIS N'EST PAS LIVRÉ COURT : IL EST REFUSÉ. Le
+   * commentaire d'avant disait « ce que `checkCount` refuse » ; `checkCount` ne
+   * tournait qu'avant l'écriture, et novembre 2026 est sorti à 24 sur 30.
    */
-  it("plus aucun remplaçant : le mois sort court, et le dit", async () => {
-    const { ports: p } = ports({ insert: vi.fn(async () => "refusé") });
+  it("plus aucun remplaçant : le mois est refusé par un constat de compte", async () => {
+    const { ports: p } = ports({
+      insert: vi.fn(async () => ({ code: "23502", message: 'null value in column "archetype"' })),
+    });
     const out = await assembleMonth(p, input([post(1), post(2), post(3)]));
     expect(out.written).toBe(0);
     expect(out.inserts.refused).toHaveLength(3);
     expect(out.inserts.replacements).toBe(0);
+    expect(out.inserts.technical).toBe(3);
+    expect(out.shortfall?.check).toBe("count.written");
+    expect(out.shortfall?.detail).toContain("0 posts écrits sur 3 attendus");
+    expect(out.shortfall?.detail).toContain("3 écritures refusées par la base (erreur technique");
+    expect(out.shortfall?.detail).toContain("aucune refusée pour son contenu");
+    expect(out.funnel).toEqual({ arrived: 3, passedAlone: 3, selected: 3, attempted: 3, written: 0 });
+  });
+
+  it("un mois écrit en partie est RETIRÉ, et ses réservations rendues", async () => {
+    let n = 0;
+    const settled: Array<[string, number, boolean]> = [];
+    const credits: CreditPort = {
+      reserve: vi.fn(async () => ({ ok: true as const, reservationId: `res-${++n}` })),
+      settle: vi.fn(async (id: string, cost: number, ok: boolean) => {
+        settled.push([id, cost, ok]);
+      }),
+    };
+    let calls = 0;
+    const { ports: p, removed } = ports({
+      credits,
+      insert: vi.fn(async () => (++calls % 2 === 0 ? { code: "23502", message: "boom" } : null)),
+    });
+    const out = await assembleMonth(p, input([post(1), post(2), post(3), post(4)]));
+    expect(out.written).toBe(0);
+    expect(out.inserted).toEqual([]);
+    expect(out.shortfall?.check).toBe("count.written");
+    /* Ce qui était écrit est retiré — par sujet, rien d'autre. */
+    expect(removed).toHaveLength(1);
+    expect(removed[0].length).toBeGreaterThan(0);
+    /* ⚠ Chaque réservation prise est LIBÉRÉE (succeeded = false), jamais réglée. */
+    expect(settled.length).toBe(removed[0].length);
+    for (const [, cost, ok] of settled) {
+      expect(ok).toBe(false);
+      expect(cost).toBe(0);
+    }
   });
 });
 
@@ -176,7 +223,7 @@ describe("le crédit se prend un par post écrit, après l'écriture", () => {
     let first = true;
     const { ports: p, reserved } = ports({
       insert: vi.fn(async () => {
-        if (first) { first = false; return "refusé"; }
+        if (first) { first = false; return { code: null, message: "refusé" }; }
         return null;
       }),
     });
@@ -205,8 +252,12 @@ describe("le crédit se prend un par post écrit, après l'écriture", () => {
     const { ports: p } = ports({ credits });
     const out = await assembleMonth(p, input([post(1), post(2), post(3)]));
     expect(out.creditRefusal).toEqual({ reason, buyable });
-    /* ⚠ L'écriture s'arrête : elle n'en a pas acheté plus. */
-    expect(out.written).toBe(1);
+    /*
+     * ⚠ L'écriture s'arrête : elle n'en a pas acheté plus. Et depuis F77, le post
+     * déjà écrit est retiré : un mois d'un post sur trois n'est pas livré.
+     */
+    expect(out.written).toBe(0);
+    expect(out.shortfall?.detail).toContain(`crédit refusé : ${reason}`);
   });
 });
 

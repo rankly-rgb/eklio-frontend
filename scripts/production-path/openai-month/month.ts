@@ -31,6 +31,7 @@ import { openAiWriter } from "@/lib/content/month/openai-writer";
 import { serverDrawPort } from "@/lib/content/month/draw-port";
 import {
   serverInsertPort,
+  serverRemovePort,
   serverMonthRowPort,
   serverPreflightPort,
   serverReleaseTopics,
@@ -175,6 +176,7 @@ async function main() {
       closeMonthRow: (id, status) => serverMonthRowPort(rpc).close(id, status),
       assembleFor: (monthId) => ({
         insert: serverInsertPort(rpc, { brandKitId: KIT!, monthId }),
+        remove: serverRemovePort(rpc, { monthId }),
         credits: serverCreditPort(rpc, { provider: "openai", model: MODEL, month: MONTH }),
       }),
       /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */

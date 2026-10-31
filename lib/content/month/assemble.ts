@@ -82,9 +82,39 @@ export type ContentItemRow = {
   licenceStateCode: string;
 };
 
+/** Ce que la base répond à une écriture refusée : son code SQL, et son message. */
+export type InsertError = { code: string | null; message: string };
+
+/**
+ * ⚠ UNE ÉCRITURE REFUSÉE N'EST PAS UN REFUS DE CONTENU — SAUF QUAND LA BASE
+ * REFUSE LE CONTENU (F77).
+ *
+ * Les gâchettes de contenu de `content_items` — déontologie publicitaire, mots
+ * usés, cachet d'État, budget de mots — lèvent toutes `check_violation` (23514).
+ * Tout le reste — `null value` (23502), clé étrangère, unicité, réseau — est une
+ * ERREUR TECHNIQUE : le post n'y est pour rien. Novembre 2026 : 28 écritures
+ * refusées pour `archetype` nul, et rien ne les distinguait d'un refus de
+ * contenu.
+ */
+export function insertRefusalKind(code: string | null): "technical" | "content" {
+  return code === "23514" ? "content" : "technical";
+}
+
+export type InsertRefusal = {
+  topic: string;
+  kind: "technical" | "content";
+  code: string | null;
+  message: string;
+};
+
 export type AssemblePorts = {
-  /** Rend `null` en cas de succès, le message de la base sinon. */
-  insert(row: ContentItemRow): Promise<string | null>;
+  /** Rend `null` en cas de succès, le code et le message de la base sinon. */
+  insert(row: ContentItemRow): Promise<InsertError | null>;
+  /**
+   * Retire les posts que ce mois vient d'écrire (F77) : un mois qui n'atteint
+   * pas son compte n'est jamais publié, même en partie.
+   */
+  remove(topicIds: string[]): Promise<void>;
   credits: CreditPort;
 };
 
@@ -127,8 +157,27 @@ export type AssembleOutcome<T extends Assemblable> = {
   };
   /** Ce que la sélection a échangé, et ce qu'elle n'a pas pu réparer. */
   selection: Deliverable<T>;
-  /** Les refus d'écriture de la base, et les remplaçants consommés. */
-  inserts: { refused: string[]; replacements: number };
+  /** Les refus d'écriture de la base, par nature, et les remplaçants consommés. */
+  inserts: {
+    refused: InsertRefusal[];
+    /** Erreurs techniques : le post n'y est pour rien. */
+    technical: number;
+    /** Refus de contenu par la base (`check_violation`). */
+    content: number;
+    replacements: number;
+    attempted: number;
+  };
+  /**
+   * ⚠ LE CONSTAT DE COMPTE APRÈS ÉCRITURE (F77), ou `null`.
+   *
+   * La sélection a validé trente posts ; si la base n'en a gardé que vingt-quatre,
+   * le mois n'est PAS publié : les posts écrits sont retirés, leurs crédits
+   * rendus, et ce constat dit pourquoi — refus techniques et refus de contenu
+   * comptés à part. C'est le défaut qui a laissé passer novembre 2026 en `ok`.
+   */
+  shortfall: Finding | null;
+  /** L'entonnoir du mois : ce qui est arrivé, a passé, a été retenu, tenté, écrit. */
+  funnel: { arrived: number; passedAlone: number; selected: number; attempted: number; written: number };
   /**
    * Combien de posts ont dû partager une date, faute de créneaux.
    *
@@ -231,7 +280,15 @@ export async function assembleMonth<T extends Assemblable>(
       inserted: [],
       gate: { arrived: input.prepared.length, passedAlone: clean.length, refused, byCheck },
       selection,
-      inserts: { refused: [], replacements: 0 },
+      inserts: { refused: [], technical: 0, content: 0, replacements: 0, attempted: 0 },
+      shortfall: null,
+      funnel: {
+        arrived: input.prepared.length,
+        passedAlone: clean.length,
+        selected: selection.chosen.length,
+        attempted: 0,
+        written: 0,
+      },
       dateCollisions: 0,
       creditRefusal: null,
     };
@@ -247,14 +304,16 @@ export async function assembleMonth<T extends Assemblable>(
   const queue = [...selection.chosen];
   const spare = clean.filter((p) => !selection.chosen.includes(p));
   const inserted: T[] = [];
-  const insertRefused: string[] = [];
+  const insertRefused: InsertRefusal[] = [];
   let replacements = 0;
+  let attempted = 0;
   let creditRefusal: AssembleOutcome<T>["creditRefusal"] = null;
 
   for (let index = 0; index < queue.length; index += 1) {
     const post = queue[index];
     const { candidate } = post;
 
+    attempted += 1;
     const error = await ports.insert({
       topicId: candidate.topic.id,
       cardLine: post.cardLine,
@@ -270,7 +329,12 @@ export async function assembleMonth<T extends Assemblable>(
     });
 
     if (error) {
-      insertRefused.push(`${candidate.topic.title.slice(0, 34)} — ${error.slice(0, 80)}`);
+      insertRefused.push({
+        topic: candidate.topic.title.slice(0, 34),
+        kind: insertRefusalKind(error.code),
+        code: error.code,
+        message: error.message.slice(0, 160),
+      });
       /*
        * ⚠ LA BASE PORTE DES CONTRAINTES QUE LE CODE NE RÉPLIQUE PAS TOUTES — un
        * budget de mots, cinq gâchettes déontologiques. La bonne réponse à un
@@ -314,6 +378,59 @@ export async function assembleMonth<T extends Assemblable>(
    * ⚠ COMPTÉ SUR CE QUI A ÉTÉ ÉCRIT, pas sur ce qui était prévu. Un insert refusé
    * libère son créneau, donc compter les prévisions surestimerait.
    */
+  const technical = insertRefused.filter((r) => r.kind === "technical").length;
+  const content = insertRefused.length - technical;
+  const inserts = { refused: insertRefused, technical, content, replacements, attempted };
+  const gate = { arrived: input.prepared.length, passedAlone: clean.length, refused, byCheck };
+
+  /*
+   * ══════════════════════════════════════════════════════════════════════
+   *  ⚠ F77 — UN MOIS QUI N'ATTEINT PAS SON COMPTE N'EST JAMAIS PUBLIÉ
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * Novembre 2026 : trente posts sélectionnés, vingt-huit écritures refusées par
+   * la base, le banc épuisé, vingt-quatre écrits — et le mois est sorti en
+   * `proposed`, `ok: true`. Le commentaire plus haut disait « ce que `checkCount`
+   * refusera » ; `checkCount` ne tourne qu'AVANT l'écriture, et personne ne
+   * recomptait après.
+   *
+   * Décidé : refusé, pas livré avec mention. Elle paie trente posts. Ce qui a été
+   * écrit est retiré, les réservations ouvertes sont rendues (elles n'ont pas
+   * encore d'issue — `settle_credit(…, false)` est la libération légitime), et le
+   * constat nomme la cause en séparant les erreurs techniques des refus de contenu.
+   */
+  if (inserted.length < input.wanted) {
+    const shortfall: Finding = {
+      check: "count.written",
+      detail: shortfallDetail(inserted.length, input.wanted, insertRefused, creditRefusal),
+    };
+    if (inserted.length > 0) {
+      await ports.remove(inserted.map((p) => p.candidate.topic.id));
+      for (const post of inserted) {
+        const reservationId = post.candidate.reservationId;
+        if (reservationId) await ports.credits.settle(reservationId, 0, false);
+        post.candidate.reservationId = null;
+      }
+    }
+    return {
+      written: 0,
+      inserted: [],
+      dateCollisions: 0,
+      gate,
+      selection,
+      inserts,
+      shortfall,
+      funnel: {
+        arrived: gate.arrived,
+        passedAlone: gate.passedAlone,
+        selected: selection.chosen.length,
+        attempted,
+        written: 0,
+      },
+      creditRefusal,
+    };
+  }
+
   const slots = inserted.map(
     (_, i) => input.dates[i] ?? input.dates[input.dates.length - 1] ?? input.month
   );
@@ -323,14 +440,57 @@ export async function assembleMonth<T extends Assemblable>(
     written: inserted.length,
     inserted,
     dateCollisions,
-    gate: {
-      arrived: input.prepared.length,
-      passedAlone: clean.length,
-      refused,
-      byCheck,
-    },
+    gate,
     selection,
-    inserts: { refused: insertRefused, replacements },
+    inserts,
+    shortfall: null,
+    funnel: {
+      arrived: gate.arrived,
+      passedAlone: gate.passedAlone,
+      selected: selection.chosen.length,
+      attempted,
+      written: inserted.length,
+    },
     creditRefusal,
   };
+}
+
+/**
+ * « 24 posts écrits sur 30 attendus : 28 écritures refusées par la base (erreur
+ * technique — « null value in column "archetype"… » ×28) ; 0 refusée pour son
+ * contenu ».
+ *
+ * ⚠ LES DEUX NATURES SONT COMPTÉES À PART, ET LES MESSAGES SONT REGROUPÉS. Un
+ * refus de contenu dit quelque chose du texte ; une erreur technique dit quelque
+ * chose du code. Les mélanger enverrait relire des posts innocents.
+ */
+export function shortfallDetail(
+  written: number,
+  wanted: number,
+  refused: InsertRefusal[],
+  creditRefusal: { reason: string } | null
+): string {
+  const group = (kind: InsertRefusal["kind"]) => {
+    const counts = new Map<string, number>();
+    for (const r of refused.filter((x) => x.kind === kind)) {
+      counts.set(r.message, (counts.get(r.message) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([message, n]) => `« ${message} » ×${n}`)
+      .join(", ");
+  };
+  const technical = refused.filter((r) => r.kind === "technical").length;
+  const content = refused.length - technical;
+  const parts = [
+    `${written} posts écrits sur ${wanted} attendus`,
+    technical > 0
+      ? `${technical} écritures refusées par la base (erreur technique — ${group("technical")})`
+      : "aucune erreur technique",
+    content > 0
+      ? `${content} refusées par la base pour leur contenu (${group("content")})`
+      : "aucune refusée pour son contenu",
+  ];
+  if (creditRefusal) parts.push(`crédit refusé : ${creditRefusal.reason}`);
+  return `${parts[0]} : ${parts.slice(1).join(" ; ")}`;
 }

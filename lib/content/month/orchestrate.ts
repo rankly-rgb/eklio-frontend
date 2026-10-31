@@ -276,6 +276,10 @@ export type OrchestrateOutcome =
         composedArchetypes: Record<string, number>;
         dropped: Array<{ title: string; why: string }>;
         gateRefused: Array<{ topic: string; checks: string[]; detail: string }>;
+        /** Les écritures refusées par la base, erreurs techniques et refus de contenu à part (F77). */
+        inserts?: { technical: number; content: number; attempted: number };
+        /** L'entonnoir : arrivés → passés seuls → retenus → tentés → écrits. */
+        funnel?: { arrived: number; passedAlone: number; selected: number; attempted: number; written: number };
       };
       refusal: string;
       /** Ce qui a été dépensé avant le refus. Zéro quand le préalable refuse. */
@@ -840,7 +844,13 @@ export async function orchestrateMonth(
    * Le mois de 2027-04 de la base locale est exactement ce qu'on évite : refusé
    * par ses contrôles, et en base en `proposed` avec trente posts.
    */
-  if (month.selection.remaining.length > 0) {
+  /*
+   * ⚠ F77 : LE CONSTAT DE COMPTE APRÈS ÉCRITURE EST UN CONSTAT DE MOIS. Il prend
+   * le même chemin que ceux de la sélection — sujets rendus, ligne en `failed`,
+   * run abandonné — et `assembleMonth` a déjà retiré ce qu'il avait écrit.
+   */
+  const findings = [...month.selection.remaining, ...(month.shortfall ? [month.shortfall] : [])];
+  if (findings.length > 0) {
     await ports.releaseTopics(drawnIds);
     await ports.closeMonthRow(monthId, "failed");
     /*
@@ -851,10 +861,11 @@ export async function orchestrateMonth(
     return {
       ok: false,
       stage: "assemble",
-      refusal:
-        `le mois garde ${month.selection.remaining.length} constat(s) après les échanges : ` +
-        month.selection.remaining.map((f) => `${f.check} — ${f.detail}`).join(" ; "),
-      remaining: month.selection.remaining,
+      refusal: month.shortfall
+        ? `le mois n'atteint pas son compte — ${month.shortfall.detail}`
+        : `le mois garde ${findings.length} constat(s) après les échanges : ` +
+          findings.map((f) => `${f.check} — ${f.detail}`).join(" ; "),
+      remaining: findings,
       diagnostics: {
         fallbacks: composeFallbacks,
         gate: { arrived: month.gate.arrived, passedAlone: month.gate.passedAlone, byCheck: month.gate.byCheck },
@@ -862,6 +873,8 @@ export async function orchestrateMonth(
         composedArchetypes: tally(prepared.map((p) => p.composeArchetype)),
         dropped: month.selection.dropped,
         gateRefused: month.gate.refused,
+        inserts: { technical: month.inserts.technical, content: month.inserts.content, attempted: month.inserts.attempted },
+        funnel: month.funnel,
       },
       costUsd,
       nothingWritten: true,

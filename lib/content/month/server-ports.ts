@@ -1,5 +1,5 @@
 import type { PreflightPort, MonthStatus } from "@/lib/content/month/preflight";
-import type { ContentItemRow } from "@/lib/content/month/assemble";
+import type { ContentItemRow, InsertError } from "@/lib/content/month/assemble";
 import { serverBankGuardPort, type DrawRpcClient } from "@/lib/content/month/draw-port";
 
 /*
@@ -160,7 +160,7 @@ export function serverInsertPort(
   db: MonthRpcClient,
   options: { brandKitId: string; monthId: string; theme?: string | null; register?: string | null }
 ) {
-  return async (row: ContentItemRow): Promise<string | null> => {
+  return async (row: ContentItemRow): Promise<InsertError | null> => {
     const { error } = await db.from("content_items").insert({
       brand_kit_id: options.brandKitId,
       month_id: options.monthId,
@@ -181,7 +181,30 @@ export function serverInsertPort(
       /* ⚠ L'État que le préalable a vérifié ; la base le compare à l'autorité (F76). */
       licence_state_code: row.licenceStateCode,
     });
-    return error?.message ?? null;
+    /* ⚠ LE CODE SQL AUSSI : c'est lui qui sépare un refus de contenu d'une erreur technique (F77). */
+    return error ? { code: (error as { code?: string | null }).code ?? null, message: error.message } : null;
+  };
+}
+
+/**
+ * Retire les posts qu'un mois vient d'écrire, quand il n'atteint pas son compte (F77).
+ *
+ * ⚠ BORNÉ AU MOIS ET AUX SUJETS DE CE PASSAGE. Rien d'autre du kit n'est touché —
+ * ni les posts qu'elle a écrits elle-même, ni un autre mois.
+ */
+export function serverRemovePort(db: MonthRpcClient, options: { monthId: string }) {
+  return async (topicIds: string[]): Promise<void> => {
+    if (topicIds.length === 0) return;
+    const { error } = await (db as unknown as {
+      from(t: string): {
+        delete(): { eq(c: string, v: unknown): { in(c: string, v: unknown[]): Promise<{ error: { message: string } | null }> } };
+      };
+    })
+      .from("content_items")
+      .delete()
+      .eq("month_id", options.monthId)
+      .in("topic_id", topicIds);
+    if (error) throw new Error(`content_items delete: ${error.message}`);
   };
 }
 

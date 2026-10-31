@@ -128,6 +128,17 @@ describe("the route", () => {
         cards: { stored: 29, failed: [{ itemId: "i30", why: "dépôt : boom" }] },
       })
       .mockRejectedValueOnce(new Error("boom"));
+    due.list.push({ brandKitId: "k3", projectId: "p3", userId: "u3" });
+    /* ⚠ F77 : un mois court est un refus qui nomme son constat et montre son entonnoir. */
+    orchestrate.mockResolvedValueOnce({
+      ok: false,
+      stage: "assemble",
+      refusal: "le mois n'atteint pas son compte — 24 posts écrits sur 30 attendus : 28 écritures refusées par la base (erreur technique — …)",
+      remaining: [{ check: "count.written", detail: "…" }],
+      diagnostics: { funnel: { arrived: 57, passedAlone: 52, selected: 30, attempted: 52, written: 0 } },
+      costUsd: 0.63,
+      nothingWritten: true,
+    });
 
     const response = await GET(
       new Request("https://example.test/api/cron/content-month", { headers: { authorization: "Bearer s3cret" } })
@@ -136,17 +147,29 @@ describe("the route", () => {
     const body = (await response.json()) as {
       month: string;
       generated: number;
-      served: Array<{ brandKitId: string; ok: boolean; stage?: string; cards?: { stored: number; failed: number } }>;
+      served: Array<{
+        brandKitId: string;
+        ok: boolean;
+        stage?: string;
+        refusal?: string;
+        cards?: { stored: number; failed: number };
+        findings?: string[];
+        funnel?: { written: number; attempted: number };
+      }>;
       skipped: unknown[];
       deferred: string[];
     };
-    expect(orchestrate).toHaveBeenCalledTimes(2);
+    expect(orchestrate).toHaveBeenCalledTimes(3);
     expect(orchestrate.mock.calls[0][2], "le mois visé n'est pas le premier du mois suivant").toMatch(/^\d{4}-\d{2}-01$/);
     expect(body.generated).toBe(1);
     expect(body.served.map((s) => [s.brandKitId, s.ok, s.stage ?? null])).toEqual([
       ["k1", true, null],
       ["k2", false, "error"],
+      ["k3", false, "assemble"],
     ]);
+    expect(body.served[2].findings).toEqual(["count.written"]);
+    expect(body.served[2].refusal).toContain("28 écritures refusées par la base");
+    expect(body.served[2].funnel).toMatchObject({ attempted: 52, written: 0 });
     /* ⚠ Les cartes gardées sont dites (novembre 2026 : aucune ne l'était). */
     expect(body.served[0].cards).toEqual({ stored: 29, failed: 1 });
     expect(body.skipped).toHaveLength(1);

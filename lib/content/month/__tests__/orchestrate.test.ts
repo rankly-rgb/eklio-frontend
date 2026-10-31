@@ -169,6 +169,11 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
     inserted.push(row.topicId);
     return null;
   });
+  /* Les posts retirés par un mois refusé après écriture (F77). */
+  const removedTopics: string[] = [];
+  const removePort = vi.fn(async (ids: string[]) => {
+    removedTopics.push(...ids);
+  });
   const released: string[][] = [];
   const stock = over.stock ?? 4;
   const free = Array.from({ length: stock }, (_, i) => topic(i + 1));
@@ -229,6 +234,7 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
     }),
     assembleFor: () => ({
       insert: insertPort,
+      remove: removePort,
       credits,
     }),
     /* Le statut du mois au moment où ses cartes sont gardées : elles doivent précéder `proposed`. */
@@ -256,7 +262,7 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
     }
   };
 
-  return { ports, journal: j, inserted, reserved, released, writer, credits, months, hold, cardsAt };
+  return { ports, journal: j, inserted, reserved, released, writer, credits, months, hold, cardsAt, removedTopics, insertPort };
 }
 
 const input = (over: Record<string, unknown> = {}) => ({
@@ -299,6 +305,38 @@ const input = (over: Record<string, unknown> = {}) => ({
    */
   ceiling: { capUsd: 10, estimatedCostPerPostUsd: 0.006, maxTopics: 100 },
   ...over,
+});
+
+describe("F77 — un mois que la base n'a pas gardé entier est refusé, pas livré court", () => {
+  it("les écritures refusées font un constat de mois : ligne en failed, sujets rendus, run abandonné", async () => {
+    const w = world();
+    let calls = 0;
+    w.insertPort.mockImplementation(async (row: { topicId: string }) => {
+      calls += 1;
+      /* Deux refus pour un seul remplaçant au banc (4 candidats, 3 voulus) : le mois reste court. */
+      if (calls === 2 || calls === 3) return { code: "23502", message: 'null value in column "archetype"' } as never;
+      w.inserted.push(row.topicId);
+      return null;
+    });
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.stage).toBe("assemble");
+    expect(out.refusal).toContain("le mois n'atteint pas son compte");
+    expect(out.refusal).toContain("2 posts écrits sur 3 attendus");
+    expect(out.refusal).toContain("2 écritures refusées par la base (erreur technique");
+    expect(out.remaining?.map((f) => f.check)).toContain("count.written");
+    expect(out.diagnostics?.inserts).toEqual({ technical: 2, content: 0, attempted: 4 });
+    expect(out.diagnostics?.funnel?.written).toBe(0);
+    /* Ce qui avait été écrit est retiré, la ligne du mois n'est pas `proposed`. */
+    expect(w.removedTopics.length).toBeGreaterThan(0);
+    expect(w.months[0].status).toBe("failed");
+    /* Les sujets sont rendus, et le run ne se reprend pas (F71). */
+    expect(w.released.flat().length).toBeGreaterThan(0);
+    expect(w.journal.runs[0].state).toBe("abandoned");
+    /* ⚠ Aucune carte n'est gardée pour un mois refusé. */
+    expect(w.ports.storeCards).not.toHaveBeenCalled();
+  });
 });
 
 describe("un mois sort de bout en bout", () => {

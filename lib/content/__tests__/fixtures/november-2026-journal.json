@@ -1,0 +1,1541 @@
+{
+ "source": "content_generation_results, run dd5e0066-a8f2-4db7-9caf-37d78e689aab (kit 45de0dac, novembre 2026), relu le 2026-10-31",
+ "kit": {
+  "practiceName": "Ember consulting",
+  "licenceMention": "LMFT 123456",
+  "stateCode": "CA",
+  "modalities": [
+   "EMDR",
+   "CBT",
+   "EFT"
+  ],
+  "direction": {
+   "primary": "#B4674A",
+   "secondary": "#C08A3E",
+   "light": "#F4EEE3",
+   "dark": "#2B2A27",
+   "paper": "#FAF6EE"
+  },
+  "intents": [
+   {
+    "id": "behind_the_practice",
+    "label": "Behind the practice"
+   },
+   {
+    "id": "correct_a_myth",
+    "label": "Myth, gently corrected"
+   },
+   {
+    "id": "educate",
+    "label": "How the work works"
+   },
+   {
+    "id": "invite",
+    "label": "A soft invitation"
+   },
+   {
+    "id": "normalise",
+    "label": "Not the only one"
+   }
+  ]
+ },
+ "recordedInsertError": {
+  "code": "23502",
+  "message": "null value in column \"archetype\" of relation \"content_items\" violates not-null constraint"
+ },
+ "posts": [
+  {
+   "published": true,
+   "topicId": "70e90da6-f1c2-4119-bcca-45c3af04b4b1",
+   "archetype": "quadrant_model",
+   "title": "Crossroads Are Not Failures",
+   "hook": "An unwanted turning point can hold more than one emotion without requiring an immediate plan.",
+   "cardLine": "Crossroads are not failures",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "items": [
+     {
+      "gloss": "the old path has ended",
+      "label": "Clear loss"
+     },
+     {
+      "gloss": "no plan feels ready",
+      "label": "Open future"
+     },
+     {
+      "gloss": "relief can sit beside sorrow",
+      "label": "Mixed feelings"
+     },
+     {
+      "gloss": "a decision can wait",
+      "label": "Quiet pause"
+     }
+    ],
+    "axis_x": "certainty",
+    "axis_y": "grief"
+   },
+   "caption": "A turning point can arrive without your permission.\n\nIt may bring grief for what you expected, relief about what has changed, fear about what comes next, or several of these feelings at once.\n\nA crossroads is not evidence that you chose wrongly or failed to plan well enough. Sometimes it is simply a place where an old direction no longer fits and a new one is not yet clear.\n\nYou do not need an immediate plan to take your experience seriously. A pause can make room to notice what feels important before deciding what comes next.",
+   "altText": "A four-quadrant card titled “Crossroads are not failures.” Horizontal axis: certainty. Vertical axis: grief. Quadrants read: Clear loss — the old path has ended; Open future — no plan feels ready; Mixed feelings — relief can sit beside sorrow; Quiet pause — a decision can wait.",
+   "rationale": "Why this one: It corrects the idea that uncertainty at a turning point means someone has failed."
+  },
+  {
+   "published": true,
+   "topicId": "dd3c3884-0ba3-4624-a1dc-41c84548f884",
+   "archetype": "cycle",
+   "title": "EMDR’s Present Anchor",
+   "hook": "A behind-the-scenes look at why EMDR work keeps one foot in the present.",
+   "cardLine": "One foot in the present",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "nodes": [
+     {
+      "gloss": "notice what is here now",
+      "label": "Name the room"
+     },
+     {
+      "gloss": "a memory may come closer",
+      "label": "Approach gently"
+     },
+     {
+      "gloss": "the present remains available",
+      "label": "Return again"
+     }
+    ]
+   },
+   "caption": "A behind-the-scenes part of EMDR work is the present anchor.\n\nEMDR may involve bringing attention to something from the past while also noticing what is true right now: the room, the chair, the breath, the therapist’s voice, or a chosen image of safety.\n\nThis is not about forcing distance from a hard memory. It is a way of keeping contact with the present while approaching what feels important.\n\nThe pace can be adjusted. Pausing, orienting to the room, and returning to the present are all part of the work.",
+   "altText": "A three-step cycle card titled “One foot in the present.” The steps read: “Name the room — notice what is here now,” “Approach gently — a memory may come closer,” and “Return again — the present remains available.”",
+   "rationale": "Why this one: It offers a calm, accurate look at how present-moment orientation may be included in EMDR work."
+  },
+  {
+   "published": true,
+   "topicId": "ee73dda8-7507-4015-8aa7-35df1f8239c8",
+   "archetype": "comparison_pair",
+   "title": "EFT and Old Patterns",
+   "hook": "EFT can explore not only what happened then, but what gets activated now.",
+   "cardLine": "Old patterns, present cues",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "left": [
+     {
+      "gloss": "what you learned then",
+      "label": "Earlier experiences"
+     },
+     {
+      "gloss": "what felt familiar before",
+      "label": "Old patterns"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "what gets activated now",
+      "label": "Present moments"
+     },
+     {
+      "gloss": "what is happening here",
+      "label": "Current context"
+     }
+    ]
+   },
+   "caption": "In EFT, a present-day reaction can be explored alongside earlier experiences and patterns that may shape it.\n\nThat does not mean every strong feeling has one clear origin. Present circumstances, relationships, stress, and the meaning of a moment can all matter.\n\nEFT may invite gentle curiosity:\nWhat is happening here?\nWhat feels familiar?\nWhat does this moment bring up?\n\nThe work does not need to force one explanation. It can make room to notice connections at a pace that feels workable.",
+   "altText": "A comparison card titled “Old patterns, present cues.” The left side lists earlier experiences: what you learned then, and old patterns: what felt familiar before. The right side lists present moments: what gets activated now, and current context: what is happening here.",
+   "rationale": "Why this one: It explains how EFT may connect present reactions with earlier learning without reducing experience to one cause."
+  },
+  {
+   "published": false,
+   "topicId": "d2a29d99-9cae-41da-9111-537f353611db",
+   "archetype": "surface_and_beneath",
+   "title": "When Dates Feel Different",
+   "hook": "A calendar can carry meaning even when the original event feels far away.",
+   "cardLine": "When dates feel different",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "beneath": {
+     "gloss": "a quiet shift in pace",
+     "label": "In the body"
+    },
+    "surface": {
+     "gloss": "an ordinary square marked",
+     "label": "On the calendar"
+    }
+   },
+   "caption": "A date can carry meaning long after an event has passed.\n\nSometimes it arrives as a little more tension, a changed appetite, a wish to be alone, or a feeling that is hard to name. Sometimes nothing feels different at all.\n\nThere is no required way to meet an anniversary, a season, a birthday, or a date that holds history. Noticing what is present, without demanding an explanation, can be a gentle place to begin.",
+   "altText": "A muted, minimal card. The heading reads, “When dates feel different.” Below are two paired sections: “On the calendar — an ordinary square marked” and “In the body — a quiet shift in pace.”",
+   "rationale": "Why this one: It normalises anniversary responses without assuming how any person experiences a meaningful date."
+  },
+  {
+   "published": false,
+   "topicId": "5c57031e-6a0f-4e28-bc98-c55ece471023",
+   "archetype": "single_statement",
+   "title": "The Future You Expected",
+   "hook": "An unchosen change can bring grief for a future that never got to happen.",
+   "cardLine": "The Future You Expected",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "statement": "An unchosen change can alter how you imagine ordinary milestones ahead."
+   },
+   "caption": "Some losses are easy to name: a relationship ending, a job changing, a move you did not want.\n\nOthers are quieter. They live in the future you had pictured—the plan, role, rhythm, or version of life that now may look different.\n\nGrief can make room for what did not happen as well as what did. It may show up as sadness, anger, numbness, restlessness, or difficulty imagining what comes next.\n\nThere is no requirement to feel grateful for a change before you have had space to notice what it altered.\n\nSometimes the first gentle step is simply naming the future you expected.",
+   "altText": "A simple text card with the heading “The Future You Expected.” The statement reads: “An unchosen change can bring grief for a future that never had the chance to unfold.”",
+   "rationale": "Why this one: It names an often overlooked form of grief without asking readers to minimize an unchosen change."
+  },
+  {
+   "published": true,
+   "topicId": "0bdbdc36-f6f1-4851-97b0-07a10b9b61db",
+   "archetype": "quadrant_model",
+   "title": "Old Protection, Present Connection",
+   "hook": "Old protective moves can appear in adult relationships long after the original danger has passed.",
+   "cardLine": "Protection can outlast danger",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "items": [
+     {
+      "gloss": "when closeness feels uncertain",
+      "label": "Pulling away"
+     },
+     {
+      "gloss": "to prevent misunderstanding",
+      "label": "Overexplaining"
+     },
+     {
+      "gloss": "even during calm moments",
+      "label": "Staying watchful"
+     },
+     {
+      "gloss": "to keep connection steady",
+      "label": "People pleasing"
+     }
+    ],
+    "axis_x": "distance",
+    "axis_y": "contact"
+   },
+   "caption": "Old protective moves can appear in adult relationships long after the original danger has passed.\n\nPulling away, overexplaining, staying watchful, or working hard to keep someone comfortable may have made sense in an earlier context. In a present relationship, those same moves can sometimes make closeness feel complicated.\n\nThis is not a character flaw. It may be a learned way of trying to reduce risk.\n\nA useful place to begin is simple curiosity:\n• What feels risky here?\n• What am I trying to prevent?\n• What would a small amount of steadiness look like?\n\nYou do not have to force yourself into closeness. A pause can make room to notice what protection is asking for, and what the present moment may actually require.",
+   "altText": "A four-part quadrant card titled “Protection can outlast danger.” The axes are distance and contact. The sections name pulling away, overexplaining, staying watchful, and people pleasing as possible protective moves in relationships.",
+   "rationale": "Why this one: It names familiar relational patterns without pathologizing them or promising change."
+  },
+  {
+   "published": false,
+   "topicId": "84cebb9f-4836-4594-9342-f542d8bf0004",
+   "archetype": "carousel",
+   "title": "When the Map Changes",
+   "hook": "A life disruption can create grief alongside every practical decision.",
+   "cardLine": "When the map changes",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "A changed plan can bring grief into ordinary decisions."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "beneath": {
+        "gloss": "missing what was expected",
+        "label": "Quiet grief"
+       },
+       "surface": {
+        "gloss": "calls, forms, and new plans",
+        "label": "Practical choices"
+       }
+      },
+      "archetype_key": "surface_and_beneath"
+     },
+     {
+      "payload": {
+       "statement": "You may be making careful choices while still wishing life had unfolded differently."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "There can be room for the next step and the feelings that arrive with it."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "When a plan changes suddenly or slowly, practical decisions may take up a great deal of space.\n\nThere may be calls to make, paperwork to complete, routines to reconsider, or new questions that were not part of the old map.\n\nGrief can sit alongside all of that. It may show up as sadness, irritability, numbness, relief, uncertainty, or a wish that things had gone another way. These responses do not make a person ungrateful or incapable. They can be part of adapting to a life that looks different than expected.\n\nTherapy can offer a place to pause with both parts: the decisions in front of you and the feelings that do not fit neatly into a checklist.\n\nIf this feels relevant, you are welcome to reach out to Ember Consulting.",
+   "altText": "Four-panel carousel titled “When the map changes.” Panels say: “A changed plan can bring grief into ordinary decisions.” A surface-and-beneath card contrasts practical choices, such as calls and new plans, with quiet grief about missing what was expected. Two final panels name careful choices, wishing life differed, and making room for feelings.",
+   "rationale": "Why this one: It names the emotional weight that can accompany necessary decisions after life changes."
+  },
+  {
+   "published": true,
+   "topicId": "af5ffa43-9966-4195-8ef3-82abcaed0bbb",
+   "archetype": "single_statement",
+   "title": "Preparation Before Processing",
+   "hook": "EMDR is not only about revisiting what happened; preparation is part of the work.",
+   "cardLine": "Before Processing",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "statement": "Preparation can make room for steadiness before approaching difficult memories."
+   },
+   "caption": "EMDR is not only about revisiting what happened.\n\nPreparation is part of the work. It may include noticing what helps you feel oriented in the present, practicing ways to return to the room when emotions rise, and discussing what feels manageable to approach.\n\nThis phase is not a test to pass. It is a space for building enough support for the work ahead, at a pace that respects your capacity.",
+   "altText": "A simple text card with the heading “Before Processing” and the statement: “Preparation can make room for steadiness before approaching difficult memories.”",
+   "rationale": "Why this one: It gently explains preparation as a meaningful part of EMDR without promising a particular outcome."
+  },
+  {
+   "published": true,
+   "topicId": "ff31f519-6d71-4579-b8b7-3e1c5ac1dd55",
+   "archetype": "comparison_pair",
+   "title": "Grieving the Old Map",
+   "hook": "An unchosen change can bring grief for a future that never got to happen.",
+   "cardLine": "Grief for the old map",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "left": [
+     {
+      "gloss": "plans that no longer fit",
+      "label": "The old map"
+     },
+     {
+      "gloss": "a path changed without consent",
+      "label": "An unchosen turn"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "a life you had pictured",
+      "label": "The imagined future"
+     },
+     {
+      "gloss": "may still make sense",
+      "label": "Mourning"
+     }
+    ]
+   },
+   "caption": "An unchosen change can bring grief for more than what has already ended.\n\nIt may also bring grief for a future you had pictured: plans, routines, relationships, or a version of daily life that once felt possible.\n\nThat grief may be present even when the change was necessary, even when others see a reason to be hopeful, and even when you are managing the practical parts of what comes next.\n\nThere is no need to argue yourself out of missing the old map. In therapy, there can be room to name what changed and what mattered about the future you had imagined.",
+   "altText": "A comparison card titled “Grief for the old map.” Left column: “The old map — plans that no longer fit” and “An unchosen turn — a path changed without consent.” Right column: “The imagined future — a life you had pictured” and “Grief — may still make sense.”",
+   "rationale": "Why this one: It normalises grief for an imagined future without asking readers to minimise an unchosen change."
+  },
+  {
+   "published": true,
+   "topicId": "5257cb65-a695-490b-9a86-4d66f93e65b7",
+   "archetype": "concentric_control",
+   "title": "EMDR Beyond Full Retelling",
+   "hook": "EMDR does not require telling every detail of what happened aloud.",
+   "cardLine": "What stays yours",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "rings": [
+     {
+      "gloss": "can be named clearly",
+      "label": "Your boundaries"
+     },
+     {
+      "gloss": "deserve an answer",
+      "label": "Your questions"
+     },
+     {
+      "gloss": "can guide the work",
+      "label": "Your consent"
+     }
+    ]
+   },
+   "caption": "A common misunderstanding about EMDR is that it requires saying every detail of an experience aloud.\n\nIt does not necessarily work that way. In EMDR, a person may hold parts of an experience in mind while sharing only what feels useful and appropriate for the work.\n\nThat does not mean there is pressure to stay silent, either. Questions, context, and conversation can all have a place. The amount of talking may vary from one session to another.\n\nYour comfort, consent, and understanding of the process matter. You can ask what a step involves, say when something feels like too much, and decide what you are ready to put into words.",
+   "altText": "A concentric-circle card titled “Beyond full retelling.” Outer ring: “Full details may remain unspoken.” Middle ring: “What you share is yours to choose.” Center ring: “Your pace can guide each step.”",
+   "rationale": "Why this one: It gently corrects a common misconception while emphasizing choice, pacing, and informed participation."
+  },
+  {
+   "published": false,
+   "topicId": "54d30719-690b-4668-8012-14971f6e806b",
+   "archetype": "comparison_pair",
+   "title": "The CBT Learning Map",
+   "hook": "CBT can examine the old rule that still organizes a present-day pattern.",
+   "cardLine": "A CBT learning map",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "left": [
+     {
+      "gloss": "learned in earlier conditions",
+      "label": "Old rule"
+     },
+     {
+      "gloss": "once made sense",
+      "label": "Quick protection"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "shapes daily choices",
+      "label": "Present pattern"
+     },
+     {
+      "gloss": "makes room for options",
+      "label": "Fresh review"
+     }
+    ]
+   },
+   "caption": "In CBT, we can slow down and examine an old rule that may still organize a present-day pattern.\n\nSome rules form in conditions where they offered protection or helped life feel more manageable. Later, the same rule may show up as a familiar response: working past exhaustion, avoiding a hard conversation, or treating every mistake as evidence of failure.\n\nA learning map is one way of tracing the link between what was learned, what it once protected, and what happens now. The point is not to judge the rule. It is to understand its history and notice whether there is room for another response today.",
+   "altText": "Two-column card titled “A CBT learning map.” Left column: Old rule — learned in earlier conditions; Quick protection — once made sense. Right column: Present pattern — shapes daily choices; Fresh review — makes room for options.",
+   "rationale": "Why this one: It offers a clear, nonjudgmental view of how CBT can explore learned patterns."
+  },
+  {
+   "published": false,
+   "topicId": "f57d9e5b-24e6-4407-92be-e6ebf4ef2b54",
+   "archetype": "single_statement",
+   "title": "CBT and the Long Ago",
+   "hook": "CBT can make room for the past without requiring every detail to be retold.",
+   "cardLine": "CBT and the long ago",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "statement": "CBT can examine how the past informs current thoughts without treating it as a complete explanation."
+   },
+   "caption": "CBT is often associated with the present: current thoughts, patterns, and choices.\n\nIt can also make room for what happened long ago.\n\nThat does not have to mean revisiting every detail. In therapy, the focus may be on noticing how an old experience still shapes a belief, a response, or a moment in daily life now.\n\nThe pace and depth of that exploration can be shaped together. Some people want to speak broadly before approaching specifics. Some may prefer to stay with what is happening in the present. Both can be part of thoughtful work.\n\nCBT is not only about changing a thought. It can offer a structured way to become curious about the meanings that have lasted.",
+   "altText": "A simple text card with the heading “CBT and the long ago.” The main statement reads: “CBT can make room for the past without asking you to retell every detail.”",
+   "rationale": "Why this one: It explains a gentle, present-focused way CBT may include the past without requiring full retelling."
+  },
+  {
+   "published": true,
+   "topicId": "620999fe-c4b2-48d7-9af9-86a2eb5d8520",
+   "archetype": "single_statement",
+   "title": "When Plans Expire",
+   "hook": "An unwanted change can leave you grieving a future that never got to happen.",
+   "cardLine": "When plans expire",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "statement": "An unwanted change can make even a workable next step feel unfamiliar."
+   },
+   "caption": "Some losses are easy to name. Others arrive when a plan changes, a hoped-for path closes, or a future you had pictured no longer feels possible.\n\nGrief can show up for what did not happen: the move, the role, the relationship, the version of life you expected to be living. There may be no clear ritual for this kind of loss, yet it can still ask for attention.\n\nYou do not need to argue yourself out of disappointment before making room for it. Therapy can offer a place to sit with what changed and consider what matters now.\n\nEmber consulting",
+   "altText": "A simple text card with the heading “When plans expire.” The statement reads: “An unwanted change can leave room for grief about a future that did not happen.”",
+   "rationale": "Why this one: It names an often overlooked form of grief and gently invites reflection."
+  },
+  {
+   "published": false,
+   "topicId": "e66d5f66-d488-4633-b81d-a22cdc835955",
+   "archetype": "single_statement",
+   "title": "When Old Safety Rules Persist",
+   "hook": "Something can be long over and still shape what feels safe.",
+   "cardLine": "Old safety rules",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "statement": "Something can be long over and still shape what feels safe today."
+   },
+   "caption": "Some safety rules are learned quietly.\n\nThey may have made sense in an earlier chapter: staying alert, handling everything alone, avoiding conflict, keeping feelings private, or preparing for what might go wrong.\n\nWhen those rules persist, they are not necessarily signs that anything is wrong with you. They may be familiar ways of moving through the world after an experience that asked a lot of you.\n\nNoticing an old rule can be a gentle place to begin. You do not have to force yourself to abandon it. You might simply get curious about what it once protected, and whether it still fits the life you are living now.",
+   "altText": "A simple text card with the heading “Old safety rules.” The main statement reads: “Something can be long over and still shape what feels safe today.”",
+   "rationale": "Why this one: It normalises persistent protective habits without assigning a diagnosis or promising change."
+  },
+  {
+   "published": false,
+   "topicId": "6e871b45-4828-47bf-8020-bf302edbc6c1",
+   "archetype": "comparison_pair",
+   "title": "When Then Shapes Now",
+   "hook": "The calendar may say it is over while daily life still carries its echoes.",
+   "cardLine": "When Then Shapes Now",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "left": [
+     {
+      "gloss": "the calendar moved on",
+      "label": "Date has passed"
+     },
+     {
+      "gloss": "the room has changed",
+      "label": "Place feels ordinary"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "at a familiar sound",
+      "label": "Body stays alert"
+     },
+     {
+      "gloss": "before leaving home",
+      "label": "Mind checks twice"
+     }
+    ]
+   },
+   "caption": "The calendar can mark an ending.\n\nSometimes daily life does not follow that same schedule. A sound, a route home, or a familiar room may carry an echo of something that has already passed.\n\nThere is no need to force a neat ending. It can be enough to notice what still asks for care.\n\nIf you would like a place to talk about what lingers, therapy can offer room for that conversation.",
+   "altText": "A comparison card titled “When Then Shapes Now.” Left column: “Date has passed — the calendar moved on” and “Place feels ordinary — the room has changed.” Right column: “Body stays alert — at a familiar sound” and “Mind checks twice — before leaving home.”",
+   "rationale": "Why this one: It gently names the gap between an event ending and its ongoing presence in daily life."
+  },
+  {
+   "published": false,
+   "topicId": "2a4e0484-82cc-4995-a2a5-36598adc3ca2",
+   "archetype": "lettered_technique",
+   "title": "CALM for Unchosen Change",
+   "hook": "When the plan disappears, a small structure can make room for the next thought.",
+   "cardLine": "When the plan disappears",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "items": [
+     {
+      "gloss": "with the present moment",
+      "label": "Return here"
+     },
+     {
+      "gloss": "before deciding anything",
+      "label": "Exhale slowly"
+     },
+     {
+      "gloss": "in the room around you",
+      "label": "See one detail"
+     },
+     {
+      "gloss": "with the next thought",
+      "label": "Take your time"
+     }
+    ],
+    "acronym": "REST"
+   },
+   "caption": "Unchosen change can make a familiar plan vanish before a new one is visible.\n\nCALM is a small structure for that in-between space:\n\nCheck in with the present moment.\nAllow a pause before deciding anything.\nLook around for one steady detail.\nMake room for the next thought.\n\nThis is not a demand to feel calm. It is a way to narrow the task when everything feels newly uncertain.\n\nA pause can be practical: notice your feet on the floor, name what changed, or choose one next action that belongs to today.",
+   "altText": "A warm neutral card titled “When the plan disappears.” It presents the CALM structure: Check in with the present moment; Allow a pause before deciding anything; Look around for one steady detail; Make room for the next thought.",
+   "rationale": "Why this one: It offers a gentle, practical structure for moments when an expected path changes."
+  },
+  {
+   "published": false,
+   "topicId": "ebe3af35-7758-437b-b914-6a22ce0c36af",
+   "archetype": "lettered_technique",
+   "title": "CALM for Old Echoes",
+   "hook": "When the past shows up quietly, a small check-in can make room for the present.",
+   "cardLine": "When old echoes return",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "items": [
+     {
+      "gloss": "Notice what is here.",
+      "label": "Examine"
+     },
+     {
+      "gloss": "Give yourself a moment.",
+      "label": "Allow stillness"
+     },
+     {
+      "gloss": "Name one thing around you.",
+      "label": "See the present"
+     },
+     {
+      "gloss": "Choose one small next step.",
+      "label": "Ease forward"
+     }
+    ],
+    "acronym": "EASE"
+   },
+   "caption": "Sometimes the past shows up quietly: in a feeling, a body sensation, or a moment that seems larger than it first appears.\n\nA small check-in can make room for the present without asking you to explain everything at once.\n\nCALM is not a demand to feel calm. It is a brief way to pause, notice what is here, and choose a gentle next step.\n\nC — Check in\nA — Allow a pause\nL — Locate the present\nM — Move gently",
+   "altText": "A card titled “When old echoes return.” It offers the CALM check-in: Check in—notice what is here. Allow a pause—give yourself a moment. Locate the present—name one thing around you. Move gently—choose one small next step.",
+   "rationale": "Why this one: It normalises quiet reminders from the past while offering a gentle, present-focused check-in."
+  },
+  {
+   "published": false,
+   "topicId": "13cacdca-63c1-4b52-bb4a-e2e155099ea8",
+   "archetype": "annotated_curve",
+   "title": "When the Future Feels Charged",
+   "hook": "An unwanted change can make even imagining the future feel emotionally loaded.",
+   "cardLine": "When the future feels charged",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "axis_x": "looking ahead",
+    "axis_y": "emotional charge",
+    "points": [
+     {
+      "gloss": "small choices feel weighty",
+      "label": "Tomorrow"
+     },
+     {
+      "gloss": "the unknown takes up space",
+      "label": "Next month"
+     },
+     {
+      "gloss": "some possibilities feel tender",
+      "label": "Next season"
+     }
+    ]
+   },
+   "caption": "An unwanted change can make the future feel emotionally loaded.\n\nTomorrow may carry decisions. Next month may hold uncertainty. Even a future season can bring up loss, hope, or questions with no clear answer yet.\n\nThis does not mean you are doing the future wrong. It may mean that something important is shifting, and your mind is trying to make sense of what comes next.\n\nSometimes it helps to make the horizon smaller: not the whole year, just the next conversation, meal, or choice. There can be room for a future that is not fully mapped out.",
+   "altText": "A simple curve chart. The horizontal axis reads “looking ahead,” and the vertical axis reads “emotional charge.” Three points read: Tomorrow — small choices feel weighty; Next month — the unknown takes up space; Next season — some possibilities feel tender.",
+   "rationale": "Why this one: It names the emotional weight of uncertainty without treating it as a problem to solve."
+  },
+  {
+   "published": true,
+   "topicId": "13fc7ecc-6bd5-42a1-b063-749f4afbed59",
+   "archetype": "cycle",
+   "title": "The Plan-Loss Loop",
+   "hook": "When life changes without permission, the mind may keep grading today against an old plan.",
+   "cardLine": "When plans change",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "nodes": [
+     {
+      "gloss": "the life you expected",
+      "label": "Old plan"
+     },
+     {
+      "gloss": "the plan no longer fits",
+      "label": "Today arrives"
+     },
+     {
+      "gloss": "loss can stay unnamed",
+      "label": "Mind compares"
+     }
+    ]
+   },
+   "caption": "When life changes without permission, the mind may keep grading today against an old plan.\n\nThat comparison can be easy to miss. It may sound like: “I should be further along,” “This was not supposed to happen,” or “I thought I would be past this by now.”\n\nSometimes, the pain is not only about what is happening now. It can also include the loss of a future you had pictured.\n\nNaming that loss may make room for a kinder question: What does this version of life need from me today?",
+   "altText": "A three-part cycle titled “When plans change.” The sections read: Old plan — the life you expected; Today arrives — the plan no longer fits; Mind compares — loss can stay unnamed.",
+   "rationale": "Why this one: It names an often-overlooked form of loss without assuming what a reader has experienced."
+  },
+  {
+   "published": false,
+   "topicId": "043d2a41-e01c-4929-a14a-144ed45b789f",
+   "archetype": "carousel",
+   "title": "EMDR Begins Before Reprocessing",
+   "hook": "The part before EMDR reprocessing can matter as much as the memories being approached.",
+   "cardLine": "Before reprocessing begins",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "EMDR preparation may include learning what helps you feel steady."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "Reprocessing is one part of EMDR, not the whole process."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "Questions, choice, and pacing can shape how the work begins."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "Approaching a memory does not have to mean rushing toward it."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "The beginning of EMDR is often quieter than people expect.\n\nBefore reprocessing, a therapist may spend time understanding what brings someone in, discussing what EMDR involves, identifying supportive resources, and agreeing on pacing and consent.\n\nThis phase is not a test to pass. It can be a place to notice what feels manageable, what needs clarification, and what support may be useful before approaching difficult material.\n\nReprocessing may be part of EMDR; preparation and ongoing attention to choice are parts of the work too.\n\nEvery person’s process is different. If you are considering EMDR, questions about readiness, preferences, and concerns belong in the conversation.",
+   "altText": "Four-panel carousel titled “Before reprocessing begins.” Panels read: “EMDR preparation may include learning what helps you feel steady.” “Reprocessing is one part of EMDR, not the whole process.” “Questions, choice, and pacing can shape how the work begins.” “Approaching a memory does not have to mean rushing toward it.”",
+   "rationale": "Why this one: It explains EMDR preparation with care, choice, and pace rather than focusing only on reprocessing."
+  },
+  {
+   "published": false,
+   "topicId": "a8c2e2c4-40ee-45da-8f6a-b1f73a56fcbd",
+   "archetype": "single_statement",
+   "title": "Feeling Is Not Surrender",
+   "hook": "Grieving the plan that ended does not mean you approve of what happened.",
+   "cardLine": "Feeling is not surrender",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "statement": "Grieving a plan that ended does not mean you approve of what happened."
+   },
+   "caption": "There can be a myth that anger is the only way to stay loyal to what mattered.\n\nBut grief does not erase a boundary. Sadness does not rewrite history. Missing what you hoped for does not make what happened acceptable.\n\nFeeling can be part of acknowledging a loss without giving it permission or calling it fair.\n\nSometimes the work is making room for both: what you wish had been different, and the reality that it was not.",
+   "altText": "A simple text card with the heading “Feeling is not surrender.” The statement reads: “Grieving a plan that ended does not mean you approve of what happened.”",
+   "rationale": "Why this one: It gently separates grief from approval without minimizing loss or anger."
+  },
+  {
+   "published": false,
+   "topicId": "0ce1c856-8c6a-4539-8735-4b51976b7ed1",
+   "archetype": "single_statement",
+   "title": "Before Memory Processing",
+   "hook": "EMDR is not only about revisiting what happened; preparation is part of the work.",
+   "cardLine": "Before memory processing",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "statement": "EMDR preparation may include agreeing on ways to pause or slow the work."
+   },
+   "caption": "EMDR is not only about revisiting what happened.\n\nPreparation can be part of the work. It may include noticing what helps you feel grounded, practicing ways to return to the present, and talking through what to expect.\n\nThere is room to go carefully. Memory processing is approached with attention to readiness, choice, and what feels manageable in the moment.",
+   "altText": "A simple text card with the heading “Before memory processing.” The card says: “EMDR preparation may include building steadiness before approaching difficult memories.”",
+   "rationale": "Why this one: It offers a calm, transparent look at preparation as part of EMDR work."
+  },
+  {
+   "published": true,
+   "topicId": "dc6e45a6-c829-4915-8039-162e51177d0d",
+   "archetype": "single_statement",
+   "title": "EMDR Beyond the Worst Memory",
+   "hook": "EMDR is not limited to the single worst thing that ever happened.",
+   "cardLine": "Beyond the worst memory",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "statement": "EMDR may include memories that still shape the present, not only the one that feels worst."
+   },
+   "caption": "A common misunderstanding is that EMDR begins and ends with the single worst thing that happened.\n\nSometimes a memory that seems less dramatic still carries a strong charge in the present. It may be a repeated experience, an early moment, or something that did not seem important at the time.\n\nEMDR can make room to notice which memories feel connected to what is showing up now. The focus is not on ranking pain or proving that one experience was “bad enough.”\n\nThere is room for a fuller story.",
+   "altText": "A warm neutral card with the heading “Beyond the worst memory.” The card text reads: “EMDR may include memories that still shape the present, not only the one that feels worst.”",
+   "rationale": "Why this one: It gently corrects a common misunderstanding without ranking experiences or promising a particular outcome."
+  },
+  {
+   "published": false,
+   "topicId": "dcd1205f-2ceb-48de-aa8f-17dc29430911",
+   "archetype": "annotated_curve",
+   "title": "Test the New Map",
+   "hook": "When life changes without permission, predictions can feel like facts before they are examined.",
+   "cardLine": "Test the new map",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "axis_x": "new terrain",
+    "axis_y": "certainty",
+    "points": [
+     {
+      "gloss": "the familiar prediction",
+      "label": "Old route"
+     },
+     {
+      "gloss": "the prediction feels factual",
+      "label": "First detour"
+     },
+     {
+      "gloss": "room for another possibility",
+      "label": "Checked again"
+     }
+    ]
+   },
+   "caption": "When life changes without permission, the mind may reach for a prediction quickly.\n\nIt can feel safer to treat that prediction as a fact: “This will not work.” “I will not manage.” “Nothing good follows from here.”\n\nA prediction may be useful information. It is still worth examining.\n\nWhat is known? What is assumed? What else could be possible?\n\nTherapy can offer a quiet place to test the map before treating it as the territory.",
+   "altText": "A simple curve graph titled “Test the new map.” The horizontal axis reads “new terrain” and the vertical axis reads “certainty.” Three points move from “Old route: the familiar prediction,” through “First detour: the prediction feels factual,” to “Checked again: room for another possibility.”",
+   "rationale": "Why this one: It invites curiosity about automatic predictions without dismissing the need for safety during change."
+  },
+  {
+   "published": false,
+   "topicId": "b5c57e44-36b6-45d3-bed8-16520cf631ec",
+   "archetype": "practitioner_card",
+   "title": "How EFT Meets Crossroads",
+   "hook": "A practitioner card can explain how EFT makes room for emotions after an unwanted life change.",
+   "cardLine": "EMDR in Oakland",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "lines": [
+     "EMDR",
+     "Oakland, CA"
+    ]
+   },
+   "caption": "A practitioner card can explain how EFT makes room for emotions after an unwanted life change.",
+   "altText": "EMDR. Oakland, CA",
+   "rationale": "Assembled from the brief, not written."
+  },
+  {
+   "published": true,
+   "topicId": "b8376600-d8cf-4882-9c31-7f229e1f1861",
+   "archetype": "quadrant_model",
+   "title": "When the Plan Changes",
+   "hook": "An unwanted crossroads can bring grief, relief, fear, and a mind searching for certainty.",
+   "cardLine": "When the plan changes",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "items": [
+     {
+      "gloss": "for what mattered",
+      "label": "Grief"
+     },
+     {
+      "gloss": "from a heavy path",
+      "label": "Relief"
+     },
+     {
+      "gloss": "of the unknown",
+      "label": "Fear"
+     },
+     {
+      "gloss": "for solid ground",
+      "label": "Searching"
+     }
+    ],
+    "axis_x": "old plan",
+    "axis_y": "new path"
+   },
+   "caption": "When a plan changes without your consent, the mind may begin searching for certainty.\n\nGrief can sit beside relief. Fear can arrive alongside curiosity. A part of you may want to return to the old plan, even when another part recognizes that it no longer fits.\n\nThese responses do not need to agree with one another to be real. You do not need to sort them into the correct order before making room for them.\n\nA crossroads can be a place to pause, notice what has changed, and consider what matters now.",
+   "altText": "A quadrant-style card titled “When the plan changes.” The axes read “old plan” and “new path.” Four sections name grief for what mattered, relief from a heavy path, fear of the unknown, and searching for solid ground.",
+   "rationale": "Why this one: It makes room for several valid responses to an unwanted change without asking readers to choose one."
+  },
+  {
+   "published": false,
+   "topicId": "841a0a52-a813-4cce-b2a5-defe04f1f089",
+   "archetype": "numbered_strategies",
+   "title": "CBT Is Not Forgetting",
+   "hook": "CBT can examine old learning without asking anyone to erase the past.",
+   "cardLine": "CBT is not forgetting",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "items": [
+     {
+      "gloss": "spot old learning at work",
+      "label": "Notice patterns"
+     },
+     {
+      "gloss": "consider another possible meaning",
+      "label": "Test beliefs"
+     },
+     {
+      "gloss": "the past still matters",
+      "label": "Keep context"
+     }
+    ]
+   },
+   "caption": "CBT is not about erasing the past or deciding that it did not matter.\n\nIt can offer a structured way to notice how earlier experiences may still shape present thoughts, expectations, and choices. From there, therapy may make room to examine a belief, test its usefulness in a current situation, and consider other possibilities.\n\nThe goal is not to rewrite history. It is to relate to what happened with greater clarity and care.\n\nEmber consulting",
+   "altText": "A simple card titled “CBT is not forgetting.” Three numbered points read: “Notice patterns — spot old learning at work.” “Test beliefs — consider another possible meaning.” “Keep context — the past still matters.”",
+   "rationale": "Why this one: It gently corrects a common misconception while preserving the significance of past experience."
+  },
+  {
+   "published": false,
+   "topicId": "94c0fb68-873a-49ff-bb19-97704b2418d9",
+   "archetype": "concentric_control",
+   "title": "Crossroads Control Map",
+   "hook": "When life changes without permission, sorting control can make the next thought easier to examine.",
+   "cardLine": "At a crossroads",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "rings": [
+     {
+      "gloss": "not yours to choose",
+      "label": "The change"
+     },
+     {
+      "gloss": "partly yours to shape",
+      "label": "The response"
+     },
+     {
+      "gloss": "yours to examine",
+      "label": "The next step"
+     }
+    ]
+   },
+   "caption": "Some changes arrive without an invitation.\n\nWhen that happens, I often return to a simple map of control—not as a demand to “focus on what you can control,” but as a way to slow the swirl of thoughts.\n\nThe outer ring holds what is not yours to choose: the change itself, another person’s decision, or a door that has closed.\n\nThe middle ring holds your response: what you say, what support you seek, and what boundaries may fit the moment.\n\nThe center holds the next step: not the whole future, just one thought or choice worth examining.\n\nA map like this cannot remove uncertainty. It may offer a little structure when everything feels newly in motion.",
+   "altText": "A concentric three-ring control map. The outer ring reads, “The change: not yours to choose.” The middle ring reads, “The response: partly yours to shape.” The center ring reads, “The next step: yours to examine.” The card line at the top reads, “At a crossroads.”",
+   "rationale": "Why this one: It offers a calm, transparent glimpse of a reflective tool used to explore change and uncertainty."
+  },
+  {
+   "published": false,
+   "topicId": "7510f50f-4aaa-493e-9339-ef1240965540",
+   "archetype": "single_statement",
+   "title": "EFT and Old Emotional Learning",
+   "hook": "What if the past is showing up less as memory and more as a pattern of protection?",
+   "cardLine": "Protection has a history",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "statement": "In EFT, protective patterns may be approached with curiosity rather than treated as problems to erase."
+   },
+   "caption": "What if the past is showing up less as a clear memory and more as a familiar way of protecting yourself?\n\nA quick retreat from closeness. Staying busy when feelings rise. Going quiet during conflict. Reaching for certainty when things feel unclear.\n\nThese patterns can carry old emotional learning: ways of responding that may have made sense in an earlier context.\n\nIn emotionally focused therapy, there can be space to slow down and become curious about what a protective response is trying to do. The aim is not to judge the pattern or force it away. It is to notice it with care, including the feelings and needs that may sit underneath it.\n\nSometimes, understanding a pattern begins not with “Why am I like this?” but with “What has this response been trying to protect?”",
+   "altText": "A warm neutral card with the heading, “Protection has a history.” Below it reads: “In EFT, protective patterns may be approached with curiosity rather than treated as problems to erase.”",
+   "rationale": "Why this one: It offers a gentle view of protective patterns while introducing the reflective stance of EFT."
+  },
+  {
+   "published": true,
+   "topicId": "bcbafa17-0167-48ef-b4ab-0f4f52c0ff28",
+   "archetype": "surface_and_beneath",
+   "title": "CBT Is Not Forced Optimism",
+   "hook": "CBT does not ask someone to feel grateful for a life change they never wanted.",
+   "cardLine": "CBT makes room for reality",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "beneath": {
+     "gloss": "room for unwanted change",
+     "label": "Careful reflection"
+    },
+    "surface": {
+     "gloss": "a common CBT myth",
+     "label": "Forced optimism"
+    }
+   },
+   "caption": "CBT does not ask someone to feel grateful for a life change they never wanted.\n\nIt can make room for disappointment, anger, uncertainty, and grief without treating those responses as problems to erase.\n\nThe work may include noticing the thoughts that arrive alongside a hard change: what they predict, what they assume, and how they shape the next moment. From there, a person can consider whether a thought is useful, fair, or fully supported by what is known.\n\nThat is different from insisting on a bright side. Reality can be painful, and a more balanced thought does not have to be cheerful.",
+   "altText": "A simple text card. The heading reads, “CBT makes room for reality.” Two panels read: “Forced optimism — a common CBT myth” and “Careful reflection — room for unwanted change.”",
+   "rationale": "Why this one: It gently corrects a common misconception without minimizing difficult feelings."
+  },
+  {
+   "published": true,
+   "topicId": "08d8df2d-5b98-45b8-baff-93d202f0f54e",
+   "archetype": "quadrant_model",
+   "title": "Mapping Old Alarms",
+   "hook": "When the past still shapes today, CBT can examine patterns without requiring a retelling of everything.",
+   "cardLine": "Mapping old alarms",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "items": [
+     {
+      "gloss": "a moment feels recognizable",
+      "label": "Familiar cue"
+     },
+     {
+      "gloss": "tension arrives quickly",
+      "label": "Body alert"
+     },
+     {
+      "gloss": "the mind predicts danger",
+      "label": "Quick meaning"
+     },
+     {
+      "gloss": "a pause creates choice",
+      "label": "New response"
+     }
+    ],
+    "axis_x": "past cues",
+    "axis_y": "present safety"
+   },
+   "caption": "When something from the past still shapes today, it may show up as a quick body response, a familiar thought, or a strong urge to act.\n\nCBT can offer a structured way to examine these patterns: what happened, what meaning arrived, what the body did, and what followed. This work does not require a full retelling of everything that came before.\n\nSometimes, mapping the sequence creates room to notice that an old alarm has sounded in a new moment. From there, a person may consider a response that fits the present more closely.\n\nThe pace and detail of that exploration can be chosen with care.",
+   "altText": "A four-part model titled “Mapping old alarms.” The horizontal axis reads “past cues” and the vertical axis reads “present safety.” Four points name a familiar cue, body alert, quick meaning, and new response, with brief descriptions of each pattern.",
+   "rationale": "Why this one: It explains CBT’s pattern-focused approach without suggesting that a person must revisit every detail of the past."
+  },
+  {
+   "published": false,
+   "topicId": "599a4ccd-9b5a-483a-a56d-0fb527d6e3d4",
+   "archetype": "annotated_curve",
+   "title": "EMDR Beyond Eye Movements",
+   "hook": "EMDR is more than eye movements; preparation and choice are part of the work.",
+   "cardLine": "EMDR Includes Preparation",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "axis_x": "stages of work",
+    "axis_y": "choice",
+    "points": [
+     {
+      "gloss": "naming needs and preferences",
+      "label": "Preparation"
+     },
+     {
+      "gloss": "using agreed bilateral stimulation",
+      "label": "Processing"
+     },
+     {
+      "gloss": "making room for adjustment",
+      "label": "Pausing"
+     }
+    ]
+   },
+   "caption": "EMDR is more than eye movements.\n\nEye movements are one form of bilateral stimulation that may be used in EMDR. Depending on the person and the moment, bilateral stimulation may also involve sound or tapping.\n\nPreparation is part of the work. It can include discussing what feels manageable, practising ways to return to the present, and making choices about pace and approach.\n\nChoice can remain part of the process, too. A person may pause, ask questions, name discomfort, or decide that a different direction feels more appropriate.\n\nEMDR is a structured approach, but the work does not have to be rushed.",
+   "altText": "A simple curve chart titled “EMDR Includes Preparation.” The horizontal axis reads “stages of work” and the vertical axis reads “choice.” Three rising points read: Preparation—naming needs and preferences; Processing—using agreed bilateral stimulation; Pausing—making room for adjustment.",
+   "rationale": "Why this one: It explains EMDR’s broader structure while centering preparation, consent, and personal choice."
+  },
+  {
+   "published": false,
+   "topicId": "ef431ea4-69b0-4f12-85f1-0ff3d27bdb7e",
+   "archetype": "carousel",
+   "title": "When the Past Persists",
+   "hook": "When years ago still shapes today, it may deserve a different kind of attention.",
+   "cardLine": "When the past persists",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "A past event can remain present in the ways you brace, avoid, or go quiet."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "beneath": {
+        "gloss": "the body stays watchful",
+        "label": "Old alarm"
+       },
+       "surface": {
+        "gloss": "daily life keeps moving",
+        "label": "Getting through"
+       }
+      },
+      "archetype_key": "surface_and_beneath"
+     },
+     {
+      "payload": {
+       "statement": "Attention to the past does not require reliving every detail."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "Therapy can offer a steady place to notice what the past still asks of you."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "Some experiences end on the calendar but continue to shape the present.\n\nThat may look like bracing before ordinary conversations, avoiding places or topics, going blank under pressure, or feeling on guard without knowing why. These responses can make sense in the context of what a person has lived through.\n\nA different kind of attention does not mean forcing yourself to retell everything. In therapy, it may mean moving at a pace that feels manageable, noticing what happens now, and making room for the parts of the story that still need care.\n\nIf something from years ago still has a place in your daily life, you are welcome to bring that question to therapy.",
+   "altText": "Four-panel carousel titled “When the past persists.” Panels say: a past event can remain present through bracing, avoidance, or going quiet; daily functioning can coexist with an old alarm; attention does not require reliving every detail; and therapy can offer a steady place to notice what the past still asks.",
+   "rationale": "Why this one: It gently invites reflection on lingering effects without diagnosing, promising outcomes, or pressuring action."
+  },
+  {
+   "published": true,
+   "topicId": "7074c4d7-afcc-46f3-a36d-b5995c3d828f",
+   "archetype": "lettered_technique",
+   "title": "Holding an Unchosen Crossroads",
+   "hook": "You do not have to turn an unwanted change into a lesson before you can acknowledge its weight.",
+   "cardLine": "At an unchosen crossroads",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "items": [
+     {
+      "gloss": "Name what changed.",
+      "label": "Check in"
+     },
+     {
+      "gloss": "It may feel heavy.",
+      "label": "Allow the weight"
+     },
+     {
+      "gloss": "Choose one steady contact.",
+      "label": "Locate support"
+     },
+     {
+      "gloss": "Take one next step.",
+      "label": "Move gently"
+     }
+    ],
+    "acronym": "CALM"
+   },
+   "caption": "An unwanted change can bring logistics, emotion, and uncertainty all at once.\n\nIt does not need to become a lesson before it deserves attention.\n\nThis is part of how I approach therapy at Ember Consulting: we can slow down enough to name what has shifted, notice what feels heavy, and consider support without forcing a tidy interpretation.\n\nMeaning may emerge. It does not have to be demanded.",
+   "altText": "A card titled “At an unchosen crossroads” presents the acronym CALM: Check in—Name what changed. Allow the weight—It may feel heavy. Locate support—Choose one steady contact. Move gently—Take one next step.",
+   "rationale": "Why this one: It offers a gentle structure for naming an unwanted transition without rushing toward meaning."
+  },
+  {
+   "published": false,
+   "topicId": "d15ca778-591d-4300-a919-4133e8202403",
+   "archetype": "numbered_strategies",
+   "title": "What EFT Makes Room For",
+   "hook": "EFT offers a way to meet old emotional patterns without treating them as personal failures.",
+   "cardLine": "What EFT Makes Room",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "items": [
+     {
+      "gloss": "without calling them failures",
+      "label": "Observe habits"
+     },
+     {
+      "gloss": "for feeling and curiosity",
+      "label": "Hold space"
+     },
+     {
+      "gloss": "at a manageable pace",
+      "label": "Try new responses"
+     }
+    ]
+   },
+   "caption": "EFT offers a structured way to notice emotional patterns that may have developed over time, without treating those patterns as personal failures.\n\nIn this work, there can be room to slow down, name what is present, and approach difficult feelings with curiosity. For some people, that may include noticing the needs, fears, or protective habits beneath a familiar reaction.\n\nThe aim is not to erase emotion or force a particular response. It is to create space for a different relationship with what arises.",
+   "altText": "A card titled “What EFT Makes Room For.” Three points read: “Notice patterns — without calling them failures.” “Make room — for feeling and curiosity.” “Try new responses — at a manageable pace.”",
+   "rationale": "Why this one: It introduces EFT through a compassionate, non-pathologizing view of emotional patterns."
+  },
+  {
+   "published": true,
+   "topicId": "580a8be5-31d5-4bf8-84c1-f1bbb1620abf",
+   "archetype": "quadrant_model",
+   "title": "When the Past Still Interrupts",
+   "hook": "A memory does not need to feel vivid to keep influencing the present.",
+   "cardLine": "When the past interrupts",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "items": [
+     {
+      "gloss": "the story feels incomplete",
+      "label": "Faded detail"
+     },
+     {
+      "gloss": "the moment feels larger",
+      "label": "Quick reaction"
+     },
+     {
+      "gloss": "tension arrives without warning",
+      "label": "Body cue"
+     },
+     {
+      "gloss": "a familiar response returns",
+      "label": "Old pattern"
+     }
+    ],
+    "axis_x": "memory",
+    "axis_y": "present day"
+   },
+   "caption": "A memory does not need to feel vivid to keep influencing the present.\n\nSometimes the details are blurry, yet a particular tone, place, feeling, or moment can bring a quick reaction. The body may tense. A familiar pattern may return. The response can feel larger than the moment seems to require.\n\nThis does not mean anything is wrong with you. It may simply be worth approaching with patience and curiosity.\n\nTherapy can offer a place to notice what gets activated, make room for the context around it, and consider what support might feel useful now.\n\nIf this feels familiar, you are welcome to reach out to Ember Consulting.",
+   "altText": "A four-part quadrant card titled “When the past interrupts.” The horizontal axis reads “memory” and the vertical axis reads “present day.” The quadrants read: “Faded detail: the story feels incomplete”; “Quick reaction: the moment feels larger”; “Body cue: tension arrives without warning”; and “Old pattern: a familiar response returns.”",
+   "rationale": "It names subtle ways the past may show up and offers a calm invitation to seek support."
+  },
+  {
+   "published": true,
+   "topicId": "32d351cf-07e8-40be-ab27-10c8c5f43119",
+   "archetype": "comparison_pair",
+   "title": "EMDR Does Not Erase Memories",
+   "hook": "EMDR is not designed to erase the past or force a full retelling.",
+   "cardLine": "EMDR does not erase memories",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "left": [
+     {
+      "gloss": "the past disappears",
+      "label": "Erase memories"
+     },
+     {
+      "gloss": "every detail is required",
+      "label": "Full retelling"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "its charge may shift",
+      "label": "Memory remains"
+     },
+     {
+      "gloss": "you choose what to share",
+      "label": "Pacing matters"
+     }
+    ]
+   },
+   "caption": "EMDR is not designed to erase the past or require a complete, chronological retelling.\n\nIt is a structured therapy approach that may include attention to memories, present-day reactions, and a pace that feels manageable.\n\nFor some people, the work can involve sharing only what feels relevant in the moment. Questions about what EMDR involves are welcome.",
+   "altText": "Comparison card titled “EMDR does not erase memories.” Left side: “Erase memories — the past disappears” and “Full retelling — every detail is required.” Right side: “Memory remains — its charge may shift” and “Pacing matters — you choose what to share.”",
+   "rationale": "Why this one: It gently corrects two common misunderstandings while emphasizing choice and pacing."
+  },
+  {
+   "published": true,
+   "topicId": "4edfe0b3-9c7c-4bbe-acf9-2f465bd74c57",
+   "archetype": "single_statement",
+   "title": "When Plans Break",
+   "hook": "A changed life plan can make predictions feel like facts.",
+   "cardLine": "When Plans Break",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "statement": "A changed plan can make predictions feel certain, even when they are only attempts to make sense of uncertainty."
+   },
+   "caption": "When an important plan changes, the mind may start filling in the blanks.\n\nA thought such as “This will never work out” can feel less like a thought and more like a fact. That feeling can be especially strong when the future is suddenly unclear.\n\nIt may help to pause and ask: What do I know right now? What am I predicting? What remains unknown?\n\nThis is not about forcing optimism. It is about making room for uncertainty without treating every fear as a forecast.",
+   "altText": "A simple text card. The heading reads, “When Plans Break.” The statement reads, “A changed plan can make predictions feel certain, even when they are only attempts to make sense of uncertainty.”",
+   "rationale": "Why this one: It names a common response to disrupted plans without treating fearful predictions as facts."
+  },
+  {
+   "published": true,
+   "topicId": "b3fe555a-735b-4a50-86be-8c8834e354b4",
+   "archetype": "single_statement",
+   "title": "CBT Beyond Positive Thinking",
+   "hook": "CBT does not ask people to think positively about a life change they never wanted.",
+   "cardLine": "Beyond positive thinking",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "statement": "CBT can make room for honest thoughts about a change you did not choose."
+   },
+   "caption": "CBT is sometimes mistaken for being told to look on the bright side.\n\nIt is not a request to feel grateful for a life change you never wanted, or to replace a painful thought with a cheerful one.\n\nCBT can offer a structured way to notice the thoughts that arise, consider their impact, and examine whether they are fair, useful, or leaving out important parts of the picture.\n\nA thought can be honest and still deserve care. The aim is not forced positivity; it is often a little more room to respond with intention.",
+   "altText": "A simple text card with the heading “Beyond positive thinking” and the statement: “CBT can make room for honest thoughts about a change you did not choose.”",
+   "rationale": "Why this one: It corrects a common misconception while making room for unwanted change and honest emotional responses."
+  },
+  {
+   "published": true,
+   "topicId": "dc21001e-6729-4b46-9dad-976c31e38a0a",
+   "archetype": "single_statement",
+   "title": "Old Rules, Present Life",
+   "hook": "A long-ago experience can leave behind rules that once made sense.",
+   "cardLine": "Old Rules, Present Life",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "statement": "Old rules may linger after the conditions that created them have changed."
+   },
+   "caption": "Some rules begin as protection.\n\nStay quiet. Keep watch. Do not need too much. Handle it alone.\n\nA long-ago experience can leave these rules behind, even when the circumstances around you have changed. That does not mean anything is wrong with you. It may mean a part of you learned to expect what was once necessary to survive.\n\nNoticing an old rule is not the same as needing to reject it immediately. Sometimes it is simply a place to begin: What did this rule protect? What does it ask of me now? Is there room for a different choice today?\n\nThere is no need to force an answer. Gentle curiosity can be enough.",
+   "altText": "A simple text card with the heading “Old Rules, Present Life.” The card states: “Old rules may linger after the conditions that created them have changed.”",
+   "rationale": "Why this one: It normalises protective patterns without assuming a diagnosis or promising change."
+  },
+  {
+   "published": false,
+   "topicId": "5dc988de-73a1-4923-9076-1ba80ee4e98e",
+   "archetype": "surface_and_beneath",
+   "title": "Old Rules, Current Costs",
+   "hook": "Sometimes the thought worth examining is not a fear, but a rule learned long ago.",
+   "cardLine": "Old rules, current costs",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "beneath": {
+     "gloss": "may shape life now",
+     "label": "Current costs"
+    },
+    "surface": {
+     "gloss": "served a purpose before",
+     "label": "Old rules"
+    }
+   },
+   "caption": "Sometimes the thought worth examining is not a fear, but a rule learned long ago.\n\nRules can begin as attempts to stay connected, avoid conflict, earn approval, or make sense of a demanding environment. “Do not need too much.” “Keep everyone comfortable.” “Work before rest.”\n\nA rule may have been useful once and still carry a cost now. It may narrow choices, make rest feel uncomfortable, or turn ordinary needs into something to explain away.\n\nExamining a rule does not require blaming the person who learned it. It can begin with noticing: What does this rule ask of me? What does it make difficult? Is there room for a different response today?",
+   "altText": "A two-panel card. The top line reads, “Old rules, current costs.” The surface panel says, “Old rules,” with “once made sense.” The beneath panel says, “Current costs,” with “may shape life now.”",
+   "rationale": "Why this one: It invites reflection on learned rules without assuming their origins or promising change."
+  },
+  {
+   "published": false,
+   "topicId": "12f75ba7-5bd6-41a5-b6ef-cbee9c1f0efe",
+   "archetype": "carousel",
+   "title": "EFT Myth: Every Detail",
+   "hook": "Emotional work does not require retelling every moment from the past.",
+   "cardLine": "You choose the pace",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "Emotional work does not require retelling every moment from the past."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "In EFT, attention can stay with what feels present now."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "beneath": {
+        "gloss": "Follow what feels important",
+        "label": "A gentler option"
+       },
+       "surface": {
+        "gloss": "Every detail must be told",
+        "label": "The myth"
+       }
+      },
+      "archetype_key": "surface_and_beneath"
+     },
+     {
+      "payload": {
+       "statement": "You can choose what to share, pause, or leave unnamed."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "A common worry about emotional work is that it will require a complete retelling of the past.\n\nThat is not always the shape of the work. In EFT, a therapist may invite attention toward feelings, needs, body sensations, or a moment that feels important in the present. What is shared can be guided by your sense of readiness and choice.\n\nSome memories may need words. Others may show up as a feeling, an image, a tight chest, or a wish to move slowly. There is room to pause, ask questions, or say that something feels like too much.\n\nEmotional work can include the past without requiring every detail.",
+   "altText": "Four-panel carousel. Card one says emotional work does not require retelling every moment from the past. Card two says EFT can stay with what feels present now. Card three contrasts the myth that every detail must be told with following what feels important. Card four says you can choose what to share, pause, or leave unnamed.",
+   "rationale": "Why this one: It gently corrects a common fear while emphasizing choice, pacing, and present-focused attention."
+  },
+  {
+   "published": false,
+   "topicId": "1337f546-5299-4601-9419-1bec6dc4d9b8",
+   "archetype": "cycle",
+   "title": "The Long-Ago Myth",
+   "hook": "Something can be years old and still influence how the present feels.",
+   "cardLine": "Long ago can linger",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "nodes": [
+     {
+      "gloss": "the event has passed",
+      "label": "Long ago"
+     },
+     {
+      "gloss": "the feeling may return",
+      "label": "Still present"
+     },
+     {
+      "gloss": "without judging yourself",
+      "label": "Worth noticing"
+     }
+    ]
+   },
+   "caption": "A common myth is that enough time should make an experience stop mattering.\n\nSomething can be years old and still shape how the present feels. A sound, date, place, conflict, or quiet moment may bring up a reaction that seems larger than the moment itself.\n\nThis does not mean you are doing anything wrong. It may simply be useful information: something in you is asking to be noticed with care.\n\nYou do not have to prove that the past was recent for its impact to deserve attention.",
+   "altText": "A three-part cycle card titled “Long ago can linger.” The sections read: “Long ago — the event has passed,” “Still present — the feeling may return,” and “Worth noticing — without judging yourself.”",
+   "rationale": "Why this one: It gently challenges the idea that time alone determines whether an experience still matters."
+  },
+  {
+   "published": false,
+   "topicId": "7ae49908-f9f7-4c29-9fc5-951d83097d99",
+   "archetype": "carousel",
+   "title": "When the Planned Life Ends",
+   "hook": "An unwanted crossroads can bring grief for a future that never arrived.",
+   "cardLine": "When the planned life ends",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "A crossroads can carry grief for a future that never arrived."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "An ending can feel real even when nothing was formally lost."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "You do not have to call it a fresh start before it feels like one."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "Some endings arrive without a clear ritual: a plan changes, a door closes, or the life you expected no longer fits.\n\nAn unwanted crossroads can bring grief for a future that never arrived. That grief may sit beside practical questions, relief, anger, uncertainty, or all of them at once.\n\nYou do not have to turn a difficult change into a lesson right away. It can be enough to notice what mattered in the plan and give yourself room to meet the life that is here.",
+   "altText": "Three-panel carousel titled “When the planned life ends.” Panel one says a crossroads can carry grief for a future that never arrived. Panel two says an ending can feel real even when nothing was formally lost. Panel three says you do not have to call it a fresh start before it feels like one.",
+   "rationale": "Why this one: It names the often-unseen grief that can accompany an unwanted change in direction."
+  },
+  {
+   "published": false,
+   "topicId": "5469575b-4429-4e29-a495-f3ca1a515d4b",
+   "archetype": "annotated_curve",
+   "title": "What EFT Listens For",
+   "hook": "The event matters, and so does the protective pattern that formed around it.",
+   "cardLine": "What EFT Listens",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "axis_x": "then to now",
+    "axis_y": "attention",
+    "points": [
+     {
+      "gloss": "what happened then",
+      "label": "The event"
+     },
+     {
+      "gloss": "how protection took shape",
+      "label": "The pattern"
+     },
+     {
+      "gloss": "where it shows up",
+      "label": "Today"
+     }
+    ]
+   },
+   "caption": "What happened matters. So does the way a person learned to protect themselves in response.\n\nIn EFT, attention may move between the event, the protective pattern that took shape around it, and the places that pattern appears now.\n\nProtection can look like pulling away, staying busy, going quiet, or taking care of everyone else first. These responses often have a history. They are worth approaching with curiosity rather than judgment.\n\nThe goal is not to reduce someone to a pattern. It is to make room for the full context of what they have carried.",
+   "altText": "A simple curve chart titled “What EFT Listens For.” The horizontal axis reads “then to now,” and the vertical axis reads “attention.” Three points are labeled: “The event — what happened then,” “The pattern — how protection took shape,” and “Today — where it shows up.”",
+   "rationale": "Why this one: It offers a clear, nonjudgmental glimpse into the attention EFT may bring to protective patterns."
+  },
+  {
+   "published": false,
+   "topicId": "58a3f567-f4f9-42fd-b783-71c2ae588c67",
+   "archetype": "annotated_curve",
+   "title": "When Feelings Catch Up",
+   "hook": "After an unwanted life change, feelings may arrive after the practical decisions are made.",
+   "cardLine": "Feelings can arrive later",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "axis_x": "time after change",
+    "axis_y": "emotional weight",
+    "points": [
+     {
+      "gloss": "tasks take the lead",
+      "label": "First days"
+     },
+     {
+      "gloss": "feelings may surface",
+      "label": "Later on"
+     },
+     {
+      "gloss": "many responses can emerge",
+      "label": "With space"
+     }
+    ]
+   },
+   "caption": "After an unwanted change, practical decisions can take up a great deal of attention: calls to make, plans to adjust, routines to rebuild.\n\nFeelings may arrive later, when there is a little less to do or more room to notice them. Sadness, anger, relief, uncertainty, or several feelings at once can all be part of a response to change.\n\nThere is no required order for feeling your way through something difficult. If the feelings that arrive later feel hard to hold alone, therapy can offer a place to make room for them.",
+   "altText": "A simple curve chart titled “Feelings can arrive later.” The horizontal axis reads “time after change” and the vertical axis reads “emotional weight.” Three points read: “First days: tasks take the lead,” “Later on: feelings may surface,” and “With space: many responses can emerge.”",
+   "rationale": "Why this one: It normalises delayed emotional responses without assigning a fixed pattern to change."
+  },
+  {
+   "published": true,
+   "topicId": "30280624-4b84-4aee-9a95-2f4537152807",
+   "archetype": "surface_and_beneath",
+   "title": "When Quiet Feels Watchful",
+   "hook": "If calm feels unfamiliar, an old protective pattern may still be doing its job.",
+   "cardLine": "When quiet feels watchful",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "beneath": {
+     "gloss": "a protective pattern stays alert",
+     "label": "Watchfulness"
+    },
+    "surface": {
+     "gloss": "the room is still",
+     "label": "Quiet"
+    }
+   },
+   "caption": "Quiet can feel unfamiliar when a protective pattern has spent a long time staying alert.\n\nThat response may show up as scanning the room, waiting for something to change, or finding stillness harder to trust than activity. It does not mean anything is wrong with you. It may be a pattern that once had an important purpose.\n\nTherapy can offer a place to notice what happens when things become quiet, with care and without forcing calm.\n\nIf this feels familiar, you are welcome to reach out to Ember Consulting.",
+   "altText": "A simple text card. The heading reads, “When quiet feels watchful.” Two sections read: “Quiet — the room is still” and “Watchfulness — a protective pattern stays alert.”",
+   "rationale": "Why this one: It names a familiar experience while gently inviting reflection and support without promising change."
+  },
+  {
+   "published": false,
+   "topicId": "940c4978-29a7-4aca-9e97-b92557fc481a",
+   "archetype": "single_statement",
+   "title": "The Life You Expected",
+   "hook": "An unchosen change can bring grief for a future that never arrived.",
+   "cardLine": "The life you expected",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "statement": "The life you expected can remain meaningful while you learn what comes next."
+   },
+   "caption": "Some changes arrive without permission: a move, a shift in health, a relationship ending, a role changing, or a path closing.\n\nAlongside what is happening now, there may be grief for the future you had pictured. That grief can exist even when others see reasons to be grateful, hopeful, or practical.\n\nThere is no need to argue yourself out of it. Making room for what was hoped for can be one part of meeting what is here.",
+   "altText": "A simple text card with the heading “The life you expected” and the statement: “An unchosen change can bring grief for the future you expected to live.”",
+   "rationale": "Why this one: It names a quiet form of grief without asking readers to justify it."
+  },
+  {
+   "published": true,
+   "topicId": "bbfa0b7f-72ea-4fd2-bfff-6eef582c49ec",
+   "archetype": "single_statement",
+   "title": "Protective Patterns, Not Defects",
+   "hook": "Old experiences can shape present reactions without defining a person.",
+   "cardLine": "Patterns, Not Defects",
+   "eyebrow": "HOW THE WORK WORKS",
+   "payload": {
+    "statement": "Old experiences can shape present reactions without defining your whole self."
+   },
+   "caption": "A protective pattern can begin as an understandable response to something difficult, uncertain, or overwhelming.\n\nLater, that same response may show up in moments that do not seem connected to the past: pulling away, staying alert, overexplaining, going quiet, or trying to manage every detail.\n\nThis does not mean there is something defective about you. It may mean a part of you learned to watch carefully, prepare, or protect itself.\n\nTherapy can offer space to notice these patterns with curiosity and consider what they may be asking for now.",
+   "altText": "A simple text card with the heading “Patterns, Not Defects.” The card statement reads: “Old experiences can shape present reactions without defining your whole self.”",
+   "rationale": "Why this one: It frames protective responses with compassion while inviting reflection without labels or promises."
+  },
+  {
+   "published": false,
+   "topicId": "a2929d0d-8f75-4b83-b6c2-39bb9950f65f",
+   "archetype": "comparison_pair",
+   "title": "EFT Beyond Couples",
+   "hook": "Myth: EFT is only for relationship conflict; it can also make room for an unwanted life transition.",
+   "cardLine": "EFT beyond conflict",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "left": [
+     {
+      "gloss": "conflict takes center stage",
+      "label": "Couples only"
+     },
+     {
+      "gloss": "the relationship alone",
+      "label": "One focus"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "mixed feelings need room",
+      "label": "Life changes"
+     },
+     {
+      "gloss": "a life shift matters too",
+      "label": "Wider attention"
+     }
+    ]
+   },
+   "caption": "A common myth is that EFT is only for relationship conflict.\n\nEFT, or emotionally focused therapy, is often associated with couples work. It may also offer a structured space for an individual facing an unwanted life transition.\n\nA move, a change in work, a shift in family life, or a loss can bring several feelings at once. There may be grief, uncertainty, relief, anger, or feelings that do not fit a simple story.\n\nEFT can make room to notice those emotions and the patterns of connection that feel especially present during change. The focus does not have to be a conflict between two people for the experience to matter.",
+   "altText": "Comparison card titled “EFT beyond conflict.” Left column: “Couples only — conflict takes center stage” and “One focus — the relationship alone.” Right column: “Life changes — mixed feelings need room” and “Wider attention — a life shift matters too.”",
+   "rationale": "Why this one: It gently broadens understanding of EFT without promising what therapy will do."
+  },
+  {
+   "published": false,
+   "topicId": "f83c50af-db23-49b5-9cb2-8d3f84da7a5b",
+   "archetype": "single_statement",
+   "title": "Grieving the Unlived Plan",
+   "hook": "An unwanted change can bring grief for a future that never got to happen.",
+   "cardLine": "Grieving the unlived plan",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "statement": "An unwanted change can bring grief for the future you had been preparing to live."
+   },
+   "caption": "Some grief is tied to what happened. Some grief is tied to what was expected to happen next.\n\nAn unwanted change can leave a person mourning a plan: a move that did not happen, work that changed shape, a relationship imagined differently, a body or season of life that did not follow the expected path.\n\nThis kind of grief may be hard to name because there is no single event to point to. Still, the loss can be real.\n\nThere may be room to acknowledge both what is here now and what was hoped for. Therapy can offer a place to put language to that loss, at your own pace.\n\nIf this feels close to your experience, you are welcome to reach out to Ember Consulting.",
+   "altText": "A simple text card with the heading “Grieving the unlived plan.” The statement reads: “An unwanted change can bring grief for the future you had been preparing to live.”",
+   "rationale": "Why this one: It names an often-overlooked loss and gently invites reflection or support."
+  },
+  {
+   "published": true,
+   "topicId": "b763b4c4-3048-4952-bbeb-890a8fa5b21e",
+   "archetype": "single_statement",
+   "title": "The Rules That Stayed",
+   "hook": "Long-ago experiences can leave behind rules that no longer fit the life you want.",
+   "cardLine": "Old rules can linger.",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "statement": "Long-ago experiences can influence the standards you use to judge yourself today."
+   },
+   "caption": "Some rules may have made sense once: stay quiet, do it alone, expect disappointment, keep moving.\n\nOver time, a rule can continue to guide choices even when it no longer reflects what matters to you.\n\nTherapy can be a place to notice those rules with care, explore where they came from, and consider what you want to carry forward.\n\nIf this feels relevant, Ember Consulting welcomes an inquiry.",
+   "altText": "A warm neutral card with the headline, “Old rules can linger.” The statement reads: “Long-ago experiences can leave behind rules that no longer fit the life you want.”",
+   "rationale": "Why this one: It invites reflection on learned patterns without assuming their cause or promising change."
+  },
+  {
+   "published": false,
+   "topicId": "fda460e3-9a69-4f0c-a6d9-04d2b0c65f18",
+   "archetype": "single_statement",
+   "title": "Time Does Not Erase Impact",
+   "hook": "A long-ago experience can still shape the present without meaning someone is stuck in the past.",
+   "cardLine": "Time may not erase impact",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "statement": "A long-ago experience may still shape the present without meaning a person is stuck in the past."
+   },
+   "caption": "Time can create distance from an experience without erasing its influence.\n\nSomething from long ago may still show up in the present: a strong reaction, a habit of bracing, or a feeling that arrives before words do.\n\nThat does not mean someone is living in the past. It may simply mean the experience mattered.\n\nTherapy can offer a place to notice these patterns with care and curiosity.",
+   "altText": "A warm, minimal card with the headline, “Time may not erase impact.” Below it reads: “A long-ago experience may still shape the present without meaning a person is stuck in the past.”",
+   "rationale": "It gently corrects a common myth without making assumptions about anyone’s history."
+  },
+  {
+   "published": true,
+   "topicId": "61d8b67f-8007-4a1d-b168-f8533164901a",
+   "archetype": "surface_and_beneath",
+   "title": "Making Room for Unchosen Grief",
+   "hook": "At an unwanted crossroads, productivity can hide grief for a future that no longer fits.",
+   "cardLine": "Room for unchosen grief",
+   "eyebrow": "BEHIND THE PRACTICE",
+   "payload": {
+    "beneath": {
+     "gloss": "a future quietly released",
+     "label": "Unchosen grief"
+    },
+    "surface": {
+     "gloss": "every task still finished",
+     "label": "Staying productive"
+    }
+   },
+   "caption": "At an unwanted crossroads, productivity can become a way to stay moving while grief waits nearby.\n\nThe grief may not be only for what happened. It may also be for a future once imagined: a role, relationship, place, plan, or version of daily life that no longer fits.\n\nThere is no need to make that grief efficient. In therapy, there can be room to notice what was hoped for, what has changed, and what matters now—without requiring an immediate next step.\n\nEmber Consulting offers a steady space for this kind of reflection.",
+   "altText": "A quiet text card. The heading reads, “Room for unchosen grief.” Two panels read: “Staying productive — every task still finished” and “Unchosen grief — a future quietly released.”",
+   "rationale": "Why this one: It names the hidden grief beneath productivity without asking readers to rush toward a solution."
+  },
+  {
+   "published": false,
+   "topicId": "fb1ba5ce-3483-49fc-9b93-73b7e685d725",
+   "archetype": "single_statement",
+   "title": "Plans After the Pivot",
+   "hook": "When life changes without consent, the mind may keep arguing with the original plan.",
+   "cardLine": "Plans after the pivot",
+   "eyebrow": "NOT THE ONLY ONE",
+   "payload": {
+    "statement": "When plans change without consent, it can be hard to explain the loss to people who only see the practical change."
+   },
+   "caption": "When life changes without consent, the mind may keep returning to the original plan.\n\nThat return can look like bargaining, replaying decisions, or feeling unable to picture what comes next. It does not necessarily mean you are doing change incorrectly. Sometimes it means the plan mattered.\n\nYou do not have to feel grateful for a pivot before you can begin noticing what is here now. A changed direction may hold grief alongside possibility.",
+   "altText": "A simple text card with the heading “Plans after the pivot.” The card reads: “When plans change without consent, it can take time to orient to the life in front of you.”",
+   "rationale": "Why this one: It normalizes the disorientation that can follow an unwanted change without rushing acceptance."
+  },
+  {
+   "published": true,
+   "topicId": "87cd0f2b-1418-45c4-ae12-fbaf60993a46",
+   "archetype": "lettered_technique",
+   "title": "Unexpected Crossroads",
+   "hook": "You do not have to call an unwanted change a gift before meeting it honestly.",
+   "cardLine": "Meet change honestly",
+   "eyebrow": "MYTH, GENTLY CORRECTED",
+   "payload": {
+    "items": [
+     {
+      "gloss": "beneath you today",
+      "label": "Feel your footing"
+     },
+     {
+      "gloss": "without forcing gratitude",
+      "label": "Acknowledge the loss"
+     },
+     {
+      "gloss": "in this new place",
+      "label": "Consider what matters"
+     },
+     {
+      "gloss": "at your own pace",
+      "label": "Take next steps"
+     }
+    ],
+    "acronym": "FACE"
+   },
+   "caption": "An unwanted change does not need a silver lining before it deserves attention.\n\nSometimes a crossroads arrives without an invitation: a plan changes, a role ends, a relationship shifts, or a path no longer feels available.\n\nCalling it a gift before you are ready can turn reflection into pressure. There may be room for disappointment, anger, uncertainty, or grief alongside any later meaning you make.\n\nYou do not have to decide what this change means today. You can begin by noticing where you are, naming what has been lost, and taking the next step that feels possible.",
+   "altText": "A warm neutral card titled “Meet change honestly.” It uses the acronym FACE: Feel your footing beneath you today; Acknowledge the loss without forcing gratitude; Consider what matters in this new place; Ease into next steps at your own pace.",
+   "rationale": "Why this one: It gently challenges forced positivity while offering a grounded way to approach an unwanted transition."
+  },
+  {
+   "published": false,
+   "topicId": "85b52369-615b-454e-ba66-c589d4a26cc5",
+   "archetype": "concentric_control",
+   "title": "What the Past Cannot Decide",
+   "hook": "A past event may be fixed, while today’s next response still has room to change.",
+   "cardLine": "The past cannot decide",
+   "eyebrow": "A SOFT INVITATION",
+   "payload": {
+    "rings": [
+     {
+      "gloss": "cannot be revised",
+      "label": "What happened"
+     },
+     {
+      "gloss": "may be noticed now",
+      "label": "What is here"
+     },
+     {
+      "gloss": "may still have room to change",
+      "label": "Your next response"
+     }
+    ]
+   },
+   "caption": "A past event may be fixed: it happened when it happened.\n\nThat does not mean every response available today was decided then.\n\nSometimes there is room to pause, notice what is here now, and consider a next step that fits the present. The room may feel small. It can still be worth noticing.\n\nTherapy can be a place to look at that room with care—not to revise the past, but to consider what you want to carry forward.\n\nIf this feels relevant, you are welcome to reach out to Ember consulting.",
+   "altText": "A concentric-circle card titled “The past cannot decide.” The outer ring reads “What happened: cannot be revised.” The middle ring reads “What is here: may be noticed now.” The center reads “Your next response: may still have room to change.”",
+   "rationale": "Why this one: It gently separates what happened from the choices that may remain available today."
+  }
+ ]
+}

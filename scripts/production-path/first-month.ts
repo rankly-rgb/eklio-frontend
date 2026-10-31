@@ -42,6 +42,7 @@ import { serverDrawPort, serverBankGuardPort, type DrawRpcClient } from "@/lib/c
 import { serverReassertTopics,
   serverPreflightPort,
   serverInsertPort,
+  serverRemovePort,
   serverMonthRowPort,
   serverReleaseTopics,
   type MonthRpcClient,
@@ -310,6 +311,7 @@ async function main() {
       closeMonthRow: (id, status) => monthRow.close(id, status),
       assembleFor: (monthId) => ({
         insert: serverInsertPort(rpc, { brandKitId: KIT, monthId }),
+        remove: serverRemovePort(rpc, { monthId }),
         credits: serverCreditPort(rpc as never, { model: "replayed", month: TARGET_MONTH }),
       }),
       /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */
@@ -453,6 +455,7 @@ async function main() {
       closeMonthRow: (id, status) => monthRowPort.close(id, status),
       assembleFor: (monthId) => ({
         insert: serverInsertPort(rpc, { brandKitId: KIT, monthId }),
+        remove: serverRemovePort(rpc, { monthId }),
         credits: serverCreditPort(rpc as never, { model: "replayed", month: resumeMonth }),
       }),
       /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */
