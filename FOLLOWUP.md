@@ -4254,3 +4254,35 @@ application : `schema_fingerprint.f81_expected.txt` ; schema-drift est rouge sur
 ⚠ Reste ouvert : les cartes déposées dans `content-assets/{kit}/cards/{item}/` d'un mois retiré
 ne sont pas supprimées (le SQL ne doit pas écrire dans `storage.objects`). Inoffensif — la clé
 inclut l'identifiant du post, qui n'existe plus — mais ce sont des octets orphelins.
+
+## F85 — ⚠ le post « carte du cabinet » publie une consigne interne en légende
+
+Vu dans chaque répétition de novembre (2026-10-31) : le post `practitioner_card` prend pour
+légende ET pour ligne d'image le `hook` de son sujet de banque — « A practitioner card can
+explain how EFT makes room for emotions after an unwanted life change. » — qui est une
+description du format, pas un texte à publier. La carte elle-même dit « EMDR / Oakland, CA » ;
+la justification dit « Assembled from the brief, not written. ». Aucun contrôle ne le voit : le
+texte est grammatical, sans promesse, sans répétition. À corriger dans `openai-writer.ts`
+(voie praticien, ligne ~145) et dans la banque. Non fait : hors périmètre de cette session.
+
+## F86 — le harnais garde son ancienne façon de remplacer une écriture refusée
+
+`scripts/local-render/20-month.ts` prend encore le premier du banc (`spare.shift()`) ; le module
+prend le premier remplaçant qui garde le mois sans constat transversal (trou trouvé en
+répétition : un remplaçant a ramené « You do not have to… » dans un mois livré). La dette de
+duplication est déjà datée par `one-assembly-two-callers.test.ts`.
+
+## F87 — une régénération n'a qu'un essai sous le plafond du mois
+
+Le plafond (3 $) compte ce que les runs abandonnés du mois ont payé (F71). Novembre retiré porte
+0,634 $ ; un essai estimé au pire à 1,98 $ passe (2,61 $). S'il est refusé, le suivant ne passe
+plus (≈ 1,30 + 1,98 > 3) et le mois reste `failed` jusqu'à une décision. Mesuré en répétition,
+avec le contrôle de variété élargi au titre : 2 mois livrés sur 3 essais réels (le refusé est
+tombé sur `mix.dominant` + `variety.*`, banc épuisé). La cause de fond est F80.
+
+## F88 — la répétition ne prouve pas le dépôt dans `content-assets`
+
+Pile locale sans Storage (Docker indisponible : ECR et Docker Hub refusés). Prouvé en local : les
+30 cartes composées en PNG par le vrai chemin (`card-store` + rasteriseur, polices réelles),
+2 s. Non prouvé : l'`upload` réel et la policy de lecture. La réponse du cron dit
+`cards.stored` / `cards.failed` : c'est là qu'il faut le lire au premier mois de production.

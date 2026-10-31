@@ -88,6 +88,8 @@ describe("le mois livré le 2026-09-24 est refusé, et sur quatre motifs", () =>
       "text.clinicalClaim",
       "text.clinicalClaim",
       "text.clinicalClaim",
+      /* Depuis le 2026-10-31 : le titre imprimé est une ouverture (`checkVariety`). */
+      "variety.opening",
     ]);
   });
 

@@ -1,4 +1,4 @@
-import { checkPostAlone, type Finding, type PostContext } from "@/lib/content/month-checks";
+import { checkAcrossPosts, checkPostAlone, type Finding, type PostContext } from "@/lib/content/month-checks";
 import { asMonthPost, selectDeliverable, type Deliverable } from "@/lib/content/month/select";
 import { aPurchaseWouldHelp, type CreditPort, type ReserveRefusal } from "@/lib/credits/paid-call";
 import type { CompletenessVerdicts } from "@/lib/content/writing-checks";
@@ -340,9 +340,21 @@ export async function assembleMonth<T extends Assemblable>(
        * budget de mots, cinq gâchettes déontologiques. La bonne réponse à un
        * refus d'écriture n'est pas de rendre le mois court : c'est de prendre le
        * suivant, qui est déjà passé par le portillon.
+       *
+       * ⚠ ET LE SUIVANT DOIT GARDER LE MOIS PROPRE (2026-10-31). Le premier du
+       * banc était pris tel quel, sans repasser les contrôles TRANSVERSAUX :
+       * répétition de novembre, une écriture refusée, et le remplaçant a
+       * ramené « You do not have to… » une seconde fois — un mois livré avec un
+       * constat de variété que la sélection avait écarté. Le remplaçant est donc
+       * le premier qui laisse le mois prévu sans constat transversal ; s'il n'y
+       * en a aucun, le créneau reste vide, et le mois court est refusé (F77).
        */
-      const replacement = spare.shift();
-      if (!replacement) continue;
+      const at = spare.findIndex((candidate) => {
+        const planned = queue.map((p, i) => (i === index ? candidate : p));
+        return checkAcrossPosts({ ...input.context, posts: planned.map(asMonthPost), wanted: input.wanted }).length === 0;
+      });
+      if (at === -1) continue;
+      const [replacement] = spare.splice(at, 1);
       replacements += 1;
       queue[index] = replacement;
       index -= 1;

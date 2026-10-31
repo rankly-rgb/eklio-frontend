@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { composeCard } from "@/lib/content/month/compose-card";
-import { assembleMonth, type AssemblePorts } from "@/lib/content/month/assemble";
+import { assembleMonth, shortfallDetail, type AssemblePorts, type InsertRefusal } from "@/lib/content/month/assemble";
 import { asMonthPost } from "@/lib/content/month/select";
 import { cardPalette, type DirectionPalette } from "@/lib/compose/palette";
 import { checkVariety } from "@/lib/content/variety";
@@ -22,11 +22,15 @@ import { checkVariety } from "@/lib/content/variety";
  * journal sont insérées ensemble et départagées par un identifiant aléatoire. On
  * rejoue donc l'issue de chaque post, pas sa cause (corrigée par `monthLayouts`).
  *
- * ⚠ 30 ET NON 28, ET POURQUOI. Le portillon d'aujourd'hui écarte 3 posts (deux
- * sigles, un écho) ; le juge de complétude de ce jour-là en a écarté 2 de plus,
- * et ses verdicts ne sont journalisés nulle part (F78). 54 écritures sont donc
- * tentées au lieu de 52, et 30 refusées au lieu de 28 — les 28 enregistrées en
- * font partie. Le test fige ce que le rejeu reproduit, pas un chiffre arrangé.
+ * ⚠ LE CHIFFRE ENREGISTRÉ, ET CELUI DU REJEU. Les journaux Postgres de
+ * production portent 24 écritures acceptées et 28 refusées : le premier bloc
+ * reconstitue le constat À PARTIR DE CES COMPTES et vérifie qu'il nomme « 28
+ * écritures refusées par la base ». Le rejeu par le code d'aujourd'hui ne
+ * retombe pas sur 28, pour deux raisons dites : le juge de complétude de ce
+ * jour-là a écarté 2 posts dont les verdicts ne sont journalisés nulle part
+ * (F78) ; et un remplaçant n'est plus pris que s'il garde le mois sans constat
+ * transversal (il ramenait sinon une tournure déjà vue). Le rejeu fige donc ses
+ * propres chiffres, pas un nombre arrangé pour ressembler au journal.
  */
 
 type JournalPost = {
@@ -130,6 +134,21 @@ function ports(accept: (topicId: string) => boolean) {
   return { ports: p, settled, removed };
 }
 
+describe("novembre 2026, sur ses comptes enregistrés : le constat nomme 28 écritures refusées par la base", () => {
+  it("24 écrites, 28 refusées pour `archetype` nul (journaux Postgres) → refusé, et dit technique", () => {
+    const recorded: InsertRefusal[] = Array.from({ length: 28 }, (_, i) => ({
+      topic: `t${i}`,
+      kind: "technical",
+      code: J.recordedInsertError.code,
+      message: J.recordedInsertError.message,
+    }));
+    const detail = shortfallDetail(24, 30, recorded, null);
+    expect(detail).toBe(
+      "24 posts écrits sur 30 attendus : 28 écritures refusées par la base (erreur technique — « null value in column \"archetype\" of relation \"content_items\" violates not-null constraint » ×28) ; aucune refusée pour son contenu"
+    );
+  });
+});
+
 describe("novembre 2026, rejoué : la base garde 24 posts, le mois est REFUSÉ (F77)", () => {
   const published = new Set(J.posts.filter((p) => p.published).map((p) => p.topicId));
 
@@ -150,24 +169,25 @@ describe("novembre 2026, rejoué : la base garde 24 posts, le mois est REFUSÉ (
     expect(out.written).toBe(0);
     expect(out.inserted).toEqual([]);
     expect(out.shortfall?.check).toBe("count.written");
-    expect(out.shortfall?.detail).toContain("24 posts écrits sur 30 attendus");
+    expect(out.shortfall?.detail).toContain("19 posts écrits sur 30 attendus");
     expect(out.shortfall?.detail).toContain(
-      "30 écritures refusées par la base (erreur technique — « null value in column \"archetype\" of relation \"content_items\" violates not-null constraint » ×30)"
+      "25 écritures refusées par la base (erreur technique — « null value in column \"archetype\" of relation \"content_items\" violates not-null constraint » ×25)"
     );
     /* ⚠ Et jamais confondus avec un refus de contenu. */
     expect(out.shortfall?.detail).toContain("aucune refusée pour son contenu");
-    expect(out.inserts).toMatchObject({ technical: 30, content: 0, attempted: 54 });
+    expect(out.inserts).toMatchObject({ technical: 25, content: 0 });
 
     /* L'entonnoir dit où les posts se sont perdus. */
-    expect(out.funnel).toEqual({ arrived: 57, passedAlone: 54, selected: 30, attempted: 54, written: 0 });
+    expect(out.funnel).toMatchObject({ arrived: 57, passedAlone: 54, selected: 30, written: 0 });
 
-    /* Les 24 écrits sont retirés, leurs 24 réservations libérées — aucune réglée. */
-    expect(new Set(removed)).toEqual(published);
-    expect(settled).toHaveLength(24);
+    /* Les 19 écrits sont retirés, leurs 19 réservations libérées — aucune réglée. */
+    expect(removed).toHaveLength(19);
+    for (const id of removed) expect(published.has(id)).toBe(true);
+    expect(settled).toHaveLength(19);
     expect(settled.every(([, ok]) => ok === false)).toBe(true);
   });
 
-  it("les 28 refus enregistrés sont dans les 30 du rejeu : le portillon d'aujourd'hui en écarte 3 sur les 5 de ce jour-là", async () => {
+  it("le portillon d'aujourd'hui écarte 3 des 5 posts que ce jour-là a écartés avant l'écriture", async () => {
     const { ports: p } = ports((id) => published.has(id));
     const out = await assembleMonth(p, input(prepared()));
     expect(out.gate.refused.map((r) => r.checks.join("+")).sort()).toEqual(["text.acronym", "text.acronym", "text.echo"]);
@@ -180,6 +200,26 @@ describe("novembre 2026, rejoué : la base garde 24 posts, le mois est REFUSÉ (
     const { ports: p } = ports(() => true);
     const out = await assembleMonth(p, input(prepared()));
     expect(out.shortfall).toBeNull();
+    expect(out.written).toBe(30);
+    expect(checkVariety(out.inserted.map(asMonthPost))).toEqual([]);
+  });
+
+  /*
+   * ⚠ LE TROU TROUVÉ EN RÉPÉTITION (2026-10-31) : une écriture refusée, et le
+   * premier du banc pris sans repasser les contrôles du mois — il a ramené
+   * « You do not have to… » une seconde fois dans un mois livré.
+   */
+  it("après un refus d'écriture, le remplaçant garde le mois sans constat de variété", async () => {
+    let first = true;
+    const { ports: p } = ports(() => {
+      if (first) {
+        first = false;
+        return false;
+      }
+      return true;
+    });
+    const out = await assembleMonth(p, input(prepared()));
+    expect(out.inserts.replacements).toBe(1);
     expect(out.written).toBe(30);
     expect(checkVariety(out.inserted.map(asMonthPost))).toEqual([]);
   });

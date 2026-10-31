@@ -24,6 +24,25 @@ const asPost = (p: NovemberPost): PostUnderCheck => ({
 });
 const published = NOVEMBER_2026.filter((p) => p.published).map(asPost);
 
+const WORDS = ["alder", "birch", "cedar", "dune", "ember", "fern", "grove", "heath", "iris", "juniper", "kelp", "larch", "moss", "nettle", "oak", "pine", "quill", "reed", "sage", "thyme", "umber", "vale", "willow", "yarrow", "zinnia", "aster", "bramble", "clover", "daisy", "elm"];
+
+describe("le titre imprimé sur la carte est une ouverture", () => {
+  it("dix titres en « When… » refusent un mois, même quand l'accroche et la légende varient", () => {
+    const posts: PostUnderCheck[] = Array.from({ length: 30 }, (_, i) => ({
+      archetype: "single_statement",
+      title: `t${i}`,
+      cardLine: i < 10 ? `When thing ${i} happens` : `${WORDS[i]} ${WORDS[29 - i]} stands`,
+      payload: {},
+      hook: `${WORDS[(i + 7) % 30]} ${WORDS[(i + 11) % 30]} opens.`,
+      caption: `${WORDS[(i + 13) % 30]} ${WORDS[(i + 17) % 30]} follows.`,
+    }));
+    const findings = checkVariety(posts);
+    expect(findings.map((f) => f.check)).toEqual(["variety.opening"]);
+    expect(findings[0].detail).toContain("10 posts sur 30");
+    expect(findings[0].detail).toContain("(when…)");
+  });
+});
+
 describe("les constructions d'ouverture se replient en familles", () => {
   it("« An unwanted / An unchosen / An unwanted crossroads » sont une seule construction", () => {
     const families = [
@@ -77,7 +96,8 @@ describe("mesuré sur le mois de novembre 2026 tel qu'il est sorti", () => {
     const report = measureVariety(published);
     const count = (family: string) => report.openings.find((o) => o.family === family)?.posts.length;
     expect(count("lead:a unwanted")).toBe(6);
-    expect(count("lead:when")).toBe(4);
+    /* 7 depuis que le titre imprimé compte (« When plans change », « When the past interrupts »…). */
+    expect(count("lead:when")).toBe(7);
     expect(count("neg:emdr")).toBe(4);
     expect(report.negations.map((n) => n.key).sort()).toEqual(["cbt not ask", "you not have"]);
   });

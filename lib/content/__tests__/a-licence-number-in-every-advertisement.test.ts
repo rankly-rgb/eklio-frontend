@@ -175,7 +175,12 @@ describe("un mois produit avant la mention est refusé", () => {
       modalities: ["emdr"], practiceName: "Corin Aldhelm Therapy",
       licenceMention: "LMFT 12345",
     });
-    expect([...new Set(findings.map((f) => f.check))]).toEqual(["licence.missing"]);
+    /*
+     * ⚠ PLUS `variety.opening` DEPUIS LE 2026-10-31 : ce mois de référence ouvre dix
+     * titres sur trente par « When… » (voir `a-month-that-passes.test.ts`). La
+     * licence reste la seule raison qui touche chaque post.
+     */
+    expect([...new Set(findings.map((f) => f.check))].sort()).toEqual(["licence.missing", "variety.opening"]);
   });
 
   /*
@@ -189,7 +194,8 @@ describe("un mois produit avant la mention est refusé", () => {
       posts, direction: DIRECTION, wanted: 30,
       modalities: ["emdr"], practiceName: "Corin Aldhelm Therapy",
     });
-    expect(findings).toEqual([]);
+    /* ⚠ Le seul constat qui reste est celui de ses titres, pas de sa licence. */
+    expect(findings.map((f) => f.check)).toEqual(["variety.opening"]);
   });
 
   /* ⚠ Et un mois qui la porte passe. */

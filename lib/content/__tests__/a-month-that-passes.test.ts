@@ -50,8 +50,20 @@ describe("le mois livré le 2027-01 passe, et doit continuer à passer", () => {
     expect(posts).toHaveLength(30);
   });
 
-  it("aucun constat, sur aucun contrôle", () => {
-    expect(findings().map((f) => `${f.check} — ${f.detail.slice(0, 90)}`)).toEqual([]);
+  /*
+   * ⚠ UN CONSTAT DEPUIS LE 2026-10-31, ET IL EST JUSTE. Quand le contrôle de
+   * variété a appris à lire le titre IMPRIMÉ sur la carte, ce mois de référence a
+   * montré dix ouvertures sur trente en « When… » (« When busy is a cover »,
+   * « When rest feels unsafe »…) — la monotonie même que la relecture de novembre
+   * a reprochée. Le mois ne passe plus ; aucun AUTRE contrôle ne parle, et c'est
+   * ce que ce test garde.
+   */
+  it("aucun constat hors la variété de ses titres, qui est mesurée et dite", () => {
+    const all = findings();
+    expect(all.filter((f) => !f.check.startsWith("variety.")).map((f) => `${f.check} — ${f.detail.slice(0, 90)}`)).toEqual([]);
+    expect(all.filter((f) => f.check.startsWith("variety.")).map((f) => f.detail.slice(0, 69))).toEqual([
+      "10 posts sur 30 s'ouvrent sur la même construction (when…), au plus 4",
+    ]);
   });
 
   /*

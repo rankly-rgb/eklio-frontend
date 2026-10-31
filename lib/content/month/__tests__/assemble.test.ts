@@ -12,11 +12,13 @@ import type { CreditPort, ReserveRefusal } from "@/lib/credits/paid-call";
  */
 
 /** Un post propre : rien qu'un contrôle puisse reprocher. */
+const TITLE_OPENERS = ["Rest is real", "Slow mornings count", "Boundaries hold", "Quiet weeks matter", "Small steps add up", "Sleep is care", "Care takes time", "Some days are heavy"];
 const OPENERS = ["Some weeks,", "Rest can be", "A boundary is", "Quiet mornings:", "Most people", "Today,", "Sleep is", "Small steps:"];
 
 function post(n: number, over: Partial<Assemblable> = {}): Assemblable {
   return {
-    cardLine: `A quiet line ${n}`,
+    /* ⚠ Des titres variés : le titre imprimé est une ouverture pour `checkVariety`. */
+    cardLine: `${TITLE_OPENERS[(n - 1) % TITLE_OPENERS.length]} ${n}`,
     composeArchetype: "single_statement",
     payload: { archetype_key: "single_statement", statement: `Something ordinary happens ${n}.` },
     svg: null,

@@ -115,7 +115,13 @@ describe("les deux assemblages appellent la même séquence", () => {
     ["le module", MODULE],
     ["le harnais", harnessAssembly()],
   ])("%s rejoue le même rang avec le remplaçant", (_label, src) => {
-    expect(src).toContain("spare.shift()");
+    /*
+     * ⚠ LE MODULE CHOISIT SON REMPLAÇANT DEPUIS LE 2026-10-31 (`spare.splice(at, 1)`,
+     * le premier qui garde le mois sans constat transversal) ; le harnais prend
+     * encore le premier du banc. Le rang rejoué reste le même — c'est ce que ce
+     * test garde. La divergence est dans FOLLOWUP (F86).
+     */
+    expect(src).toMatch(/spare\.shift\(\)|spare\.splice\(at, 1\)/);
     expect(src).toMatch(/queue\[index\] = replacement/);
     expect(src).toMatch(/index -= 1/);
   });

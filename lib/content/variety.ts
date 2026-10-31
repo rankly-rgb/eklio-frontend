@@ -143,9 +143,19 @@ export function negationsIn(text: string): string[] {
   return [...out];
 }
 
-/** Ce qui ouvre un post : sa ligne d'image, puis la première phrase de sa légende. */
+/**
+ * Ce qui ouvre un post : le titre IMPRIMÉ sur la carte, sa ligne d'image, la
+ * première phrase de sa légende.
+ *
+ * ⚠ LE TITRE MANQUAIT, ET C'EST LA SURFACE LA PLUS VUE. Mesuré sur la répétition
+ * de novembre (2026-10-31) : contrôle vert, et 7 titres de carte sur 30 qui
+ * s'ouvrent sur « When… » — dont « When plans change » et « When the plan
+ * changes ». La règle lisait l'accroche et la légende, pas ce qui est dessiné.
+ */
 function openingsOf(post: PostUnderCheck): string[] {
-  return [post.hook, firstSentence(post.caption)].filter((t): t is string => !!t && t.trim().length > 0);
+  return [post.cardLine, post.hook, firstSentence(post.caption)].filter(
+    (t): t is string => !!t && t.trim().length > 0
+  );
 }
 
 /**
