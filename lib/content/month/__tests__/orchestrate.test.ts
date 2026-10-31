@@ -84,12 +84,15 @@ function topic(n: number): DrawnTopic {
   };
 }
 
+const OPENERS = ["Some weeks,", "Rest can be", "A boundary is", "Quiet mornings:", "Most people", "Today,", "Sleep is", "Small steps:"];
+
 function written(n: number): WrittenPost {
   return {
     topicId: `t${n}`,
     cardLine: TITLES[(n - 1) % TITLES.length].slice(0, 30),
     payload: { statement: `${TITLES[(n - 1) % TITLES.length]}, and it shows up early.` },
-    caption: `Une légende ordinaire, la ${n}.`,
+    /* ⚠ Des ouvertures variées : le contrôle de variété (novembre 2026) refuse un mois qui s'ouvre toujours pareil. */
+    caption: `${OPENERS[(n - 1) % OPENERS.length]} une légende ordinaire, la ${n}.`,
     altText: `Un alternatif ${n}.`,
     rationale: "parce que",
     /* ⚠ Un surtitre vide est un défaut : le portillon refuse `eyebrow.empty`. */
@@ -187,6 +190,7 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
     })),
   };
 
+  const cardsAt: string[] = [];
   const ports: OrchestratePorts = {
     preflight: {
       monthStatus: async () => null,
@@ -227,6 +231,11 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
       insert: insertPort,
       credits,
     }),
+    /* Le statut du mois au moment où ses cartes sont gardées : elles doivent précéder `proposed`. */
+    storeCards: vi.fn(async (monthId: string) => {
+      cardsAt.push(months.find((m) => m.id === monthId)?.status ?? "absent");
+      return { stored: inserted.length, failed: [] };
+    }),
     releaseTopics: vi.fn(async (ids) => {
       released.push(ids);
       /* Rendu, il redevient tirable : la banque le reprend. */
@@ -247,7 +256,7 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
     }
   };
 
-  return { ports, journal: j, inserted, reserved, released, writer, credits, months, hold };
+  return { ports, journal: j, inserted, reserved, released, writer, credits, months, hold, cardsAt };
 }
 
 const input = (over: Record<string, unknown> = {}) => ({
@@ -306,6 +315,28 @@ describe("un mois sort de bout en bout", () => {
       expect(post.svg, "une carte sans SVG : elle n'est pas vectorielle").toContain("<svg");
       expect(post.svg).toContain("12345");
     }
+  });
+
+  it("les cartes du mois sont gardées AVANT que le mois s'ouvre, une fois (novembre 2026)", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(w.ports.storeCards).toHaveBeenCalledTimes(1);
+    expect(w.ports.storeCards).toHaveBeenCalledWith("month-1");
+    expect(w.cardsAt, "le mois s'ouvrait à elle sans ses cartes").toEqual(["generating"]);
+    expect(w.months[0].status).toBe("proposed");
+    expect(out.cards).toEqual({ stored: 3, failed: [] });
+  });
+
+  it("un dépôt de cartes qui échoue ne fait pas échouer un mois payé, et il est rendu", async () => {
+    const w = world();
+    vi.mocked(w.ports.storeCards).mockResolvedValueOnce({ stored: 2, failed: [{ itemId: "i3", why: "dépôt : boom" }] });
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(w.months[0].status).toBe("proposed");
+    expect(out.cards.failed).toEqual([{ itemId: "i3", why: "dépôt : boom" }]);
   });
 
   it("chaque post écrit porte en cachet l'État que le préalable a vérifié (F76)", async () => {
@@ -674,6 +705,8 @@ describe("F55 — un mois qui garde un constat ne s'écrit pas", () => {
     expect(out.ok).toBe(false);
     if (out.ok) return;
     expect(out.stage).toBe("assemble");
+    /* ⚠ Un mois refusé ne dépose aucune carte : il n'y a rien à montrer. */
+    expect(w.ports.storeCards).not.toHaveBeenCalled();
     expect(out.remaining?.length ?? 0).toBeGreaterThan(0);
     expect(w.inserted, "des posts écrits pour un mois refusé").toEqual([]);
   });

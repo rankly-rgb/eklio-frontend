@@ -27,6 +27,7 @@ import type { TextModel } from "@/lib/content/generate/provider";
 import type { DirectionPalette } from "@/lib/compose/palette";
 import type { RenderInput } from "@/lib/compose/types";
 import { withinCeiling, type SpendCeiling } from "@/lib/content/month/spend-ceiling";
+import type { StoredCards } from "@/lib/content/month/card-store";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -199,6 +200,16 @@ export type OrchestratePorts = {
    * de la laisser se découvrir à l'exécution.
    */
   assembleFor(monthId: string): AssemblePorts;
+  /*
+   * ⚠ LES CARTES DU MOIS, COMPOSÉES ET GARDÉES AVANT QUE LE MOIS S'OUVRE À ELLE.
+   *
+   * Novembre 2026 : 24 posts, aucune carte. L'étape 6 compose chaque carte pour
+   * prouver qu'elle tient, puis la jetait ; le flux affichait « Not composed
+   * yet ». Le port compose la carte DE L'ÉCRAN (`reviewCardFrom`) pour chaque
+   * post écrit et la dépose (`card-store.ts`). OBLIGATOIRE : un port facultatif
+   * est un port que le produit oublie de passer (F50).
+   */
+  storeCards(monthId: string): Promise<StoredCards>;
   /** Rend les sujets tirés mais non retenus. Un sujet gardé pour rien bloque le segment. */
   releaseTopics(topicIds: string[]): Promise<void>;
   /**
@@ -299,6 +310,8 @@ export type OrchestrateOutcome =
       };
       /** Ce que la rédaction de CE passage a dit d'elle-même. */
       writing: { asked: number; returned: number; refusedInJournal: number; stopped: WriteResult["stopped"] | null };
+      /** Les cartes gardées, et celles qui ne l'ont pas été — dites, pas tues. */
+      cards: StoredCards;
     };
 
 /** Un post rédigé ET composé, prêt pour l'assemblage. */
@@ -886,6 +899,17 @@ export async function orchestrateMonth(
   const publishedIds = month.inserted.map((p) => p.topicId);
   if (publishedIds.length > 0) await markSettled(ports.journal, runId, publishedIds);
 
+  /*
+   * ── 7b. LES CARTES, AVANT QUE LE MOIS S'OUVRE ───────────────────────────
+   *
+   * ⚠ AVANT `closeMonthRow` : un mois qui passe en `proposed` est un mois
+   * qu'elle peut ouvrir, et il doit arriver avec ses cartes faites. Un échec de
+   * dépôt ne fait pas échouer le mois — la carte sera composée à la demande, à
+   * l'identique — mais il est rendu dans `cards.failed`.
+   */
+  const cards: StoredCards =
+    month.written > 0 ? await ports.storeCards(monthId) : { stored: 0, failed: [] };
+
   /* ── 8. la publication : le coût reste lisible ──────────────────────── */
   /*
    * ⚠ LA LIGNE DU MOIS PASSE À `proposed` QUAND IL Y A QUELQUE CHOSE À RELIRE, et
@@ -906,7 +930,7 @@ export async function orchestrateMonth(
   if (released.length > 0) await ports.releaseTopics(released);
 
   return {
-    ok: true, month, costUsd, resumed, fallbacks: composeFallbacks, released, runId, monthId, editing, writing,
+    ok: true, month, costUsd, resumed, fallbacks: composeFallbacks, released, runId, monthId, editing, writing, cards,
   };
 }
 

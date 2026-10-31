@@ -63,6 +63,14 @@ const NOT_PUBLISHED: Record<string, string> = {
   svg: "le rendu, pas le texte : `checkTints` le lit pour la couleur",
   eyebrow: "contrôlé par `checkEyebrow`, qui a ses propres bornes de bande",
   footer: "contrôlé par `checkLicence`, qui y cherche la mention exacte",
+  /*
+   * ⚠ PUBLIÉE, MAIS PAS RÉDIGÉE PAR LE MOIS. La ligne d'image est le `hook` du
+   * sujet de banque, écrit une fois pour le segment et passé à
+   * `content_topics_ethics_gate` à l'entrée en banque. Avant novembre 2026 elle
+   * n'était dans aucun contrôle de mois ; elle y entre pour `checkVariety`, et
+   * `checkAdvertisingEthics` la lit (voir TEXT_BEARING ci-dessous).
+   */
+  hook: "texte de banque : `checkVariety` et `checkAdvertisingEthics` la lisent, la banque l'a relue à l'entrée",
 };
 
 describe("chaque surface publiée arrive dans les contrôles d'écriture", () => {
@@ -192,6 +200,7 @@ describe("les contrôles de texte prennent tous `written`", () => {
     CrisisRoute: "regarde le POST entier, toutes surfaces réunies",
     AdvertisingEthics:
       "lit TOUTES les surfaces, y compris le pied et le surtitre que la liste commune exempte",
+    Variety: "compare les TOURNURES d'ouverture entre posts, pas une ligne seule (novembre 2026)",
   };
 
   it("ceux qui prennent les posts regardent une structure, et le disent", () => {
@@ -229,6 +238,7 @@ const TEXT_BEARING: Record<string, "string" | "payload" | "fallback" | "not-text
   altText: "string",
   footer: "string",
   eyebrow: "string",
+  hook: "string",
   payload: "payload",
   archetype: "not-text",
   svg: "not-text",

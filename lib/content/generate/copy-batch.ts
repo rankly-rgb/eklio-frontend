@@ -1,6 +1,7 @@
 import CONFORMING_EXAMPLES from "./fixtures/conforming-examples.json";
 import type Anthropic from "@anthropic-ai/sdk";
 import { anthropicBody, type CopyCall } from "@/lib/content/generate/provider";
+import { rationaleBody } from "@/lib/content/rationale";
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { budgetErrors, type BudgetError } from "@/lib/compose/budget";
 import { CANVAS, CONTENT_MIN_AT_CANVAS, THUMB, TYPE } from "@/lib/compose/constants";
@@ -1012,7 +1013,7 @@ function validateCopyResponse(archetypeKey: string, raw: string): CopyResult {
     return { ...base, reason: "over_budget", budget, payload: deepTypographic(payload),
              caption: typeof o.caption === "string" ? typographicQuotes(o.caption) : undefined,
              altText: typeof o.alt_text === "string" ? typographicQuotes(o.alt_text) : undefined,
-             rationale: typeof o.rationale === "string" ? typographicQuotes(o.rationale) : undefined,
+             rationale: typeof o.rationale === "string" ? typographicQuotes(rationaleBody(o.rationale)) : undefined,
              cardLine: typeof o.card_line === "string" ? typographicQuotes(clampCardLine(o.card_line)) : undefined };
   }
 
@@ -1036,7 +1037,8 @@ function validateCopyResponse(archetypeKey: string, raw: string): CopyResult {
     cardLine: typeof o.card_line === "string" ? typographicQuotes(clampCardLine(o.card_line)) : undefined,
     caption: typographicQuotes(String(o.caption)),
     altText: typographicQuotes(String(o.alt_text)),
-    rationale: typeof o.rationale === "string" ? typographicQuotes(o.rationale) : "",
+    /* ⚠ Sans « Why this one: » : l'écran le pose, le modèle le recopie (lib/content/rationale.ts). */
+    rationale: typeof o.rationale === "string" ? typographicQuotes(rationaleBody(o.rationale)) : "",
   };
 }
 

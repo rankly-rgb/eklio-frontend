@@ -10,10 +10,14 @@ import {
 } from "@/lib/content/month/server-ports";
 import { serverCreditPort } from "@/lib/credits/server-port";
 import type { JournalDb } from "@/lib/content/month/journal-port";
+import { storeMonthCards } from "@/lib/content/month/card-store";
+import { serverCardRasteriser, serverCardStorePort } from "@/lib/content/month/card-store-server";
+import { licenceMentionFor } from "@/lib/content/review";
 import { openAiTextModel, worstCaseCallUsd, type OpenAiTransport, type SpendMeter } from "@/lib/content/generate/openai";
 import { openAiBody, OPENAI_COPY_MODEL } from "@/lib/content/generate/provider";
 import { copyCallFor } from "@/lib/content/generate/copy-batch";
 import { chooseArchetype, scheduleDates } from "@/lib/content/generate/plan";
+import { CONTENT_REGISTERS, IMAGE_ARCHETYPES, type ContentRegister } from "@/lib/data/content-catalogue";
 import { cardPalette, type DirectionPalette } from "@/lib/compose/palette";
 import { parseDirections } from "@/lib/data/brand-kit";
 import { FORMAT_FAMILIES } from "@/lib/content/month-checks";
@@ -46,6 +50,42 @@ import {
  * que la praticienne ne verra jamais. Un kit sans palette n'a pas de mois — il
  * n'y a rien à composer.
  */
+
+/**
+ * La mise en page de chaque candidat, `content_items.archetype` (NOT NULL).
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ *  ⚠ LE MOIS DE NOVEMBRE 2026 EST SORTI À 24 POSTS POUR CETTE SEULE RAISON
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Sans préférences enregistrées, le registre par défaut était `"educate"`. C'est
+ * une INTENTION (`content_intents`), pas un REGISTRE (`content_registers`) :
+ * `DEFAULT_ARCHETYPE["educate"]` vaut `undefined`, et `chooseArchetype` rendait
+ * `undefined`, puis `"notes"` (le repli d'une répétition), puis `undefined`…
+ * Un cast `as never` taisait le compilateur. Un post sur deux arrivait à la base
+ * sans mise en page : 28 écritures refusées (`null value in column "archetype"`),
+ * le banc épuisé, 24 posts écrits — tous en `notes`.
+ *
+ * Désormais : seuls les registres du catalogue comptent ; aucun registre connu,
+ * c'est tous les registres ; et une mise en page absente ou inconnue LÈVE ici,
+ * avant toute dépense, au lieu d'être découverte par la base après rédaction.
+ */
+export function monthLayouts(accepted: readonly string[] | null, count: number): string[] {
+  const known = (accepted ?? []).filter((r): r is ContentRegister =>
+    (CONTENT_REGISTERS as readonly string[]).includes(r)
+  );
+  const registers: readonly ContentRegister[] = known.length > 0 ? known : CONTENT_REGISTERS;
+  const layouts: string[] = [];
+  let previous: Parameters<typeof chooseArchetype>[1] = null;
+  for (let i = 0; i < count; i += 1) {
+    previous = chooseArchetype(registers[i % registers.length], previous);
+    if (!(IMAGE_ARCHETYPES as readonly string[]).includes(previous as string)) {
+      throw new Error(`mise en page inconnue pour le registre ${registers[i % registers.length]} : ${String(previous)}`);
+    }
+    layouts.push(previous);
+  }
+  return layouts;
+}
 
 /** Ce qu'un mois peut coûter au plus, reprise comprise (F58). Mesuré : 0,69 à 0,77 $ ; pire cas 57 × 0,035 $. */
 export const MONTH_CAP_USD = 3;
@@ -182,18 +222,8 @@ export async function orchestrateMonthForKit(
     concurrency: 6,
   });
 
-  /*
-   * ⚠ LES REGISTRES ACCEPTÉS DÉCIDENT DES MISES EN PAGE. Sans préférences
-   * enregistrées, le registre par défaut est « educate » — ce que `chooseArchetype`
-   * sait servir — plutôt qu'une liste vide qui ferait lever le modulo.
-   */
-  const registers = prefs?.accepted_registers?.length ? prefs.accepted_registers : ["educate"];
-  const layouts: string[] = [];
-  let previous: Parameters<typeof chooseArchetype>[1] = null;
-  for (let i = 0; i < CANDIDATES_PER_ATTEMPT; i += 1) {
-    previous = chooseArchetype(registers[i % registers.length] as never, previous);
-    layouts.push(previous);
-  }
+  /* ⚠ Les registres décident des mises en page — voir `monthLayouts`. */
+  const layouts = monthLayouts(prefs?.accepted_registers ?? null, CANDIDATES_PER_ATTEMPT);
 
   /* ⚠ LE PIRE CAS CALCULÉ (F58) : le carrousel sur le préfixe le plus long. */
   const worstPost = worstCaseCallUsd(
@@ -224,6 +254,19 @@ export async function orchestrateMonthForKit(
         insert: serverInsertPort(rpc, { brandKitId: KIT, monthId }),
         credits: serverCreditPort(rpc, { provider: "openai", model, month }),
       }),
+      /*
+       * ⚠ LA MENTION EST LUE PAR `licenceMentionFor`, LA FONCTION DE L'ÉCRAN, pas
+       * reprise du préalable : la clé de la carte gardée est calculée sur ce que
+       * l'écran dessinera, et le préalable ne lit pas `verified_at`.
+       */
+      storeCards: async (monthId) =>
+        storeMonthCards(serverCardStorePort(db as never), serverCardRasteriser, {
+          kitId: KIT,
+          monthId,
+          direction: palette,
+          practiceName,
+          licence: await licenceMentionFor(db as never, account.projectId),
+        }),
       releaseTopics: serverReleaseTopics(rpc, { brandKitId: KIT }),
       reassertTopics: serverReassertTopics(rpc, { brandKitId: KIT }),
     },

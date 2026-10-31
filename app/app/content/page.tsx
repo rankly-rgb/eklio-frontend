@@ -15,6 +15,8 @@ import { getCreditMeter } from "@/lib/billing/credits";
 import { ContentCalendar } from "@/components/content/content-calendar";
 import { ContentStream, HerOwnPosts, MonthProgress } from "@/components/content/content-stream";
 import { partitionMonth } from "@/lib/content/partition";
+import { storedCardUrls } from "@/lib/content/card-urls";
+import { licenceMentionFor } from "@/lib/content/review";
 import { CheckInLine } from "@/components/content/check-in-line";
 import { MonthFailed, MonthGenerating } from "@/components/content/month-generating";
 import {
@@ -124,6 +126,24 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
      */
     getContentMonthRecord(supabase, brandKitId, month),
   ]);
+
+  /*
+   * ⚠ LES CARTES DU MOIS, GARDÉES À LA GÉNÉRATION. Le flux affichait « Not
+   * composed yet » sur les 24 posts de novembre 2026 : rien ne gardait la carte,
+   * et la vignette ne la cherchait pas. La mention vient de `licenceMentionFor`,
+   * comme sur l'écran de relecture — c'est ce qui fait que la clé recalculée ici
+   * est celle sous laquelle la génération a déposé la carte.
+   */
+  const cardUrls = result.ok
+    ? await storedCardUrls(
+        supabase,
+        brandKitId,
+        [...result.data.items, ...result.data.unscheduled],
+        palette,
+        kit.practiceName,
+        await licenceMentionFor(supabase, kit.projectId)
+      )
+    : {};
 
   /*
    * ⚠ AT THE TOP UNTIL ANSWERED, AND NOT ONE VISIT LONGER. `checkinAnswered`
@@ -291,7 +311,7 @@ export default async function ContentPage({ searchParams }: PageProps<"/app/cont
               Calendar
             </ButtonLink>
           </header>
-          <ContentStream model={result.data} tokens={streamTokens} />
+          <ContentStream model={result.data} tokens={streamTokens} cards={cardUrls} />
         </>
       )}
     </main>

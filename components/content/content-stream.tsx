@@ -1,5 +1,6 @@
 "use client";
 
+import { rationaleBody } from "@/lib/content/rationale";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -56,15 +57,44 @@ function dayLabel(date: string | null): string {
 }
 
 /**
- * La vignette.
+ * La vignette : LA CARTE, telle qu'elle sera publiée.
  *
- * ⚠ CE N'EST PAS LA CARTE COMPOSÉE, ET L'ÉCRAN LE DIT. Le PNG 1080×1350 est
- * produit par `lib/compose/` dans le pipeline mensuel, qui n'est pas câblé :
- * tant qu'aucun asset n'existe, montrer un cadre vide ou une image d'exemple
- * serait deux façons de mentir. Ce qui est montré est la LIGNE que le
- * compositeur posera, dans sa palette — vrai, partiel, et annoncé comme tel.
+ * ══════════════════════════════════════════════════════════════════════════
+ *  ⚠ ELLE AFFICHAIT « NOT COMPOSED YET » SANS CONDITION (novembre 2026)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Son commentaire disait que le pipeline mensuel n'était « pas câblé ». Il
+ * l'était depuis F45 — et composait chaque carte, puis la jetait. Les 24 posts
+ * du premier mois réel se présentaient donc comme à faire, alors que le moteur
+ * les avait tous tenus.
+ *
+ * Dans l'ordre :
+ *   1. la carte GARDÉE à la génération (`card-store.ts`), signée par la page ;
+ *   2. sinon la carte composée à la demande par la route d'image — un post
+ *      qu'elle a modifié depuis, ou un mois généré avant que les cartes soient
+ *      gardées. C'est la même carte, par le même moteur, et rien n'est facturé ;
+ *   3. et seulement si le moteur refuse (pas de diagramme, ne tient pas), la
+ *      ligne dans sa palette, annoncée comme telle.
  */
-function Thumb({ item, tokens }: { item: ContentItem; tokens: StreamTokens }) {
+function Thumb({ item, tokens, url }: { item: ContentItem; tokens: StreamTokens; url: string | null }) {
+  const [broken, setBroken] = useState(false);
+  const src = url ?? `/api/content-items/${item.id}/image`;
+
+  if (!broken) {
+    return (
+      <div className="relative aspect-[4/5] overflow-hidden rounded-card border border-line" style={{ backgroundColor: tokens.paper }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- signed Storage URL, or the PNG route */}
+        <img
+          src={src}
+          alt={item.alt_text ?? item.title ?? ""}
+          loading="lazy"
+          className="size-full object-cover"
+          onError={() => setBroken(true)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-card border border-line p-5"
@@ -74,7 +104,7 @@ function Thumb({ item, tokens }: { item: ContentItem; tokens: StreamTokens }) {
         className="font-mono text-[11px] uppercase tracking-[0.16em]"
         style={{ color: tokens.dark, opacity: 0.6 }}
       >
-        {item.theme ?? " "}
+        {item.theme ?? " "}
       </span>
 
       <p
@@ -88,7 +118,7 @@ function Thumb({ item, tokens }: { item: ContentItem; tokens: StreamTokens }) {
         className="font-mono text-[10px] uppercase tracking-[0.16em]"
         style={{ color: tokens.dark, opacity: 0.45 }}
       >
-        Not composed yet
+        No card for this one
       </span>
     </div>
   );
@@ -97,18 +127,20 @@ function Thumb({ item, tokens }: { item: ContentItem; tokens: StreamTokens }) {
 function Card({
   item,
   tokens,
+  url,
   onSwap,
   swapping,
 }: {
   item: ContentItem;
   tokens: StreamTokens;
+  url: string | null;
   onSwap: (id: string) => void;
   swapping: boolean;
 }) {
   return (
     <article className="flex flex-col gap-3">
       <Link href={`/app/content/${item.id}`} className="block">
-        <Thumb item={item} tokens={tokens} />
+        <Thumb item={item} tokens={tokens} url={url} />
       </Link>
 
       <div className="flex items-baseline justify-between gap-3">
@@ -132,8 +164,8 @@ function Card({
        * lit comme une étiquette de système ; une phrase se lit comme une
        * raison. C'est une raison.
        */}
-      {item.rationale ? (
-        <p className="text-helper leading-prose text-ink-2">Why this one: {item.rationale}</p>
+      {rationaleBody(item.rationale) ? (
+        <p className="text-helper leading-prose text-ink-2">Why this one: {rationaleBody(item.rationale)}</p>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -175,9 +207,12 @@ function Card({
 export function ContentStream({
   model,
   tokens,
+  cards = {},
 }: {
   model: ContentMonth;
   tokens: StreamTokens;
+  /** Les cartes gardées à la génération, signées par la page : id du post → URL. */
+  cards?: Record<string, string>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -268,6 +303,7 @@ export function ContentStream({
               key={item.id}
               item={item}
               tokens={tokens}
+              url={cards[item.id] ?? null}
               onSwap={swap}
               swapping={swappingId === item.id || pending}
             />

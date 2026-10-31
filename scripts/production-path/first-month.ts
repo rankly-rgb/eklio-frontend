@@ -312,6 +312,8 @@ async function main() {
         insert: serverInsertPort(rpc, { brandKitId: KIT, monthId }),
         credits: serverCreditPort(rpc as never, { model: "replayed", month: TARGET_MONTH }),
       }),
+      /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */
+      storeCards: async () => ({ stored: 0, failed: [{ itemId: "*", why: "le harnais ne dépose pas de cartes" }] }),
       releaseTopics: release,
       /*
        * ⚠ LA VRAIE RÈGLE, PAS UNE DOUBLURE (F71). Un sujet posé au journal sans
@@ -453,6 +455,8 @@ async function main() {
         insert: serverInsertPort(rpc, { brandKitId: KIT, monthId }),
         credits: serverCreditPort(rpc as never, { model: "replayed", month: resumeMonth }),
       }),
+      /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */
+      storeCards: async () => ({ stored: 0, failed: [{ itemId: "*", why: "le harnais ne dépose pas de cartes" }] }),
       releaseTopics: release,
       /*
        * ⚠ LA VRAIE RÈGLE, PAS UNE DOUBLURE (F71). Un sujet posé au journal sans

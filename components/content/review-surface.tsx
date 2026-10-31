@@ -1,5 +1,6 @@
 "use client";
 
+import { rationaleBody } from "@/lib/content/rationale";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -236,7 +237,7 @@ export function ReviewSurface({
       {/* ── Pourquoi celui-ci ──────────────────────────────────────────── */}
       {rationale ? (
         <p className="max-w-[560px] text-helper leading-prose text-ink-2">
-          <span className="text-ink">Why this one:</span> {rationale}
+          <span className="text-ink">Why this one:</span> {rationaleBody(rationale)}
           {angleLabel ? <span className="text-ink-2"> · {angleLabel}</span> : null}
         </p>
       ) : null}

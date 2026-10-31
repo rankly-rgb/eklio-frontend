@@ -50,7 +50,8 @@ import {
   PRACTITIONER_CARDS_PER_MONTH,
   type PractitionerFacts,
 } from "@/lib/content/practitioner";
-import { chooseArchetype, scheduleDates } from "@/lib/content/generate/plan";
+import { scheduleDates } from "@/lib/content/generate/plan";
+import { monthLayouts } from "@/lib/content/month/run-for-kit";
 
 confirmOrDie("le mois");
 const KIT = arg("--kit");
@@ -149,13 +150,8 @@ async function main() {
     },
   };
 
-  const registers = prefs.accepted_registers;
-  const layouts: string[] = [];
-  let previous: Parameters<typeof chooseArchetype>[1] = null;
-  for (let i = 0; i < CANDIDATES_PER_ATTEMPT; i += 1) {
-    previous = chooseArchetype(registers[i % registers.length] as never, previous);
-    layouts.push(previous);
-  }
+  /* ⚠ La même construction que le produit, et sa garde (novembre 2026 : 24 posts). */
+  const layouts = monthLayouts(prefs.accepted_registers, CANDIDATES_PER_ATTEMPT);
 
   /*
    * ⚠ L'ESTIMATION DU PLAFOND EST UN PIRE CAS CALCULÉ, PAS UN CHIFFRE ESPÉRÉ.
@@ -181,6 +177,8 @@ async function main() {
         insert: serverInsertPort(rpc, { brandKitId: KIT!, monthId }),
         credits: serverCreditPort(rpc, { provider: "openai", model: MODEL, month: MONTH }),
       }),
+      /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */
+      storeCards: async () => ({ stored: 0, failed: [{ itemId: "*", why: "le harnais ne dépose pas de cartes" }] }),
       releaseTopics: serverReleaseTopics(rpc, { brandKitId: KIT! }),
       reassertTopics: serverReassertTopics(rpc, { brandKitId: KIT! }),
     },

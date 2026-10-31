@@ -117,8 +117,6 @@ export async function reviewCardFor(
 ): Promise<ReviewCard | null> {
   if (!direction) return null;
 
-  const bands = cardBands(item, practiceName, licence);
-
   /*
    * ── LE PAYLOAD DE CE POST-CI PASSE AVANT CELUI DU SUJET ───────────────
    *
@@ -133,7 +131,6 @@ export async function reviewCardFor(
    * L'ordre est celui de la propriété : ce qui est écrit SUR son post est à
    * elle, le sujet de banque est du stock partagé.
    */
-  let payload: unknown = item.payload ?? null;
   /*
    * ⚠ PAS `item.archetype`. Celui-là est le FORMAT DU POST (`statement`,
    * `question`, `notes`…) et n'a aucun rapport avec les onze mises en page du
@@ -143,7 +140,7 @@ export async function reviewCardFor(
    *
    * L'ordre est : ce qu'elle a gardé, sinon ce que le sujet portait.
    */
-  let archetypeKey = item.compose_archetype ?? item.topic?.archetype_key ?? "single_statement";
+  let topicRow: { payload: unknown; archetype_key: string } | null = null;
 
   if (item.topic) {
     /*
@@ -176,19 +173,46 @@ export async function reviewCardFor(
       });
     }
     if (data) {
-      // ⚠ Le payload du sujet ne réécrit PAS celui du post : `apply_on_demand_write`
-      //   a pu écrire une version plus précise que le stock.
-      payload = payload ?? data.payload;
+      topicRow = data;
       /*
        * Le sujet est relu ici plutôt que cru sur parole : `topic.archetype_key`
        * arrive bien dans le json de l'item, mais le payload doit de toute façon
        * être lu, et lire les deux dans le même aller-retour évite qu'une clef
        * et un payload dépareillés se croisent.
        */
-      archetypeKey = item.compose_archetype ?? data.archetype_key;
     }
   }
 
+  return reviewCardFrom(item, topicRow, direction, practiceName, licence);
+}
+
+/** Ce que `reviewCardFrom` lit d'un post. La route, l'écran et la génération le fournissent. */
+export type CardItem = Pick<ContentItem, "id" | "theme" | "title" | "payload" | "compose_archetype" | "topic">;
+
+/**
+ * La carte d'un post, SANS AUCUNE LECTURE : tout ce qu'il faut est passé.
+ *
+ * ⚠ C'EST LA SEULE FAÇON DE DÉCIDER UNE CARTE. L'écran de relecture et la route
+ * d'image l'appellent par `reviewCardFor` ; la génération du mois l'appelle pour
+ * stocker la carte de chaque post (`lib/content/month/card-store.ts`) ; le flux
+ * l'appelle pour retrouver la carte stockée. Une carte décidée à deux endroits
+ * finit par n'être plus la même — et le PNG qu'elle télécharge ne serait plus
+ * celui qu'elle a regardé.
+ */
+export function reviewCardFrom(
+  item: CardItem,
+  topic: { payload: unknown; archetype_key: string } | null,
+  direction: DirectionPalette | null,
+  practiceName: string | null,
+  licence: string | null
+): ReviewCard | null {
+  if (!direction) return null;
+  const bands = cardBands(item, practiceName, licence);
+  // ⚠ Le payload du sujet ne réécrit PAS celui du post : `apply_on_demand_write`
+  //   a pu écrire une version plus précise que le stock.
+  let payload: unknown = item.payload ?? topic?.payload ?? null;
+  const archetypeKey =
+    item.compose_archetype ?? (topic ? topic.archetype_key : item.topic?.archetype_key) ?? "single_statement";
   if (payload === null) {
     if (archetypeKey !== "single_statement") return null;
     const statement = item.title?.trim();

@@ -1,5 +1,6 @@
 "use client";
 
+import { rationaleBody } from "@/lib/content/rationale";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -223,7 +224,7 @@ export function WritePanel({
                   </span>
                   {topic.rationale ? (
                     <span className="text-helper leading-prose text-ink-2">
-                      Why this one: {topic.rationale}
+                      Why this one: {rationaleBody(topic.rationale)}
                     </span>
                   ) : null}
                 </button>

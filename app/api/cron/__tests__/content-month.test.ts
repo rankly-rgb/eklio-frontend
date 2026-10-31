@@ -121,7 +121,12 @@ describe("the route", () => {
     ];
     orchestrate.mockReset();
     orchestrate
-      .mockResolvedValueOnce({ ok: true, month: { written: 30 }, costUsd: 0.7 })
+      .mockResolvedValueOnce({
+        ok: true,
+        month: { written: 30 },
+        costUsd: 0.7,
+        cards: { stored: 29, failed: [{ itemId: "i30", why: "dépôt : boom" }] },
+      })
       .mockRejectedValueOnce(new Error("boom"));
 
     const response = await GET(
@@ -131,7 +136,7 @@ describe("the route", () => {
     const body = (await response.json()) as {
       month: string;
       generated: number;
-      served: Array<{ brandKitId: string; ok: boolean; stage?: string }>;
+      served: Array<{ brandKitId: string; ok: boolean; stage?: string; cards?: { stored: number; failed: number } }>;
       skipped: unknown[];
       deferred: string[];
     };
@@ -142,6 +147,8 @@ describe("the route", () => {
       ["k1", true, null],
       ["k2", false, "error"],
     ]);
+    /* ⚠ Les cartes gardées sont dites (novembre 2026 : aucune ne l'était). */
+    expect(body.served[0].cards).toEqual({ stored: 29, failed: 1 });
     expect(body.skipped).toHaveLength(1);
     expect(body.deferred).toEqual([]);
   });

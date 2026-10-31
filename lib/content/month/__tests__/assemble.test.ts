@@ -12,6 +12,8 @@ import type { CreditPort, ReserveRefusal } from "@/lib/credits/paid-call";
  */
 
 /** Un post propre : rien qu'un contrôle puisse reprocher. */
+const OPENERS = ["Some weeks,", "Rest can be", "A boundary is", "Quiet mornings:", "Most people", "Today,", "Sleep is", "Small steps:"];
+
 function post(n: number, over: Partial<Assemblable> = {}): Assemblable {
   return {
     cardLine: `A quiet line ${n}`,
@@ -29,7 +31,8 @@ function post(n: number, over: Partial<Assemblable> = {}): Assemblable {
     footer: "Still Water · LMFT 12345",
     candidate: {
       topic: { id: `topic-${n}`, title: `Sujet ${n}`, hook: `crochet ${n}` },
-      result: { caption: `Une légende ordinaire, la ${n}.`, altText: `Un alternatif ${n}.`, rationale: "parce que" },
+      /* ⚠ Des ouvertures variées : `checkVariety` (novembre 2026) refuse un mois qui s'ouvre toujours pareil. */
+      result: { caption: `${OPENERS[(n - 1) % OPENERS.length]} une légende ordinaire, la ${n}.`, altText: `Un alternatif ${n}.`, rationale: "parce que" },
     },
     ...over,
   };

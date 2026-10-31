@@ -53,6 +53,8 @@ type Served = {
   stage?: string;
   refusal?: string;
   written?: number;
+  /** Les cartes gardées à la génération, et combien ne l'ont pas été (novembre 2026). */
+  cards?: { stored: number; failed: number };
   costUsd: number;
 };
 
@@ -108,7 +110,13 @@ export async function GET(request: Request) {
       const outcome = await orchestrateMonthForKit(admin as never, account, month, { transport, meter });
       served.push(
         outcome.ok
-          ? { brandKitId: account.brandKitId, ok: true, written: outcome.month.written, costUsd: outcome.costUsd }
+          ? {
+              brandKitId: account.brandKitId,
+              ok: true,
+              written: outcome.month.written,
+              cards: { stored: outcome.cards.stored, failed: outcome.cards.failed.length },
+              costUsd: outcome.costUsd,
+            }
           : {
               brandKitId: account.brandKitId,
               ok: false,

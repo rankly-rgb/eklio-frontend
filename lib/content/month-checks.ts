@@ -1,6 +1,7 @@
 
 import { checkEthics } from "@/lib/ethics/rules";import { DANGLING } from "@/lib/content/generate/copy-batch";
 import { colourDistance, TINT_MIN_DISTANCE, type DirectionPalette } from "@/lib/compose/palette";
+import { checkVariety } from "@/lib/content/variety";
 import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
 import { footerCarriesLicence, repeatedLicenceTitles } from "@/lib/content/licence";
 import {
@@ -552,6 +553,11 @@ export type PostUnderCheck = {
    * que le paragraphe en dessous disait ce qu'il voulait.
    */
   caption?: string;
+  /**
+   * La ligne d'image (`content_items.on_image_text`, le `hook` du sujet). Publiée,
+   * et c'est elle qui ouvre le post : le contrôle de variété la lit.
+   */
+  hook?: string;
   altText?: string;
   /**
    * Le pied de carte, tel qu'il sera imprimé.
@@ -869,6 +875,8 @@ export function checkAcrossPosts(month: MonthUnderCheck): Finding[] {
   out.push(...checkMix(month.posts.map((p) => p.archetype)));
   out.push(...checkDuplicateTitles(month.posts.map((p) => p.cardLine || p.title)));
   out.push(...checkIdenticalPayloads(month.posts));
+  /* ⚠ La tournure, pas seulement le titre (novembre 2026) — `lib/content/variety.ts`. */
+  out.push(...checkVariety(month.posts));
   return out;
 }
 
@@ -1170,6 +1178,13 @@ function surfacesForEthics(
     const where = `« ${post.cardLine || post.title} »`;
     if (post.footer) out.push({ post: where, where: `${where} — pied de carte`, text: post.footer });
     if (post.eyebrow) out.push({ post: where, where: `${where} — surtitre`, text: post.eyebrow });
+    /*
+     * ⚠ LA LIGNE D'IMAGE EST PUBLIÉE (`on_image_text`), ET AUCUN CONTRÔLE DE MOIS
+     * NE LA LISAIT : elle n'était pas dans `PostUnderCheck`. Elle y entre pour le
+     * contrôle de variété (novembre 2026) ; la déontologie publicitaire la lit
+     * donc aussi, comme le pied et le surtitre.
+     */
+    if (post.hook) out.push({ post: where, where: `${where} — ligne d'image`, text: post.hook });
   }
   return out;
 }

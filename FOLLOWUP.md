@@ -4146,3 +4146,78 @@ La route `/api/content-items/[id]/write` ne lisait pas `CONTENT_GENERATION_ARMED
 et débité sur un simple POST dès le déploiement, contre la consigne « le déploiement ne change
 rien pour personne ». Corrigé avant la fusion : la route exige le drapeau ET la clé, avant toute
 réservation ; `lib/content/generate/__tests__/write-route-armed.test.ts` l'appelle (et échoue sans le verrou).
+
+---
+
+# Premier mois réel — novembre 2026 (kit 45de0dac), relu le 2026-10-31
+
+Traités dans cette session : cartes gardées à la génération, mise en page jamais nulle (la cause
+des 24 posts), contrôle de variété de tournure, « Why this one: » écrit une fois. Ce qui suit est
+apparu en chemin et n'est PAS traité.
+
+## F77 — ⚠ un mois court sort en `proposed` sans constat quand la base refuse des écritures
+
+`assembleMonth` remplace un insert refusé par un post du banc ; banc vide, il passe au suivant.
+La sélection avait validé trente posts (`checkCount` compris), mais personne ne recompte ce qui
+a été ÉCRIT : novembre est sorti à 24 après 28 refus, `ok: true`, et le cron a répondu
+`generated: 1`. Le commentaire de l'assemblage (« le mois sortira court, ce que `checkCount`
+refusera ») est faux : `checkCount` ne tourne qu'avant l'écriture. À décider : refuser le mois
+(et rendre les crédits) ou le livrer court en le disant à la praticienne. La cause de novembre est
+corrigée (`monthLayouts`) ; la classe de défaut ne l'est pas.
+
+## F78 — la raison d'un mois court n'est écrite nulle part
+
+Les refus d'insert, les posts écartés au portillon et les échanges de la sélection vivent dans
+l'objet rendu par `orchestrateMonth` ; la route cron ne garde que `written`. La cause des 24 n'a
+été lisible que dans les journaux Postgres (`null value in column "archetype"`, 28 fois).
+`content_generation_runs` devrait porter `gate.byCheck`, `inserts.refused`, `selection.dropped`
+et `cards.failed`.
+
+## F79 — `as never` sur les appels de `run-for-kit` a caché un registre qui n'en est pas un
+
+`chooseArchetype(registers[i] as never, …)` acceptait `"educate"` (une intention). D'autres
+`as never` restent dans `run-for-kit.ts` et `server-ports.ts` (clients Supabase, contexte) ; chacun
+est un endroit où le compilateur ne dit plus rien. À recenser.
+
+## F80 — la banque est monotone à la source, et le dimensionnement des segments l'impose
+
+Mesuré en production (lecture seule) : la banque compte six segments, tous pour ce kit —
+2 publics (`carrying_old_thing`, `crossroads`) × 3 modalités (EMDR, CBT, EFT), Californie,
+28 à 39 sujets chacun, 186 au total, 5 intentions. Dans les trois segments `crossroads`, 18 lignes
+d'image sur 89 s'ouvrent sur « An unwanted/unchosen… » et 15 sur « When… » ; côté EMDR, 15 sujets
+sur 70 s'ouvrent sur « EMDR is/does not… » (l'intention `correct_a_myth` fabrique des négations).
+
+Un mois tire trente sujets dans six segments qui ne connaissent que deux situations de vie : la
+monotonie n'est pas un accident du tirage, c'est la taille de l'espace. Pour l'élargir (non fait) :
+1. un axe de plus au segment que le public — un angle ou une situation (deuil, transition de rôle,
+   relation, corps…), pour que trente sujets d'un même public ne parlent pas de la même scène ;
+2. des sujets de modalité sans public (ce qu'est une séance d'EMDR, ce que la TCC demande) tirés
+   en minorité, communs à tous les kits de la modalité ;
+3. la variété appliquée à la CONSTRUCTION de la banque (`checkVariety` par segment) : un segment
+   où un cinquième des lignes s'ouvre pareil devrait être réécrit avant d'être servi ;
+4. la couche de thèmes du mois (F75), absente du chemin produit, qui diversifierait l'angle à
+   partir du point du mois ;
+5. une part plafonnée de `correct_a_myth` par mois.
+
+## F81 — le mois de novembre déjà en base garde ses défauts
+
+Les 24 posts écrits avant ces corrections : mise en page `notes` partout, cinq constats de
+variété, aucune carte gardée (le flux les compose désormais à la demande, ce qui est la même
+carte). Les régénérer ou les laisser est une décision de produit, pas une correction.
+
+## F82 — deux lectures de la mention de licence
+
+Le préalable (`serverPreflightPort.licenceFacts`) ne lit pas `verified_at` ; l'écran
+(`licenceMentionFor`) le lit. La carte gardée est calculée avec celle de l'écran, pour que sa clé
+soit celle que le flux recalcule. Les deux devraient être une seule fonction.
+
+## F83 — `rendered_assets.content_hash` ne couvre ni le titre, ni le surtitre, ni le pied
+
+`lib/compose/hash.ts` hache archétype, payload, palette, typographie, moteur. Deux cartes au même
+diagramme et à des licences différentes y ont la même clé. Inutilisé aujourd'hui ; dangereux le
+jour où ce cache sert une image. `cardKey` (`card-store.ts`) couvre la carte entière.
+
+## F84 — les scripts du harnais ne gardent pas les cartes
+
+`first-month.ts` et `openai-month/month.ts` visent une base locale sans seau : leur port
+`storeCards` rend un échec nommé (« le harnais ne dépose pas de cartes »), pas un succès simulé.
