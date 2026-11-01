@@ -1,3 +1,77 @@
+# Bibliothèque de visuels — troisième session : les fonds photo respirent (2026-11-01)
+
+> **Étiquette — ce qui n'est pas exactement le chemin de production.** Les deux
+> planches sont faites par l'**orchestrateur complet** (`orchestrateMonthForKit`,
+> le code qu'appelle la route cron), contre la base locale chargée de l'état de
+> production. La rédaction est réelle : décembre a été rédigé par la route cron
+> (répétition 10, 57 posts). Ce premier passage a été **refusé** (voir plus bas) ;
+> après correctif, le mois a été **repris depuis son journal** — le chemin de
+> reprise du produit, qui relit les rédactions payées au lieu de les redemander —
+> pour la planche « avant » puis pour la planche « après ». Seul le juge de
+> complétude est rappelé à chaque reprise : il n'est pas déterministe, et les deux
+> planches ne retiennent donc pas exactement les mêmes 30 posts. Pour rejouer une
+> reprise, le run est remis en `collected` et ses sujets réassignés dans la base
+> locale (harnais, `reset-dec.sh`). Les cartes sont rendues par `card-store`
+> (`serverCardRasteriser`) ; le dépôt Storage est remplacé par une écriture disque.
+> Le surtitre « NOT THE ONLY ONE » / « MYTH, GENTLY CORRECTED » est celui du chemin
+> réel.
+
+- `planche-avant/` — traitement photo de la deuxième session (voile uniforme ≥ 0,85).
+- `planche-apres/` — les trois priorités appliquées.
+- Chaque dossier : `planche-390.jpg` (chaque carte à 390 px), `cartes/`, `mesures.json`.
+
+## Défaut bloquant trouvé par la planche « avant » — traité d'abord
+
+La route cron a rédigé 57 posts, 49 ont passé le portillon, 30 ont été retenus,
+et le mois a été **refusé** sur `illustration.none` : banc vide. La monotonie
+d'écriture (F80) avait pris dix échanges (`variety.opening`, dix titres en
+« When… ») ; chaque post « sans dessin à ce rang » en prenait un de plus, alors
+qu'il avait un dessin ailleurs dans le mois. Corrigé : un tel post est **déplacé**
+dans le mois avant d'être échangé (`placeByDrawing`) — l'ordre n'est pas un
+contenu, les dates sont posées après la sélection.
+
+## Mesures
+
+| Mesure | Avant | Après | Ce qu'elle dit |
+|---|---|---|---|
+| Mois sorti à 30 posts | 30/30 | 30/30 | 3 posts sans aucun dessin remplacés par le banc, chaque fois |
+| Palettes avec fonds photo | 6/6 (dont 3 sombres à tort comptées sans, F95) | **6/6, claires et sombres — 12/12 variantes, 27/27 fonds chacune** | mesuré sur le rendu, `lib/kit/__tests__/licence-legible-on-photo.test.ts` |
+| Cartes avec fond photo | 11/30 | 11/30 | toutes les phrases seules et couvertures de carrousel ; ce kit est en palette claire |
+| Contraste au pire pixel sous le texte, par palette | — | 7,13 à 7,37:1 (12 variantes × 27 fonds) | plancher 4,5:1 ; voile résolu à 7:1 |
+| Mention de licence au pire pixel | 9,43:1 | **7,25:1** (planche) ; ≥ 7,13:1 sur chaque fond et chaque palette | plancher 4,5:1 |
+| Mention de licence lisible | 30/30 (11/11 sur photo) | **30/30 (11/11 sur photo)** | pire pixel ≥ 4,5:1, mesuré sur le rendu |
+| Dessins au pire pixel | 9,43:1 | 4,16:1 (planche) ; ≥ 3,72:1 partout | plancher graphique 3:1 |
+| Cartes avec illustration | 30/30 | 30/30 | |
+| Cartes sans illustration, forme ni fond | 0 | 0 | |
+| Forme | derrière le titre, 19 cartes | **sous le dessin, 15 cartes** | ni sous un texte, un aplat ou un autre trait |
+| Cartes partageant la même structure | **pile 10**, phrase 11, grille 7, rangée 2 | **pile 11**, phrase 11, grille 7, rangée 1 | « pile » = titre puis blocs étiquetés empilés : numbered_strategies 5, surface_and_beneath 4, cycle 2 — trois archétypes, une image |
+| Même dessin / même fond à moins de dix posts | 0 / 0 | 0 / 0 | |
+| Coût de la session | | **0,88 $** | journal du run de décembre : rédaction 0,666 $ + quatre juges de reprise 0,213 $ |
+
+## Ce qui a changé dans le moteur
+
+- **Voile local.** Derrière chaque ligne posée à même le fond, bande de 10 px par
+  bande, l'opacité qui tient 7:1 contre les bornes de pixels **mesurées** de la
+  bande (`photo-bands.generated.json`), jusqu'au papier plein ; descente en 60 px ;
+  halo derrière chaque dessin à 3:1 ; 0,15 ailleurs. Le texte ne change ni de
+  taille ni de graisse.
+- **Forme** : pleine, abstraite (arche, galets, nuage, demi-cercle, ovale), sous
+  le dessin. Retirée du titre.
+- **Échelle** : phrase seule jusqu'à 62 % de la largeur / 600 px (était 50 % / 420) ;
+  `concentric_control` : anneaux resserrés, dessin dans le carré inscrit du cercle
+  intérieur.
+
+## Trouvé, non corrigé
+
+- **F99** — la luminance de `lib/compose/palette.ts` ne linéarise pas le bleu.
+  Tous les contrastes du moteur en dépendent ; `plum_bone` sombre, aplat 2, est à
+  **2,59:1 réel** sous un plancher de 3:1. Le décor mesure avec `contrastRatio`.
+- **F100** — `eft-shelter` est un chevron dans le pack (carte 7 après).
+- Le juge de complétude n'est pas déterministe : la même rédaction a passé ou non
+  la sélection selon l'appel (F101).
+
+---
+
 # Bibliothèque de visuels — planche de décembre 2026 (2026-11-01)
 
 > **Étiquette — ce qui n'est PAS exactement le chemin de production.**

@@ -4388,3 +4388,18 @@ calculé avec la luminance fausse de F99.
 
 `correspondance.csv` : « Chevron de toit noir minimaliste ». Agrandi, il reste un chevron : c'est
 le dessin, pas l'échelle. À refaire avec F94.
+
+## F101 — un mois à la limite dépend d'un juge non déterministe
+
+Décembre (répétition locale 10) : la même rédaction a été refusée par la route (banc vide) puis
+acceptée à la reprise, le juge de complétude rappelé ayant laissé passer d'autres posts. Le
+correctif de placement (`placeByDrawing`) retire la pression des dessins ; reste celle de la
+monotonie d'écriture (F80 : dix échanges sur `variety.opening`, titres en « When… »). Mesuré, non
+traité.
+
+## F102 — monotonie structurelle : onze cartes sur trente sont « un titre puis une pile »
+
+Planche « après » : numbered_strategies 5, surface_and_beneath 4, cycle 2 — trois archétypes, une
+même image (titre, puis blocs étiquetés empilés dans une colonne). Le contrôle de mélange compte
+des noms d'archétype et ne le voit pas. Mesure dans `design/visual-library-2026-11-01/planche-*/mesures.json`
+(`structures`).
