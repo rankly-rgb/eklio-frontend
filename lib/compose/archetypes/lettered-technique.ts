@@ -1,7 +1,6 @@
 import { CLEARANCE, figureShare, TYPE } from "@/lib/compose/constants";
 import { cell, fitText, linesFrom, rows } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
-import { anchor } from "@/lib/compose/illustrations";
 import type { Placed } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
 
@@ -47,7 +46,7 @@ export const letteredTechnique: ArchetypeModule<LetteredTechnique> = {
     return { acronym, items };
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax }) {
+  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
     const placed: Placed[] = [];
 
     const acroRange = { min: TYPE.mono.min, max: Math.min(TYPE.mono.max, secondaryMax), floor: TYPE.mono.floor };
@@ -112,7 +111,7 @@ export const letteredTechnique: ArchetypeModule<LetteredTechnique> = {
        * Les variantes vont aux objets asymétriques — le profil, la porte —
        * où elles se voient.
        */
-      strokes: anchor(
+      strokes: draw(
         { x: content.x, y: braceTop, w: braceW, h: round2(braceBottom - braceTop) },
         palette.ink,
         STROKE

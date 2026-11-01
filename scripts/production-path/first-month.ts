@@ -35,6 +35,7 @@
  *
  *   npx tsx scripts/production-path/first-month.ts --confirm
  */
+import { illustrateMonth } from "@/lib/visual-library/illustrate";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { admin, localEnv } from "../local-render/lib";
 import { drawMonth } from "@/lib/content/month/draw";
@@ -315,6 +316,8 @@ async function main() {
         credits: serverCreditPort(rpc as never, { model: "replayed", month: TARGET_MONTH }),
       }),
       /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */
+      /* Le dessin de chaque post, choisi par le sens (lib/visual-library). */
+      illustrate: illustrateMonth,
       storeCards: async () => ({ stored: 0, failed: [{ itemId: "*", why: "le harnais ne dépose pas de cartes" }] }),
       releaseTopics: release,
       /*
@@ -459,6 +462,8 @@ async function main() {
         credits: serverCreditPort(rpc as never, { model: "replayed", month: resumeMonth }),
       }),
       /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */
+      /* Le dessin de chaque post, choisi par le sens (lib/visual-library). */
+      illustrate: illustrateMonth,
       storeCards: async () => ({ stored: 0, failed: [{ itemId: "*", why: "le harnais ne dépose pas de cartes" }] }),
       releaseTopics: release,
       /*
@@ -590,7 +595,7 @@ async function main() {
     const mention = await licenceMentionFor(db as never, projectId);
     const itemsRead = await db
       .from("content_items")
-      .select("id, title, theme, payload, compose_archetype, topic_id")
+      .select("id, title, theme, payload, compose_archetype, topic_id, illustration_key")
       .eq("month_id", outcomeForDb.monthId);
     if (itemsRead.error) throw new Error(`content_items: ${itemsRead.error.message}`);
     const items = (itemsRead.data ?? []) as Array<{
@@ -600,6 +605,8 @@ async function main() {
       payload: unknown;
       compose_archetype: string;
       topic_id: string | null;
+      /** Le dessin enregistré par la génération (migration 20261101090000). */
+      illustration_key: string | null;
     }>;
 
     const cards: Array<{ id: string; footer: string; svg: string | null; carriesLicence: boolean }> = [];
@@ -611,7 +618,9 @@ async function main() {
       );
       let svg: string | null = null;
       try {
+        if (!item.illustration_key) throw new Error("post sans dessin enregistré");
         const card = composeCard({
+          illustration: item.illustration_key,
           archetype: item.compose_archetype,
           payload: item.payload,
           palette: cardPalette(`${monthForDb}-${i}`, palette as never, false),

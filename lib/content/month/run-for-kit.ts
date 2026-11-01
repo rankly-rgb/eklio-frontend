@@ -1,4 +1,5 @@
 import { orchestrateMonth, type OrchestrateOutcome } from "@/lib/content/month/orchestrate";
+import { illustrateMonth } from "@/lib/visual-library/illustrate";
 import { openAiWriter } from "@/lib/content/month/openai-writer";
 import { serverDrawPort } from "@/lib/content/month/draw-port";
 import {
@@ -261,6 +262,8 @@ export async function orchestrateMonthForKit(
        * reprise du préalable : la clé de la carte gardée est calculée sur ce que
        * l'écran dessinera, et le préalable ne lit pas `verified_at`.
        */
+      /* Le dessin de chaque post, choisi par le sens (lib/visual-library). */
+      illustrate: illustrateMonth,
       storeCards: async (monthId) =>
         storeMonthCards(serverCardStorePort(db as never), serverCardRasteriser, {
           kitId: KIT,

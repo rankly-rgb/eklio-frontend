@@ -1,7 +1,6 @@
 import { CLEARANCE, figureShare } from "@/lib/compose/constants";
 import { cell, rows } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
-import { knot } from "@/lib/compose/illustrations";
 import type { Placed } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
 
@@ -29,7 +28,7 @@ export const cycle: ArchetypeModule<Cycle> = {
     return nodes ? { nodes } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax }) {
+  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
     const placed: Placed[] = [];
 
     /*
@@ -75,7 +74,7 @@ export const cycle: ArchetypeModule<Cycle> = {
        * revient sur lui-même et se serre dit ce que la carte raconte — une
        * pensée qui repasse au même endroit et ne se dénoue pas.
        */
-      strokes: knot(gutter, palette.ink, STROKE),
+      strokes: draw(gutter, palette.ink, STROKE),
     });
 
     const listBox = {

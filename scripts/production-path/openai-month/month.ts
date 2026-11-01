@@ -23,6 +23,7 @@
  *   EKLIO_OPENAI_API_KEY=… bun scripts/production-path/openai-month/month.ts \
  *     --kit <id> --month 2026-11-01 [--kill-after 20] --out run-1.json --confirm
  */
+import { illustrateMonth } from "@/lib/visual-library/illustrate";
 import { writeFileSync } from "node:fs";
 import { localDb } from "../local-db";
 import { arg, confirmOrDie, sessionMeter, transportFromEnv } from "./session";
@@ -180,6 +181,8 @@ async function main() {
         credits: serverCreditPort(rpc, { provider: "openai", model: MODEL, month: MONTH }),
       }),
       /* ⚠ Le harnais vise une base locale sans seau : il ne dépose pas de cartes, et le dit. */
+      /* Le dessin de chaque post, choisi par le sens (lib/visual-library). */
+      illustrate: illustrateMonth,
       storeCards: async () => ({ stored: 0, failed: [{ itemId: "*", why: "le harnais ne dépose pas de cartes" }] }),
       releaseTopics: serverReleaseTopics(rpc, { brandKitId: KIT! }),
       reassertTopics: serverReassertTopics(rpc, { brandKitId: KIT! }),

@@ -7,6 +7,8 @@ import { round2 } from "@/lib/compose/measure";
 import { gap } from "@/lib/compose/svg";
 import { toSvg } from "@/lib/compose/svg";
 import type { Box, Composition, Palette, Placed, RenderInput } from "@/lib/compose/types";
+import { DRAWING_FOR } from "@/lib/compose/illustrations";
+import { libraryDrawing } from "@/lib/compose/library";
 
 
 /*
@@ -287,6 +289,18 @@ export function render(input: RenderInput): RenderResult {
     lines: linesFrom(displayFit, BODY.x, BODY.y, BODY.w, "display", 500, input.palette.ink, "start"),
   };
 
+  /*
+   * ⚠ LE DESSIN EST CELUI DU POST, PAS CELUI DE L'ARCHÉTYPE (2026-11-01).
+   * Jusqu'ici chaque archétype importait son dessin attitré — la plante pour
+   * `numbered_strategies`, quel que soit le sujet. Le dessin choisi par le sens
+   * (`input.illustration`) passe maintenant par `draw` ; le dessin fait main ne
+   * reste que pour un post qui n'en porte pas (écrit avant la bibliothèque).
+   */
+  const handDrawn = DRAWING_FOR[input.archetype];
+  const draw = input.illustration
+    ? libraryDrawing(input.illustration)
+    : (box: Box, colour: string, width?: number) => (handDrawn ? handDrawn(box, colour, width) : []);
+
   // ── STEPS 1 AND 2, in order ─────────────────────────────────────────────
   for (const [pass, payload] of [
     ["full", parsed] as const,
@@ -302,6 +316,8 @@ export function render(input: RenderInput): RenderResult {
         content: split.content,
         figureScale,
         secondaryMax,
+        draw,
+        illustrated: !!input.illustration,
       });
       if (content === null) continue;
 

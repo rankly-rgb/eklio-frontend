@@ -54,6 +54,12 @@ export type ComposedCard = {
 export class ComposeRefused extends Error {}
 
 export type ComposeCardInput = {
+  /**
+   * Le dessin de la bibliothèque choisi pour ce post. OBLIGATOIRE ici : le
+   * générateur ne compose jamais une carte sans dessin apparié — le post sans
+   * dessin est refusé avant d'arriver à cette fonction.
+   */
+  illustration: string;
   archetype: string;
   payload: unknown;
   palette: RenderInput["palette"];
@@ -99,6 +105,7 @@ export function composeCard(input: ComposeCardInput): ComposedCard {
 
   const composed = composeWithFallback(
     {
+      illustration: input.illustration,
       archetype: input.archetype,
       payload: input.payload,
       palette: input.palette,

@@ -43,9 +43,10 @@ describe("themes.csv et le dossier des illustrations disent la même chose", () 
     }
   });
 
-  it("64 illustrations tirables, 142 fichiers, aucun PNG", () => {
-    expect(committed.entries.filter((e) => e.drawable)).toHaveLength(64);
-    expect(committed.entries).toHaveLength(142);
+  /* Lot 1 : 64 dessins thématiques ; lot 6 (2026-11-01) : 28 de plus, et 9 xtra- sans thème. */
+  it("92 illustrations tirables, 179 fichiers, aucun PNG", () => {
+    expect(committed.entries.filter((e) => e.drawable)).toHaveLength(92);
+    expect(committed.entries).toHaveLength(179);
     expect(committed.entries.some((e) => e.file.endsWith(".png"))).toBe(false);
   });
 

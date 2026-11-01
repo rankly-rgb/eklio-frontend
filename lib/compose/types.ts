@@ -58,6 +58,10 @@ export type Stroke = {
   stroke: string;
   strokeWidth: number;
   fill: string;
+  /** `evenodd` pour les dessins de la bibliothèque, vectorisés avec leurs creux. */
+  fillRule?: "evenodd";
+  /** L'identifiant du dessin de la bibliothèque, quand c'en est un (`data-library`). */
+  library?: string;
 };
 
 /** What a palette gives a card. */
@@ -80,6 +84,15 @@ export type RenderInput = {
   eyebrow: string;
   headline: string;
   footer: string;
+  /**
+   * Le dessin de la bibliothèque choisi PAR LE SENS pour ce post
+   * (`lib/visual-library/match.ts`), ou rien.
+   *
+   * ⚠ ABSENT, L'ARCHÉTYPE POSE SON DESSIN FAIT MAIN (`DRAWING_FOR`) — c'est le
+   * chemin des posts écrits avant la bibliothèque, que l'écran recompose. Le
+   * générateur, lui, ne compose jamais sans dessin apparié : il refuse le post.
+   */
+  illustration?: string | null;
 };
 
 export type Composition = {

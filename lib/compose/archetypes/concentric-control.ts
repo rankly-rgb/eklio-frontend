@@ -1,7 +1,6 @@
 import { CLEARANCE, figureShare } from "@/lib/compose/constants";
 import { cell, circle, columns } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
-import { seated } from "@/lib/compose/illustrations";
 import type { Placed, Stroke } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
 
@@ -26,7 +25,7 @@ export const concentricControl: ArchetypeModule<ConcentricControl> = {
     return rings ? { rings } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax }) {
+  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
     const placed: Placed[] = [];
     const size = round2(Math.min(content.w, content.h * figureShare(figureScale)));
     if (size < 190) return null;
@@ -60,7 +59,7 @@ export const concentricControl: ArchetypeModule<ConcentricControl> = {
     const inner = round2((size / 2) * (1 - ((payload.rings.length - 1) * 0.72) / payload.rings.length));
     if (inner >= 60) {
       strokes.push(
-        ...seated({ x: round2(cx - inner * 0.62), y: round2(cy - inner * 0.62), w: round2(inner * 1.24), h: round2(inner * 1.24) },
+        ...draw({ x: round2(cx - inner * 0.62), y: round2(cy - inner * 0.62), w: round2(inner * 1.24), h: round2(inner * 1.24) },
           palette.ink, 3)
       );
     }

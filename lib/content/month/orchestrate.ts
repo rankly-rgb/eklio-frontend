@@ -28,6 +28,7 @@ import type { DirectionPalette } from "@/lib/compose/palette";
 import type { RenderInput } from "@/lib/compose/types";
 import { withinCeiling, type SpendCeiling } from "@/lib/content/month/spend-ceiling";
 import type { StoredCards } from "@/lib/content/month/card-store";
+import type { PostSignals } from "@/lib/visual-library/match";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -210,6 +211,17 @@ export type OrchestratePorts = {
    * est un port que le produit oublie de passer (F50).
    */
   storeCards(monthId: string): Promise<StoredCards>;
+  /*
+   * ⚠ LE DESSIN DE CHAQUE POST, CHOISI PAR LE SENS (2026-11-01).
+   *
+   * Les posts rédigés, dans l'ordre où ils seront composés ; la réponse, rang
+   * par rang, est un identifiant de la bibliothèque ou `null`. Le produit passe
+   * `assignMonth` (`lib/visual-library/match.ts`) : seuil d'appariement fixe,
+   * jamais le même dessin à moins de dix posts d'écart. `null` REFUSE le post —
+   * il n'est pas composé, le banc le remplace. Poser un objet sans rapport est
+   * pire que refuser. OBLIGATOIRE : un port facultatif est un port oublié (F50).
+   */
+  illustrate(posts: PostSignals[]): Array<string | null>;
   /** Rend les sujets tirés mais non retenus. Un sujet gardé pour rien bloque le segment. */
   releaseTopics(topicIds: string[]): Promise<void>;
   /**
@@ -316,11 +328,15 @@ export type OrchestrateOutcome =
       writing: { asked: number; returned: number; refusedInJournal: number; stopped: WriteResult["stopped"] | null };
       /** Les cartes gardées, et celles qui ne l'ont pas été — dites, pas tues. */
       cards: StoredCards;
+      /** Les posts écartés faute d'un dessin qui dise leur sujet. */
+      illustrationRefused: string[];
     };
 
 /** Un post rédigé ET composé, prêt pour l'assemblage. */
 export type PreparedPost = Assemblable & {
   topicId: string;
+  /** Le dessin de la bibliothèque que la carte porte. */
+  illustration: string;
   caption: string;
   altText: string;
 };
@@ -671,12 +687,37 @@ export async function orchestrateMonth(
   const footer = `${input.practiceName} · ${verdict.licenceMention}`;
   let composeRefusal: string | null = null;
 
+  /*
+   * ── 6a. LE DESSIN DE CHAQUE POST, AVANT DE COMPOSER ─────────────────────
+   *
+   * ⚠ ICI, ET PAS DANS L'ARCHÉTYPE. Jusqu'au 2026-11-01 le dessin était fixé par
+   * la forme de carte (`DRAWING_FOR`) : la même plante sur trois sujets sans
+   * rapport. Il est choisi pour tout le mois d'un coup, dans l'ordre, pour que
+   * l'écart de dix posts soit tenu.
+   */
+  const written = topics.filter((t) => alreadyWritten.has(t.id));
+  const drawings = ports.illustrate(
+    written.map((t) => {
+      const post = alreadyWritten.get(t.id)!;
+      return { title: t.title, hook: t.hook ?? null, cardLine: post.cardLine, payload: post.payload, caption: post.caption };
+    })
+  );
+  const drawingOf = new Map(written.map((t, i) => [t.id, drawings[i] ?? null]));
+  const illustrationRefused: string[] = [];
+
   let index = 0;
   for (const topic of topics) {
     const post = alreadyWritten.get(topic.id);
     if (!post) continue;
+    const illustration = drawingOf.get(topic.id) ?? null;
+    if (!illustration) {
+      /* ⚠ AUCUN DESSIN NE DIT CE SUJET : le post n'est pas composé, le banc le remplace. */
+      illustrationRefused.push(topic.id);
+      continue;
+    }
     try {
       const card = composeCard({
+        illustration,
         archetype: topic.archetype_key,
         payload: post.payload,
         palette: input.paletteFor(index),
@@ -695,6 +736,7 @@ export async function orchestrateMonth(
       }
       prepared.push({
         topicId: topic.id,
+        illustration,
         cardLine: post.cardLine,
         /*
          * ⚠ LA MISE EN PAGE VIENT DE L'APPELANT, pas de l'archétype composé. Elle
@@ -944,6 +986,7 @@ export async function orchestrateMonth(
 
   return {
     ok: true, month, costUsd, resumed, fallbacks: composeFallbacks, released, runId, monthId, editing, writing, cards,
+    illustrationRefused,
   };
 }
 

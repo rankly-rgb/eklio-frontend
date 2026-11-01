@@ -52,7 +52,7 @@ export type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array
  */
 export function asMonthPost(p: {
   cardLine: string; composeArchetype: string; payload: unknown; svg: string | null;
-  eyebrow: string; footer: string;
+  eyebrow: string; footer: string; illustration?: string | null;
   candidate: { topic: { title: string; hook?: string | null }; result?: { caption?: string; altText?: string } | null };
 }): PostUnderCheck {
   return {
@@ -64,6 +64,7 @@ export function asMonthPost(p: {
     eyebrow: p.eyebrow,
     caption: p.candidate.result?.caption ?? undefined,
     hook: p.candidate.topic.hook ?? undefined,
+    illustration: p.illustration ?? undefined,
     altText: p.candidate.result?.altText ?? undefined,
     footer: p.footer,
   };

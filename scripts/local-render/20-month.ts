@@ -21,6 +21,7 @@
  *   ANTHROPIC_API_KEY="$EKLIO_ANTHROPIC_API_KEY" \
  *     npx tsx scripts/local-render/20-month.ts --confirm [--email <compte>]
  */
+import { illustrateMonth } from "@/lib/visual-library/illustrate";
 import { spawnSync } from "node:child_process";
 import Anthropic from "@anthropic-ai/sdk";
 import {
@@ -1521,7 +1522,13 @@ async function main() {
        * plus. Il ne devrait jamais parler ici, puisque le préalable refuse déjà
        * un mois sans licence — mais « ne devrait jamais » n'est pas un contrôle.
        */
+      /* ⚠ Le dessin du produit, choisi par le sens — sans dessin, la carte n'est pas composée. */
+      const illustration = illustrateMonth([
+        { title: candidate.topic.title, hook: candidate.topic.hook ?? null, cardLine: result.cardLine ?? null, payload: result.payload },
+      ])[0];
+      if (!illustration) throw new Error("aucun dessin de la bibliothèque ne dit ce sujet");
       const composed = composeCard({
+        illustration,
         archetype: candidate.topic.archetype_key,
         payload: result.payload,
         licenceMention: mention,

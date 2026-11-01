@@ -180,6 +180,8 @@ export function serverInsertPort(
       scheduled_for: row.scheduledFor,
       /* ⚠ L'État que le préalable a vérifié ; la base le compare à l'autorité (F76). */
       licence_state_code: row.licenceStateCode,
+      /* ⚠ Le dessin choisi par le sens : l'écran le relit pour recomposer la MÊME carte. */
+      illustration_key: row.illustrationKey,
     });
     /* ⚠ LE CODE SQL AUSSI : c'est lui qui sépare un refus de contenu d'une erreur technique (F77). */
     return error ? { code: (error as { code?: string | null }).code ?? null, message: error.message } : null;

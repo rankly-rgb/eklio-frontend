@@ -71,6 +71,7 @@ const NOT_PUBLISHED: Record<string, string> = {
    * `checkAdvertisingEthics` la lit (voir TEXT_BEARING ci-dessous).
    */
   hook: "texte de banque : `checkVariety` et `checkAdvertisingEthics` la lisent, la banque l'a relue à l'entrée",
+  illustration: "un identifiant de la bibliothèque de visuels, jamais imprimé : seul `checkIllustrationSpacing` le lit",
 };
 
 describe("chaque surface publiée arrive dans les contrôles d'écriture", () => {
@@ -201,6 +202,7 @@ describe("les contrôles de texte prennent tous `written`", () => {
     AdvertisingEthics:
       "lit TOUTES les surfaces, y compris le pied et le surtitre que la liste commune exempte",
     Variety: "compare les TOURNURES d'ouverture entre posts, pas une ligne seule (novembre 2026)",
+    IllustrationSpacing: "compare les DESSINS entre posts et leur écart dans le mois, pas un texte",
   };
 
   it("ceux qui prennent les posts regardent une structure, et le disent", () => {
@@ -239,6 +241,7 @@ const TEXT_BEARING: Record<string, "string" | "payload" | "fallback" | "not-text
   footer: "string",
   eyebrow: "string",
   hook: "string",
+  illustration: "not-text",
   payload: "payload",
   archetype: "not-text",
   svg: "not-text",

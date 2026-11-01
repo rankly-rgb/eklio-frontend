@@ -63,7 +63,9 @@ const J = JSON.parse(
 const footer = `${J.kit.practiceName} · ${J.kit.licenceMention}`;
 const prepared = () =>
   J.posts.map((p, i) => {
+    /* Un dessin fixe : ce rejeu éprouve F77 (l'écriture), pas l'appariement. */
     const card = composeCard({
+      illustration: "ground-anchor",
       archetype: p.archetype,
       payload: p.payload,
       palette: cardPalette(`2026-11-01-${i}`, J.kit.direction, false),

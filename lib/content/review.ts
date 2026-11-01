@@ -19,6 +19,13 @@ import { licenceMention } from "@/lib/content/licence";
 
 export type ReviewCard = {
   archetypeKey: string;
+  /**
+   * Le dessin de la bibliothèque que la génération a choisi pour ce post
+   * (`content_items.illustration_key`), ou `null` — l'archétype pose alors son
+   * dessin fait main. Lu ici pour que l'écran, le téléchargement et la carte
+   * gardée portent LE MÊME dessin.
+   */
+  illustration: string | null;
   payload: unknown;
   palette: Palette;
   eyebrow: string;
@@ -183,11 +190,25 @@ export async function reviewCardFor(
     }
   }
 
-  return reviewCardFrom(item, topicRow, direction, practiceName, licence);
+  /*
+   * ⚠ LE DESSIN ENREGISTRÉ, LU À PART. `content_item_json` ne le porte pas (il
+   * est écrit à la génération, la cliente ne le choisit pas) : une lecture de la
+   * colonne, que la RLS de `content_items` autorise déjà pour ses posts.
+   */
+  const drawing = await supabase.from("content_items").select("illustration_key").eq("id", item.id).maybeSingle();
+  if (drawing.error) {
+    console.error("[content] reviewCardFor: illustration_key", { message: drawing.error.message });
+  }
+  const illustrationKey = (drawing.data as { illustration_key?: string | null } | null)?.illustration_key ?? null;
+
+  return reviewCardFrom({ ...item, illustration_key: illustrationKey }, topicRow, direction, practiceName, licence);
 }
 
 /** Ce que `reviewCardFrom` lit d'un post. La route, l'écran et la génération le fournissent. */
-export type CardItem = Pick<ContentItem, "id" | "theme" | "title" | "payload" | "compose_archetype" | "topic">;
+export type CardItem = Pick<ContentItem, "id" | "theme" | "title" | "payload" | "compose_archetype" | "topic"> & {
+  /** `content_items.illustration_key` — absent de `content_item_json`, lu à part. */
+  illustration_key?: string | null;
+};
 
 /**
  * La carte d'un post, SANS AUCUNE LECTURE : tout ce qu'il faut est passé.
@@ -222,6 +243,7 @@ export function reviewCardFrom(
 
   return {
     archetypeKey,
+    illustration: item.illustration_key ?? null,
     payload,
     /*
      * ⚠ CLAIRE, TOUJOURS, SUR CET ÉCRAN. Le choix clair/sombre appartient au

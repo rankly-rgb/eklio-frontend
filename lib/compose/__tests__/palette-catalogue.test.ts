@@ -80,6 +80,7 @@ const DIAGRAMS: Record<string, unknown> = {
 
 function svgFor(archetype: string, palette: Palette): string {
   return composeCard({
+    illustration: "ground-anchor",
     archetype,
     payload: DIAGRAMS[archetype],
     palette,

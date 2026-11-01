@@ -411,6 +411,133 @@
    "drawable": true
   },
   {
+   "id": "change-detour-arrow",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/change-detour-arrow.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "e741a73850b0c0e38c15f2e720d74739588ad9a3df3177753a2ba44673e6b4d8",
+   "bytes": 7285,
+   "storagePath": "library/illustrations/change-detour-arrow.svg",
+   "themes": [
+    "a detour",
+    "when life reroutes",
+    "the way round"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "change-marked-calendar",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/change-marked-calendar.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "277d5e61638912882e5356704c42a03eb10b65a77903d47cb1e6861d0e10cabd",
+   "bytes": 8839,
+   "storagePath": "library/illustrations/change-marked-calendar.svg",
+   "themes": [
+    "a date that changed",
+    "a plan struck out",
+    "interruption"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "change-rerouted-line",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/change-rerouted-line.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "09fd5536bbfe84ab4702b6a7a604fa272427bf304195866110423d866fdd52f0",
+   "bytes": 5193,
+   "storagePath": "library/illustrations/change-rerouted-line.svg",
+   "themes": [
+    "the plan and what happened",
+    "divergence from intention",
+    "a new route"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "change-set-aside-block",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/change-set-aside-block.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "9038d62cd67db8c19344a154863de13e16ad9b80fcbec11a6575154a06f4b4db",
+   "bytes": 4556,
+   "storagePath": "library/illustrations/change-set-aside-block.svg",
+   "themes": [
+    "something removed from the plan",
+    "a piece no longer in place"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "delay-forming-drop",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/delay-forming-drop.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "272eaa1b2a97fcbf77d5bd215a09b52798a54fdf4d4606dc51a798c737ec51c4",
+   "bytes": 8298,
+   "storagePath": "library/illustrations/delay-forming-drop.svg",
+   "themes": [
+    "something about to arrive",
+    "slow build",
+    "not yet fallen"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "delay-icicle-thaw",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/delay-icicle-thaw.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "bbf0b3622c727128c78802735212a58ae7556188e2e1e6b38618127947bc37a1",
+   "bytes": 6687,
+   "storagePath": "library/illustrations/delay-icicle-thaw.svg",
+   "themes": [
+    "slow thaw",
+    "feeling arriving as things soften",
+    "release over time"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "delay-letter-slot",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/delay-letter-slot.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0935d9e58b9e205bf2e399b869d40e7a0c00a27fc6267d537d2b7b85fd81c6ee",
+   "bytes": 6504,
+   "storagePath": "library/illustrations/delay-letter-slot.svg",
+   "themes": [
+    "feelings catch up",
+    "arriving later",
+    "delivered after the fact"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "delay-sundial",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/delay-sundial.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "806b257129ef2a62e5dfd198b7af817a5ea345fd62437f3ca1c05d1ad3cf0b57",
+   "bytes": 7855,
+   "storagePath": "library/illustrations/delay-sundial.svg",
+   "themes": [
+    "time does not erase",
+    "slow passage of time",
+    "years later"
+   ],
+   "drawable": true
+  },
+  {
    "id": "eft-cord-between-hands",
    "family": "illustrations",
    "file": "assets/visual-library/01-illustrations/eft-cord-between-hands.svg",
@@ -763,6 +890,22 @@
    "drawable": true
   },
   {
+   "id": "mem-ammonite",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-ammonite.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "2e4bfcc7893253af21aa7391eb19ede5cffeacf7c327e56fdc047f7b7a785e50",
+   "bytes": 22833,
+   "storagePath": "library/illustrations/mem-ammonite.svg",
+   "themes": [
+    "something very old still shaped",
+    "deep time",
+    "a fixed record"
+   ],
+   "drawable": true
+  },
+  {
    "id": "mem-echo-rings",
    "family": "illustrations",
    "file": "assets/visual-library/01-illustrations/mem-echo-rings.svg",
@@ -795,6 +938,70 @@
    "drawable": true
   },
   {
+   "id": "mem-footprints",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-footprints.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "f771cda3f0a5518493934d900e8c3a2aef709b4048e7c0f8e731d0adbb0ba8db",
+   "bytes": 23925,
+   "storagePath": "library/illustrations/mem-footprints.svg",
+   "themes": [
+    "a trail left behind",
+    "evidence of passage",
+    "where you came from"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-long-shadow",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-long-shadow.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "ae53ebba3ce718cd18fbf8bfee3896161648a0c0805af78b439312082be8bace",
+   "bytes": 2127,
+   "storagePath": "library/illustrations/mem-long-shadow.svg",
+   "themes": [
+    "a small thing with long reach",
+    "lasting influence",
+    "the past in the present"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-mended-bowl",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-mended-bowl.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "88c07a95f85bd53516e503b5d26f95ebd7cb884d5869292518011d66c58af15d",
+   "bytes": 6032,
+   "storagePath": "library/illustrations/mem-mended-bowl.svg",
+   "themes": [
+    "repair that shows",
+    "healing with a visible seam",
+    "mended not erased"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-offset-outlines",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-offset-outlines.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "fab6f3afd5dab7f5c857e3e048ff0a1b1ddda5247d4d56c3e6b0e9b2609dda68",
+   "bytes": 11084,
+   "storagePath": "library/illustrations/mem-offset-outlines.svg",
+   "themes": [
+    "the same thing repeating",
+    "echoes of an earlier moment",
+    "recurrence"
+   ],
+   "drawable": true
+  },
+  {
    "id": "mem-photo-frame",
    "family": "illustrations",
    "file": "assets/visual-library/01-illustrations/mem-photo-frame.svg",
@@ -811,6 +1018,22 @@
    "drawable": true
   },
   {
+   "id": "mem-pressed-leaf",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-pressed-leaf.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "c63a49ef7df6141c63889693ed958bd8c92cbb3751c2c00d6982182001ff6d0a",
+   "bytes": 17836,
+   "storagePath": "library/illustrations/mem-pressed-leaf.svg",
+   "themes": [
+    "a preserved past",
+    "flattened but intact",
+    "kept"
+   ],
+   "drawable": true
+  },
+  {
    "id": "mem-rearview",
    "family": "illustrations",
    "file": "assets/visual-library/01-illustrations/mem-rearview.svg",
@@ -823,6 +1046,38 @@
     "looking back",
     "the past behind",
     "perspective"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-returning-tide",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-returning-tide.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "a967fbeecbb03c90696ae24b5d31b498e1233484f4080f78c3d2e462c5791187",
+   "bytes": 15112,
+   "storagePath": "library/illustrations/mem-returning-tide.svg",
+   "themes": [
+    "something that keeps coming back",
+    "beyond the last mark",
+    "recurrence"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-root-under-floor",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-root-under-floor.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "917939315a17fc87aad67148cb3c42984fd0bd7fffd200d7474a1d68c27abb85",
+   "bytes": 10945,
+   "storagePath": "library/illustrations/mem-root-under-floor.svg",
+   "themes": [
+    "daily echoes",
+    "what runs beneath daily life",
+    "hidden continuity"
    ],
    "drawable": true
   },
@@ -1018,6 +1273,294 @@
    "drawable": true
   },
   {
+   "id": "priv-closed-fan",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/priv-closed-fan.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "766cefe22955eda4109c83f1f2790314a3747b4acecf592d708438cd67b1d82d",
+   "bytes": 6410,
+   "storagePath": "library/illustrations/priv-closed-fan.svg",
+   "themes": [
+    "the whole story",
+    "holding something in reserve",
+    "what is not unfolded"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "priv-drawn-curtain",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/priv-drawn-curtain.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "7cfac082af2c80aeb4ec7addb76afa1964fc771fb6d1ceb31126c59c606c1713",
+   "bytes": 16033,
+   "storagePath": "library/illustrations/priv-drawn-curtain.svg",
+   "themes": [
+    "you choose what to share",
+    "partial disclosure",
+    "safety and choice"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "priv-partial-outline",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/priv-partial-outline.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "85d940903c74cdd7924219383e96e2369d9fe705ff9b738f820ac5946fdcf090",
+   "bytes": 1016,
+   "storagePath": "library/illustrations/priv-partial-outline.svg",
+   "themes": [
+    "an incomplete account",
+    "not every detail",
+    "what is left out"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "priv-sealed-envelope",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/priv-sealed-envelope.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "7086fe3c042abb8c53450e763fa9e8a09b65ed7f50682a562c8e17d2e488d76d",
+   "bytes": 2502,
+   "storagePath": "library/illustrations/priv-sealed-envelope.svg",
+   "themes": [
+    "what stays unsaid",
+    "not retelling",
+    "kept private"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "prot-latched-box",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/prot-latched-box.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "7e3a305023d9ce9a2cd2e196325416538b6fffdecc5c66de77e7dffa2b9b333d",
+   "bytes": 3096,
+   "storagePath": "library/illustrations/prot-latched-box.svg",
+   "themes": [
+    "protection kept closed",
+    "guarded",
+    "not opened yet"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "prot-shell",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/prot-shell.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "912840d0c05f0faef660a025339971584fb8b6e6354baf01ae83980716e12e25",
+   "bytes": 4405,
+   "storagePath": "library/illustrations/prot-shell.svg",
+   "themes": [
+    "self-protection",
+    "withdrawing inward",
+    "a shell that remains"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "prot-thorn-branch",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/prot-thorn-branch.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "5022de49dadc03f013f8f76ab3f39060ae5932e49297057575b1a85c299b7d33",
+   "bytes": 3877,
+   "storagePath": "library/illustrations/prot-thorn-branch.svg",
+   "themes": [
+    "keeping others at distance",
+    "defensiveness",
+    "protective sharpness"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "prot-turtle-shell",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/prot-turtle-shell.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "2d3555b8d50f26463af619d032e2b8813f7732bcc50bed44c7844e347697036e",
+   "bytes": 8882,
+   "storagePath": "library/illustrations/prot-turtle-shell.svg",
+   "themes": [
+    "armour",
+    "carried protection",
+    "slow and guarded"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "rule-blank-signpost",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/rule-blank-signpost.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "d60362cd804200ed48b5e39c3e9fd1bb6bf0d6d00103a766264891e1cc381a80",
+   "bytes": 14297,
+   "storagePath": "library/illustrations/rule-blank-signpost.svg",
+   "themes": [
+    "inherited directions",
+    "rules with no author",
+    "pointing without reason"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "rule-grooved-tablet",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/rule-grooved-tablet.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "ce5c5f4c5fc7cfc83e59b43ed1f03bf6c48ffb95dc2e78b3e3eaffc0c2f3ca1c",
+   "bytes": 12817,
+   "storagePath": "library/illustrations/rule-grooved-tablet.svg",
+   "themes": [
+    "rules learned long ago",
+    "fixed instruction",
+    "what was laid down"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "rule-ruler",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/rule-ruler.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "aa92dadb1b68a81e14be4d5bf5db580625c6b931586cbfd7c7e1456857ca9a61",
+   "bytes": 3104,
+   "storagePath": "library/illustrations/rule-ruler.svg",
+   "themes": [
+    "old standards",
+    "measuring yourself",
+    "inherited yardstick"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "rule-worn-path",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/rule-worn-path.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "733526d37b501da7d5f6d34a8fccf822d6edd5dc924c1e477d784dea1e1b7598",
+   "bytes": 9233,
+   "storagePath": "library/illustrations/rule-worn-path.svg",
+   "themes": [
+    "a habit worn deep",
+    "the usual route",
+    "long repetition"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "xtra-box-b",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-box-b.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "130ef9c2e8077fda71859d025ef42721ea91fa8658d39cb069d22077601f2aca",
+   "bytes": 2782,
+   "storagePath": "library/illustrations/xtra-box-b.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-closed-book",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-closed-book.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "4799280e5c8836b50a667d82dfcd4aea9160c91758783b65db3158a3e66d5148",
+   "bytes": 9331,
+   "storagePath": "library/illustrations/xtra-closed-book.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-detour-b",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-detour-b.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "501fd4fa6a93e1c4e1277f04126fdabb77144bb686d0b1b135f3486e38fe0403",
+   "bytes": 7581,
+   "storagePath": "library/illustrations/xtra-detour-b.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-keyhole",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-keyhole.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "140a335cbd76912bc3d172861a50e672e7b7ce82ffdbbb2792942a6017c5f5e0",
+   "bytes": 1794,
+   "storagePath": "library/illustrations/xtra-keyhole.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-leaf-b",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-leaf-b.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0f82d0917c82c4b73d51c7cdeb8db2853ae7d461af50353f3cd25c9424af4c7d",
+   "bytes": 33884,
+   "storagePath": "library/illustrations/xtra-leaf-b.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-long-shadow-b",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-long-shadow-b.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "a719f66628ba6cb56c37fd63d4755a9b3285ac672cc5601121663587d0076719",
+   "bytes": 2255,
+   "storagePath": "library/illustrations/xtra-long-shadow-b.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-shield-keyhole",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-shield-keyhole.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "5708a619a179867b7283bb7269a0fbbe831042aabd368eeab69fa92005adec25",
+   "bytes": 2917,
+   "storagePath": "library/illustrations/xtra-shield-keyhole.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-treasure-chest",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-treasure-chest.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "34715ae30bc55547220cc1fada30cfae0cea410dcac40ec72f6c9cab317695e1",
+   "bytes": 15128,
+   "storagePath": "library/illustrations/xtra-treasure-chest.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
    "id": "xtra-wave-soft",
    "family": "illustrations",
    "file": "assets/visual-library/01-illustrations/xtra-wave-soft.svg",
@@ -1026,6 +1569,18 @@
    "sha256": "db2151402561d925f16d645e0aeaca138b6697f2ba8db25b64a4096af8b85a96",
    "bytes": 3214,
    "storagePath": "library/illustrations/xtra-wave-soft.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-window-curtains",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-window-curtains.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "f85b5a0976dda68f18dabe6a843c9119479186af124e25c8210a69a24c2d5ea2",
+   "bytes": 17534,
+   "storagePath": "library/illustrations/xtra-window-curtains.svg",
    "themes": null,
    "drawable": false
   },

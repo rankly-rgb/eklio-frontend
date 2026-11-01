@@ -22,7 +22,8 @@ for (const f of fams) {
   const d = { primary: f.primary_hex, secondary: f.secondary_hex, light: f.light_hex, dark: f.dark_hex, paper: f.paper_hex };
   const bad: string[] = [];
   for (const dark of [false, true]) for (const [a, payload] of Object.entries(payloads)) {
-    const card = composeCard({ archetype: a, payload, palette: cardPalette("k", d, dark), eyebrow: "EDUCATE", headline: "Rest is not a reward", footer: "Rowan Mercier Therapy · LMFT 123456", licenceMention: "LMFT 123456" });
+    /* Un dessin fixe : ce contrôle éprouve les TEINTES, pas l'appariement. */
+    const card = composeCard({ illustration: "ground-anchor", archetype: a, payload, palette: cardPalette("k", d, dark), eyebrow: "EDUCATE", headline: "Rest is not a reward", footer: "Rowan Mercier Therapy · LMFT 123456", licenceMention: "LMFT 123456" });
     if (checkTints(card.svg, d).length > 0) bad.push(`${a}${dark ? "(sombre)" : ""}`);
   }
   console.log(`${f.id.padEnd(16)} ${f.active ? "active " : "retirée"} ${bad.length === 0 ? "ok" : "REFUSÉ : " + bad.join(", ")}`);

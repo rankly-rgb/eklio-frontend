@@ -2,17 +2,17 @@
  "measuredWith": "lib/visual-library/match.ts, seuil MATCH_THRESHOLD = 1, inventaire du 2026-11-01",
  "december": {
   "posts": 30,
-  "coveredDistinct": 18,
-  "coverageDistinct": 0.6,
-  "withAnyMatch": 21,
-  "coverageAnyMatch": 0.7,
+  "coveredDistinct": 28,
+  "coverageDistinct": 0.933,
+  "withAnyMatch": 29,
+  "coverageAnyMatch": 0.967,
   "rows": [
    {
     "cardLine": "When plans come undone",
     "illustration": "grief-two-paths",
-    "score": 2.5,
+    "score": 2,
     "reasons": [
-     "mots : crossroad, future",
+     "mots : crossroad",
      "objet : path",
      "famille : grief"
     ],
@@ -20,13 +20,12 @@
    },
    {
     "cardLine": "Crossroads are not failures",
-    "illustration": "grief-folded-map",
-    "score": 1.5,
+    "illustration": "agency-lantern",
+    "score": 1,
     "reasons": [
-     "changed plans",
-     "mots : chang, plan"
+     "hope"
     ],
-    "firstChoice": "grief-folded-map"
+    "firstChoice": "agency-lantern"
    },
    {
     "cardLine": "EMDR includes preparation",
@@ -43,13 +42,12 @@
    },
    {
     "cardLine": "Before EMDR reprocessing",
-    "illustration": "mem-photo-frame",
+    "illustration": "bound-drawn-line",
     "score": 1,
     "reasons": [
-     "mots : memory",
-     "famille : mem"
+     "deciding"
     ],
-    "firstChoice": "mem-photo-frame"
+    "firstChoice": "bound-drawn-line"
    },
    {
     "cardLine": "When the Past Interrupts",
@@ -64,10 +62,14 @@
    },
    {
     "cardLine": "Feelings can arrive later",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
-    "firstChoice": null
+    "illustration": "delay-letter-slot",
+    "score": 2.5,
+    "reasons": [
+     "feelings catch up",
+     "arriving later",
+     "mots : arriv, catch, later"
+    ],
+    "firstChoice": "delay-letter-slot"
    },
    {
     "cardLine": "An honest meeting with change",
@@ -81,10 +83,13 @@
    },
    {
     "cardLine": "When the map changes",
-    "illustration": "anx-many-doors",
-    "score": 1,
+    "illustration": "grief-folded-map",
+    "score": 3.5,
     "reasons": [
-     "uncertainty"
+     "changed plans",
+     "life disruption",
+     "objet : map",
+     "famille : grief"
     ],
     "firstChoice": "grief-folded-map"
    },
@@ -97,32 +102,35 @@
      "mots : ground, hold",
      "famille : ground"
     ],
-    "firstChoice": "grief-folded-map"
+    "firstChoice": "ground-anchor"
    },
    {
     "cardLine": "You set the pace",
-    "illustration": "pace-metronome",
-    "score": 1,
+    "illustration": "priv-drawn-curtain",
+    "score": 1.5,
     "reasons": [
-     "mots : pace",
-     "famille : pace"
+     "you choose what to share",
+     "mots : choos, shar"
     ],
-    "firstChoice": "pace-metronome"
+    "firstChoice": "priv-drawn-curtain"
    },
    {
     "cardLine": "EFT listens for patterns",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
-    "firstChoice": null
+    "illustration": "prot-thorn-branch",
+    "score": 1,
+    "reasons": [
+     "mots : protectiv",
+     "famille : prot"
+    ],
+    "firstChoice": "prot-thorn-branch"
    },
    {
     "cardLine": "Room for unchosen grief",
-    "illustration": "grief-unlit-candle",
+    "illustration": "grief-two-paths",
     "score": 2,
     "reasons": [
-     "quiet grief",
-     "mots : grief, quiet",
+     "unchosen crossroads",
+     "mots : crossroad, unchosen",
      "famille : grief"
     ],
     "firstChoice": "grief-two-paths"
@@ -149,34 +157,39 @@
    },
    {
     "cardLine": "Curiosity about patterns",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
-    "firstChoice": null
+    "illustration": "agency-compass",
+    "score": 1,
+    "reasons": [
+     "choosing a way"
+    ],
+    "firstChoice": "agency-compass"
    },
    {
     "cardLine": "Long ago can still matter",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
-    "firstChoice": null
+    "illustration": "mem-long-shadow",
+    "score": 1,
+    "reasons": [
+     "mots : influenc, long"
+    ],
+    "firstChoice": "mem-long-shadow"
    },
    {
     "cardLine": "You need not say every detail",
-    "illustration": "bound-gate-in-fence",
+    "illustration": "priv-partial-outline",
     "score": 1,
     "reasons": [
-     "mots : boundary",
-     "famille : bound"
+     "not every detail"
     ],
-    "firstChoice": "bound-gate-in-fence"
+    "firstChoice": "priv-partial-outline"
    },
    {
     "cardLine": "The past cannot choose today",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
-    "firstChoice": "mem-photo-frame"
+    "illustration": "bound-drawn-line",
+    "score": 1,
+    "reasons": [
+     "deciding"
+    ],
+    "firstChoice": "bound-drawn-line"
    },
    {
     "cardLine": "EMDR in Oakland",
@@ -187,141 +200,155 @@
    },
    {
     "cardLine": "Preparation Matters",
-    "illustration": "emdr-horizon-boat",
-    "score": 1,
+    "illustration": "emdr-two-way-arc",
+    "score": 1.5,
     "reasons": [
-     "mots : process",
+     "processing",
      "famille : emdr"
     ],
     "firstChoice": "emdr-two-way-arc"
    },
    {
     "cardLine": "The past can echo",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
+    "illustration": "mem-echo-rings",
+    "score": 1.5,
+    "reasons": [
+     "mots : impact",
+     "objet : echo"
+    ],
     "firstChoice": "mem-echo-rings"
    },
    {
     "cardLine": "A place for the past",
     "illustration": "cbt-balance-scale",
-    "score": 1,
+    "score": 2,
     "reasons": [
-     "mots : thought",
+     "examining a thought",
+     "mots : examin, thought",
      "famille : cbt"
     ],
     "firstChoice": "cbt-balance-scale"
    },
    {
     "cardLine": "Old rules, current costs",
-    "illustration": "cbt-magnifier",
-    "score": 1.5,
+    "illustration": "rule-grooved-tablet",
+    "score": 3,
     "reasons": [
-     "examining a thought",
-     "mots : examin, thought"
+     "rules learned long ago",
+     "mots : ago, learn, long, rule",
+     "famille : rule"
     ],
-    "firstChoice": "cbt-balance-scale"
+    "firstChoice": "rule-grooved-tablet"
    },
    {
     "cardLine": "Old patterns, present cues",
     "illustration": null,
     "score": null,
     "reasons": [],
-    "firstChoice": null
+    "firstChoice": "mem-long-shadow"
    },
    {
     "cardLine": "CBT is not forgetting",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
-    "firstChoice": null
+    "illustration": "cbt-magnifier",
+    "score": 1,
+    "reasons": [
+     "mots : examin",
+     "famille : cbt"
+    ],
+    "firstChoice": "cbt-balance-scale"
    },
    {
     "cardLine": "EMDR does not erase memories",
-    "illustration": "mem-folded-paper",
+    "illustration": "priv-sealed-envelope",
     "score": 1,
     "reasons": [
-     "mots : remain",
-     "famille : mem"
+     "not retelling"
     ],
-    "firstChoice": "mem-photo-frame"
+    "firstChoice": "priv-sealed-envelope"
    },
    {
     "cardLine": "Protection, not defect",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
+    "illustration": "eft-shelter",
+    "score": 1,
+    "reasons": [
+     "protection"
+    ],
     "firstChoice": "eft-shelter"
    },
    {
     "cardLine": "Feeling Is Not Surrender",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
-    "firstChoice": null
+    "illustration": "change-rerouted-line",
+    "score": 1,
+    "reasons": [
+     "the plan and what happened"
+    ],
+    "firstChoice": "change-rerouted-line"
    },
    {
     "cardLine": "Past Patterns, Present Care",
-    "illustration": "mem-rearview",
-    "score": 1,
+    "illustration": "mem-long-shadow",
+    "score": 1.5,
     "reasons": [
-     "mots : past",
+     "the past in the present",
      "famille : mem"
     ],
     "firstChoice": "eft-shelter"
    },
    {
     "cardLine": "The Rules That Stayed",
-    "illustration": null,
-    "score": null,
-    "reasons": [],
-    "firstChoice": null
+    "illustration": "rule-blank-signpost",
+    "score": 1,
+    "reasons": [
+     "mots : rule",
+     "famille : rule"
+    ],
+    "firstChoice": "rule-grooved-tablet"
    }
   ]
  },
  "bank": {
   "topics": 186,
-  "covered": 162,
-  "coverage": 0.871,
+  "covered": 180,
+  "coverage": 0.968,
   "mostChosen": [
    [
     "grief-folded-map",
-    41
+    24
    ],
    [
     "grief-two-paths",
-    18
+    22
    ],
    [
-    "mem-photo-frame",
-    14
+    "mem-long-shadow",
+    20
+   ],
+   [
+    "rule-grooved-tablet",
+    11
+   ],
+   [
+    "grief-empty-chair",
+    11
    ],
    [
     "cbt-balance-scale",
-    9
-   ],
-   [
-    "mem-rearview",
-    8
-   ],
-   [
-    "eft-shelter",
     8
    ],
    [
     "mem-echo-rings",
-    8
+    7
    ],
    [
-    "eft-nest",
-    6
-   ],
-   [
-    "grief-empty-chair",
+    "priv-partial-outline",
     6
    ],
    [
     "anx-static-wave",
+    5
+   ],
+   [
+    "eft-shelter",
     5
    ]
   ],
@@ -334,23 +361,33 @@
    "anger-pressure-valve",
    "anger-storm-cloud",
    "anx-iceberg",
-   "anx-looping-line",
    "anx-overflowing-cup",
    "anx-tangled-thread",
    "bound-concentric-control",
    "bound-door-ajar",
-   "bound-drawn-line",
+   "bound-gate-in-fence",
    "bound-raised-palm",
    "bound-two-rooms",
+   "cbt-broken-loop",
+   "change-rerouted-line",
+   "change-set-aside-block",
+   "delay-forming-drop",
+   "delay-icicle-thaw",
    "eft-cord-between-hands",
    "eft-parallel-threads",
    "eft-two-chairs",
    "emdr-lighthouse",
-   "grief-open-window",
+   "emdr-pendulum",
    "grief-single-stem",
    "grief-unlit-candle",
    "ground-breath-wave",
    "ground-feet-standing",
+   "mem-folded-paper",
+   "mem-footprints",
+   "mem-offset-outlines",
+   "mem-pressed-leaf",
+   "mem-rearview",
+   "mem-returning-tide",
    "mem-sediment-layers",
    "pace-hourglass",
    "pace-metronome",
@@ -360,9 +397,15 @@
    "practice-clock",
    "practice-doorway",
    "practice-notebook",
-   "practice-two-cups"
+   "practice-two-cups",
+   "priv-sealed-envelope",
+   "prot-turtle-shell",
+   "rule-blank-signpost",
+   "rule-ruler",
+   "rule-worn-path"
   ],
   "neverMatchedAtAll": [
+   "anger-gauge",
    "anger-pressure-valve",
    "anger-storm-cloud",
    "anx-iceberg",
@@ -370,39 +413,23 @@
    "bound-door-ajar",
    "bound-raised-palm",
    "bound-two-rooms",
+   "change-set-aside-block",
+   "delay-icicle-thaw",
    "eft-cord-between-hands",
-   "eft-two-chairs",
    "emdr-lighthouse",
    "ground-feet-standing",
    "pace-hourglass",
    "pace-seedling-stages",
-   "practice-clock"
+   "practice-clock",
+   "rule-ruler"
   ],
   "uncoveredTitles": [
    "CBT Beyond Positive Thinking",
    "CBT Is Not Forced Positivity",
-   "CBT and the Long Ago",
-   "More Than the Story",
-   "Old Rules, Present Life",
-   "Past Events, Present Patterns",
-   "Updating Old Rules",
-   "EFT Is Not Erasing",
-   "Old Alarm, Present Life",
-   "Protective Patterns, Not Defects",
-   "The Long-Ago Myth",
-   "A Pause Before Old Patterns",
-   "EMDR Without Full Retelling",
-   "The Past Need Not Vanish",
-   "When the Past Keeps Scheduling Today",
-   "CBT After Unwanted Change",
    "Facts and Forecasts",
-   "Feelings Aren't Detours",
    "How EFT Meets Crossroads",
-   "When Feelings Catch Up",
-   "EMDR Beyond Full Retelling",
    "EMDR Beyond One Story",
-   "EMDR and the Unplanned Future",
-   "When the Planned Life Ends"
+   "EMDR and the Unplanned Future"
   ]
  }
 }

@@ -31,6 +31,7 @@ const MENTION = "LMFT #123456";
 
 function input(overrides: Partial<Parameters<typeof composeCard>[0]> = {}) {
   return {
+    illustration: "ground-anchor",
     archetype: "single_statement",
     payload: { statement: "Rest is not a reward for finishing." },
     palette: cardPalette("card-1", DIRECTION, false),

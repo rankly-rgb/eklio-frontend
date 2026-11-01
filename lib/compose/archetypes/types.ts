@@ -1,4 +1,4 @@
-import type { Box, Palette, Placed } from "@/lib/compose/types";
+import type { Box, Palette, Placed, Stroke } from "@/lib/compose/types";
 
 /**
  * What every archetype module exports.
@@ -26,6 +26,15 @@ export type ArchetypeModule<P> = {
 
 export type Ctx<P> = {
   payload: P;
+  /**
+   * LE DESSIN À POSER — celui choisi par le sens pour ce post, sinon le dessin
+   * fait main de l'archétype. Chaque archétype appelle `draw` là où il appelait
+   * son dessin attitré (`plant`, `anchor`…) : c'est ce qui branche la
+   * bibliothèque sans réécrire une mise en page.
+   */
+  draw: (box: Box, colour: string, width?: number) => Stroke[];
+  /** Vrai quand `draw` pose un dessin de la bibliothèque. */
+  illustrated: boolean;
   palette: Palette;
   /** The content band, already separated from the headline. */
   content: Box;

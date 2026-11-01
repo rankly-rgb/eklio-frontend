@@ -58,10 +58,20 @@ const STOP = new Set(
 export function stem(word: string): string {
   for (const suffix of ["ings", "ing", "edly", "ed", "ies", "es", "s", "ly"]) {
     if (word.length > suffix.length + 3 && word.endsWith(suffix)) {
-      return word.slice(0, -suffix.length) + (suffix === "ies" ? "y" : "");
+      return dropE(word.slice(0, -suffix.length) + (suffix === "ies" ? "y" : ""));
     }
   }
-  return word;
+  return dropE(word);
+}
+
+/*
+ * ⚠ LE « e » FINAL TOMBE (2026-11-01). Sans lui, « change » restait « change » et
+ * « changed » devenait « chang » : le mot générique était écarté, sa forme
+ * conjuguée comptait comme un mot thématique, et « plans changed » appariait
+ * tout ce qui parle d'un plan. Même racine pour les deux, désormais.
+ */
+function dropE(word: string): string {
+  return word.length > 4 && word.endsWith("e") ? word.slice(0, -1) : word;
 }
 
 export function tokens(text: string | null | undefined): string[] {
@@ -74,6 +84,25 @@ const WEAK = new Set(
   "two once time change work pass way place made held kept small own thing over across back between being life lives one open"
     .split(" ")
     .map(stem)
+);
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LES MOTS QUI NE DÉPARTAGENT RIEN — MESURÉS, PAS CHOISIS
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Fréquence documentaire sur la banque de production (186 sujets, 2026-11-01),
+ * titre + ligne d'image + diagramme : les mots de thème présents dans 20 % des
+ * sujets ou plus. Feel 45 %, old 41 %, present 39 %, life 37 %, still 33 %, past
+ * 33 %, change 26 + 22 %, plan 24 %, future 23 %, happen 20 %.
+ *
+ * Ils COMPTENT dans une expression entière (« the past in the present »,
+ * « changed plans » restent des thèmes) mais jamais comme mot isolé : seuls,
+ * ils faisaient poser l'ammonite par « old, still » et la tablette des règles
+ * par « long ago ». Un resserrement — le seuil ne bouge pas.
+ */
+const NON_DISCRIMINATING = new Set(
+  "feel old present life still past change plan future happen".split(" ").map(stem)
 );
 
 /*
@@ -104,6 +133,17 @@ const OBJECTS: Record<string, string[]> = {
   "agency-open-gate": ["gate"],
   "practice-doorway": ["doorway", "threshold"], "practice-two-cups": ["cups", "tea"], "practice-clock": ["clock", "minutes"],
   "practice-notebook": ["notebook"],
+  /* Lot 6 (2026-11-01). */
+  "change-detour-arrow": ["detour"], "change-marked-calendar": ["calendar"], "change-rerouted-line": ["reroute"],
+  "delay-forming-drop": ["drop"], "delay-icicle-thaw": ["thaw", "icicle"], "delay-letter-slot": ["letter"],
+  "delay-sundial": ["sundial"],
+  "mem-ammonite": ["ammonite", "fossil"], "mem-footprints": ["footprints"], "mem-long-shadow": ["shadow"],
+  "mem-mended-bowl": ["mended", "bowl"], "mem-pressed-leaf": ["leaf"], "mem-returning-tide": ["tide"],
+  "mem-root-under-floor": ["floor"],
+  "priv-closed-fan": ["fan"], "priv-drawn-curtain": ["curtain"], "priv-sealed-envelope": ["envelope"],
+  "prot-latched-box": ["latch"], "prot-shell": ["shell"], "prot-thorn-branch": ["thorn"], "prot-turtle-shell": ["turtle"],
+  "rule-blank-signpost": ["signpost"], "rule-grooved-tablet": ["tablet"], "rule-ruler": ["ruler", "yardstick"],
+  "rule-worn-path": ["worn"],
 };
 
 /* La famille nommée dans le texte : elle oriente, elle ne suffit pas. */
@@ -111,6 +151,7 @@ const FAMILY_WORDS: Record<string, string[]> = {
   grief: ["grief", "grieve", "loss"], anx: ["anxiety", "anxious", "worry"], anger: ["anger", "angry"],
   bound: ["boundary", "boundaries"], mem: ["memory", "memories", "remember"], pace: ["pace"],
   ground: ["grounding"], emdr: ["emdr"], eft: ["eft"], cbt: ["cbt"], agency: [], practice: ["therapy", "session"],
+  change: [], delay: [], priv: ["privacy", "private"], prot: ["protective", "protection"], rule: ["rule", "rules"],
 };
 
 export type PostSignals = {
@@ -126,7 +167,13 @@ export type PostSignals = {
   caption?: string | null;
 };
 
-export type Match = { id: string; score: number; reasons: string[] };
+export type Match = {
+  id: string;
+  score: number;
+  reasons: string[];
+  /** Expressions entières + objet nommé : ce qui départage deux scores égaux, avant l'identifiant. */
+  precise: number;
+};
 
 function stringsIn(value: unknown): string[] {
   if (typeof value === "string") return [value];
@@ -160,13 +207,14 @@ export function scoreOne(post: PostSignals, entry: LibraryEntry): Match {
     const content = all.filter((w) => !WEAK.has(w));
     if (content.length === 0) continue;
     /*
-     * ⚠ UNE EXPRESSION QUE LES MOTS GÉNÉRIQUES RÉDUISENT À UN MOT N'EST PAS
-     * ENTIÈRE. « carrying your own » devient « carry » : compté comme une
-     * expression, il posait la lanterne sur « Protection, not defect ». Il ne
-     * vaut plus qu'un mot.
+     * ⚠ UNE EXPRESSION EST ENTIÈRE QUAND TOUS SES MOTS SONT LÀ — génériques
+     * compris. « carrying your own » exige « own » : réduit à « carry », il posait
+     * la lanterne sur « Protection, not defect ». Et « changed plans » compte
+     * entier quand le post dit « plans changed », même si « change » seul est
+     * générique (corrigé le 2026-11-01 : la première version de cette règle
+     * l'écartait).
      */
-    const reduced = all.length > 1 && content.length === 1;
-    if (!reduced && content.every((w) => strong.has(w))) {
+    if (all.every((w) => strong.has(w))) {
       score += 1;
       whole += 1;
       reasons.push(phrase);
@@ -174,7 +222,7 @@ export function scoreOne(post: PostSignals, entry: LibraryEntry): Match {
       score += 0.5;
       reasons.push(`${phrase} (légende)`);
     }
-    for (const w of content) if (strong.has(w)) hits.add(w);
+    for (const w of content) if (strong.has(w) && !NON_DISCRIMINATING.has(w)) hits.add(w);
   }
   /* Les mots thématiques distincts au-delà de ceux déjà comptés par une expression entière. */
   const extra = Math.max(0, hits.size - whole);
@@ -192,7 +240,8 @@ export function scoreOne(post: PostSignals, entry: LibraryEntry): Match {
     score += 0.5;
     reasons.push(`famille : ${family}`);
   }
-  return { id: entry.id, score, reasons };
+  /* La preuve précise : une expression entière, un objet nommé. Elle départage à score égal. */
+  return { id: entry.id, score, reasons, precise: whole + (object ? 1 : 0) };
 }
 
 /** Les illustrations au-dessus du seuil, de la meilleure à la moins bonne ; à égalité, par identifiant. */
@@ -201,7 +250,13 @@ export function candidates(post: PostSignals, entries: LibraryEntry[]): Match[] 
     .filter((e) => e.drawable)
     .map((e) => scoreOne(post, e))
     .filter((m) => m.score >= MATCH_THRESHOLD)
-    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+    /*
+     * ⚠ À SCORE ÉGAL, LA PREUVE PRÉCISE D'ABORD. « Plans changed without
+     * permission » sur « When the map changes » : la clé (« permission », un mot)
+     * et la carte pliée (« map », l'objet nommé) faisaient 1 chacune, et l'ordre
+     * alphabétique donnait la clé.
+     */
+    .sort((a, b) => b.score - a.score || b.precise - a.precise || a.id.localeCompare(b.id));
 }
 
 /**
@@ -215,14 +270,36 @@ export function chooseIllustration(post: PostSignals, entries: LibraryEntry[], t
 }
 
 /**
- * Un mois entier, dans l'ordre : deux posts ne portent jamais la même illustration.
- * Trente posts pour soixante-quatre dessins.
+ * L'écart minimal entre deux posts qui portent le même dessin.
+ *
+ * ⚠ RÉGLÉ PAR NAIMA LE 2026-11-01, À LA PLACE DE « JAMAIS DEUX FOIS DANS LE MOIS ».
+ * Un fil Instagram montre neuf à douze vignettes à la fois : deux reprises
+ * éloignées ne se voient pas, deux reprises voisines sautent aux yeux. L'unicité
+ * stricte coûtait trois posts sur trente en décembre, sans rien protéger de
+ * visible. Ce n'est PAS le seuil d'appariement — lui garantit que le dessin dit
+ * le sujet, et il ne bouge pas.
  */
-export function assignMonth(posts: PostSignals[], entries: LibraryEntry[]): Array<Match | null> {
-  const taken = new Set<string>();
-  return posts.map((post) => {
-    const m = chooseIllustration(post, entries, taken);
-    if (m) taken.add(m.id);
+export const REPEAT_SPACING = 10;
+
+/** Les dessins interdits au rang `index` : ceux posés aux neuf rangs précédents. */
+export function blockedAt(index: number, chosen: Array<string | null>, spacing = REPEAT_SPACING): Set<string> {
+  const out = new Set<string>();
+  for (let j = Math.max(0, index - spacing + 1); j < index; j += 1) {
+    const id = chosen[j];
+    if (id) out.add(id);
+  }
+  return out;
+}
+
+/**
+ * Un mois entier, dans l'ordre de publication : deux posts à moins de
+ * `REPEAT_SPACING` rangs d'écart ne portent jamais le même dessin.
+ */
+export function assignMonth(posts: PostSignals[], entries: LibraryEntry[], spacing = REPEAT_SPACING): Array<Match | null> {
+  const chosen: Array<string | null> = [];
+  return posts.map((post, i) => {
+    const m = chooseIllustration(post, entries, blockedAt(i, chosen, spacing));
+    chosen.push(m?.id ?? null);
     return m;
   });
 }

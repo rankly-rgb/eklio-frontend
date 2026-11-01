@@ -27,9 +27,30 @@ export async function storedCardUrls(
   practiceName: string | null,
   licence: string | null
 ): Promise<Record<string, string>> {
+  /*
+   * ⚠ LE DESSIN DE CHAQUE POST, LU EN UNE FOIS. Il fait partie de la carte, donc
+   * de sa clé : sans lui, le flux ne retrouverait jamais la carte gardée et
+   * recomposerait tout à la demande.
+   */
+  const drawings = new Map<string, string | null>();
+  if (items.length > 0) {
+    const read = await supabase.from("content_items").select("id, illustration_key").in("id", items.map((i) => i.id));
+    if (read.error) console.error("[content] storedCardUrls: illustration_key", { message: read.error.message });
+    for (const row of (read.data ?? []) as Array<{ id: string; illustration_key: string | null }>) {
+      drawings.set(row.id, row.illustration_key);
+    }
+  }
+
   const wanted = new Map<string, string>();
   for (const item of items) {
-    const target = storedCardFor(kitId, item, null, direction, practiceName, licence);
+    const target = storedCardFor(
+      kitId,
+      { ...item, illustration_key: drawings.get(item.id) ?? null },
+      null,
+      direction,
+      practiceName,
+      licence
+    );
     if (target) wanted.set(target.path, item.id);
   }
   if (wanted.size === 0) return {};

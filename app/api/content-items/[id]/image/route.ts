@@ -142,6 +142,7 @@ export async function GET(
     let svg: string;
     try {
       svg = render({
+        illustration: card.illustration,
         archetype: card.archetypeKey,
         payload: card.payload,
         palette: card.palette,

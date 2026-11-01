@@ -87,6 +87,8 @@ function renderPlaced(p: Placed): string {
       .map((s) => {
         const common =
           `fill="${s.fill}" stroke="${s.stroke}" stroke-width="${round2(s.strokeWidth)}" ` +
+          (s.fillRule ? `fill-rule="${s.fillRule}" ` : "") +
+          (s.library ? `data-library="${esc(s.library)}" ` : "") +
           `stroke-linecap="round" stroke-linejoin="round" ` +
           `data-box="${boxAttr(s.box)}"`;
         return `<path d="${s.d}" ${common}/>`;

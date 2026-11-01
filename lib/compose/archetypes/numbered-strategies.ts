@@ -1,6 +1,5 @@
 import { CLEARANCE, figureShare } from "@/lib/compose/constants";
 import { cell, line, rows } from "@/lib/compose/layout";
-import { plant } from "@/lib/compose/illustrations";
 import { round2 } from "@/lib/compose/measure";
 import type { Placed, Stroke } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
@@ -28,7 +27,7 @@ export const numberedStrategies: ArchetypeModule<NumberedStrategies> = {
     return items ? { items } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax }) {
+  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
     const placed: Placed[] = [];
     /*
      * ⚠ L'ÉPINE SEULE N'ÉTAIT PAS UNE ILLUSTRATION. Un trait vertical et des
@@ -75,7 +74,7 @@ export const numberedStrategies: ArchetypeModule<NumberedStrategies> = {
       h: round2(Math.min(content.h * 0.5, gutterW)),
     };
     if (plantBox.w >= 110 && plantBox.h >= 110) {
-      strokes.push(...plant(plantBox, palette.ink, STROKE));
+      strokes.push(...draw(plantBox, palette.ink, STROKE));
     }
 
     placed.push({

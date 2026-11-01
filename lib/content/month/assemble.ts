@@ -36,6 +36,8 @@ import type { DirectionPalette } from "@/lib/compose/palette";
 /** Ce qu'un post préparé doit porter pour être assemblé. */
 export type Assemblable = {
   cardLine: string;
+  /** Le dessin de la bibliothèque que la carte porte, choisi par le sens. */
+  illustration?: string | null;
   /** La famille de mise en page, `content_items.archetype`, NOT NULL en base. */
   layout: string;
   composeArchetype: string;
@@ -80,6 +82,8 @@ export type ContentItemRow = {
    * la ligne s'il n'est plus celui de `project_briefs.state` au moment d'écrire.
    */
   licenceStateCode: string;
+  /** Le dessin de la carte (`content_items.illustration_key`), ou null. */
+  illustrationKey: string | null;
 };
 
 /** Ce que la base répond à une écriture refusée : son code SQL, et son message. */
@@ -326,6 +330,7 @@ export async function assembleMonth<T extends Assemblable>(
       rationale: candidate.result?.rationale ?? "",
       scheduledFor: input.dates[index] ?? input.dates[input.dates.length - 1] ?? input.month,
       licenceStateCode: input.licenceStateCode,
+      illustrationKey: post.illustration ?? null,
     });
 
     if (error) {

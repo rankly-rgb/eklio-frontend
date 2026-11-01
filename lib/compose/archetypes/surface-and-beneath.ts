@@ -1,7 +1,6 @@
 import { CLEARANCE, figureShare } from "@/lib/compose/constants";
 import { cell } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
-import { surfacing } from "@/lib/compose/illustrations";
 import type { Placed } from "@/lib/compose/types";
 import { parseItem, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
 
@@ -36,7 +35,7 @@ export const surfaceAndBeneath: ArchetypeModule<SurfaceAndBeneath> = {
     return surface && beneath ? { surface, beneath } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax }) {
+  compose({ payload, palette, content, figureScale, secondaryMax, draw: drawing }) {
     const placed: Placed[] = [];
 
     /*
@@ -78,7 +77,7 @@ export const surfaceAndBeneath: ArchetypeModule<SurfaceAndBeneath> = {
     if (!a || !b) return null;
 
     placed.push(...a);
-    placed.push({ role: "figure", band: "content", box: draw, strokes: surfacing(draw, palette.ink) });
+    placed.push({ role: "figure", band: "content", box: draw, strokes: drawing(draw, palette.ink) });
     placed.push(...b);
     return placed;
   },

@@ -84,6 +84,11 @@ function topic(n: number): DrawnTopic {
   };
 }
 
+const DRAWINGS: Array<string | null> = [
+  "ground-anchor", "grief-two-paths", "mem-echo-rings", "cbt-magnifier", "eft-shelter", "pace-metronome",
+  "rule-grooved-tablet", "delay-letter-slot", "mem-long-shadow", "priv-drawn-curtain", "emdr-bridge", "agency-compass",
+];
+
 const OPENERS = ["Some weeks,", "Rest can be", "A boundary is", "Quiet mornings:", "Most people", "Today,", "Sleep is", "Small steps:"];
 
 function written(n: number): WrittenPost {
@@ -237,6 +242,8 @@ function world(over: { verified?: boolean; stock?: number; writer?: WriterPort; 
       remove: removePort,
       credits,
     }),
+    /* De vrais dessins de la bibliothèque, tous différents : l'appariement est éprouvé ailleurs. */
+    illustrate: vi.fn((posts: unknown[]) => posts.map((_, i) => DRAWINGS[i % DRAWINGS.length])),
     /* Le statut du mois au moment où ses cartes sont gardées : elles doivent précéder `proposed`. */
     storeCards: vi.fn(async (monthId: string) => {
       cardsAt.push(months.find((m) => m.id === monthId)?.status ?? "absent");
@@ -336,6 +343,28 @@ describe("F77 — un mois que la base n'a pas gardé entier est refusé, pas liv
     expect(w.journal.runs[0].state).toBe("abandoned");
     /* ⚠ Aucune carte n'est gardée pour un mois refusé. */
     expect(w.ports.storeCards).not.toHaveBeenCalled();
+  });
+});
+
+describe("le dessin de chaque post est choisi par le sens, et un post sans dessin n'est pas composé", () => {
+  it("le dessin choisi va jusqu'à la ligne écrite en base", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok).toBe(true);
+    const insert = vi.mocked(w.ports.assembleFor("m").insert);
+    for (const [row] of insert.mock.calls) expect(DRAWINGS).toContain(row.illustrationKey);
+    for (const [row] of insert.mock.calls) expect(row.illustrationKey).not.toBeNull();
+  });
+
+  it("le post auquel aucun dessin ne correspond est écarté avant composition, et remplacé", async () => {
+    const w = world();
+    vi.mocked(w.ports.illustrate).mockImplementationOnce((posts) => posts.map((_, i) => (i === 0 ? null : DRAWINGS[i])));
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    if (!out.ok) return;
+    expect(out.illustrationRefused).toEqual(["t1"]);
+    expect(w.inserted).not.toContain("t1");
+    expect(w.inserted).toHaveLength(3);
   });
 });
 

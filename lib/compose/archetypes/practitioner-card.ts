@@ -1,7 +1,7 @@
 import { CLEARANCE, TYPE } from "@/lib/compose/constants";
 import { fitText, linesFrom, FIELD_RADIUS } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
-import { door, mirrored, variantOf } from "@/lib/compose/illustrations";
+import { mirrored, variantOf } from "@/lib/compose/illustrations";
 import { inkOnTintFor, tintFor } from "@/lib/compose/palette";
 import type { Line, Placed } from "@/lib/compose/types";
 import type { ArchetypeModule } from "@/lib/compose/archetypes/types";
@@ -31,7 +31,7 @@ export const practitionerCard: ArchetypeModule<PractitionerCard> = {
     return { lines: p.lines as string[] };
   },
 
-  compose({ payload, palette, content, secondaryMax }) {
+  compose({ payload, palette, content, secondaryMax, draw: drawing }) {
     const pad = CLEARANCE.glyphToFieldEdge;
     const innerW = content.w - pad * 2;
     const gapBetween = 20;
@@ -77,7 +77,7 @@ export const practitionerCard: ArchetypeModule<PractitionerCard> = {
         h: size,
       };
       // ⚠ La porte s'ouvre d'un côté ou de l'autre, selon la carte.
-      const drawn = door(draw, palette.ink);
+      const drawn = drawing(draw, palette.ink);
       const flip = variantOf(palette.key) === 1 ? mirrored(drawn, draw) : null;
       placed.push({
         role: "figure", band: "content", box: draw,

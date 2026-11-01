@@ -90,10 +90,13 @@ describe("chaque moitié reste dans son ressort", () => {
    * Si l'un d'eux passait dans la moitié par post, il refuserait chaque post du
    * mois — un mois de trente posts serait « trente posts en trop ».
    */
-  /* ⚠ CINQ DEPUIS NOVEMBRE 2026 : une tournure n'est répétée qu'à plusieurs (`checkVariety`). */
-  it("les transversaux sont bien les cinq attendus", () => {
+  /*
+   * ⚠ CINQ DEPUIS NOVEMBRE 2026 (une tournure n'est répétée qu'à plusieurs),
+   * SIX DEPUIS LE 2026-11-01 : un dessin ne revient trop tôt qu'à plusieurs.
+   */
+  it("les transversaux sont bien les six attendus", () => {
     expect(callsIn("checkAcrossPosts")).toEqual([
-      "checkCount", "checkDuplicateTitles", "checkIdenticalPayloads", "checkMix", "checkVariety",
+      "checkCount", "checkDuplicateTitles", "checkIdenticalPayloads", "checkIllustrationSpacing", "checkMix", "checkVariety",
     ]);
   });
 
@@ -101,7 +104,7 @@ describe("chaque moitié reste dans son ressort", () => {
     const findings = checkPostAlone(post(), { direction: "warm" } as never);
     for (const f of findings) {
       expect(f.check, "un contrôle transversal a glissé dans la moitié par post")
-        .not.toMatch(/^(count|mix|variety)\./);
+        .not.toMatch(/^(count|mix|variety|illustration)\./);
     }
   });
 

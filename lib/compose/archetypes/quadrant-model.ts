@@ -1,6 +1,6 @@
 import { CLEARANCE, figureShare, TYPE } from "@/lib/compose/constants";
 import { cell, columns, fitText, linesFrom, rows } from "@/lib/compose/layout";
-import { mirrored, profile, variantOf } from "@/lib/compose/illustrations";
+import { mirrored, variantOf } from "@/lib/compose/illustrations";
 import { round2 } from "@/lib/compose/measure";
 import type { Placed } from "@/lib/compose/types";
 import { parseItems, type ArchetypeModule, type Item } from "@/lib/compose/archetypes/types";
@@ -30,7 +30,7 @@ export const quadrantModel: ArchetypeModule<QuadrantModel> = {
     return items ? { axis_x: p.axis_x, axis_y: p.axis_y, items } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax }) {
+  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
     const placed: Placed[] = [];
 
     /*
@@ -75,7 +75,7 @@ export const quadrantModel: ArchetypeModule<QuadrantModel> = {
      * déduit de la clef de palette, donc elle est propre à la carte et stable
      * d'un rendu à l'autre.
      */
-    const drawn = profile(head, palette.ink, STROKE);
+    const drawn = draw(head, palette.ink, STROKE);
     const flip = variantOf(palette.key) === 1 ? mirrored(drawn, head) : null;
     placed.push({
       role: "figure",

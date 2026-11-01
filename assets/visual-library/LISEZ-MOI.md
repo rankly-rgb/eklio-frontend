@@ -1,5 +1,8 @@
 # Pack visuels Eklio — préparé le 1er novembre 2026
 
+**Mise à jour 20 h 45 : le lot 6 est intégré.** 102 illustrations au lieu de 65,
+et `themes.csv` couvre les 92 identifiants thématiques.
+
 142 fichiers issus des 5 lots générés sur ChatGPT, renommés, normalisés et vectorisés.
 
 ## Contenu

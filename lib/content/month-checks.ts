@@ -2,6 +2,7 @@
 import { checkEthics } from "@/lib/ethics/rules";import { DANGLING } from "@/lib/content/generate/copy-batch";
 import { colourDistance, TINT_MIN_DISTANCE, type DirectionPalette } from "@/lib/compose/palette";
 import { checkVariety } from "@/lib/content/variety";
+import { REPEAT_SPACING } from "@/lib/visual-library/match";
 import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
 import { footerCarriesLicence, repeatedLicenceTitles } from "@/lib/content/licence";
 import {
@@ -558,6 +559,11 @@ export type PostUnderCheck = {
    * et c'est elle qui ouvre le post : le contrôle de variété la lit.
    */
   hook?: string;
+  /**
+   * Le dessin de la bibliothèque que la carte porte. Un identifiant, pas du
+   * texte publié : seul `checkIllustrationSpacing` le lit.
+   */
+  illustration?: string;
   altText?: string;
   /**
    * Le pied de carte, tel qu'il sera imprimé.
@@ -869,6 +875,33 @@ export function checkEyebrow(
 export type PostContext = Omit<MonthUnderCheck, "posts" | "wanted">;
 
 /** Les quatre contrôles qui n'ont de sens que sur l'ensemble. */
+/**
+ * Jamais le même dessin à moins de `REPEAT_SPACING` posts d'écart, dans l'ordre
+ * du mois livré.
+ *
+ * ⚠ L'ASSIGNATION LE TIENT DÉJÀ, DANS L'ORDRE DE COMPOSITION ; CE CONTRÔLE LE
+ * TIENT DANS L'ORDRE FINAL. La sélection échange des posts : un échange peut
+ * rapprocher deux reprises que l'assignation avait espacées. Le constat nomme le
+ * second post par sa ligne de carte — la sélection l'échange.
+ */
+export function checkIllustrationSpacing(posts: PostUnderCheck[]): Finding[] {
+  const out: Finding[] = [];
+  const last = new Map<string, number>();
+  posts.forEach((post, i) => {
+    const id = post.illustration;
+    if (!id) return;
+    const before = last.get(id);
+    if (before !== undefined && i - before < REPEAT_SPACING) {
+      out.push({
+        check: "illustration.near_repeat",
+        detail: `le dessin ${id} revient ${i - before} posts après le précédent (au moins ${REPEAT_SPACING}) : « ${post.cardLine} »`,
+      });
+    }
+    last.set(id, i);
+  });
+  return out;
+}
+
 export function checkAcrossPosts(month: MonthUnderCheck): Finding[] {
   const out: Finding[] = [];
   out.push(...checkCount(month.posts.length, month.wanted));
@@ -877,6 +910,8 @@ export function checkAcrossPosts(month: MonthUnderCheck): Finding[] {
   out.push(...checkIdenticalPayloads(month.posts));
   /* ⚠ La tournure, pas seulement le titre (novembre 2026) — `lib/content/variety.ts`. */
   out.push(...checkVariety(month.posts));
+  /* ⚠ Le dessin, pas seulement la tournure (2026-11-01). */
+  out.push(...checkIllustrationSpacing(month.posts));
   return out;
 }
 

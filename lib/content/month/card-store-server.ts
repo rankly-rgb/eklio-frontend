@@ -20,7 +20,7 @@ export function serverCardStorePort(db: SupabaseClient<Database>): CardStorePort
     async monthItems(monthId) {
       const items = await db
         .from("content_items")
-        .select("id, theme, title, payload, compose_archetype, topic_id")
+        .select("id, theme, title, payload, compose_archetype, topic_id, illustration_key")
         .eq("month_id", monthId);
       if (items.error) throw new Error(`content_items: ${items.error.message}`);
       const rows = items.data ?? [];
@@ -52,6 +52,7 @@ export function serverCardStorePort(db: SupabaseClient<Database>): CardStorePort
             title: r.title,
             payload: (r.payload ?? null) as ContentItem["payload"],
             compose_archetype: r.compose_archetype,
+            illustration_key: r.illustration_key ?? null,
             topic,
           },
           topic: t ? { payload: t.payload, archetype_key: t.archetype_key } : null,
@@ -81,6 +82,7 @@ export const serverCardRasteriser: CardRasteriser = async (card: ReviewCard) => 
     slides.kind === "slides"
       ? slides.slides[0].svg
       : render({
+          illustration: card.illustration,
           archetype: card.archetypeKey,
           payload: card.payload,
           palette: card.palette,
