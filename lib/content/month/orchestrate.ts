@@ -1,6 +1,7 @@
 import { preflight, type PreflightPort, type PreflightInput } from "@/lib/content/month/preflight";
 import { drawMonth, type DrawPorts, type DrawnTopic } from "@/lib/content/month/draw";
 import { composeCard, ComposeRefused } from "@/lib/content/month/compose-card";
+import { placeByDrawing, type Redraw } from "@/lib/content/month/select";
 import { assembleMonth, type AssemblePorts, type AssembleOutcome, type Assemblable } from "@/lib/content/month/assemble";
 import {
   abandonRun,
@@ -696,13 +697,19 @@ export async function orchestrateMonth(
    * l'écart de dix posts soit tenu.
    */
   const written = topics.filter((t) => alreadyWritten.has(t.id));
-  const drawings = ports.illustrate(
-    written.map((t) => {
-      const post = alreadyWritten.get(t.id)!;
-      return { title: t.title, hook: t.hook ?? null, cardLine: post.cardLine, payload: post.payload, caption: post.caption };
-    })
-  );
-  const drawingOf = new Map(written.map((t, i) => [t.id, drawings[i] ?? null]));
+  /*
+   * ⚠ PLACÉ, SANS RÉORDONNER LA RÉSERVE. Le dessin attribué ici ne sert qu'à
+   * composer une première fois : le sélecteur le rejoue sur l'ordre retenu. Un
+   * post n'est donc écarté que si AUCUN rang ne lui donne de dessin
+   * (`placeByDrawing`), pas parce que le sien était pris par un voisin dans
+   * l'ordre de tirage.
+   */
+  const pool = written.map((t) => {
+    const post = alreadyWritten.get(t.id)!;
+    return { id: t.id, signals: { title: t.title, hook: t.hook ?? null, cardLine: post.cardLine, payload: post.payload, caption: post.caption } };
+  });
+  const placedPool = placeByDrawing(pool, (posts) => ports.illustrate(posts.map((p) => p.signals)));
+  const drawingOf = new Map(placedPool.posts.map((p, i) => [p.id, placedPool.drawings[i] ?? null]));
   const illustrationRefused: string[] = [];
   /** Ce qu'il faut pour réattribuer et recomposer un post sur l'ordre retenu. */
   const signalsOf = new Map(
@@ -855,19 +862,20 @@ export async function orchestrateMonth(
    * recomposé — le moteur est pur, aucun appel au modèle ; s'il ne se compose
    * plus, ou si aucun dessin ne le dit à sa place, il est échangé.
    */
-  const redraw = (chosen: PreparedPost[]): Array<PreparedPost | null> => {
-    const ids = ports.illustrate(chosen.map((p) => signalsOf.get(p.topicId)!));
-    return chosen.map((p, i) => {
-      const drawing = ids[i] ?? null;
-      if (!drawing) return null;
-      if (drawing === p.illustration) return p;
-      try {
-        const card = recomposeOf.get(p.topicId)!(drawing);
-        return { ...p, illustration: drawing, composeArchetype: card.archetype, payload: card.payload, svg: card.svg };
-      } catch {
-        return null;
-      }
-    });
+  const redraw: Redraw<PreparedPost> = {
+    assign: (chosen) => ports.illustrate(chosen.map((p) => signalsOf.get(p.topicId)!)),
+    apply: (chosen, ids) =>
+      chosen.map((p, i) => {
+        const drawing = ids[i] ?? null;
+        if (!drawing) return null;
+        if (drawing === p.illustration) return p;
+        try {
+          const card = recomposeOf.get(p.topicId)!(drawing);
+          return { ...p, illustration: drawing, composeArchetype: card.archetype, payload: card.payload, svg: card.svg };
+        } catch {
+          return null;
+        }
+      }),
   };
 
   const month = await assembleMonth(assemblePorts, {

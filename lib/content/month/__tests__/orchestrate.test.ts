@@ -358,7 +358,10 @@ describe("le dessin de chaque post est choisi par le sens, et un post sans dessi
 
   it("le post auquel aucun dessin ne correspond est écarté avant composition, et remplacé", async () => {
     const w = world();
-    vi.mocked(w.ports.illustrate).mockImplementationOnce((posts) => posts.map((_, i) => (i === 0 ? null : DRAWINGS[i])));
+    /* Aucun dessin ne dit t1, à aucun rang. */
+    vi.mocked(w.ports.illustrate).mockImplementation((posts) =>
+      posts.map((p, i) => (p.title === TITLES[0] ? null : DRAWINGS[i % DRAWINGS.length]))
+    );
     const out = await orchestrateMonth(w.ports, input());
     expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
     if (!out.ok) return;
@@ -384,14 +387,33 @@ describe("le dessin de chaque post est choisi par le sens, et un post sans dessi
     insert.mock.calls.forEach(([row], i) => expect(row.illustrationKey).toBe(DRAWINGS[i % DRAWINGS.length]));
   });
 
-  it("un post qu'aucun dessin ne dit à sa place dans le mois retenu est échangé contre le banc", async () => {
+  /*
+   * Répétition locale du 2026-11-01 (décembre) : la monotonie d'écriture avait
+   * pris dix échanges au banc, chaque post « sans dessin à ce rang » en prenait
+   * un de plus, et le mois est mort sur `illustration.none`. L'ordre du mois
+   * n'est pas un contenu : le post est DÉPLACÉ avant d'être jeté.
+   */
+  it("un post qu'aucun dessin ne dit à son rang est déplacé dans le mois, pas jeté", async () => {
     const w = world();
-    const first = vi.mocked(w.ports.illustrate).getMockImplementation()!;
+    const first = TITLES[0];
+    vi.mocked(w.ports.illustrate).mockImplementation((posts) =>
+      posts.map((p, i) => (i === 0 && p.title === first ? null : DRAWINGS[i % DRAWINGS.length]))
+    );
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    expect(w.inserted).toContain("t1");
+    expect(w.inserted.indexOf("t1")).toBeGreaterThan(0);
+    expect(w.inserted).toHaveLength(3);
+  });
+
+  it("un post qu'aucun dessin ne dit à aucun rang est échangé contre le banc", async () => {
+    const w = world();
+    const first = TITLES[0];
     let call = 0;
     vi.mocked(w.ports.illustrate).mockImplementation((posts) => {
       call += 1;
-      /* Le second appel (premier tour du sélecteur) refuse le rang 0. */
-      return call === 2 ? posts.map((_, i) => (i === 0 ? null : DRAWINGS[i])) : first(posts);
+      /* Le premier appel (avant composition) le dessine ; le sélecteur, jamais. */
+      return posts.map((p, i) => (call > 1 && p.title === first ? null : DRAWINGS[i % DRAWINGS.length]));
     });
     const out = await orchestrateMonth(w.ports, input());
     expect(out.ok, out.ok ? "" : out.refusal).toBe(true);

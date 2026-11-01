@@ -245,7 +245,25 @@ export function scoreOne(post: PostSignals, entry: LibraryEntry): Match {
 }
 
 /** Les illustrations au-dessus du seuil, de la meilleure à la moins bonne ; à égalité, par identifiant. */
+/*
+ * ⚠ MÉMORISÉ PAR POST ET PAR INVENTAIRE. Le sélecteur rejoue l'attribution du
+ * mois à chaque tour et à chaque déplacement essayé (`placeByDrawing`) ; les
+ * candidats d'un post ne dépendent que de son texte et de l'inventaire, pas de
+ * sa place. Clés faibles : rien ne survit au mois.
+ */
+const memo = new WeakMap<PostSignals, WeakMap<LibraryEntry[], Match[]>>();
+
 export function candidates(post: PostSignals, entries: LibraryEntry[]): Match[] {
+  let byInventory = memo.get(post);
+  if (!byInventory) memo.set(post, (byInventory = new WeakMap()));
+  const hit = byInventory.get(entries);
+  if (hit) return hit;
+  const out = rawCandidates(post, entries);
+  byInventory.set(entries, out);
+  return out;
+}
+
+function rawCandidates(post: PostSignals, entries: LibraryEntry[]): Match[] {
   return entries
     .filter((e) => e.drawable)
     .map((e) => scoreOne(post, e))

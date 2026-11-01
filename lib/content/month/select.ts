@@ -36,6 +36,55 @@ import type { DirectionPalette } from "@/lib/compose/palette";
  * de N essais, on livre quand même » remettrait sur la table ce que ces
  * contrôles existent pour empêcher.
  */
+/**
+ * Les dessins rejoués sur l'ordre retenu : `assign` dit le dessin de chaque rang
+ * (lexical, sans coût), `apply` recompose les cartes dont le dessin change.
+ * `null` : aucun dessin à ce rang, ou une carte qui ne se recompose plus.
+ */
+export type Redraw<T> = {
+  assign: (chosen: T[]) => Array<string | null>;
+  apply: (chosen: T[], drawings: Array<string | null>) => Array<T | null>;
+};
+
+/**
+ * Déplace dans le mois chaque post qu'aucun dessin ne dit à son rang, plutôt que
+ * de le jeter.
+ *
+ * ⚠ L'ORDRE DU MOIS N'EST PAS UN CONTENU. Les dates sont posées après la
+ * sélection, et les contrôles de variété comptent sans regarder l'ordre ; seul
+ * l'écart des dessins le lit. Répétition locale du 2026-11-01 (décembre) : la
+ * monotonie d'écriture avait déjà pris dix échanges au banc, et chaque post
+ * « sans dessin à ce rang » en prenait un de plus — le mois est mort sur
+ * `illustration.none` avec des posts qui avaient un dessin, ailleurs.
+ *
+ * Essaie chaque autre rang, du dernier au premier, pour le PREMIER post sans
+ * dessin ; recommence tant qu'un déplacement en répare un. Rend l'ordre et ses
+ * dessins ; ce qui reste `null` n'a de place nulle part.
+ */
+export function placeByDrawing<T>(chosen: T[], assign: (posts: T[]) => Array<string | null>): { posts: T[]; drawings: Array<string | null> } {
+  let posts = chosen;
+  let drawings = assign(posts);
+  const tried = new Set<T>();
+  for (;;) {
+    const at = drawings.findIndex((d, i) => d === null && !tried.has(posts[i]));
+    if (at === -1) return { posts, drawings };
+    const post = posts[at];
+    tried.add(post);
+    const rest = [...posts.slice(0, at), ...posts.slice(at + 1)];
+    for (let to = rest.length; to >= 0; to -= 1) {
+      if (to === at) continue;
+      const moved = [...rest.slice(0, to), post, ...rest.slice(to)];
+      const trial = assign(moved);
+      const before = drawings.filter((d) => d === null).length;
+      if (trial[to] !== null && trial.filter((d) => d === null).length < before) {
+        posts = moved;
+        drawings = trial;
+        break;
+      }
+    }
+  }
+}
+
 export type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ title: string; why: string }> };
 
 /**
@@ -106,7 +155,7 @@ export function selectDeliverable<
    * de quinze dans la réserve se retrouvaient à neuf dans le mois — la
    * répétition locale du 2026-11-01 a été refusée pour ça (`prot-thorn-branch`).
    */
-  redraw?: (chosen: T[]) => Array<T | null>
+  redraw?: Redraw<T>
 ): Deliverable<T> {
   const asPost = asMonthPost;
 
@@ -116,7 +165,9 @@ export function selectDeliverable<
 
   for (;;) {
     if (redraw) {
-      const drawn = redraw(chosen);
+      const placed = placeByDrawing(chosen, redraw.assign);
+      chosen = placed.posts;
+      const drawn = redraw.apply(chosen, placed.drawings);
       const none = drawn.findIndex((p) => p === null);
       if (none !== -1) {
         const why = `illustration.none — aucun dessin au-dessus du seuil ne dit « ${chosen[none].cardLine} » à ce rang`;

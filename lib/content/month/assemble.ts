@@ -1,5 +1,5 @@
 import { checkAcrossPosts, checkPostAlone, type Finding, type PostContext } from "@/lib/content/month-checks";
-import { asMonthPost, selectDeliverable, type Deliverable } from "@/lib/content/month/select";
+import { asMonthPost, selectDeliverable, type Deliverable, type Redraw } from "@/lib/content/month/select";
 import { aPurchaseWouldHelp, type CreditPort, type ReserveRefusal } from "@/lib/credits/paid-call";
 import type { CompletenessVerdicts } from "@/lib/content/writing-checks";
 import type { DirectionPalette } from "@/lib/compose/palette";
@@ -126,7 +126,7 @@ export type AssembleInput<T extends Assemblable> = {
   /** Les posts écrits et composés, dans l'ordre de préférence. */
   prepared: T[];
   /** Les dessins réattribués sur l'ordre retenu (`selectDeliverable`). */
-  redraw?: (chosen: T[]) => Array<T | null>;
+  redraw?: Redraw<T>;
   /** Combien le mois doit livrer. */
   wanted: number;
   /** Les dates, une par créneau. */
