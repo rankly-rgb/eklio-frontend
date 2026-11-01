@@ -4357,3 +4357,10 @@ peuvent tomber sur le même fond à moins de dix posts (mesuré sur la planche).
 Fond (~60–180 Ko) ou texture (~300–600 Ko) en `data:` base64 dans chaque SVG composé. Sans effet
 sur les cartes stockées (PNG), mais la composition à la demande de l'écran lit et encode le fichier
 à chaque appel (mis en cache par processus). À surveiller sur la route image.
+
+## F98 — le compte OpenAI est à court de crédit
+
+Constaté le 2026-11-01 vers 20 h 40 (répétitions locales 8 et 9) : `insufficient_quota`,
+`credit_balance_exhausted`. La rédaction s'arrête, le mois sort court et est refusé (F77) — le
+contrôle a fait son travail. Si la clé de la session est celle de la production, le cron du
+1er décembre ne rédigera rien. À vérifier et recharger : platform.openai.com → Billing.
