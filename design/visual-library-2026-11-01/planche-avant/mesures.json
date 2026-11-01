@@ -7,6 +7,11 @@
   "withTexture": 19,
   "withNothing": 0,
   "licenceLegibleOnPhoto": "11/11",
+  "licenceLegibleAll": "30/30",
+  "worstTextAnyCard": 9.43,
+  "worstLicenceAnyCard": 9.43,
+  "worstFigureAnyCard": 9.43,
+  "worstTextOnPhoto": 9.43,
   "licenceInFooter": 30,
   "illustrationNearRepeat": [],
   "photoNearRepeat": [],
@@ -32,7 +37,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 2,
@@ -47,7 +56,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.28,
+   "worstText": 9.43,
+   "worstLicence": 9.43,
+   "worstFigure": 9.43,
    "licenceLegible": true
   },
   {
@@ -62,7 +73,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "grille"
+   "structure": "grille",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 4,
@@ -76,7 +91,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 5,
@@ -91,7 +110,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.28,
+   "worstText": 9.53,
+   "worstLicence": 9.53,
+   "worstFigure": 9.43,
    "licenceLegible": true
   },
   {
@@ -107,7 +128,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 6.18,
+   "worstText": 9.43,
+   "worstLicence": 12.95,
+   "worstFigure": 9.43,
    "licenceLegible": true
   },
   {
@@ -122,7 +145,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "grille"
+   "structure": "grille",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 8,
@@ -137,7 +164,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.28,
+   "worstText": 9.43,
+   "worstLicence": 9.43,
+   "worstFigure": 9.43,
    "licenceLegible": true
   },
   {
@@ -152,7 +181,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "rangée"
+   "structure": "rangée",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 10,
@@ -166,7 +199,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "rangée"
+   "structure": "rangée",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 11,
@@ -180,7 +217,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 12,
@@ -194,7 +235,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 13,
@@ -208,7 +253,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 14,
@@ -222,7 +271,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "grille"
+   "structure": "grille",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 15,
@@ -236,7 +289,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 16,
@@ -251,7 +308,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.82,
+   "worstText": 11.73,
+   "worstLicence": 11.73,
+   "worstFigure": 9.43,
    "licenceLegible": true
   },
   {
@@ -267,7 +326,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.44,
+   "worstText": 9.43,
+   "worstLicence": 10.01,
+   "worstFigure": 9.99,
    "licenceLegible": true
   },
   {
@@ -283,7 +344,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.28,
+   "worstText": 9.43,
+   "worstLicence": 9.43,
+   "worstFigure": 9.6,
    "licenceLegible": true
   },
   {
@@ -299,7 +362,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.28,
+   "worstText": 9.43,
+   "worstLicence": 9.43,
+   "worstFigure": 10.11,
    "licenceLegible": true
   },
   {
@@ -314,7 +379,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "grille"
+   "structure": "grille",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 21,
@@ -328,7 +397,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "grille"
+   "structure": "grille",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 22,
@@ -342,7 +415,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 23,
@@ -357,7 +434,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.28,
+   "worstText": 9.72,
+   "worstLicence": 9.72,
+   "worstFigure": 10.18,
    "licenceLegible": true
   },
   {
@@ -372,7 +451,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "grille"
+   "structure": "grille",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 25,
@@ -386,7 +469,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "grille"
+   "structure": "grille",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 26,
@@ -401,7 +488,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.28,
+   "worstText": 9.43,
+   "worstLicence": 9.43,
+   "worstFigure": 10.08,
    "licenceLegible": true
   },
   {
@@ -417,7 +506,9 @@
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
    "structure": "phrase",
-   "footerWorstContrast": 5.28,
+   "worstText": 9.43,
+   "worstLicence": 9.43,
+   "worstFigure": 9.43,
    "licenceLegible": true
   },
   {
@@ -432,7 +523,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 29,
@@ -446,7 +541,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   },
   {
    "n": 30,
@@ -460,7 +559,11 @@
    "visual": true,
    "footer": "Ember consulting · LMFT 123456",
    "licenceInFooter": true,
-   "structure": "pile"
+   "structure": "pile",
+   "worstText": 10.33,
+   "worstLicence": 11.65,
+   "worstFigure": 11.65,
+   "licenceLegible": true
   }
  ]
 }

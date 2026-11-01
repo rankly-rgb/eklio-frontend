@@ -62,10 +62,11 @@ export const SHAPES = ids("formes");
 /**
  * Les formes qui peuvent porter un dessin : pleines et rondes. Un bord déchiré,
  * un coup de pinceau, une bande en vague ou un croissant posés sous un dessin
- * se lisaient à 390px comme un accident (vu le 2026-11-01).
+ * se lisaient à 390px comme un accident ; une goutte ou une feuille, comme un
+ * SECOND objet qui parasite le sens du dessin (planche « après », 2026-11-01).
  */
 export const BACKDROP_SHAPES = SHAPES.filter((id) =>
-  ["shape-arch", "shape-blob-soft", "shape-blob-wide", "shape-cloud-soft", "shape-drop", "shape-half-circle", "shape-leaf-simple", "shape-oval-tilted"].includes(id)
+  ["shape-arch", "shape-blob-soft", "shape-blob-wide", "shape-cloud-soft", "shape-half-circle", "shape-oval-tilted"].includes(id)
 );
 /**
  * Les accents qui remplacent le trait horizontal — ceux qui SONT horizontaux
