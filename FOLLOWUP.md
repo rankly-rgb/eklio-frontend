@@ -4319,15 +4319,41 @@ vise le mois suivant (décembre) ; novembre retiré n'est repris par rien. Déci
 ## F92 — décembre porte 7 cartes « titre et trait », pas 6
 
 `single_statement` × 7 sur 30 (relu en production). C'est l'objet de l'étape 3, non engagée.
+**Traité le 2026-11-01** : une phrase seule porte le dessin du post, un fond photo voilé quand la
+palette le permet, et le contrôle `cardHasVisual` refuse toute carte sans dessin/forme/photo.
 
 ## F93 — le dessin est fixé par l'archétype
 
 `DRAWING_FOR` (`lib/compose/illustrations.ts`) : `numbered_strategies` porte toujours la plante,
 `cycle` le nœud, `quadrant_model` le profil — d'où la même plante sur trois sujets sans rapport.
 `lib/visual-library/match.ts` sait choisir par le sens ; il n'est pas branché (arrêt).
+**Résolu le 2026-11-01** (branche `claude/gracious-darwin-uzn3c3`) : le dessin du post passe par
+`ctx.draw` ; le fait main ne reste que pour un post d'avant la bibliothèque.
 
 ## F94 — les six dessins à reprendre
 
 emdr-lighthouse (jaune), practice-notebook, agency-open-gate, practice-doorway, practice-two-cups,
 eft-nest (aplats noirs). Intégrés à l'identique, tirables. Le remplacement est un dépôt de
 fichier puis `bun scripts/visual-library/build-inventory.ts`.
+
+## F95 — trois palettes sombres sur six n'ont pas de fond photo
+
+Le voile couleur papier doit tenir 4,5:1 au pire pixel (blanc sous une encre claire) avant 0,92
+d'opacité (`MAX_OVERLAY_SCRIM`). `clay_sand`, `ink_blue_chalk` et `slate_bone`, en fond sombre, n'y
+arrivent pas (les fonds clairs, toutes familles, tiennent à 0,85) : leurs phrases seules prennent texture + forme au lieu de la photo.
+Le plancher n'a pas été baissé. Piste : un voile mesuré sur les pixels du fond (le pire pixel réel
+des fonds du pack, tous pâles et désaturés, est loin du blanc pur) — c'est un changement de
+contrôle, donc une décision.
+
+## F96 — fonds, textures, formes et accents n'ont pas de thèmes
+
+`themes.csv` ne couvre que les illustrations. Le décor est donc tiré du RANG du dessin choisi par
+le sens (`lib/compose/decor.ts`) : déterministe, mais pas « par le sens ». Deux dessins différents
+peuvent tomber sur le même fond à moins de dix posts (mesuré sur la planche). Donner des thèmes
+(ou des humeurs) aux 27 fonds rendrait le choix sensé et permettrait l'écart de dix.
+
+## F97 — le SVG d'une carte embarque ses JPEG
+
+Fond (~60–180 Ko) ou texture (~300–600 Ko) en `data:` base64 dans chaque SVG composé. Sans effet
+sur les cartes stockées (PNG), mais la composition à la demande de l'écran lit et encode le fichier
+à chaque appel (mis en cache par processus). À surveiller sur la route image.
