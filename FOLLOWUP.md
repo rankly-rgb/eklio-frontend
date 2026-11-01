@@ -4286,3 +4286,48 @@ Pile locale sans Storage (Docker indisponible : ECR et Docker Hub refusés). Pro
 30 cartes composées en PNG par le vrai chemin (`card-store` + rasteriseur, polices réelles),
 2 s. Non prouvé : l'`upload` réel et la policy de lecture. La réponse du cron dit
 `cards.stored` / `cards.failed` : c'est là qu'il faut le lire au premier mois de production.
+
+---
+
+# Bibliothèque de visuels — arrêt après l'étape 2 (2026-11-01)
+
+Fait : le pack en `assets/visual-library/` (SVG + JPEG, PNG exclus), l'inventaire lu par le
+moteur, l'ingestion idempotente, le test de jonction `themes.csv` ↔ dossier, l'appariement par
+le sens. Arrêté sur la clause « couverture < 70 % » : 18/30 en décembre (60 %). Mesure et manques :
+`design/visual-library-2026-11-01/README.md`. Croisés en chemin, non corrigés :
+
+## F89 — `content-assets` n'est pas « public en lecture »
+
+La consigne le dit public ; il est privé, et sa policy de lecture n'accorde un objet qu'à la
+propriétaire PAYÉE du kit dont l'identifiant est le premier segment du chemin
+(`brand_kit_asset_path_owner`). Sous `library/…`, le premier segment n'est pas un kit : aucune
+cliente ne peut lire la bibliothèque. Sans effet tant que le moteur l'inline côté serveur ; à
+trancher le jour où un écran voudra la servir (policy dédiée au préfixe, ou seau public à part).
+
+## F90 — le seau refuse le JSON
+
+`allowed_mime_types` de `content-assets` = svg, png, jpeg, webp. Un manifeste d'ingestion y serait
+refusé : l'idempotence s'appuie donc sur l'`eTag` (MD5) des objets. Hypothèse NON éprouvée contre
+un vrai Storage (pas de pile locale : ECR et Docker Hub refusés ; production interdite) — à
+vérifier au premier passage : une seconde exécution doit dire `uploaded: 0`.
+
+## F91 — novembre est `failed`, sans mois régénéré
+
+Relu le 2026-11-01 : `content_months` 2026-11 en `failed`, 0 post, un run (abandonné). Le cron
+vise le mois suivant (décembre) ; novembre retiré n'est repris par rien. Décision produit.
+
+## F92 — décembre porte 7 cartes « titre et trait », pas 6
+
+`single_statement` × 7 sur 30 (relu en production). C'est l'objet de l'étape 3, non engagée.
+
+## F93 — le dessin est fixé par l'archétype
+
+`DRAWING_FOR` (`lib/compose/illustrations.ts`) : `numbered_strategies` porte toujours la plante,
+`cycle` le nœud, `quadrant_model` le profil — d'où la même plante sur trois sujets sans rapport.
+`lib/visual-library/match.ts` sait choisir par le sens ; il n'est pas branché (arrêt).
+
+## F94 — les six dessins à reprendre
+
+emdr-lighthouse (jaune), practice-notebook, agency-open-gate, practice-doorway, practice-two-cups,
+eft-nest (aplats noirs). Intégrés à l'identique, tirables. Le remplacement est un dépôt de
+fichier puis `bun scripts/visual-library/build-inventory.ts`.

@@ -47,3 +47,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .eklio-journal/
+
+# ── Bibliothèque de visuels ──────────────────────────────────────────────
+# Les PNG transparents sont des doublons des SVG (17 Mo) : les SVG sont
+# recolorables par `currentColor` et strictement meilleurs. Ils ne sont jamais
+# versionnés — la bibliothèque porte les SVG et les JPEG seulement.
+assets/visual-library/**/*.png

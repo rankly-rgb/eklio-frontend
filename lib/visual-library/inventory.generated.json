@@ -1,0 +1,1957 @@
+{
+ "entries": [
+  {
+   "id": "agency-compass",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/agency-compass.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "c7dd6a56c1381cc774a950a59b9d07fecc4eb4321ba0153fefcf0540e2c873e0",
+   "bytes": 4018,
+   "storagePath": "library/illustrations/agency-compass.svg",
+   "themes": [
+    "direction",
+    "values",
+    "choosing a way"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "agency-key",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/agency-key.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "3d58aaba41c1304a44078f31cf61f80e5cb21fa949a622cb234742f996ef68f2",
+   "bytes": 2701,
+   "storagePath": "library/illustrations/agency-key.svg",
+   "themes": [
+    "access",
+    "what unlocks",
+    "permission"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "agency-lantern",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/agency-lantern.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "6b21afab7e8db39da6978e8d47a9259934e98dadcd84bbb4fa09aba6c6051d11",
+   "bytes": 6059,
+   "storagePath": "library/illustrations/agency-lantern.svg",
+   "themes": [
+    "a small light",
+    "carrying your own",
+    "hope"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "agency-open-gate",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/agency-open-gate.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0f838cc1e6ed367c1897fe54fac59baa91a041387f3f038c3a2a06cb0cddd795",
+   "bytes": 6818,
+   "storagePath": "library/illustrations/agency-open-gate.svg",
+   "themes": [
+    "the way forward",
+    "an opening",
+    "invitation"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "agency-sunrise-horizon",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/agency-sunrise-horizon.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "6487b4c7191ab4c745e9d2200fa2c8a518677ef09535aa37eb69c104f00e5031",
+   "bytes": 2462,
+   "storagePath": "library/illustrations/agency-sunrise-horizon.svg",
+   "themes": [
+    "a beginning",
+    "what is ahead",
+    "renewal"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anger-gauge",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anger-gauge.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "ffaa43738d60af03f6238fea7ef9fe78b8f85c7464a0bd7f39e830762355ce5e",
+   "bytes": 4090,
+   "storagePath": "library/illustrations/anger-gauge.svg",
+   "themes": [
+    "intensity",
+    "escalation",
+    "measuring a feeling"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anger-kettle",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anger-kettle.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "1938359cd5980febec77b96de605ab1c5d64141556d301b55b06aa8642e03ffe",
+   "bytes": 7483,
+   "storagePath": "library/illustrations/anger-kettle.svg",
+   "themes": [
+    "pressure building",
+    "held-in anger",
+    "release"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anger-pressure-valve",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anger-pressure-valve.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "3897fc2d3245b8f0545f01fb7ba18feb3949d4dcb61a9a323ffa21a8f2157068",
+   "bytes": 6837,
+   "storagePath": "library/illustrations/anger-pressure-valve.svg",
+   "themes": [
+    "containment",
+    "controlled release",
+    "regulation"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anger-storm-cloud",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anger-storm-cloud.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "3ba74d48f88c61a4d812fa8355ad91d8be58f8981a7779ed9a522b4e2aac72cb",
+   "bytes": 3310,
+   "storagePath": "library/illustrations/anger-storm-cloud.svg",
+   "themes": [
+    "irritability",
+    "mood",
+    "passing intensity"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anx-iceberg",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anx-iceberg.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "b484f6a0a616738c07e50569df669d5370fb3ec61ed10604bcc9908a986afb00",
+   "bytes": 6363,
+   "storagePath": "library/illustrations/anx-iceberg.svg",
+   "themes": [
+    "what is beneath",
+    "hidden load",
+    "visible vs unseen"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anx-looping-line",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anx-looping-line.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "6c2d953061f23f24ccdf6533904d523c2893d08ec5a1465e42d65e7bfe5cbad5",
+   "bytes": 5082,
+   "storagePath": "library/illustrations/anx-looping-line.svg",
+   "themes": [
+    "rumination",
+    "circling thoughts",
+    "returning worry"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anx-many-doors",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anx-many-doors.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "2e444f7cba00464e14f7867be40f64ef5d5fb0a010d2569c44ae871bf2dca58d",
+   "bytes": 5055,
+   "storagePath": "library/illustrations/anx-many-doors.svg",
+   "themes": [
+    "indecision",
+    "too many options",
+    "uncertainty"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anx-overflowing-cup",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anx-overflowing-cup.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "779cf3f0c876345875f7512e6295f2edf3bfdaa66919a958a94ed1da7d68a342",
+   "bytes": 4738,
+   "storagePath": "library/illustrations/anx-overflowing-cup.svg",
+   "themes": [
+    "capacity",
+    "burnout",
+    "too much"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anx-static-wave",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anx-static-wave.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0cfd4beb1764585ef9a4ebc2af958e244581577ed7bc37cb7ec11c9094b7db1f",
+   "bytes": 4882,
+   "storagePath": "library/illustrations/anx-static-wave.svg",
+   "themes": [
+    "activation settling",
+    "nervous system",
+    "calming down"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "anx-tangled-thread",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/anx-tangled-thread.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "3e55b3a9c718a82b43ad6014ebe4ffe18adbed82dba3b8eb802cb4a806a51d75",
+   "bytes": 14134,
+   "storagePath": "library/illustrations/anx-tangled-thread.svg",
+   "themes": [
+    "overwhelm",
+    "rumination",
+    "one thread to pull"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "bound-concentric-control",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/bound-concentric-control.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "d49b5932a1f5e4f16d366aced96e27c0163114485d9e149f3014b386922efa89",
+   "bytes": 2875,
+   "storagePath": "library/illustrations/bound-concentric-control.svg",
+   "themes": [
+    "what is in your control",
+    "circles of influence"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "bound-door-ajar",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/bound-door-ajar.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "87e632c9ab3bc682d9eb7f834921036ba43887f4b915c3e958b97e6a73f14565",
+   "bytes": 3561,
+   "storagePath": "library/illustrations/bound-door-ajar.svg",
+   "themes": [
+    "partial openness",
+    "conditional access"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "bound-drawn-line",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/bound-drawn-line.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "78d273535dff476c92ca53d30544bceda4f9bcf34c44d834be78aaf3e6b22c22",
+   "bytes": 5369,
+   "storagePath": "library/illustrations/bound-drawn-line.svg",
+   "themes": [
+    "saying no",
+    "setting a limit",
+    "deciding"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "bound-gate-in-fence",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/bound-gate-in-fence.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "2931a8f7d22db31d78f7ad9332b505b8cfd1cb5b2aa68cf296d84425f2d27987",
+   "bytes": 10249,
+   "storagePath": "library/illustrations/bound-gate-in-fence.svg",
+   "themes": [
+    "boundaries with openings",
+    "selective access"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "bound-raised-palm",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/bound-raised-palm.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "12e8e607a78974db89ae3ac0726a5bcdba9ca47559b07d59e6d5dc6718a5cf9c",
+   "bytes": 3788,
+   "storagePath": "library/illustrations/bound-raised-palm.svg",
+   "themes": [
+    "refusal",
+    "stop",
+    "protecting space"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "bound-two-rooms",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/bound-two-rooms.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "1ad18f997ed1ca757586b6395b4810fb4c9fa8faefe96a52b9ffc53f8f7ed178",
+   "bytes": 7720,
+   "storagePath": "library/illustrations/bound-two-rooms.svg",
+   "themes": [
+    "separation",
+    "shared wall",
+    "privacy"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "cbt-balance-scale",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/cbt-balance-scale.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "c02d01d144f0767dd00314b2cb54be3b541cb620453aa7e925d7bccbf51bd753",
+   "bytes": 4772,
+   "storagePath": "library/illustrations/cbt-balance-scale.svg",
+   "themes": [
+    "weighing evidence",
+    "examining a thought"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "cbt-broken-loop",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/cbt-broken-loop.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "5ffe938a7a259eb3744131f218ef01b049f043b6e81161a9f50c8ec82b54ea11",
+   "bytes": 1301,
+   "storagePath": "library/illustrations/cbt-broken-loop.svg",
+   "themes": [
+    "interrupting a cycle",
+    "the gap",
+    "breaking a pattern"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "cbt-fork-in-road",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/cbt-fork-in-road.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "398a5119aeb2f36f6cee04938052cf2ed68dd859397298ba2d21930433ae77f7",
+   "bytes": 5175,
+   "storagePath": "library/illustrations/cbt-fork-in-road.svg",
+   "themes": [
+    "choice point",
+    "alternative response"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "cbt-magnifier",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/cbt-magnifier.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "473813a4888be968985e027cb65c27bac3d641a251205776c28235da35f1ed06",
+   "bytes": 5281,
+   "storagePath": "library/illustrations/cbt-magnifier.svg",
+   "themes": [
+    "examining a thought",
+    "looking closely"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "cbt-sorting-shelves",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/cbt-sorting-shelves.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "09e399c9c4ad9ee66b678594ffba42d1b85c445f3005c39918f9130259ca2751",
+   "bytes": 1475,
+   "storagePath": "library/illustrations/cbt-sorting-shelves.svg",
+   "themes": [
+    "organising thoughts",
+    "categories",
+    "structure"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "eft-cord-between-hands",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/eft-cord-between-hands.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "d0d6525b3822bf73138f946a3c655bf483dc8ec4bfb19f2d8114f65b8f566322",
+   "bytes": 8020,
+   "storagePath": "library/illustrations/eft-cord-between-hands.svg",
+   "themes": [
+    "the bond",
+    "what is held between",
+    "repair"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "eft-interlocking-rings",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/eft-interlocking-rings.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "8e0cba8164366e1263c9d99ccb85c2697c576129637387f5e745a0927b4ee02c",
+   "bytes": 2727,
+   "storagePath": "library/illustrations/eft-interlocking-rings.svg",
+   "themes": [
+    "attachment",
+    "overlap",
+    "connection"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "eft-nest",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/eft-nest.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "652d1f046f70a127f789d6538567d53f984212d2424ae92d4c2d4171862d8603",
+   "bytes": 14411,
+   "storagePath": "library/illustrations/eft-nest.svg",
+   "themes": [
+    "safety",
+    "shelter",
+    "a made place"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "eft-parallel-threads",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/eft-parallel-threads.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "ddc7414024cea7371147a5500a80e4ce50d1de6b77ccb50831fee7eea44165f8",
+   "bytes": 1327,
+   "storagePath": "library/illustrations/eft-parallel-threads.svg",
+   "themes": [
+    "two lives alongside",
+    "crossing once",
+    "separate paths"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "eft-shelter",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/eft-shelter.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "5471c4cb988210c59fe894d38775ff602644eb14dc8a6d1c6d20fec5b7459b92",
+   "bytes": 1059,
+   "storagePath": "library/illustrations/eft-shelter.svg",
+   "themes": [
+    "protection",
+    "holding space",
+    "a roof over"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "eft-two-chairs",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/eft-two-chairs.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "33f95e033b32e5990bb6c09174c5318e7d57147795a8b167e4798bfafa3ee595",
+   "bytes": 6561,
+   "storagePath": "library/illustrations/eft-two-chairs.svg",
+   "themes": [
+    "facing each other",
+    "couple work",
+    "dialogue"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "emdr-bridge",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/emdr-bridge.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "635da1e97328c7cf012afcb479153c1c2dbdeb756f599e266647c89be22157cd",
+   "bytes": 7241,
+   "storagePath": "library/illustrations/emdr-bridge.svg",
+   "themes": [
+    "crossing over",
+    "connecting then and now"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "emdr-horizon-boat",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/emdr-horizon-boat.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "2af17a5fd7a2e2286cdff66d3676ccfab3d708034d0518b239b9cad56847b409",
+   "bytes": 9679,
+   "storagePath": "library/illustrations/emdr-horizon-boat.svg",
+   "themes": [
+    "calm after processing",
+    "distance",
+    "settled water"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "emdr-lighthouse",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/emdr-lighthouse.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0746582c9cf7fc204ee02640631298b94ae3153a011e36f1f87ed7c293cec32f",
+   "bytes": 7348,
+   "storagePath": "library/illustrations/emdr-lighthouse.svg",
+   "themes": [
+    "orientation",
+    "a fixed point",
+    "guidance"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "emdr-pendulum",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/emdr-pendulum.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "103853335f2c405de0403288e865402c18f5088ab5b0e194b53071eaf12a21d2",
+   "bytes": 12623,
+   "storagePath": "library/illustrations/emdr-pendulum.svg",
+   "themes": [
+    "oscillation",
+    "dual attention",
+    "swinging between"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "emdr-two-way-arc",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/emdr-two-way-arc.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "36bfa34d5a1876fa0ca591fda65a69cbd3bed08ea1bba384e3a15c3e1137faa9",
+   "bytes": 1148,
+   "storagePath": "library/illustrations/emdr-two-way-arc.svg",
+   "themes": [
+    "bilateral movement",
+    "back and forth",
+    "processing"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "grief-empty-chair",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/grief-empty-chair.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "e59a30127ca3eb3a13e84b4a600aab5bc51fd98f7968e51e9be0ee2c7973c371",
+   "bytes": 6685,
+   "storagePath": "library/illustrations/grief-empty-chair.svg",
+   "themes": [
+    "loss",
+    "absence",
+    "ending",
+    "bereavement"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "grief-folded-map",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/grief-folded-map.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "b052cfb18c5a5d8604983dd578ca613aaf6cdc97f995168fcaa320a34dc2f029",
+   "bytes": 3812,
+   "storagePath": "library/illustrations/grief-folded-map.svg",
+   "themes": [
+    "changed plans",
+    "lost direction",
+    "life disruption"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "grief-open-window",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/grief-open-window.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "69a664f50fcf5fdf65cab1e5181e79daf8efe872cea35ce9645ca3f5f2f34b7a",
+   "bytes": 7719,
+   "storagePath": "library/illustrations/grief-open-window.svg",
+   "themes": [
+    "letting in",
+    "relief",
+    "air after loss"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "grief-single-stem",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/grief-single-stem.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "50531ebac969c2548e32f8c451ea6a23939a68efb966a662cb96bf8cbc0d1321",
+   "bytes": 5960,
+   "storagePath": "library/illustrations/grief-single-stem.svg",
+   "themes": [
+    "fragility",
+    "tenderness",
+    "something cut short"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "grief-two-paths",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/grief-two-paths.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "709f04ca0eeb08277d308c22b30c023a9f7ccd2acd6045af259428b48d40aaaa",
+   "bytes": 1773,
+   "storagePath": "library/illustrations/grief-two-paths.svg",
+   "themes": [
+    "unchosen crossroads",
+    "a future that ended",
+    "divergence"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "grief-unlit-candle",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/grief-unlit-candle.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "839bd5c54e2a4aac98f3cf4e0382f10bb46d00c7d68bbd23006ba7c4cfa4058b",
+   "bytes": 2514,
+   "storagePath": "library/illustrations/grief-unlit-candle.svg",
+   "themes": [
+    "remembrance",
+    "mourning",
+    "quiet grief"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "ground-anchor",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/ground-anchor.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "7288258182babe3fd81141358044b0b3d5e26e1d255a38a8fa6f1fbba6635072",
+   "bytes": 6554,
+   "storagePath": "library/illustrations/ground-anchor.svg",
+   "themes": [
+    "grounding",
+    "stability",
+    "holding steady"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "ground-breath-wave",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/ground-breath-wave.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "851c2cd871032cd3182235381c7b32b2816f335174be5dbb08f0f55ae18e0ca1",
+   "bytes": 1216,
+   "storagePath": "library/illustrations/ground-breath-wave.svg",
+   "themes": [
+    "breathing",
+    "rise and fall",
+    "calming"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "ground-feet-standing",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/ground-feet-standing.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "d3037f01ef91591484ee91904e9fb5787f8034fb3ddd5d23f40e903408b89cb2",
+   "bytes": 6406,
+   "storagePath": "library/illustrations/ground-feet-standing.svg",
+   "themes": [
+    "presence",
+    "here and now",
+    "body awareness"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "ground-mountain",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/ground-mountain.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "e89c0ea4a7b9e831c6dae080e45ba9f534212f7e426e923fa453c17fedc932f7",
+   "bytes": 4249,
+   "storagePath": "library/illustrations/ground-mountain.svg",
+   "themes": [
+    "steadiness",
+    "a broad base",
+    "endurance"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "ground-roots",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/ground-roots.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "a60f53ef0cf337a06aa8f0e713e38373384f49b8594ece0de049db9680b3e70c",
+   "bytes": 33817,
+   "storagePath": "library/illustrations/ground-roots.svg",
+   "themes": [
+    "what is underneath",
+    "foundations",
+    "unseen support"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-echo-rings",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-echo-rings.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "da10e7d1b8307c69ff91177c7b7781da5d781491f3d65387de162e25048849fb",
+   "bytes": 3863,
+   "storagePath": "library/illustrations/mem-echo-rings.svg",
+   "themes": [
+    "ripple effect",
+    "lasting impact",
+    "consequences"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-folded-paper",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-folded-paper.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "24ea1d554241c38e7c4532e10b8caae527285a278653ec5684f4079c62c2577d",
+   "bytes": 14448,
+   "storagePath": "library/illustrations/mem-folded-paper.svg",
+   "themes": [
+    "creases that remain",
+    "old marks",
+    "reopened"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-photo-frame",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-photo-frame.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0e66b0520fa8c12efc401e055415a25bdf9f6f505ff8cdb7f2591f08d20106bf",
+   "bytes": 3839,
+   "storagePath": "library/illustrations/mem-photo-frame.svg",
+   "themes": [
+    "a fixed past",
+    "what is kept",
+    "memory held"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-rearview",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-rearview.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "206bf730ebe5db677a7aec4e0139fbe8f89a0ea094d73cdb1617d6cce05a57c0",
+   "bytes": 3186,
+   "storagePath": "library/illustrations/mem-rearview.svg",
+   "themes": [
+    "looking back",
+    "the past behind",
+    "perspective"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-sediment-layers",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-sediment-layers.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "d163f5406eb9323d941015f3329a18cc9ed69a8e29bce51dd22802a621ae7132",
+   "bytes": 22236,
+   "storagePath": "library/illustrations/mem-sediment-layers.svg",
+   "themes": [
+    "what settles over time",
+    "deep history",
+    "strata"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "mem-tree-rings",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/mem-tree-rings.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "5c51d83ad589ef31b6ba80e2dca5e0edef3ee27885e0b62c9f2202e54838e631",
+   "bytes": 12995,
+   "storagePath": "library/illustrations/mem-tree-rings.svg",
+   "themes": [
+    "accumulated time",
+    "layers of a life",
+    "growth record"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "pace-hourglass",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/pace-hourglass.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "a7d5295e573ea719863ac67d5053d199d52e04a454e871c82de1b857dbfe457f",
+   "bytes": 10098,
+   "storagePath": "library/illustrations/pace-hourglass.svg",
+   "themes": [
+    "time passing",
+    "patience",
+    "duration of work"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "pace-metronome",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/pace-metronome.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0d7f8ea7d742fe8101016d0b98a1429652c4b3070fbc1b1bdff047cb688e7a33",
+   "bytes": 9509,
+   "storagePath": "library/illustrations/pace-metronome.svg",
+   "themes": [
+    "rhythm",
+    "routine",
+    "steady pace"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "pace-seedling-stages",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/pace-seedling-stages.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "f909e37ab839d7438d9e14734aae27762ac7decbe6ff90e249b186f1cea74981",
+   "bytes": 11458,
+   "storagePath": "library/illustrations/pace-seedling-stages.svg",
+   "themes": [
+    "growth over time",
+    "stages",
+    "slow change"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "pace-staircase-landing",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/pace-staircase-landing.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "cbfd36af52b0d051f74657b676f2a4544f9e25032889a050ef4318d4af3bd224",
+   "bytes": 8774,
+   "storagePath": "library/illustrations/pace-staircase-landing.svg",
+   "themes": [
+    "progress with pauses",
+    "plateau",
+    "rest between steps"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "pace-stepping-stones",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/pace-stepping-stones.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "a23a0ae7ef261c94c9ffdd9ce25b1ae93fc9f3d0e5eb478d63dac6044d26260f",
+   "bytes": 12121,
+   "storagePath": "library/illustrations/pace-stepping-stones.svg",
+   "themes": [
+    "one step at a time",
+    "gradual crossing",
+    "small moves"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "pace-unwinding-spiral",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/pace-unwinding-spiral.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0309d713fe08652bd6aea400fa1db70a588ab08c0f10187e7b106c506357effc",
+   "bytes": 3753,
+   "storagePath": "library/illustrations/pace-unwinding-spiral.svg",
+   "themes": [
+    "opening out",
+    "from tight to wide",
+    "gradual release"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "practice-clock",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/practice-clock.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "22daf0e26ae8c1a2278f094aeab1c3804ef65111ebbb344ec3b208827b5ac7d8",
+   "bytes": 4982,
+   "storagePath": "library/illustrations/practice-clock.svg",
+   "themes": [
+    "session time",
+    "the fifty minutes",
+    "weekly rhythm"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "practice-doorway",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/practice-doorway.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "f1e4c7e7965a10bc7126d9c35e275523723115f7dce24a6b0b4f4806f06340d6",
+   "bytes": 2972,
+   "storagePath": "library/illustrations/practice-doorway.svg",
+   "themes": [
+    "entering therapy",
+    "first session",
+    "threshold"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "practice-notebook",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/practice-notebook.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "64aa972d72219dac0af2c7142edd49e500aebcd7e4f3b17f97ee326874016720",
+   "bytes": 3103,
+   "storagePath": "library/illustrations/practice-notebook.svg",
+   "themes": [
+    "the work between sessions",
+    "notes",
+    "reflection"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "practice-two-cups",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/practice-two-cups.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "474b15bf764ec59ed60d69052421d399dea5f1a9f5193b3554c2083c1b3aadf0",
+   "bytes": 8590,
+   "storagePath": "library/illustrations/practice-two-cups.svg",
+   "themes": [
+    "the therapeutic relationship",
+    "sitting together"
+   ],
+   "drawable": true
+  },
+  {
+   "id": "xtra-wave-soft",
+   "family": "illustrations",
+   "file": "assets/visual-library/01-illustrations/xtra-wave-soft.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "db2151402561d925f16d645e0aeaca138b6697f2ba8db25b64a4096af8b85a96",
+   "bytes": 3214,
+   "storagePath": "library/illustrations/xtra-wave-soft.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-branch-sky",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-branch-sky.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "542f76bfca6314e8a4dd4c85f715c1e8af9f18639a34b18273b6339f57aa88d2",
+   "bytes": 62652,
+   "storagePath": "library/fonds/bg-branch-sky.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-ceramic-glaze",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-ceramic-glaze.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "7c7a8a68fd89a09698e8fbe4eb826ddff3ebdcbe4754b1dae2300cd4bc576f0d",
+   "bytes": 158971,
+   "storagePath": "library/fonds/bg-ceramic-glaze.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-cloud-soft",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-cloud-soft.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "fef6e153d2bfd4fb86e179697c76f14ce40c432168b110a7be5274d4f51f46b5",
+   "bytes": 123452,
+   "storagePath": "library/fonds/bg-cloud-soft.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-curtain-light",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-curtain-light.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "86fd8fa7f32cd3ac5d2e5e27419ef751b3e0b8bcaeeac6f1a62d2d9e6f246f15",
+   "bytes": 180905,
+   "storagePath": "library/fonds/bg-curtain-light.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-dried-grass",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-dried-grass.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "a8bd9d5477585b421521de83ac27125e451aba4955bbc1623d06105d1c00b741",
+   "bytes": 137194,
+   "storagePath": "library/fonds/bg-dried-grass.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-dusk-horizon",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-dusk-horizon.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "918b7e452105e095fefe50417b868240733edcd32ad624d560658d8043c16317",
+   "bytes": 102226,
+   "storagePath": "library/fonds/bg-dusk-horizon.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-eucalyptus",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-eucalyptus.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "02021fa1048d4047fa9204d7b9a50acab62ff1963f070cac19e46aa3094a1995",
+   "bytes": 135341,
+   "storagePath": "library/fonds/bg-eucalyptus.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-folded-sheet",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-folded-sheet.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "888983117cfea5ae591d9e989dee2909ceb9a6cf084ec77e370eb58040f617fc",
+   "bytes": 225401,
+   "storagePath": "library/fonds/bg-folded-sheet.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-frosted-glass",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-frosted-glass.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "47b14028d3849e9961d45dee2996c4e6a3aabc4beaba79a595d39a947f35dfde",
+   "bytes": 312531,
+   "storagePath": "library/fonds/bg-frosted-glass.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-leaf-shadow-wall",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-leaf-shadow-wall.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "7c003993a1d1a1699b34de517502ea461a5a8f2fb289ec3065b5676017e5cb64",
+   "bytes": 156761,
+   "storagePath": "library/fonds/bg-leaf-shadow-wall.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-linen-folds",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-linen-folds.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "10764663b991f51c990021a6645e74123d4eb24cabaf83145b2b9a6b5a2a7ea7",
+   "bytes": 163681,
+   "storagePath": "library/fonds/bg-linen-folds.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-morning-mist",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-morning-mist.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "074a2b165cac40f3320b92ec8ba22afdd227c842ddb044a9a69029717637297e",
+   "bytes": 100659,
+   "storagePath": "library/fonds/bg-morning-mist.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-open-book-blur",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-open-book-blur.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "3bd189ee985187794285b6380b0adf264a3e4c2ca5924f78837e0e96840b420f",
+   "bytes": 54201,
+   "storagePath": "library/fonds/bg-open-book-blur.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-pebbles",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-pebbles.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "5392b56e00e4e578231d5cd7c70679cacc42470bce47cf2de271abe7f4e1e752",
+   "bytes": 122462,
+   "storagePath": "library/fonds/bg-pebbles.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-plaster-wall",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-plaster-wall.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "70693036564188d077a888280c14cfd9b7ccd65b5480b63cf866dadc7ed7a6ad",
+   "bytes": 344737,
+   "storagePath": "library/fonds/bg-plaster-wall.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-raked-sand",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-raked-sand.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "71b5ff9c2d86abb06c359c489b41478d1eedb532b5f2cc5f3808cee51ae94be2",
+   "bytes": 319544,
+   "storagePath": "library/fonds/bg-raked-sand.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-sand-ripples",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-sand-ripples.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "958503314e19b88ce8fd55da5b8c2f1a2037ad63469c73d4301fbf57f0d784a5",
+   "bytes": 167459,
+   "storagePath": "library/fonds/bg-sand-ripples.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-snow-field",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-snow-field.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "3d4d0f3e33507f19366e1a7c3d1bd7d4a3436474e0ebd88b2b2fd6fbc8c2f719",
+   "bytes": 262880,
+   "storagePath": "library/fonds/bg-snow-field.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-steam-cup",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-steam-cup.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "67161d840daa798c136dc497670cb30b6d5d65f7f7de9a1e1f8aada09dbbd3d3",
+   "bytes": 76617,
+   "storagePath": "library/fonds/bg-steam-cup.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-still-water",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-still-water.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "ede25ba74c5f5479d7443d2a43b5511a905630bed703aa397450f82f75b83797",
+   "bytes": 104905,
+   "storagePath": "library/fonds/bg-still-water.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-stone-surface",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-stone-surface.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "e6439ed759c8d67875a7f1aeadccbcf4cd88dd23cab02a71cd20fb47afabb306",
+   "bytes": 450435,
+   "storagePath": "library/fonds/bg-stone-surface.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-thread-spool",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-thread-spool.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "fc05982c04874d9c923cdebff97beb9db7a002331c7918e96615df64eba85eb7",
+   "bytes": 121420,
+   "storagePath": "library/fonds/bg-thread-spool.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-torn-paper",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-torn-paper.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "89de86306f45743d5d38525d05e1511a4af381131548a5737a87946a52619339",
+   "bytes": 224463,
+   "storagePath": "library/fonds/bg-torn-paper.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-wet-pavement",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-wet-pavement.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "e487dcf45fe44943db44909867d213139ca98f0aa4707123dc01fd371a4b00e3",
+   "bytes": 194673,
+   "storagePath": "library/fonds/bg-wet-pavement.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-window-rain",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-window-rain.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "f15d7e41bf826c5d70d92261f57b8c557beb3246fbe2b3522079413d4296e9ca",
+   "bytes": 248527,
+   "storagePath": "library/fonds/bg-window-rain.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-wood-grain",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-wood-grain.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "95bb788e76a373d63872018e0a2b7bfa6ace03c462aa181dc9891bde0aa11e66",
+   "bytes": 417520,
+   "storagePath": "library/fonds/bg-wood-grain.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "bg-wool-blanket",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/bg-wool-blanket.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "98fa91656e9cf90672526078f8bb9b9266be247da55f88cb21b07f4573cd2083",
+   "bytes": 172312,
+   "storagePath": "library/fonds/bg-wool-blanket.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-dried-flower",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/xtra-dried-flower.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "b984720de8890059fc48b3528a0e4156176acb62ce1019c45132fe7e538ab509",
+   "bytes": 122378,
+   "storagePath": "library/fonds/xtra-dried-flower.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-feathers",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/xtra-feathers.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "247eb96082c77a8fda1c19baaf0fa0701c53020a7f05daeb7e39f1b80a002320",
+   "bytes": 204308,
+   "storagePath": "library/fonds/xtra-feathers.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-olive-shadow",
+   "family": "fonds",
+   "file": "assets/visual-library/02-fonds/xtra-olive-shadow.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "99ad093ed53e4724575b3287479f671951b86456448090dcc1646fd3074b801e",
+   "bytes": 185534,
+   "storagePath": "library/fonds/xtra-olive-shadow.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "tex-concrete-micro",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/tex-concrete-micro.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "854878cf63600bec088fc1aa17d9146375c497ce9ebc18ddd4fb7902ed292109",
+   "bytes": 447211,
+   "storagePath": "library/textures/tex-concrete-micro.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "tex-cotton-paper",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/tex-cotton-paper.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "559b7b17d8c5c929ed3751c83814144d4aab56c4928d90f42319184c7b23332f",
+   "bytes": 439999,
+   "storagePath": "library/textures/tex-cotton-paper.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "tex-linen-weave",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/tex-linen-weave.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "0c23108a6b3b8ed5bc31256d4270c74b888edc6a0cbe4ab56007b20ce0d4c686",
+   "bytes": 400195,
+   "storagePath": "library/textures/tex-linen-weave.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "tex-newsprint",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/tex-newsprint.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "e548d0bc4804e2684e7bee770735187c043b14ca8865e02eb5b073326de542de",
+   "bytes": 445442,
+   "storagePath": "library/textures/tex-newsprint.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "tex-plaster-fine",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/tex-plaster-fine.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "6d3ff1cd97dce31a169ce0d5e94c194f53cc52e8c27a7922aa9cf47db3f5abb0",
+   "bytes": 458985,
+   "storagePath": "library/textures/tex-plaster-fine.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "tex-rice-paper",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/tex-rice-paper.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "5e21eae58aab3803dcf5b2e9b581df302e65ddcb0e0f21fd2122a405d0ed64cc",
+   "bytes": 428023,
+   "storagePath": "library/textures/tex-rice-paper.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "tex-risograph",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/tex-risograph.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "6b7f44afc2d03ac31a29c2ffacf055969a7f0084e7a7624a003317bd2f03f271",
+   "bytes": 436060,
+   "storagePath": "library/textures/tex-risograph.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "tex-watercolour-wash",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/tex-watercolour-wash.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "9a38c0012ef22a368ed6889d3ffe7e21ea85368c4e65b24da5328a7c14a6c42f",
+   "bytes": 404307,
+   "storagePath": "library/textures/tex-watercolour-wash.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-ivory-paper",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/xtra-ivory-paper.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "bafd5be1e15c966bd01fcbb7761e0065119dbf403794f3c8ee0c0a5c523029df",
+   "bytes": 449516,
+   "storagePath": "library/textures/xtra-ivory-paper.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-watercolour-pale",
+   "family": "textures",
+   "file": "assets/visual-library/03-textures/xtra-watercolour-pale.jpg",
+   "ext": "jpg",
+   "contentType": "image/jpeg",
+   "sha256": "7988390a3b2666eb6bf31e5d655101adeebc8082a0b71d4281114d7120ba3166",
+   "bytes": 417038,
+   "storagePath": "library/textures/xtra-watercolour-pale.jpg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-arch",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-arch.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "b2d55c9ece42c06392ee4cf375b724e0284a9f68174ff1a6d14a1aa8c84afd60",
+   "bytes": 1084,
+   "storagePath": "library/formes/shape-arch.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-blob-soft",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-blob-soft.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "032ff4fa8f8c31728b82317ee6bc35690a6cb1d6c509931cd9e29e8be3bf1987",
+   "bytes": 1442,
+   "storagePath": "library/formes/shape-blob-soft.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-blob-wide",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-blob-wide.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "63e2d243e4424946e5ba975cb08e73a78a79f539fd4c28034972ab4030e1dda7",
+   "bytes": 775,
+   "storagePath": "library/formes/shape-blob-wide.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-brush-stroke",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-brush-stroke.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "ff19fe2c92b39dff36c2696624f02c9dfaf90eb20d95a4f89e9d6ab3c4208209",
+   "bytes": 14273,
+   "storagePath": "library/formes/shape-brush-stroke.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-cloud-soft",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-cloud-soft.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "492820b4911a88b8c0c05bcc681630fa7a8bb86da4726745ca63d0e5ebc273be",
+   "bytes": 1033,
+   "storagePath": "library/formes/shape-cloud-soft.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-crescent",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-crescent.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0dc6f74d1101af0261d9c646ee2f5889fc84b8349b230ea34b6ce6c2f02f660a",
+   "bytes": 1069,
+   "storagePath": "library/formes/shape-crescent.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-drop",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-drop.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "687084ad7c0b250f8a083941461e9324ddfd940207971a483b8fc8ec0cb27b7c",
+   "bytes": 1134,
+   "storagePath": "library/formes/shape-drop.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-half-circle",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-half-circle.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "bfa215dde2f7241be61057d7ac4cc84a65e777e6ce98529966fc7e486890abf2",
+   "bytes": 924,
+   "storagePath": "library/formes/shape-half-circle.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-leaf-simple",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-leaf-simple.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "74dab445fea2af18d29c19abc120f9359eb6046c7d69c6113bb0fa3276e518e4",
+   "bytes": 1337,
+   "storagePath": "library/formes/shape-leaf-simple.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-oval-tilted",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-oval-tilted.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "aa1964ba185b693253a75af3e161933c0f66d887d758eaf4214e3f174a51b864",
+   "bytes": 994,
+   "storagePath": "library/formes/shape-oval-tilted.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-torn-paper-edge",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-torn-paper-edge.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "f584e99463cebb3ee2e5c07f7afbd308f1b45efee20cff3bb77f426e16dd3942",
+   "bytes": 4102,
+   "storagePath": "library/formes/shape-torn-paper-edge.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "shape-wave-band",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/shape-wave-band.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "bf1b3777da0c80477e38a5bc75af2d2ea3c3e0f8ab8a34e7d6eb00daac587077",
+   "bytes": 925,
+   "storagePath": "library/formes/shape-wave-band.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-dome",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/xtra-dome.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "28b900a7a394c5c5f09050df3e49b59cce56dddd7d14f956d031a00f4110b741",
+   "bytes": 808,
+   "storagePath": "library/formes/xtra-dome.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-drop-b",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/xtra-drop-b.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "a251f7d5de2ad440f17f0898cfccaa72a00583f9d4fce28f486b5e4cf2e36e2f",
+   "bytes": 949,
+   "storagePath": "library/formes/xtra-drop-b.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-leaf-small",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/xtra-leaf-small.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "79bbe9c7cf732ea3b6cb7bc57ca98f222800efc951edafe9683e81290795615b",
+   "bytes": 881,
+   "storagePath": "library/formes/xtra-leaf-small.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-spiral",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/xtra-spiral.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "6fdfa6effad8671bc108d4c5e2db973b4de9a22b5f45c6039ee94f90e8e8f3ff",
+   "bytes": 3582,
+   "storagePath": "library/formes/xtra-spiral.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "xtra-splash",
+   "family": "formes",
+   "file": "assets/visual-library/04-formes/xtra-splash.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "0d247ac9eec73933e53f47d16403f9a3b6b3578081c740d863eb6b085145f0fe",
+   "bytes": 2059,
+   "storagePath": "library/formes/xtra-splash.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-arrow-curve-down",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-arrow-curve-down.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "6b9176869eb41caeda7789374aea975bc23b24e44edfbc91a2e25b7aab894571",
+   "bytes": 2204,
+   "storagePath": "library/accents/mark-arrow-curve-down.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-arrow-curve-right",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-arrow-curve-right.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "fe87a96ec15ea46e7fe371cd773adaf75b7c914a3981b73f8b7ab2228f160aa5",
+   "bytes": 3551,
+   "storagePath": "library/accents/mark-arrow-curve-right.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-arrow-small",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-arrow-small.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "c6fd14cdd5a5b609ac78ef42a693c94e29b8473612df8b34623c51b371d399fd",
+   "bytes": 2505,
+   "storagePath": "library/accents/mark-arrow-small.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-asterisk",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-asterisk.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "f26c6badd3f0078e0e107cd21e33f2e83eec7d4f4526f94f9721d46e43a2f80b",
+   "bytes": 2866,
+   "storagePath": "library/accents/mark-asterisk.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-bracket-left",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-bracket-left.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "96af2a89753397ce5ad8ad26b3512d556940e3b9df7ebd9ddb5975efee6ea991",
+   "bytes": 1631,
+   "storagePath": "library/accents/mark-bracket-left.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-bracket-pair",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-bracket-pair.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "3a143e99813f948239e4386fa85bb2bf7e426e5b63db37ac468d1c6efe185d37",
+   "bytes": 2619,
+   "storagePath": "library/accents/mark-bracket-pair.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-bullet-circle",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-bullet-circle.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "d996417875b3ea4166102d41ea505611c0c90396faba812b8ece8b6899e51258",
+   "bytes": 908,
+   "storagePath": "library/accents/mark-bullet-circle.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-bullet-dash",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-bullet-dash.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "1019db4c5a8b621f74eaa2f93f73f036137184deeec623ed614a2a76e77e632a",
+   "bytes": 542,
+   "storagePath": "library/accents/mark-bullet-dash.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-circle-around",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-circle-around.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "f45b516a8f9b2977080a1fd8620cb5907b35c85618ef21e1e3f69fe9ab1e4ce1",
+   "bytes": 1610,
+   "storagePath": "library/accents/mark-circle-around.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-corner-flourish",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-corner-flourish.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "6d6b25bc44ad5dd4b6d94444935252d0d73374caf0c938e4d0b6529a94ed31e8",
+   "bytes": 2209,
+   "storagePath": "library/accents/mark-corner-flourish.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-divider-dotted",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-divider-dotted.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "31ec276706cf153cd5761af5df382c1ec6e90577ecda4086eee4870974e5c274",
+   "bytes": 2157,
+   "storagePath": "library/accents/mark-divider-dotted.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-divider-wave",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-divider-wave.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "818251af03f4e8f5a1cdf122db8058a5391f6c17aea225353072ae4cb0cbbd37",
+   "bytes": 1523,
+   "storagePath": "library/accents/mark-divider-wave.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-dot-trio",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-dot-trio.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "326c7b66928f8677fd9da604c212b1be2446af2b325fbcf3d377e1b976b184f1",
+   "bytes": 744,
+   "storagePath": "library/accents/mark-dot-trio.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-highlight-sweep",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-highlight-sweep.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "eec524ea6daf1162d95e0a62754f3632dd3a78dedb91c7c864c8b7ecde8d0774",
+   "bytes": 10073,
+   "storagePath": "library/accents/mark-highlight-sweep.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-quote-marks",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-quote-marks.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "3d64099f63f5c6abc39ffbd2e8171d6b72917752636a865b71f7ce980eb034df",
+   "bytes": 1208,
+   "storagePath": "library/accents/mark-quote-marks.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-star-four",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-star-four.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "c471c8125088edd5febc93fe2fcac50c6e1c234ed0885d1e0c2922d8f198f12b",
+   "bytes": 2123,
+   "storagePath": "library/accents/mark-star-four.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-tick",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-tick.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "a0c373f4f06fdb93bd3910181ab8cf7fef62b26ded61b78c0b31a5566108d2ae",
+   "bytes": 741,
+   "storagePath": "library/accents/mark-tick.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-underline-double",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-underline-double.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "d3d5279e391bde2dc591fac21847069c2438f0a8ace40706f20e26ff76e5bef2",
+   "bytes": 2377,
+   "storagePath": "library/accents/mark-underline-double.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-underline-straight",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-underline-straight.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "3ba69b10feb8f5ec14cd908ef75ce5f87c8b9437657a6e6974f3d80e0a6c74d3",
+   "bytes": 1739,
+   "storagePath": "library/accents/mark-underline-straight.svg",
+   "themes": null,
+   "drawable": false
+  },
+  {
+   "id": "mark-underline-swoop",
+   "family": "accents",
+   "file": "assets/visual-library/05-accents/mark-underline-swoop.svg",
+   "ext": "svg",
+   "contentType": "image/svg+xml",
+   "sha256": "17a95cb5eaeecd0794ecdf3e6a0a62a7a783b58ceb6c1f4895b7ba8f450688fe",
+   "bytes": 1578,
+   "storagePath": "library/accents/mark-underline-swoop.svg",
+   "themes": null,
+   "drawable": false
+  }
+ ]
+}

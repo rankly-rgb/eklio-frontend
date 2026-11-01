@@ -1,0 +1,823 @@
+{
+ "source": "production, lecture seule, 2026-11-01 — content_items du mois 2026-12-01 (kit 45de0dac) et content_topics joints",
+ "posts": [
+  {
+   "date": "2026-12-01",
+   "cardLine": "When plans come undone",
+   "hook": "An unwanted crossroads can bring grief for a future that never arrived.",
+   "topic_title": "When the Planned Life Ends",
+   "archetype": "carousel",
+   "intent": "normalise",
+   "persona": "crossroads",
+   "modality": "emdr",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "An unwanted crossroads can hold grief for a future that never arrived."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "beneath": {
+        "gloss": "a future now gone",
+        "label": "An old hope"
+       },
+       "surface": {
+        "gloss": "choices need attention",
+        "label": "A new direction"
+       }
+      },
+      "archetype_key": "surface_and_beneath"
+     },
+     {
+      "payload": {
+       "statement": "Grief can appear even when the next step looks sensible on paper."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "You do not need to rush into gratitude for a path you did not choose."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "When a planned life ends, the loss may be hard to name.\n\nPerhaps a role changed, a relationship ended, a move did not happen, or a hoped-for future no longer fits. Even when a new direction is available, there can be grief for what was expected.\n\nThat grief does not make you ungrateful or unable to "
+  },
+  {
+   "date": "2026-12-02",
+   "cardLine": "Crossroads are not failures",
+   "hook": "An unwanted turning point can hold more than one emotion without requiring an immediate plan.",
+   "topic_title": "Crossroads Are Not Failures",
+   "archetype": "quadrant_model",
+   "intent": "correct_a_myth",
+   "persona": "crossroads",
+   "modality": "eft",
+   "payload": {
+    "items": [
+     {
+      "gloss": "for what changed",
+      "label": "Sadness"
+     },
+     {
+      "gloss": "at an ending",
+      "label": "Relief"
+     },
+     {
+      "gloss": "of the unknown",
+      "label": "Fear"
+     },
+     {
+      "gloss": "without a plan",
+      "label": "Hope"
+     }
+    ],
+    "axis_x": "certainty",
+    "axis_y": "feeling"
+   },
+   "caption": "A common myth says that an unwanted turning point should come with a clear plan.\n\nIt may not. A crossroads can bring sadness for what changed, relief at an ending, fear of the unknown, and hope without a plan. These feelings can sit beside one another without cancelling each other out.\n\nA pause is n"
+  },
+  {
+   "date": "2026-12-03",
+   "cardLine": "EMDR includes preparation",
+   "hook": "EMDR is more than eye movements; preparation and choice are part of the work.",
+   "topic_title": "EMDR Beyond Eye Movements",
+   "archetype": "annotated_curve",
+   "intent": "educate",
+   "persona": "carrying_old_thing",
+   "modality": "emdr",
+   "payload": {
+    "axis_x": "stages of work",
+    "axis_y": "readiness",
+    "points": [
+     {
+      "gloss": "building safety and choice",
+      "label": "Before processing"
+     },
+     {
+      "gloss": "using bilateral stimulation thoughtfully",
+      "label": "During sessions"
+     },
+     {
+      "gloss": "pausing when needed",
+      "label": "Throughout work"
+     }
+    ]
+   },
+   "caption": "EMDR is often associated with eye movements, but eye movements are only one possible form of bilateral stimulation. Taps or tones may also be used.\n\nEMDR can include preparation, conversation about what feels manageable, and choices about pacing. A person may pause, ask questions, or decide not to c"
+  },
+  {
+   "date": "2026-12-04",
+   "cardLine": "Before EMDR reprocessing",
+   "hook": "The part before EMDR reprocessing can matter as much as the memories being approached.",
+   "topic_title": "EMDR Begins Before Reprocessing",
+   "archetype": "carousel",
+   "intent": "behind_the_practice",
+   "persona": "carrying_old_thing",
+   "modality": "emdr",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "EMDR can include preparation before reprocessing begins."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "items": [
+        {
+         "gloss": "What feels activating",
+         "label": "Notice signals"
+        },
+        {
+         "gloss": "People, places, practices",
+         "label": "Name supports"
+        },
+        {
+         "gloss": "Slow down or pause",
+         "label": "Set a pace"
+        }
+       ]
+      },
+      "archetype_key": "numbered_strategies"
+     },
+     {
+      "payload": {
+       "statement": "Preparation may make room for questions, consent, and a pace that feels workable."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "People can pause, revisit preparation, or decide not to continue with reprocessing."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "EMDR is often discussed through reprocessing, but reprocessing is one part of a broader process.\n\nBefore that phase, therapy may include learning what feels steadying, discussing what the approach involves, noticing signs of activation, and making room for questions and choice.\n\nPreparation is not n"
+  },
+  {
+   "date": "2026-12-05",
+   "cardLine": "When the Past Interrupts",
+   "hook": "A memory does not need to feel vivid to keep influencing the present.",
+   "topic_title": "When the Past Still Interrupts",
+   "archetype": "quadrant_model",
+   "intent": "invite",
+   "persona": "carrying_old_thing",
+   "modality": "emdr",
+   "payload": {
+    "items": [
+     {
+      "gloss": "may shape present responses",
+      "label": "Faint memory"
+     },
+     {
+      "gloss": "may bring little disruption",
+      "label": "Clear memory"
+     },
+     {
+      "gloss": "can surface in ordinary moments",
+      "label": "Vague echoes"
+     },
+     {
+      "gloss": "may ask for gentle attention",
+      "label": "Strong recall"
+     }
+    ],
+    "axis_x": "memory clarity",
+    "axis_y": "present impact"
+   },
+   "caption": "A memory does not need to arrive as a clear picture to have a place in the present.\n\nSometimes it shows up as a pause before a conversation, a sudden shift in mood, or a body that feels alert when nothing obvious is happening. Sometimes the memory itself feels distant, while its effects feel close.\n"
+  },
+  {
+   "date": "2026-12-06",
+   "cardLine": "Feelings can arrive later",
+   "hook": "After an unwanted life change, feelings may arrive after the practical decisions are made.",
+   "topic_title": "When Feelings Catch Up",
+   "archetype": "annotated_curve",
+   "intent": "normalise",
+   "persona": "crossroads",
+   "modality": "eft",
+   "payload": {
+    "axis_x": "time after change",
+    "axis_y": "felt weight",
+    "points": [
+     {
+      "gloss": "practical tasks take focus",
+      "label": "First days"
+     },
+     {
+      "gloss": "feelings ask for room",
+      "label": "Later on"
+     },
+     {
+      "gloss": "the change feels more real",
+      "label": "In time"
+     }
+    ]
+   },
+   "caption": "After an unwanted life change, practical decisions may need attention first.\n\nThere may be forms to complete, plans to revise, calls to make, or routines to hold together. Feelings do not always arrive on that schedule.\n\nA delayed reaction can be a human response to having needed to keep going. It m"
+  },
+  {
+   "date": "2026-12-07",
+   "cardLine": "An honest meeting with change",
+   "hook": "You do not have to call an unwanted change a gift before meeting it honestly.",
+   "topic_title": "Unexpected Crossroads",
+   "archetype": "lettered_technique",
+   "intent": "correct_a_myth",
+   "persona": "crossroads",
+   "modality": "eft",
+   "payload": {
+    "items": [
+     {
+      "gloss": "without calling it a gift",
+      "label": "Recognize loss"
+     },
+     {
+      "gloss": "without sorting them first",
+      "label": "Allow feelings"
+     },
+     {
+      "gloss": "from someone you trust",
+      "label": "Invite support"
+     },
+     {
+      "gloss": "that still feel steady",
+      "label": "Name anchors"
+     }
+    ],
+    "acronym": "RAIN"
+   },
+   "caption": "An unwanted change does not need to be called a gift before it can be met honestly.\n\nSometimes the first response is disappointment, anger, grief, confusion, or a quiet sense that the ground has shifted. Those responses do not need to be turned into a lesson right away.\n\nRAIN can be a small prompt f"
+  },
+  {
+   "date": "2026-12-08",
+   "cardLine": "When the map changes",
+   "hook": "A life disruption can create grief alongside every practical decision.",
+   "topic_title": "When the Map Changes",
+   "archetype": "carousel",
+   "intent": "invite",
+   "persona": "crossroads",
+   "modality": "eft",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "A changed plan can bring grief alongside the decisions waiting to be made."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "beneath": {
+        "gloss": "loss, uncertainty, and change",
+        "label": "What needs tending"
+       },
+       "surface": {
+        "gloss": "calls, forms, and logistics",
+        "label": "What needs doing"
+       }
+      },
+      "archetype_key": "surface_and_beneath"
+     },
+     {
+      "payload": {
+       "statement": "You do not have to finish the practical list before making room for what changed."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "When life changes course, practical decisions can arrive quickly: calls to make, forms to complete, plans to revise, people to update.\n\nGrief may be present alongside all of that. It may not look like tears. It can show up as fogginess, irritability, indecision, or a wish to pause when pausing does "
+  },
+  {
+   "date": "2026-12-09",
+   "cardLine": "When the plan changes",
+   "hook": "An unwanted crossroads can bring grief, relief, fear, and a mind searching for certainty.",
+   "topic_title": "When the Plan Changes",
+   "archetype": "quadrant_model",
+   "intent": "normalise",
+   "persona": "crossroads",
+   "modality": "cbt",
+   "payload": {
+    "items": [
+     {
+      "gloss": "can demand an answer",
+      "label": "Urgency"
+     },
+     {
+      "gloss": "can hold two truths",
+      "label": "Ambivalence"
+     },
+     {
+      "gloss": "may delay the next step",
+      "label": "Avoidance"
+     },
+     {
+      "gloss": "can create room to choose",
+      "label": "Grounding"
+     }
+    ],
+    "axis_x": "decision pressure",
+    "axis_y": "emotional pull"
+   },
+   "caption": "When a plan changes without your consent, the mind may begin searching for certainty right away.\n\nIt can also be a crossroads with more than one feeling present: grief for what you expected, relief about what no longer fits, fear about what comes next, or a mix that does not settle into a clear answ"
+  },
+  {
+   "date": "2026-12-10",
+   "cardLine": "You set the pace",
+   "hook": "Emotional work does not require retelling every moment from the past.",
+   "topic_title": "EFT Myth: Every Detail",
+   "archetype": "carousel",
+   "intent": "correct_a_myth",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "cards": [
+     {
+      "payload": {
+       "statement": "Emotional work does not require retelling every moment from the past."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "statement": "EFT can make room for what is present without asking you to recount every detail."
+      },
+      "archetype_key": "single_statement"
+     },
+     {
+      "payload": {
+       "beneath": {
+        "gloss": "feelings, needs, and patterns",
+        "label": "What remains"
+       },
+       "surface": {
+        "gloss": "the facts you share",
+        "label": "What happened"
+       }
+      },
+      "archetype_key": "surface_and_beneath"
+     },
+     {
+      "payload": {
+       "statement": "You can choose what to share, pause, or leave unnamed while building trust."
+      },
+      "archetype_key": "single_statement"
+     }
+    ]
+   },
+   "caption": "A common myth about emotional work is that you need to retell every painful moment before anything meaningful can happen.\n\nThat is not the only way to begin.\n\nIn emotion-focused work, attention may rest on what is here now: a feeling that arrives quickly, a familiar protective response, a need that "
+  },
+  {
+   "date": "2026-12-11",
+   "cardLine": "EFT listens for patterns",
+   "hook": "The event matters, and so does the protective pattern that formed around it.",
+   "topic_title": "What EFT Listens For",
+   "archetype": "numbered_strategies",
+   "intent": "behind_the_practice",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "items": [
+     {
+      "gloss": "in focus",
+      "label": "The moment"
+     },
+     {
+      "gloss": "that followed",
+      "label": "The shift"
+     },
+     {
+      "gloss": "what returns now",
+      "label": "The pattern"
+     }
+    ]
+   },
+   "caption": "An event matters. So does the protective pattern that may have formed around it.\n\nIn EFT, a therapist may listen for both: what happened, what it came to mean, and the responses that still show up in close relationships.\n\nThe focus is not on judging a protective response. It is on getting curious ab"
+  },
+  {
+   "date": "2026-12-12",
+   "cardLine": "Room for unchosen grief",
+   "hook": "At an unwanted crossroads, productivity can hide grief for a future that no longer fits.",
+   "topic_title": "Making Room for Unchosen Grief",
+   "archetype": "surface_and_beneath",
+   "intent": "behind_the_practice",
+   "persona": "crossroads",
+   "modality": "eft",
+   "payload": {
+    "beneath": {
+     "gloss": "a future quietly released",
+     "label": "Unchosen grief"
+    },
+    "surface": {
+     "gloss": "the list still gets done",
+     "label": "Keeping pace"
+    }
+   },
+   "caption": "At an unwanted crossroads, staying productive can be one way of getting through the day.\n\nIt can also leave little room for grief: not only for what happened, but for a future once expected that no longer fits.\n\nThat kind of grief may be hard to name. There may be tasks to complete, decisions to mak"
+  },
+  {
+   "date": "2026-12-13",
+   "cardLine": "EMDR and the present",
+   "hook": "A behind-the-scenes look at why EMDR work keeps one foot in the present.",
+   "topic_title": "EMDR’s Present Anchor",
+   "archetype": "cycle",
+   "intent": "behind_the_practice",
+   "persona": "carrying_old_thing",
+   "modality": "emdr",
+   "payload": {
+    "nodes": [
+     {
+      "gloss": "notice the room around you",
+      "label": "Orient"
+     },
+     {
+      "gloss": "make room for a breath",
+      "label": "Pause"
+     },
+     {
+      "gloss": "come back when ready",
+      "label": "Return"
+     }
+    ]
+   },
+   "caption": "EMDR work is not only about remembering.\n\nIt is also designed to keep contact with the present: the room, the chair, the breath, and the choice to pause.\n\nThat present-day anchor can matter when difficult material comes close. Attention may move toward a memory, then return to what is here now.\n\nThe"
+  },
+  {
+   "date": "2026-12-14",
+   "cardLine": "EFT can hold transition",
+   "hook": "Myth: EFT is only for relationship conflict; it can also make room for an unwanted life transition.",
+   "topic_title": "EFT Beyond Couples",
+   "archetype": "comparison_pair",
+   "intent": "correct_a_myth",
+   "persona": "crossroads",
+   "modality": "eft",
+   "payload": {
+    "left": [
+     {
+      "gloss": "EFT is only for couples",
+      "label": "Common myth"
+     },
+     {
+      "gloss": "EFT is only for conflict",
+      "label": "Common myth"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "Life changes can bring feelings",
+      "label": "Another use"
+     },
+     {
+      "gloss": "May make room for them",
+      "label": "EFT sessions"
+     }
+    ]
+   },
+   "caption": "EFT is often associated with relationship work, and it can also be part of individual therapy.\n\nAn unwanted life transition can bring many feelings at once: sadness, uncertainty, anger, relief, or a sense that the ground has shifted. There may be no conflict to solve. There may simply be a change th"
+  },
+  {
+   "date": "2026-12-15",
+   "cardLine": "Curiosity about patterns",
+   "hook": "EFT offers a way to meet old emotional patterns without treating them as personal failures.",
+   "topic_title": "What EFT Makes Room For",
+   "archetype": "numbered_strategies",
+   "intent": "behind_the_practice",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "items": [
+     {
+      "gloss": "without calling them failures",
+      "label": "Notice patterns"
+     },
+     {
+      "gloss": "about what they protect",
+      "label": "Stay curious"
+     },
+     {
+      "gloss": "for this moment",
+      "label": "Choose gently"
+     }
+    ]
+   },
+   "caption": "Emotion-focused therapy (EFT) can offer a way to meet old emotional patterns with curiosity rather than self-blame.\n\nA pattern may have developed for understandable reasons. Naming it does not require approving of it, and noticing it does not require forcing it away.\n\nIn therapy, there may be room t"
+  },
+  {
+   "date": "2026-12-16",
+   "cardLine": "Long ago can still matter",
+   "hook": "Something can be years old and still influence how the present feels.",
+   "topic_title": "The Long-Ago Myth",
+   "archetype": "cycle",
+   "intent": "correct_a_myth",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "nodes": [
+     {
+      "gloss": "the event is over",
+      "label": "Long ago"
+     },
+     {
+      "gloss": "a feeling returns today",
+      "label": "Still present"
+     },
+     {
+      "gloss": "without blaming yourself",
+      "label": "Worth noticing"
+     }
+    ]
+   },
+   "caption": "Something can be years old and still influence how the present feels.\n\nThat does not mean you are living in the past. It may mean that a familiar moment, sensation, or situation has stirred an old protective response.\n\nNoticing the connection is not about assigning blame or forcing a story to make s"
+  },
+  {
+   "date": "2026-12-17",
+   "cardLine": "You need not say every detail",
+   "hook": "EMDR does not require telling every detail of what happened aloud.",
+   "topic_title": "EMDR Beyond Full Retelling",
+   "archetype": "concentric_control",
+   "intent": "correct_a_myth",
+   "persona": "crossroads",
+   "modality": "emdr",
+   "payload": {
+    "rings": [
+     {
+      "gloss": "may be approached in parts",
+      "label": "The memory"
+     },
+     {
+      "gloss": "can guide the focus",
+      "label": "What feels present"
+     },
+     {
+      "gloss": "can shape the conversation",
+      "label": "Your boundaries"
+     }
+    ]
+   },
+   "caption": "A common concern about EMDR is that it requires a complete spoken account of every event.\n\nIt may not.\n\nEMDR can include talking, but the work does not always depend on narrating every detail aloud. A therapist may ask enough to understand what feels relevant, establish a focus, and attend to safety"
+  },
+  {
+   "date": "2026-12-18",
+   "cardLine": "The past cannot choose today",
+   "hook": "A past event may be fixed, while today’s next response still has room to change.",
+   "topic_title": "What the Past Cannot Decide",
+   "archetype": "concentric_control",
+   "intent": "invite",
+   "persona": "carrying_old_thing",
+   "modality": "cbt",
+   "payload": {
+    "rings": [
+     {
+      "gloss": "cannot be changed",
+      "label": "Past events"
+     },
+     {
+      "gloss": "may offer some room",
+      "label": "The present"
+     },
+     {
+      "gloss": "can be considered",
+      "label": "Next response"
+     }
+    ]
+   },
+   "caption": "A past event may be fixed. Its meaning, its impact, and the ways it shows up may still feel present.\n\nToday’s response does not have to erase what happened or make it insignificant. Sometimes there is simply a small pause: a moment to notice what is here, consider what matters, and choose a next ste"
+  },
+  {
+   "date": "2026-12-19",
+   "cardLine": "EMDR in Oakland",
+   "hook": "A practitioner card can explain how EFT makes room for emotions after an unwanted life change.",
+   "topic_title": "How EFT Meets Crossroads",
+   "archetype": "practitioner_card",
+   "intent": "educate",
+   "persona": "crossroads",
+   "modality": "eft",
+   "payload": {
+    "lines": [
+     "EMDR",
+     "Oakland, CA"
+    ]
+   },
+   "caption": "A practitioner card can explain how EFT makes room for emotions after an unwanted life change."
+  },
+  {
+   "date": "2026-12-20",
+   "cardLine": "Preparation Matters",
+   "hook": "EMDR is not only about revisiting what happened; preparation is part of the work.",
+   "topic_title": "Preparation Before Processing",
+   "archetype": "single_statement",
+   "intent": "behind_the_practice",
+   "persona": "carrying_old_thing",
+   "modality": "emdr",
+   "payload": {
+    "statement": "Preparation can clarify what support would help before EMDR processing."
+   },
+   "caption": "EMDR is not only about revisiting what happened.\n\nPreparation is part of the work. It may include noticing what helps you feel grounded, practising ways to return to the present, and discussing what feels manageable to approach.\n\nThis stage is not a test to pass. It is a space to build shared unders"
+  },
+  {
+   "date": "2026-12-21",
+   "cardLine": "The past can echo",
+   "hook": "A long-ago experience can still shape the present without meaning someone is stuck in the past.",
+   "topic_title": "Time Does Not Erase Impact",
+   "archetype": "single_statement",
+   "intent": "correct_a_myth",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "statement": "A long-ago experience can still shape the present without defining the person you are today."
+   },
+   "caption": "Time passing can change many things. It does not automatically erase the ways an experience may still show up—in attention, relationships, sleep, or a sense of ease.\n\nThat does not mean someone is stuck in the past. It may mean that something important happened, and its meaning has not disappeared s"
+  },
+  {
+   "date": "2026-12-22",
+   "cardLine": "A place for the past",
+   "hook": "CBT can make room for the past without requiring every detail to be retold.",
+   "topic_title": "CBT and the Long Ago",
+   "archetype": "single_statement",
+   "intent": "behind_the_practice",
+   "persona": "carrying_old_thing",
+   "modality": "cbt",
+   "payload": {
+    "statement": "CBT can examine how the past shapes current thoughts and choices."
+   },
+   "caption": "CBT is often associated with noticing thoughts, testing assumptions, and practicing new responses in the present.\n\nIt can also make room for what came before. A past experience may still shape a belief, a reaction, or the meaning assigned to a moment now.\n\nThat does not require recounting every deta"
+  },
+  {
+   "date": "2026-12-23",
+   "cardLine": "Old rules, current costs",
+   "hook": "Sometimes the thought worth examining is not a fear, but a rule learned long ago.",
+   "topic_title": "Old Rules, Current Costs",
+   "archetype": "surface_and_beneath",
+   "intent": "educate",
+   "persona": "carrying_old_thing",
+   "modality": "cbt",
+   "payload": {
+    "beneath": {
+     "gloss": "your needs go unnamed",
+     "label": "A current cost"
+    },
+    "surface": {
+     "gloss": "keep everyone comfortable",
+     "label": "An old rule"
+    }
+   },
+   "caption": "Sometimes the thought worth examining is not a fear, but a rule learned long ago.\n\nRules can sound like:\n• Keep the peace.\n• Do not need too much.\n• Stay useful.\n• Get it right the first time.\n\nA rule may have made sense in an earlier setting. It may have helped someone find belonging, avoid conflic"
+  },
+  {
+   "date": "2026-12-24",
+   "cardLine": "Old patterns, present cues",
+   "hook": "EFT can explore not only what happened then, but what gets activated now.",
+   "topic_title": "EFT and Old Patterns",
+   "archetype": "comparison_pair",
+   "intent": "educate",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "left": [
+     {
+      "gloss": "what happened then",
+      "label": "Earlier experiences"
+     },
+     {
+      "gloss": "ways of coping",
+      "label": "Learned responses"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "what feels familiar now",
+      "label": "Present cues"
+     },
+     {
+      "gloss": "past and present links",
+      "label": "EFT may explore"
+     }
+    ]
+   },
+   "caption": "EFT can refer to more than one approach. Here, it means Emotionally Focused Therapy.\n\nIn this work, attention may move between earlier experiences and the moments when familiar reactions show up in the present. The point is not to treat every strong feeling as a replay of the past. It is to notice c"
+  },
+  {
+   "date": "2026-12-25",
+   "cardLine": "CBT is not forgetting",
+   "hook": "CBT can examine old learning without asking anyone to erase the past.",
+   "topic_title": "CBT Is Not Forgetting",
+   "archetype": "numbered_strategies",
+   "intent": "correct_a_myth",
+   "persona": "carrying_old_thing",
+   "modality": "cbt",
+   "payload": {
+    "items": [
+     {
+      "gloss": "what the past taught",
+      "label": "Notice"
+     },
+     {
+      "gloss": "whether it still fits",
+      "label": "Examine"
+     },
+     {
+      "gloss": "what serves you now",
+      "label": "Choose"
+     }
+    ]
+   },
+   "caption": "CBT is not an invitation to erase the past.\n\nOld learning can make sense in the context where it began. CBT can make room to notice those lessons, examine whether they still fit your life, and consider other ways of responding.\n\nThe goal is not to deny what happened or insist that it should no longe"
+  },
+  {
+   "date": "2026-12-26",
+   "cardLine": "EMDR does not erase memories",
+   "hook": "EMDR is not designed to erase the past or force a full retelling.",
+   "topic_title": "EMDR Does Not Erase Memories",
+   "archetype": "comparison_pair",
+   "intent": "correct_a_myth",
+   "persona": "carrying_old_thing",
+   "modality": "emdr",
+   "payload": {
+    "left": [
+     {
+      "gloss": "is not the aim",
+      "label": "Erasing memories"
+     },
+     {
+      "gloss": "is not required",
+      "label": "Full retelling"
+     }
+    ],
+    "right": [
+     {
+      "gloss": "can guide the work",
+      "label": "Your pace"
+     },
+     {
+      "gloss": "may feel less immediate",
+      "label": "Memory remains"
+     }
+    ]
+   },
+   "caption": "EMDR is not designed to erase the past or require a full retelling.\n\nA memory can remain part of your story while its emotional intensity, body sensations, or sense of immediacy may shift over time. The work can include attention to a memory in manageable pieces, with room to pause, ask questions, a"
+  },
+  {
+   "date": "2026-12-27",
+   "cardLine": "Protection, not defect",
+   "hook": "Old experiences can shape present reactions without defining a person.",
+   "topic_title": "Protective Patterns, Not Defects",
+   "archetype": "single_statement",
+   "intent": "educate",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "statement": "Present reactions may carry old protection without defining who you are."
+   },
+   "caption": "Some reactions make more sense when viewed as protection.\n\nAn old experience can shape how a person responds to conflict, closeness, uncertainty, or rest. That pattern may have developed for an important reason, even if it no longer fits every present situation.\n\nSeeing a pattern with curiosity does"
+  },
+  {
+   "date": "2026-12-28",
+   "cardLine": "Feeling Is Not Surrender",
+   "hook": "Grieving the plan that ended does not mean you approve of what happened.",
+   "topic_title": "Feeling Is Not Surrender",
+   "archetype": "single_statement",
+   "intent": "correct_a_myth",
+   "persona": "crossroads",
+   "modality": "eft",
+   "payload": {
+    "statement": "Grieving the plan that ended does not mean you approve of what happened."
+   },
+   "caption": "Grief can make room for two truths at once: something mattered, and what happened may still feel wrong.\n\nFeeling sadness, anger, or disappointment about a plan that ended is not approval. It can be a way of acknowledging what was hoped for, expected, or needed.\n\nYou do not have to argue yourself out"
+  },
+  {
+   "date": "2026-12-29",
+   "cardLine": "Past Patterns, Present Care",
+   "hook": "What if the past is showing up less as memory and more as a pattern of protection?",
+   "topic_title": "EFT and Old Emotional Learning",
+   "archetype": "single_statement",
+   "intent": "behind_the_practice",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "statement": "EFT can make room to notice how old emotional learning may shape present patterns of protection."
+   },
+   "caption": "Sometimes the past does not arrive as a clear memory. It may show up as a quick urge to withdraw, please, brace, explain, or stay very busy.\n\nIn my practice, EFT can offer a structured way to slow down with those patterns and approach the feelings beneath them with care. The focus is not on judging "
+  },
+  {
+   "date": "2026-12-30",
+   "cardLine": "The Rules That Stayed",
+   "hook": "Long-ago experiences can leave behind rules that no longer fit the life you want.",
+   "topic_title": "The Rules That Stayed",
+   "archetype": "single_statement",
+   "intent": "invite",
+   "persona": "carrying_old_thing",
+   "modality": "eft",
+   "payload": {
+    "statement": "Long-ago experiences can leave behind rules that may not fit the life you want now."
+   },
+   "caption": "Some rules begin as ways of getting through a hard moment.\n\nStay alert.\nDo not ask for much.\nKeep the peace.\nHandle it alone.\n\nA rule can remain long after the situation that shaped it has changed. It may show up in work, relationships, rest, or the choices that feel available.\n\nTherapy can offer a "
+  }
+ ]
+}
