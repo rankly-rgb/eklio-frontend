@@ -196,8 +196,10 @@ export const LINE_HEIGHT = 1.18;
  *
  * compose/2 (2026-11-01) : fond photo voilé, texture, forme derrière le titre,
  * accent à la place du trait, trait des dessins harmonisé.
+ * compose/3 (2026-11-01) : voile local (par bandes, halos), forme sous le dessin,
+ * dessins agrandis sur les phrases seules et dans `concentric_control`.
  */
-export const ENGINE_VERSION = "compose/2";
+export const ENGINE_VERSION = "compose/3";
 
 /*
  * ── LA VIGNETTE, QUI EST L'ENDROIT OÙ LA CARTE EST VRAIMENT LUE ─────────

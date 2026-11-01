@@ -25,7 +25,7 @@ export const concentricControl: ArchetypeModule<ConcentricControl> = {
     return rings ? { rings } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
+  compose({ payload, palette, content, figureScale, secondaryMax, draw, illustrated }) {
     const placed: Placed[] = [];
     const size = round2(Math.min(content.w, content.h * figureShare(figureScale)));
     if (size < 190) return null;
@@ -44,8 +44,15 @@ export const concentricControl: ArchetypeModule<ConcentricControl> = {
      * Le pas est maintenant `0.72 / n` : les anneaux restent nettement
      * distincts et le plus petit garde plus de la moitié du rayon.
      */
+    /*
+     * ⚠ AVEC UN DESSIN DE LA BIBLIOTHÈQUE, LES ANNEAUX SE RESSERRENT (2026-11-01).
+     * Au pas de 0,72 le dessin vivait dans un cercle de la moitié du rayon, et
+     * se lisait à 390px comme une tache. Au pas de 0,5 les anneaux restent
+     * distincts et le cercle intérieur grandit d'un tiers.
+     */
+    const pitch = illustrated ? 0.5 : 0.72;
     for (let i = 0; i < payload.rings.length; i += 1) {
-      const r = round2((size / 2) * (1 - (i * 0.72) / payload.rings.length));
+      const r = round2((size / 2) * (1 - (i * pitch) / payload.rings.length));
       if (r < 12) return null;
       strokes.push(circle(cx, cy, r, palette.ink, 4));
     }
@@ -56,10 +63,12 @@ export const concentricControl: ArchetypeModule<ConcentricControl> = {
      * assise au milieu est ce « soi », et sans elle les anneaux sont une
      * cible.
      */
-    const inner = round2((size / 2) * (1 - ((payload.rings.length - 1) * 0.72) / payload.rings.length));
+    const inner = round2((size / 2) * (1 - ((payload.rings.length - 1) * pitch) / payload.rings.length));
+    /* Le carré inscrit dans le cercle intérieur (côté r√2), moins le trait de l'anneau. */
+    const half = illustrated ? inner * 0.68 : inner * 0.62;
     if (inner >= 60) {
       strokes.push(
-        ...draw({ x: round2(cx - inner * 0.62), y: round2(cy - inner * 0.62), w: round2(inner * 1.24), h: round2(inner * 1.24) },
+        ...draw({ x: round2(cx - half), y: round2(cy - half), w: round2(half * 2), h: round2(half * 2) },
           palette.ink, 3)
       );
     }

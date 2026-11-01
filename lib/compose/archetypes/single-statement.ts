@@ -57,7 +57,12 @@ export const singleStatement: ArchetypeModule<SingleStatement> = {
      */
     if (illustrated) {
       const top = round2(content.y + 28 + 12 + 40);
-      const side = round2(Math.min(content.y + content.h - top, content.w * 0.5, 420));
+      /*
+       * ⚠ LE DESSIN EST LE SUJET DE LA CARTE, PAS UN DÉCOR EN BAS À DROITE
+       * (2026-11-01, troisième session). 62 % de la largeur et 600px au plus,
+       * au lieu de 50 % et 420 : sur une phrase seule, l'espace libre abonde.
+       */
+      const side = round2(Math.min(content.y + content.h - top, content.w * 0.62, 600));
       /*
        * ⚠ UNE PHRASE LONGUE NE LAISSE PAS LA PLACE DU DESSIN : la carte se pose
        * sans lui, et ne passe que si son décor (fond photo, forme) la porte —

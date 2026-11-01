@@ -1,23 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { Resvg } from "@resvg/resvg-js";
-import { cardPalette, contrast, type DirectionPalette } from "@/lib/compose/palette";
-import { FOOTER } from "@/lib/compose/constants-bands";
-import { CANVAS } from "@/lib/compose/constants";
-import { imageHref, PHOTOS, PHOTO_TEXT_CONTRAST, solveVeil, VEIL_MIN } from "@/lib/compose/decor";
-import { CONTRAST_TARGET, MAX_SCRIM_OPACITY } from "@/lib/kit/render/luminance";
+import { cardPalette, type DirectionPalette } from "@/lib/compose/palette";
+import { contrastRatio } from "@/lib/brand/color";
+import { render } from "@/lib/compose/engine";
+import { DRAWABLE, PHOTOS, PHOTO_FIGURE_CONTRAST, PHOTO_TEXT_CONTRAST } from "@/lib/compose/decor";
+import { CONTRAST_TARGET } from "@/lib/kit/render/luminance";
+import type { Box, Placed } from "@/lib/compose/types";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
- *  LA MENTION DE LICENCE RESTE LISIBLE SUR UN FOND PHOTO — VÉRIFIÉ D'ABORD
+ *  CHAQUE LIGNE, ET D'ABORD LA MENTION DE LICENCE, AU PIRE PIXEL DU RENDU
  * ══════════════════════════════════════════════════════════════════════════
  *
- * Le pied de carte porte la mention de licence ; une carte qui la perd sur une
- * photo fait de la publicité sans elle. Le voile est résolu analytiquement
- * contre le pire pixel (`solveVeil`) ; ici il est MESURÉ : chaque fond du pack,
- * sous chaque palette du catalogue, claire et sombre, rastérisé sur la bande du
- * pied, et c'est le PIRE pixel — pas la moyenne — qui doit tenir 4,5:1 contre
- * l'encre du pied.
+ * Le voile d'un fond photo est LOCAL (troisième session, 2026-11-01) : résolu
+ * bande par bande contre des bornes mesurées. Ici il est vérifié sur le RENDU :
+ * des cartes composées par le moteur, sur chacun des 27 fonds, sous chaque
+ * famille du catalogue, claire et sombre ; le fond rastérisé sans glyphes ni
+ * traits ; et pour chaque ligne posée à même le fond — la mention de licence
+ * comprise — le PIRE pixel sous sa boîte doit tenir 4,5:1 contre son encre ;
+ * pour chaque dessin, 3:1.
+ *
+ * ⚠ AVEC `contrastRatio` (lib/brand/color.ts). La version précédente de ce test
+ * mesurait avec `contrast` de lib/compose/palette.ts, dont la luminance ne
+ * linéarise pas le bleu (F99) : son « 11/11 lisible » n'établissait rien.
  *
  * (Rastérisé ici pour mesurer ; la composition, elle, ne rastérise rien.)
  */
@@ -38,52 +44,80 @@ function catalogue(): Array<{ id: string; direction: DirectionPalette }> {
   return out;
 }
 const FAMILIES = catalogue();
-
 const hex = (r: number, g: number, b: number) => `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 
-/** Le pire contraste, pixel par pixel, entre l'encre et le fond voilé sous la bande du pied. */
-function worstUnderFooter(photo: string, veil: string, opacity: number, ink: string): number {
-  const { x, y, w, h } = FOOTER;
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}">` +
-    `<image href="${imageHref(photo)}" x="0" y="0" width="${CANVAS.width}" height="${CANVAS.height}" preserveAspectRatio="xMidYMid slice"/>` +
-    `<rect width="${CANVAS.width}" height="${CANVAS.height}" fill="${veil}" opacity="${opacity}"/></svg>`;
-  const px = new Resvg(svg).render().pixels;
+/** Le pire contraste entre `ink` et les pixels du fond sous `box`. */
+function worstUnder(px: Uint8Array | Buffer, box: Box, ink: string): number {
+  const seen = new Map<number, number>();
   let worst = Infinity;
-  const seen = new Set<string>();
-  for (let i = 0; i < px.length; i += 4) {
-    const c = hex(px[i], px[i + 1], px[i + 2]);
-    if (seen.has(c)) continue;
-    seen.add(c);
-    worst = Math.min(worst, contrast(ink, c));
+  for (let y = Math.max(0, Math.floor(box.y)); y < Math.min(1350, Math.ceil(box.y + box.h)); y += 1) {
+    for (let x = Math.max(0, Math.floor(box.x)); x < Math.min(1080, Math.ceil(box.x + box.w)); x += 1) {
+      const i = (y * 1080 + x) * 4;
+      const k = (px[i] << 16) | (px[i + 1] << 8) | px[i + 2];
+      let c = seen.get(k);
+      if (c === undefined) seen.set(k, (c = contrastRatio(ink, hex(px[i], px[i + 1], px[i + 2]))));
+      if (c < worst) worst = c;
+    }
   }
   return worst;
 }
 
-describe("le voile du fond photo", () => {
-  it("le plancher est celui du texte sur photo du produit (4,5), et le voile ne dépasse pas le sien", () => {
-    expect(PHOTO_TEXT_CONTRAST).toBe(CONTRAST_TARGET);
-    expect(VEIL_MIN).toBeLessThanOrEqual(MAX_SCRIM_OPACITY);
-  });
+function inField(b: Box, placed: Placed[]): boolean {
+  return placed.some((p) => p.role === "field" && b.x >= p.box.x - 0.5 && b.y >= p.box.y - 0.5 && b.x + b.w <= p.box.x + p.box.w + 0.5 && b.y + b.h <= p.box.y + p.box.h + 0.5);
+}
 
-  it("le catalogue est lu (six familles au moins), et 27 fonds sont tirables", () => {
+type Measured = { family: string; dark: boolean; photos: number; worstText: number; worstLicence: number; worstFigure: number };
+const measured: Measured[] = [];
+
+describe("le plancher et la mesure", () => {
+  it("le plancher du texte sur photo est celui du produit (4,5:1), celui d'un dessin celui des aplats (3:1)", () => {
+    expect(PHOTO_TEXT_CONTRAST).toBe(CONTRAST_TARGET);
+    expect(PHOTO_FIGURE_CONTRAST).toBe(3);
+  });
+  it("six familles au moins sont lues, et 27 fonds sont tirables", () => {
     expect(FAMILIES.length).toBeGreaterThanOrEqual(6);
     expect(PHOTOS).toHaveLength(27);
   });
-
-  it("provoqué : une encre trop proche du papier ne reçoit pas de photo", () => {
-    expect(solveVeil("#FAF6EE", "#E8E2D6")).toBeNull();
-  });
 });
 
-describe.each(FAMILIES)("$id", ({ direction }) => {
-  it.each([false, true])("fond sombre : %s — la mention de licence tient 4,5:1 au pire pixel, sur chacun des 27 fonds", (dark) => {
+describe.each(FAMILIES)("$id", ({ id, direction }) => {
+  it.each([false, true])("fond sombre : %s — sur les 27 fonds, chaque ligne tient 4,5:1 et chaque dessin 3:1, au pire pixel", (dark) => {
     const palette = cardPalette("k", direction, dark);
-    const veil = solveVeil(palette.paper, palette.ink);
-    if (!veil) return; // pas de photo pour cette palette : la carte garde son papier
-    expect(veil.opacity).toBeGreaterThanOrEqual(VEIL_MIN);
-    for (const photo of PHOTOS) {
-      expect(worstUnderFooter(photo, palette.paper, veil.opacity, palette.ink), photo).toBeGreaterThanOrEqual(PHOTO_TEXT_CONTRAST);
+    const m: Measured = { family: id, dark, photos: 0, worstText: Infinity, worstLicence: Infinity, worstFigure: Infinity };
+    for (let k = 0; k < PHOTOS.length; k += 1) {
+      const out = render({
+        archetype: "single_statement",
+        payload: { statement: "Old rules can linger long after the room they were made for has changed." },
+        palette,
+        eyebrow: "BEHIND THE PRACTICE",
+        headline: "Old rules",
+        footer: "Ember consulting · LMFT 123456",
+        illustration: DRAWABLE[k],
+      });
+      if (!out.svg.includes("data-photo=")) continue;
+      m.photos += 1;
+      const ground = out.svg.replace(/<g data-role="(text|figure)"[\s\S]*?<\/g>/g, "");
+      const px = new Resvg(ground).render().pixels;
+      for (const p of out.composition.placed) {
+        if (p.role === "text") {
+          for (const line of p.lines) {
+            if (inField(line.box, out.composition.placed)) continue;
+            const w = worstUnder(px, line.box, line.fill);
+            m.worstText = Math.min(m.worstText, w);
+            if (p.band === "footer") m.worstLicence = Math.min(m.worstLicence, w);
+            expect(w, `${PHOTOS[k]} — ${p.band} « ${line.text} »`).toBeGreaterThanOrEqual(PHOTO_TEXT_CONTRAST);
+          }
+        }
+        if (p.role === "figure") {
+          for (const s of p.strokes) {
+            const w = worstUnder(px, s.box, s.fill !== "none" ? s.fill : s.stroke);
+            m.worstFigure = Math.min(m.worstFigure, w);
+            expect(w, `${PHOTOS[k]} — dessin`).toBeGreaterThanOrEqual(PHOTO_FIGURE_CONTRAST);
+          }
+        }
+      }
     }
-  }, 60_000);
+    measured.push(m);
+    writeFileSync("/tmp/eklio-photo-contrast.json", JSON.stringify(measured, null, 1));
+  }, 240_000);
 });

@@ -123,6 +123,16 @@ function renderPlaced(p: Placed): string {
  * la forme est DERRIÈRE le titre. Ce qui le garde lisible est le contraste,
  * résolu à la pose (`decorFor`), pas une distance.
  */
+/** FNV-1a 32 bits, en base 36 : un identifiant court et stable. */
+function fnv(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
 function decorLayers(composition: Composition): string {
   const d = composition.decor;
   if (!d) return "";
@@ -130,9 +140,47 @@ function decorLayers(composition: Composition): string {
   const H = CANVAS.height;
   let out = "";
   if (d.photo) {
+    /*
+     * ⚠ DES MARCHES, PAS UNE RAMPE. Deux arrêts à la même position par limite
+     * de bande : l'opacité est constante sur toute la bande, et une ligne de
+     * texte ne tombe jamais dans une interpolation qui la mettrait sous son
+     * plancher. Les bandes égales voisines sont fusionnées.
+     */
+    /*
+     * ⚠ UN IDENTIFIANT TIRÉ DU CONTENU. L'écran de relecture insère plusieurs
+     * SVG dans la même page (diapositives, variantes) : un `id` fixe ferait
+     * prendre à une carte le voile d'une autre. Deux voiles identiques
+     * partagent leur identifiant, ce qui est sans conséquence.
+     */
+    const key = fnv(`${d.photo.id}|${d.photo.veil}|${d.photo.bands.join(",")}|${JSON.stringify(d.photo.halos)}`);
+    const step = H / d.photo.bands.length;
+    let stops = "";
+    let prev: number | null = null;
+    d.photo.bands.forEach((a, i) => {
+      if (a === prev) return;
+      /* ⚠ CINQ DÉCIMALES : arrondi à deux, un arrêt glissait de 6,75px sur 1350 et une ligne au bord de sa bande tombait sous le voile de la voisine. */
+      const at = Math.round(((i * step) / H) * 1e5) / 1e5;
+      if (prev !== null) stops += `<stop offset="${at}" stop-color="${d.photo!.veil}" stop-opacity="${prev}"/>`;
+      stops += `<stop offset="${at}" stop-color="${d.photo!.veil}" stop-opacity="${a}"/>`;
+      prev = a;
+    });
+    stops += `<stop offset="1" stop-color="${d.photo.veil}" stop-opacity="${prev ?? 0}"/>`;
+    const halos = d.photo.halos
+      .map(
+        (h, i) =>
+          `<radialGradient id="eklio-halo-${key}-${i}" cx="0.5" cy="0.5" r="0.5">` +
+          `<stop offset="0" stop-color="${d.photo!.veil}" stop-opacity="${h.alpha}"/>` +
+          `<stop offset="${h.plateau}" stop-color="${d.photo!.veil}" stop-opacity="${h.alpha}"/>` +
+          `<stop offset="1" stop-color="${d.photo!.veil}" stop-opacity="0"/></radialGradient>`
+      )
+      .join("");
     out +=
+      `<defs><linearGradient id="eklio-veil-${key}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">${stops}</linearGradient>${halos}</defs>` +
       `<image data-photo="${esc(d.photo.id)}" href="${d.photo.href}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>` +
-      `<rect data-veil="${round2(d.photo.opacity)}" width="${W}" height="${H}" fill="${d.photo.veil}" opacity="${round2(d.photo.opacity)}"/>`;
+      `<rect data-veil="local" data-worst-text="${d.photo.worstText}" width="${W}" height="${H}" fill="url(#eklio-veil-${key})"/>` +
+      d.photo.halos
+        .map((h, i) => `<rect data-halo="${h.alpha}" x="${round2(h.box.x)}" y="${round2(h.box.y)}" width="${round2(h.box.w)}" height="${round2(h.box.h)}" fill="url(#eklio-halo-${key}-${i})"/>`)
+        .join("");
   }
   if (d.texture) {
     out += `<image data-texture="${esc(d.texture.id)}" href="${d.texture.href}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" opacity="${round2(d.texture.opacity)}"/>`;

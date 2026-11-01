@@ -4364,3 +4364,27 @@ Constaté le 2026-11-01 vers 20 h 40 (répétitions locales 8 et 9) : `insuffici
 `credit_balance_exhausted`. La rédaction s'arrête, le mois sort court et est refusé (F77) — le
 contrôle a fait son travail. Si la clé de la session est celle de la production, le cron du
 1er décembre ne rédigera rien. À vérifier et recharger : platform.openai.com → Billing.
+
+## F99 — `luminance` de lib/compose/palette.ts ne linéarise pas le bleu
+
+`0.0722 * (n & 255)` au lieu de `0.0722 * channel(n & 255)` : le bleu entre en valeur brute
+(0–255). `contrast("#2B2A27", "#000000")` y vaut 57,7 au lieu de ~1,5. Tous les contrastes du
+moteur de composition en dépendent (`inkFor`, `TINT_INK_MIN_CONTRAST`, `checkTints`). Mesuré le
+2026-11-01 avec `contrastRatio` (lib/brand/color.ts, juste) sur les six familles : le défaut
+sous-estimait presque toujours, SAUF **plum_bone sombre, aplat n° 2 : 2,59:1 réel, sous le
+plancher de 3:1** — en production aujourd'hui. Non corrigé ici (changer la luminance déplace les
+encres et aplats de tout le produit) ; le décor (voile, forme, texture) mesure déjà avec
+`contrastRatio`. La mesure « licence lisible 11/11 » de la deuxième session avait été faite avec
+la fonction fausse : elle est refaite (F95).
+
+## F95 — mise à jour : les six familles, claires et sombres, ont leurs fonds photo
+
+Le voile est maintenant local (bandes derrière le texte, halos derrière les dessins). Mesuré sur le
+rendu, au pire pixel, avec `contrastRatio` : 12 variantes × 27 fonds, texte ≥ 4,53:1, mention de
+licence ≥ 4,53:1, dessins ≥ 3,70:1. L'ancien constat (trois palettes sombres sans photo) avait été
+calculé avec la luminance fausse de F99.
+
+## F100 — `eft-shelter` est un chevron dans le pack
+
+`correspondance.csv` : « Chevron de toit noir minimaliste ». Agrandi, il reste un chevron : c'est
+le dessin, pas l'échelle. À refaire avec F94.

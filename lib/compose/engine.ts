@@ -303,13 +303,6 @@ export function render(input: RenderInput): RenderResult {
     : (box: Box, colour: string, width?: number) => (handDrawn ? handDrawn(box, colour, width) : []);
 
   const accent = input.illustration ? accentDrawing(input.illustration) : undefined;
-  /*
-   * ⚠ LE DÉCOR SUIT LE DESSIN : sans dessin de la bibliothèque, aucune couche
-   * de plus — la carte d'avant la bibliothèque reste ce qu'elle était.
-   */
-  const decor = input.illustration
-    ? decorFor(input.archetype, input.illustration, input.palette, displayBlock.box)
-    : undefined;
 
   // ── STEPS 1 AND 2, in order ─────────────────────────────────────────────
   for (const [pass, payload] of [
@@ -367,6 +360,14 @@ export function render(input: RenderInput): RenderResult {
       }
 
       if (figureScale < 1) resolution.push(`illustration shrunk to ${figureScale}`);
+
+      /*
+       * ⚠ LE DÉCOR SUIT LE DESSIN, ET IL EST POSÉ APRÈS LA COMPOSITION : la
+       * protection d'un fond photo se résout ligne par ligne, et la forme se
+       * pose sous le dessin — il faut savoir où ils sont. Sans dessin de la
+       * bibliothèque, aucune couche : la carte d'avant reste ce qu'elle était.
+       */
+      const decor = input.illustration ? decorFor(input.archetype, input.illustration, input.palette, placed) : undefined;
 
       const composition: Composition = {
         archetype: input.archetype,
