@@ -194,7 +194,14 @@ export function composeWithFallback(
     }
   }
 
-  const asked = tryRender(input, input.archetype, input.payload);
+  /*
+   * ⚠ LA COUVERTURE D'UN CARROUSEL N'EST JAMAIS UNE CARTE. Elle ne pose rien ;
+   * avec le décor (forme, texture) elle passait le contrôle de non-vacuité, et
+   * le repli livrait un « carrousel » que la carte gardée ne savait pas rendre
+   * (planche du 2026-11-01, décembre #8 et #10). Refusé en diapositives, il
+   * descend directement aux formes plus simples.
+   */
+  const asked = input.archetype === "carousel" ? null : tryRender(input, input.archetype, input.payload);
   if (asked) return { kind: "card", archetype: input.archetype, payload: input.payload, result: asked, steps };
 
   /* ── 1. Moins de libellés, mais toujours une illustration ─────────── */

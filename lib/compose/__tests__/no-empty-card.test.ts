@@ -65,3 +65,23 @@ describe("le repli ne livre jamais une carte vide à un post qui a un dessin", (
     }
   );
 });
+
+describe("la couverture d'un carrousel n'est jamais livrée comme une carte", () => {
+  /*
+   * Décembre 2026 #8, écrit en production. Ses diapositives ne tiennent pas avec
+   * le dessin ; la couverture vide, avec le décor, passait la non-vacuité, et le
+   * repli livrait un « carrousel » que la carte gardée ne savait pas rendre.
+   */
+  const payload = {"cards": [{"payload": {"statement": "A changed plan can bring grief alongside the decisions waiting to be made."}, "archetype_key": "single_statement"}, {"payload": {"beneath": {"gloss": "loss, uncertainty, and change", "label": "What needs tending"}, "surface": {"gloss": "calls, forms, and logistics", "label": "What needs doing"}}, "archetype_key": "surface_and_beneath"}, {"payload": {"statement": "You do not have to finish the practical list before making room for what changed."}, "archetype_key": "single_statement"}]};
+
+  it("refusé en diapositives, il ne revient pas en couverture", () => {
+    let composed;
+    try {
+      composed = composeWithFallback({ ...base, illustration: "grief-folded-map", archetype: "carousel", payload }, "When the map changes");
+    } catch {
+      return; // refusé : le banc remplace le post
+    }
+    expect(composed.kind === "card" && composed.archetype === "carousel").toBe(false);
+  });
+});
+

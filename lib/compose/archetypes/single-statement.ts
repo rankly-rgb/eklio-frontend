@@ -58,7 +58,13 @@ export const singleStatement: ArchetypeModule<SingleStatement> = {
     if (illustrated) {
       const top = round2(content.y + 28 + 12 + 40);
       const side = round2(Math.min(content.y + content.h - top, content.w * 0.5, 420));
-      if (side < 160) return null;
+      /*
+       * ⚠ UNE PHRASE LONGUE NE LAISSE PAS LA PLACE DU DESSIN : la carte se pose
+       * sans lui, et ne passe que si son décor (fond photo, forme) la porte —
+       * le contrôle de non-vacuité le lit dans le SVG. Refuser toute la mise en
+       * page ici perdait le post (décembre #30).
+       */
+      if (side < 160) return placed;
       const spot = { x: round2(content.x + content.w - side), y: round2(content.y + content.h - side), w: side, h: side };
       placed.push({ role: "figure", band: "content", box: spot, strokes: draw(spot, palette.ink) });
     }

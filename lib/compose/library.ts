@@ -57,16 +57,21 @@ export function placeVector(v: Vector, box: Box): { d: string; fitted: Box; scal
 export function libraryDrawing(id: string) {
   const v = libraryVector(id);
   return (box: Box, colour: string): Stroke[] => {
-    const { d, fitted } = placeVector(v, box);
-    const added = strokeToHarmonise(v, fitted);
+    const plain = placeVector(v, box);
+    const added = strokeToHarmonise(v, plain.fitted);
     if (added === 0) {
-      return [{ kind: "path", d, box: fitted, stroke: "none", strokeWidth: 0, fill: colour, fillRule: "evenodd", library: id }];
+      return [{ kind: "path", d: plain.d, box: plain.fitted, stroke: "none", strokeWidth: 0, fill: colour, fillRule: "evenodd", library: id }];
     }
     /*
-     * La boîte grandit de la moitié du trait ajouté : c'est là qu'est l'encre,
-     * et c'est elle que le contrôle de dégagement mesure.
+     * ⚠ L'ENCRE RESTE DANS LA PLACE ALLOUÉE. Le contour ajouté déborde de la
+     * moitié de sa largeur ; le dessin est donc posé dans la boîte RENTRÉE
+     * d'autant, et la boîte déclarée est celle de l'encre. Posé dans la boîte
+     * entière, il débordait sur le dégagement du pied et le moteur refusait la
+     * carte (planche du 2026-11-01).
      */
     const half = added / 2;
+    const inset = { x: box.x + half, y: box.y + half, w: Math.max(1, box.w - added), h: Math.max(1, box.h - added) };
+    const { d, fitted } = placeVector(v, inset);
     const inked = { x: round2(fitted.x - half), y: round2(fitted.y - half), w: round2(fitted.w + added), h: round2(fitted.h + added) };
     return [{ kind: "path", d, box: inked, stroke: colour, strokeWidth: added, fill: colour, fillRule: "evenodd", library: id }];
   };

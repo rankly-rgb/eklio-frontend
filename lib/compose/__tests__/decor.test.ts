@@ -76,7 +76,11 @@ describe("le trait des dessins est harmonisé, par le bas", () => {
     expect(renderedWeight(v, fitted)).toBeLessThan(LIBRARY_STROKE_TARGET);
     const [s] = libraryDrawing("mem-returning-tide")(box, "#222222");
     expect(s.strokeWidth).toBeCloseTo(LIBRARY_STROKE_TARGET - renderedWeight(v, fitted), 1);
-    expect(s.box.w).toBeCloseTo(fitted.w + s.strokeWidth, 1);
+    /* L'encre, contour compris, reste dans la boîte allouée : le dégagement mesure cette boîte-là. */
+    expect(s.box.x).toBeGreaterThanOrEqual(box.x - 0.01);
+    expect(s.box.y).toBeGreaterThanOrEqual(box.y - 0.01);
+    expect(s.box.x + s.box.w).toBeLessThanOrEqual(box.x + box.w + 0.01);
+    expect(s.box.y + s.box.h).toBeLessThanOrEqual(box.y + box.h + 0.01);
   });
 
   it("un dessin déjà épais n'est pas touché (on n'amincit pas un aplat)", () => {
