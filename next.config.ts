@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
    * makes Next `require()` them natively instead of bundling them.
    */
   serverExternalPackages: ["satori", "@resvg/resvg-js"],
+  /*
+   * Les fonds et textures de la bibliothèque visuelle sont lus sur disque au
+   * moment de composer (`lib/compose/decor.ts`) et embarqués dans la carte en
+   * `data:`. Lus par un chemin calculé, ils échappent au traçage : on les
+   * déclare, pour toutes les routes qui composent.
+   */
+  outputFileTracingIncludes: {
+    "/*": ["./assets/visual-library/02-fonds/*.jpg", "./assets/visual-library/03-textures/*.jpg"],
+  },
   experimental: {
     serverActions: {
       // Derrière le proxy GitHub Codespaces, l'Origin (….app.github.dev) ne

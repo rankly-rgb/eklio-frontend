@@ -12,7 +12,17 @@ import { depositBytes } from "@/lib/visual-library/inventory";
  * s'en écarte arrête la construction — le moteur transforme les coordonnées
  * une à une et ne saurait pas poser autre chose.
  */
-export type Vector = { w: number; h: number; d: string };
+export type Vector = {
+  w: number;
+  h: number;
+  d: string;
+  /**
+   * L'épaisseur moyenne du trait, en fraction du plus grand côté — mesurée une
+   * fois, à la construction (`lib/kit/render/vector-weight.ts`). Le moteur s'en sert pour
+   * harmoniser le trait des dessins posés (`lib/compose/library.ts`).
+   */
+  weight?: number;
+};
 
 export function vectorOf(svg: string, file: string): Vector {
   const paths = svg.match(/<path\b/g) ?? [];
@@ -25,13 +35,18 @@ export function vectorOf(svg: string, file: string): Vector {
   return { w: Number(vb[1]), h: Number(vb[2]), d };
 }
 
-export function buildVectors(root: string, inventory: Inventory): Record<string, Vector> {
+/**
+ * `weigh` mesure l'épaisseur du trait (`lib/kit/render/vector-weight.ts`) : il
+ * rastérise, donc il vit avec les autres rendus serveur et le script le passe.
+ */
+export function buildVectors(root: string, inventory: Inventory, weigh: (v: Vector) => number): Record<string, Vector> {
   const out: Record<string, Vector> = {};
   for (const e of inventory.entries) {
     if (e.ext !== "svg") continue;
     if (e.family === "illustrations" && !e.drawable) continue;
     if (e.id.startsWith("xtra-")) continue;
-    out[e.id] = vectorOf(depositBytes(e.file, readFileSync(join(root, e.file))).toString("utf8"), e.file);
+    const v = vectorOf(depositBytes(e.file, readFileSync(join(root, e.file))).toString("utf8"), e.file);
+    out[e.id] = { ...v, weight: weigh(v) };
   }
   return out;
 }

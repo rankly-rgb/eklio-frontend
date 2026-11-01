@@ -117,6 +117,32 @@ function renderPlaced(p: Placed): string {
   return head + body + `</g>`;
 }
 
+/*
+ * ⚠ LE DÉCOR EST SOUS TOUT, ET HORS DES `<g data-role>`. Il n'est ni texte, ni
+ * trait, ni aplat : le contrôle de dégagement ne le lit pas, et c'est voulu —
+ * la forme est DERRIÈRE le titre. Ce qui le garde lisible est le contraste,
+ * résolu à la pose (`decorFor`), pas une distance.
+ */
+function decorLayers(composition: Composition): string {
+  const d = composition.decor;
+  if (!d) return "";
+  const W = CANVAS.width;
+  const H = CANVAS.height;
+  let out = "";
+  if (d.photo) {
+    out +=
+      `<image data-photo="${esc(d.photo.id)}" href="${d.photo.href}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>` +
+      `<rect data-veil="${round2(d.photo.opacity)}" width="${W}" height="${H}" fill="${d.photo.veil}" opacity="${round2(d.photo.opacity)}"/>`;
+  }
+  if (d.texture) {
+    out += `<image data-texture="${esc(d.texture.id)}" href="${d.texture.href}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" opacity="${round2(d.texture.opacity)}"/>`;
+  }
+  if (d.shape) {
+    out += `<path data-shape="${esc(d.shape.id)}" d="${d.shape.d}" fill="${d.shape.fill}" fill-rule="evenodd" data-box="${boxAttr(d.shape.box)}"/>`;
+  }
+  return out;
+}
+
 export function toSvg(composition: Composition, paper: string): string {
   const body = composition.placed.map(renderPlaced).join("");
   return (
@@ -126,6 +152,7 @@ export function toSvg(composition: Composition, paper: string): string {
     `data-archetype="${esc(composition.archetype)}" ` +
     `data-palette="${esc(composition.paletteKey)}">` +
     `<rect width="${CANVAS.width}" height="${CANVAS.height}" fill="${paper}"/>` +
+    decorLayers(composition) +
     body +
     `</svg>`
   );

@@ -193,8 +193,11 @@ export const LINE_HEIGHT = 1.18;
  * looks like a card, and it is wrong in exactly the way that was fixed.
  *
  * Bump it whenever a change to this directory could move a pixel.
+ *
+ * compose/2 (2026-11-01) : fond photo voilé, texture, forme derrière le titre,
+ * accent à la place du trait, trait des dessins harmonisé.
  */
-export const ENGINE_VERSION = "compose/1";
+export const ENGINE_VERSION = "compose/2";
 
 /*
  * ── LA VIGNETTE, QUI EST L'ENDROIT OÙ LA CARTE EST VRAIMENT LUE ─────────

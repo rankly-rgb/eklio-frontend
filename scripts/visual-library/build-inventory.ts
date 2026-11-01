@@ -10,11 +10,12 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildInventory } from "@/lib/visual-library/inventory";
 import { buildVectors } from "@/lib/visual-library/vectors";
+import { measureWeight } from "@/lib/kit/render/vector-weight";
 
 const root = join(import.meta.dirname, "..", "..");
 const inventory = buildInventory(root);
 writeFileSync(join(root, "lib/visual-library/inventory.generated.json"), JSON.stringify(inventory, null, 1) + "\n");
-const vectors = buildVectors(root, inventory);
+const vectors = buildVectors(root, inventory, measureWeight);
 writeFileSync(join(root, "lib/visual-library/vectors.generated.json"), JSON.stringify(vectors) + "\n");
 console.log(`${Object.keys(vectors).length} tracés`);
 const by = new Map<string, number>();

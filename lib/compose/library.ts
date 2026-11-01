@@ -58,8 +58,48 @@ export function libraryDrawing(id: string) {
   const v = libraryVector(id);
   return (box: Box, colour: string): Stroke[] => {
     const { d, fitted } = placeVector(v, box);
-    return [{ kind: "path", d, box: fitted, stroke: "none", strokeWidth: 0, fill: colour, fillRule: "evenodd", library: id }];
+    const added = strokeToHarmonise(v, fitted);
+    if (added === 0) {
+      return [{ kind: "path", d, box: fitted, stroke: "none", strokeWidth: 0, fill: colour, fillRule: "evenodd", library: id }];
+    }
+    /*
+     * La boîte grandit de la moitié du trait ajouté : c'est là qu'est l'encre,
+     * et c'est elle que le contrôle de dégagement mesure.
+     */
+    const half = added / 2;
+    const inked = { x: round2(fitted.x - half), y: round2(fitted.y - half), w: round2(fitted.w + added), h: round2(fitted.h + added) };
+    return [{ kind: "path", d, box: inked, stroke: colour, strokeWidth: added, fill: colour, fillRule: "evenodd", library: id }];
   };
+}
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  UN TRAIT HARMONISÉ — PAR LE BAS SEULEMENT
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Les dessins du pack ont été vectorisés un par un : posés à 400px de côté,
+ * leur trait moyen va de 2,6px (`mem-returning-tide`) à 47px
+ * (`practice-notebook`, un des six à reprendre), médiane 7,4px. Côte à côte
+ * dans un mois, le fin paraît effacé.
+ *
+ * ⚠ ÉPAISSIR, JAMAIS AMINCIR. Un trait trop fin est épaissi par un contour de
+ * la même encre jusqu'à `LIBRARY_STROKE_TARGET` rendus. Amincir un aplat
+ * voudrait dire le redessiner : les dessins trop épais restent ce qu'ils sont,
+ * et ceux qui le sont parce qu'ils sont défectueux sont listés (F94).
+ *
+ * 5px : le trait des dessins faits main est de 4 (`STROKE_WIDTH`), et un
+ * dessin rempli lu à côté d'un trait de 4 paraît plus léger que lui.
+ */
+export const LIBRARY_STROKE_TARGET = 5;
+
+export function renderedWeight(v: Vector, fitted: Box): number {
+  return (v.weight ?? 0) * Math.max(fitted.w, fitted.h);
+}
+
+function strokeToHarmonise(v: Vector, fitted: Box): number {
+  if (!v.weight) return 0;
+  const missing = LIBRARY_STROKE_TARGET - renderedWeight(v, fitted);
+  return missing > 0.05 ? round2(missing) : 0;
 }
 
 /*

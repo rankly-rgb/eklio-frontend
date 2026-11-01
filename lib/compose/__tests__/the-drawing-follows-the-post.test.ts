@@ -24,7 +24,7 @@ describe("la composition consulte le dessin du post", () => {
     const svg = render({ ...base, illustration: "rule-grooved-tablet" }).svg;
     expect(svg).toContain('data-library="rule-grooved-tablet"');
     expect(svg).toContain('fill-rule="evenodd"');
-    expect(svg).not.toContain("<image");
+    expect(svg).not.toMatch(/<image[^>]*data-library/);
   });
 
   it("deux dessins différents donnent deux cartes différentes, à archétype égal", () => {

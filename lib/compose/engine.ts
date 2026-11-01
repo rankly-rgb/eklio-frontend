@@ -9,6 +9,7 @@ import { toSvg } from "@/lib/compose/svg";
 import type { Box, Composition, Palette, Placed, RenderInput } from "@/lib/compose/types";
 import { DRAWING_FOR } from "@/lib/compose/illustrations";
 import { libraryDrawing } from "@/lib/compose/library";
+import { accentDrawing, decorFor } from "@/lib/compose/decor";
 
 
 /*
@@ -301,6 +302,15 @@ export function render(input: RenderInput): RenderResult {
     ? libraryDrawing(input.illustration)
     : (box: Box, colour: string, width?: number) => (handDrawn ? handDrawn(box, colour, width) : []);
 
+  const accent = input.illustration ? accentDrawing(input.illustration) : undefined;
+  /*
+   * ⚠ LE DÉCOR SUIT LE DESSIN : sans dessin de la bibliothèque, aucune couche
+   * de plus — la carte d'avant la bibliothèque reste ce qu'elle était.
+   */
+  const decor = input.illustration
+    ? decorFor(input.archetype, input.illustration, input.palette, displayBlock.box)
+    : undefined;
+
   // ── STEPS 1 AND 2, in order ─────────────────────────────────────────────
   for (const [pass, payload] of [
     ["full", parsed] as const,
@@ -318,6 +328,7 @@ export function render(input: RenderInput): RenderResult {
         secondaryMax,
         draw,
         illustrated: !!input.illustration,
+        accent,
       });
       if (content === null) continue;
 
@@ -363,6 +374,7 @@ export function render(input: RenderInput): RenderResult {
         placed,
         overflowedToCarousel: false,
         resolution,
+        ...(decor ? { decor } : {}),
       };
       return {
         svg: toSvg(composition, input.palette.paper),

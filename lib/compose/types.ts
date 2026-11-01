@@ -103,4 +103,6 @@ export type Composition = {
   overflowedToCarousel: boolean;
   /** What the resolver did, in order, so a caller can say why a card looks how it does. */
   resolution: string[];
+  /** Fond photo voilé, texture, forme — posés sous tout le reste (`lib/compose/decor.ts`). */
+  decor?: import("@/lib/compose/decor").Decor;
 };

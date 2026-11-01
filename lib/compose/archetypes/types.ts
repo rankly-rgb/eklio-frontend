@@ -35,6 +35,11 @@ export type Ctx<P> = {
   draw: (box: Box, colour: string, width?: number) => Stroke[];
   /** Vrai quand `draw` pose un dessin de la bibliothèque. */
   illustrated: boolean;
+  /**
+   * Un accent de la bibliothèque à la place du trait horizontal (`mark`), quand
+   * la carte a un dessin. Absent : le trait fait main.
+   */
+  accent?: (box: Box, colour: string) => Stroke[];
   palette: Palette;
   /** The content band, already separated from the headline. */
   content: Box;

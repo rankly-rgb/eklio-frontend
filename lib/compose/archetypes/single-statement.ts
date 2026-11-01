@@ -38,10 +38,17 @@ export const singleStatement: ArchetypeModule<SingleStatement> = {
    * prétend rien illustrer : c'est la respiration qui dit que la phrase
    * s'arrête là.
    */
-  compose({ palette, content, draw, illustrated }) {
+  compose({ palette, content, draw, illustrated, accent }) {
     const y = round2(content.y + 28);
     const box = { x: content.x, y: round2(y - 12), w: round2(Math.min(content.w, 220)), h: 24 };
-    const placed: Placed[] = [{ role: "figure", band: "content", box, strokes: mark({ ...box, y }, palette.ink) }];
+    /*
+     * ⚠ UN ACCENT DESSINÉ À LA PLACE DU MÊME TRAIT (2026-11-01). Chaque phrase
+     * seule portait la même courbe de 220px ; avec un dessin de la
+     * bibliothèque, elle prend un accent du pack (soulignement, vague,
+     * pointillés), dans la même boîte.
+     */
+    const strokes = accent ? accent({ ...box, y: round2(y - 20), h: 40 }, palette.ink) : mark({ ...box, y }, palette.ink);
+    const placed: Placed[] = [{ role: "figure", band: "content", box: accent ? { ...box, y: round2(y - 20), h: 40 } : box, strokes }];
     /*
      * ⚠ UNE PHRASE SEULE PORTE SON DESSIN (2026-11-01). Sans lui, c'était la
      * carte « titre et un trait » — sept sur trente en décembre, la première
