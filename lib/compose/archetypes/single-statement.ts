@@ -1,6 +1,7 @@
 import { round2 } from "@/lib/compose/measure";
 import { mark } from "@/lib/compose/illustrations";
 import type { ArchetypeModule } from "@/lib/compose/archetypes/types";
+import type { Placed } from "@/lib/compose/types";
 
 export type SingleStatement = { statement: string };
 
@@ -37,9 +38,23 @@ export const singleStatement: ArchetypeModule<SingleStatement> = {
    * prétend rien illustrer : c'est la respiration qui dit que la phrase
    * s'arrête là.
    */
-  compose({ palette, content }) {
+  compose({ palette, content, draw, illustrated }) {
     const y = round2(content.y + 28);
     const box = { x: content.x, y: round2(y - 12), w: round2(Math.min(content.w, 220)), h: 24 };
-    return [{ role: "figure", band: "content", box, strokes: mark({ ...box, y }, palette.ink) }];
+    const placed: Placed[] = [{ role: "figure", band: "content", box, strokes: mark({ ...box, y }, palette.ink) }];
+    /*
+     * ⚠ UNE PHRASE SEULE PORTE SON DESSIN (2026-11-01). Sans lui, c'était la
+     * carte « titre et un trait » — sept sur trente en décembre, la première
+     * chose qui se voit dans la grille. Il est posé sous la phrase, à droite,
+     * dans ce qui reste de la bande de contenu.
+     */
+    if (illustrated) {
+      const top = round2(content.y + 28 + 12 + 40);
+      const side = round2(Math.min(content.y + content.h - top, content.w * 0.5, 420));
+      if (side < 160) return null;
+      const spot = { x: round2(content.x + content.w - side), y: round2(content.y + content.h - side), w: side, h: side };
+      placed.push({ role: "figure", band: "content", box: spot, strokes: draw(spot, palette.ink) });
+    }
+    return placed;
   },
 };

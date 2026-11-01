@@ -61,3 +61,22 @@ export function libraryDrawing(id: string) {
     return [{ kind: "path", d, box: fitted, stroke: "none", strokeWidth: 0, fill: colour, fillRule: "evenodd", library: id }];
   };
 }
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  ZÉRO CARTE VIDE — CE QU'UNE CARTE DOIT PORTER
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Une illustration de la bibliothèque, une forme, ou un fond photographique.
+ * Un titre et un trait ne suffisent pas : décembre 2026 en portait sept sur
+ * trente, et c'est la première chose qui se voit dans la grille.
+ *
+ * ⚠ LU DANS LE SVG LIVRÉ, PAS DANS UNE INTENTION. Les trois portent un marqueur
+ * que le sérialiseur écrit (`data-library`, `data-shape`, `data-photo`) : ce
+ * contrôle regarde ce qui sort, pas ce qui a été demandé.
+ */
+export function cardHasVisual(svg: string): boolean {
+  return /\sdata-(library|shape|photo)="[^"]+"/.test(svg);
+}
+
+export class EmptyCard extends Error {}

@@ -1,4 +1,5 @@
 import { composeWithFallback } from "@/lib/compose/fallback";
+import { cardHasVisual, EmptyCard } from "@/lib/compose/library";
 import type { RenderInput } from "@/lib/compose/types";
 
 /*
@@ -115,6 +116,16 @@ export function composeCard(input: ComposeCardInput): ComposedCard {
     } as RenderInput,
     input.headline
   );
+
+  /*
+   * ⚠ LA GARDE FINALE : UNE CARTE SANS DESSIN, SANS FORME, SANS FOND PHOTO N'EST
+   * PAS LIVRÉE. Le repli ne devrait jamais en rendre une ; « ne devrait jamais »
+   * n'est pas un contrôle. Le post est refusé et le banc le remplace.
+   */
+  const svg = composed.kind === "carousel" ? composed.slides[0].svg : composed.result.svg;
+  if (!cardHasVisual(svg)) {
+    throw new EmptyCard(`${input.archetype} : la carte ne porte ni illustration, ni forme, ni fond photo`);
+  }
 
   return {
     archetype: composed.archetype,

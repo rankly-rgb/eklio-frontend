@@ -29,7 +29,7 @@ export const annotatedCurve: ArchetypeModule<AnnotatedCurve> = {
     return points ? { axis_x: p.axis_x, axis_y: p.axis_y, points } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax }) {
+  compose({ payload, palette, content, figureScale, secondaryMax, draw, illustrated }) {
     const placed: Placed[] = [];
     /*
      * ⚠ LA FOURCHETTE ENTIÈRE, ET C'EST L'ÉCHELLE QUI ARBITRE. Cette ligne
@@ -118,6 +118,17 @@ export const annotatedCurve: ArchetypeModule<AnnotatedCurve> = {
        */
       polyline(vertices, palette.ink, CURVE),
     ];
+    /*
+     * ⚠ LE DESSIN VA DANS LE COIN QUE LA COURBE LAISSE (2026-11-01). Elle
+     * redescend sous 60 % de la hauteur à droite : le haut droit du tracé est
+     * vide. Le dessin y est posé, dans la même figure que la courbe.
+     */
+    if (illustrated) {
+      const side = round2(Math.min(plot.w * 0.34, plot.h * 0.36));
+      if (side < 110) return null;
+      const spot = { x: round2(plot.x + plot.w - side), y: plot.y, w: side, h: side };
+      strokes.push(...draw(spot, palette.ink));
+    }
 
     placed.push({ role: "figure", band: "content", box: plot, strokes });
 

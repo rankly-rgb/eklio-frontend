@@ -1,4 +1,4 @@
-import { CLEARANCE } from "@/lib/compose/constants";
+import { CLEARANCE, figureShare } from "@/lib/compose/constants";
 import { cell, rows } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
 import type { Placed } from "@/lib/compose/types";
@@ -46,14 +46,31 @@ export const comparisonPair: ArchetypeModule<ComparisonPair> = {
     return { left, right };
   },
 
-  compose({ payload, palette, content, secondaryMax }) {
+  compose({ payload, palette, content, secondaryMax, figureScale, draw, illustrated }) {
     const placed: Placed[] = [];
     const gap = CLEARANCE.fieldToField;
-    const colW = round2((content.w - gap) / 2);
+    /*
+     * ⚠ ILLUSTRÉ, IL CÈDE UNE GOUTTIÈRE AU DESSIN (2026-11-01). Sans dessin, une
+     * comparaison n'était que deux colonnes de champs : une carte sans objet dans
+     * la grille. La gouttière suit l'échelle du résolveur, comme celle de
+     * `numbered_strategies` ; si le texte n'y tient plus, le résolveur réduit le
+     * dessin, puis retire les gloses, puis le repli cherche une autre forme.
+     */
+    const gutterW = illustrated ? round2(content.w * figureShare(figureScale) * 0.8) : 0;
+    const area = illustrated
+      ? { x: round2(content.x + gutterW + gap), y: content.y, w: round2(content.w - gutterW - gap), h: content.h }
+      : content;
+    const colW = round2((area.w - gap) / 2);
     if (colW < 220) return null;
+    if (illustrated) {
+      const side = round2(Math.min(gutterW, content.h * 0.6));
+      if (side < 110) return null;
+      const box = { x: content.x, y: content.y, w: gutterW, h: side };
+      placed.push({ role: "figure", band: "content", box, strokes: draw(box, palette.ink) });
+    }
 
-    const leftCol = { x: content.x, y: content.y, w: colW, h: content.h };
-    const rightCol = { x: round2(content.x + colW + gap), y: content.y, w: colW, h: content.h };
+    const leftCol = { x: area.x, y: area.y, w: colW, h: area.h };
+    const rightCol = { x: round2(area.x + colW + gap), y: area.y, w: colW, h: area.h };
 
     const leftBoxes = rows(leftCol, payload.left.length);
     const rightBoxes = rows(rightCol, payload.right.length);

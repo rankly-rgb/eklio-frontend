@@ -1,6 +1,7 @@
 import { render, renderCarousel, CompositionError, type RenderResult } from "@/lib/compose/engine";
 import { BudgetExceededError, budgetErrors, words } from "@/lib/compose/budget";
 import type { RenderInput } from "@/lib/compose/types";
+import { cardHasVisual } from "@/lib/compose/library";
 
 /*
  * ── QUAND UNE CARTE NE TIENT PAS, ELLE SE REPLIE ────────────────────────
@@ -95,7 +96,15 @@ function statementFrom(item: Item): string | null {
 function tryRender(input: RenderInput, archetype: string, payload: unknown): RenderResult | null {
   if (budgetErrors(archetype, payload).length > 0) return null;
   try {
-    return render({ ...input, archetype, payload });
+    const result = render({ ...input, archetype, payload });
+    /*
+     * ⚠ UN POST QUI A UN DESSIN NE TOMBE JAMAIS SUR UNE CARTE SANS DESSIN
+     * (2026-11-01). Un essai qui sort vide compte comme un refus : le repli
+     * passe à la forme suivante, et s'il les épuise, le post est refusé — le
+     * sélecteur prend un remplaçant. Jamais « un titre et un trait ».
+     */
+    if (input.illustration && !cardHasVisual(result.svg)) return null;
+    return result;
   } catch (error) {
     if (error instanceof CompositionError || error instanceof BudgetExceededError) return null;
     throw error;
@@ -164,6 +173,27 @@ export function composeWithFallback(
   const steps: string[] = [];
 
   /* ── 0. Ce qui a été demandé ──────────────────────────────────────── */
+  /*
+   * ⚠ UN CARROUSEL SE COMPOSE EN DIAPOSITIVES, PAS EN COUVERTURE (2026-11-01).
+   * L'archétype `carousel` ne pose rien (`compose()` rend []) : rendu comme une
+   * carte, il donnait une couverture « titre seul », et c'est elle qui entrait
+   * dans la grille — une carte vide de plus. Il est maintenant rendu diapositive
+   * par diapositive ; la vignette est la première, et chacune porte le dessin du
+   * post quand il en a un.
+   */
+  if (input.archetype === "carousel") {
+    try {
+      const slides = renderCarousel(input);
+      if (!input.illustration || slides.every((slide) => cardHasVisual(slide.svg))) {
+        return { kind: "carousel", archetype: "carousel", payload: input.payload, slides, steps };
+      }
+      steps.push("carousel slides without a drawing");
+    } catch (error) {
+      if (!(error instanceof CompositionError || error instanceof BudgetExceededError)) throw error;
+      steps.push("carousel refused as slides");
+    }
+  }
+
   const asked = tryRender(input, input.archetype, input.payload);
   if (asked) return { kind: "card", archetype: input.archetype, payload: input.payload, result: asked, steps };
 
@@ -192,6 +222,9 @@ export function composeWithFallback(
     }));
     try {
       const slides = renderCarousel({ ...input, archetype: "carousel", payload: { cards } });
+      if (input.illustration && !slides.every((slide) => cardHasVisual(slide.svg))) {
+        throw new CompositionError("carousel slides without a drawing");
+      }
       steps.push(`${input.archetype} → carousel of ${cards.length} (one idea per card)`);
       return { kind: "carousel", archetype: "carousel", payload: { cards }, slides, steps };
     } catch (error) {
