@@ -35,7 +35,7 @@ contenu, les dates sont posées après la sélection.
 | Mesure | Avant | Après | Ce qu'elle dit |
 |---|---|---|---|
 | Mois sorti à 30 posts | 30/30 | 30/30 | 3 posts sans aucun dessin remplacés par le banc, chaque fois |
-| Palettes avec fonds photo | 6/6 (dont 3 sombres à tort comptées sans, F95) | **6/6, claires et sombres — 12/12 variantes, 27/27 fonds chacune** | mesuré sur le rendu, `lib/kit/__tests__/licence-legible-on-photo.test.ts` |
+| Palettes avec fonds photo | 9/12 variantes — clay_sand, ink_blue_chalk, slate_bone sombres sans photo (décidé avec la luminance fausse, F95/F99) | **6/6, claires et sombres — 12/12 variantes, 27/27 fonds chacune** | mesuré sur le rendu, `lib/kit/__tests__/licence-legible-on-photo.test.ts` |
 | Cartes avec fond photo | 11/30 | 11/30 | toutes les phrases seules et couvertures de carrousel ; ce kit est en palette claire |
 | Contraste au pire pixel sous le texte, par palette | — | 7,13 à 7,37:1 (12 variantes × 27 fonds) | plancher 4,5:1 ; voile résolu à 7:1 |
 | Mention de licence au pire pixel | 9,43:1 | **7,25:1** (planche) ; ≥ 7,13:1 sur chaque fond et chaque palette | plancher 4,5:1 |
