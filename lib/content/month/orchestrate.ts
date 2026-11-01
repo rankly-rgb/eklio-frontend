@@ -704,6 +704,14 @@ export async function orchestrateMonth(
   );
   const drawingOf = new Map(written.map((t, i) => [t.id, drawings[i] ?? null]));
   const illustrationRefused: string[] = [];
+  /** Ce qu'il faut pour réattribuer et recomposer un post sur l'ordre retenu. */
+  const signalsOf = new Map(
+    written.map((t) => {
+      const post = alreadyWritten.get(t.id)!;
+      return [t.id, { title: t.title, hook: t.hook ?? null, cardLine: post.cardLine, payload: post.payload, caption: post.caption }];
+    })
+  );
+  const recomposeOf = new Map<string, (illustration: string) => ReturnType<typeof composeCard>>();
 
   let index = 0;
   for (const topic of topics) {
@@ -715,17 +723,21 @@ export async function orchestrateMonth(
       illustrationRefused.push(topic.id);
       continue;
     }
-    try {
-      const card = composeCard({
-        illustration,
+    const palette = input.paletteFor(index);
+    const make = (drawing: string) =>
+      composeCard({
+        illustration: drawing,
         archetype: topic.archetype_key,
         payload: post.payload,
-        palette: input.paletteFor(index),
+        palette,
         eyebrow: post.eyebrow,
         headline: post.cardLine,
         footer,
         licenceMention: verdict.licenceMention,
       });
+    recomposeOf.set(topic.id, make);
+    try {
+      const card = make(illustration);
       if (card.steps.length > 0) {
         composeFallbacks.push({
           topicId: topic.id,
@@ -837,8 +849,30 @@ export async function orchestrateMonth(
 
   /* ── 7. l'assemblage : portillon, sélection, écriture, crédit ───────── */
   const assemblePorts = ports.assembleFor(monthId);
+  /*
+   * ⚠ LES DESSINS SONT REJOUÉS SUR L'ORDRE QUE LE SÉLECTEUR RETIENT, à chaque
+   * tour (voir `selectDeliverable`). Un post dont le dessin change est
+   * recomposé — le moteur est pur, aucun appel au modèle ; s'il ne se compose
+   * plus, ou si aucun dessin ne le dit à sa place, il est échangé.
+   */
+  const redraw = (chosen: PreparedPost[]): Array<PreparedPost | null> => {
+    const ids = ports.illustrate(chosen.map((p) => signalsOf.get(p.topicId)!));
+    return chosen.map((p, i) => {
+      const drawing = ids[i] ?? null;
+      if (!drawing) return null;
+      if (drawing === p.illustration) return p;
+      try {
+        const card = recomposeOf.get(p.topicId)!(drawing);
+        return { ...p, illustration: drawing, composeArchetype: card.archetype, payload: card.payload, svg: card.svg };
+      } catch {
+        return null;
+      }
+    });
+  };
+
   const month = await assembleMonth(assemblePorts, {
     prepared,
+    redraw,
     wanted: input.wanted,
     dates: input.dates,
     /*

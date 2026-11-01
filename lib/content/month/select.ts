@@ -95,7 +95,18 @@ export function selectDeliverable<
    * verdict à chaque tour paierait un appel par échange, et l'ensemble des
    * lignes ne change pas — seul le sous-ensemble retenu change.
    */
-  completeness: CompletenessVerdicts
+  completeness: CompletenessVerdicts,
+  /**
+   * Réattribue les dessins sur l'ORDRE RETENU, et recompose les cartes dont le
+   * dessin change. `null` à un rang : aucun dessin ne dit ce post à cette place.
+   *
+   * ⚠ L'ÉCART DE DIX SE JUGE SUR LE MOIS LIVRÉ, PAS SUR LA RÉSERVE. Les dessins
+   * étaient attribués sur les quarante-cinq posts préparés ; le sélecteur en
+   * retire et ajoute les remplaçants en fin de mois, et deux dessins séparés
+   * de quinze dans la réserve se retrouvaient à neuf dans le mois — la
+   * répétition locale du 2026-11-01 a été refusée pour ça (`prot-thorn-branch`).
+   */
+  redraw?: (chosen: T[]) => Array<T | null>
 ): Deliverable<T> {
   const asPost = asMonthPost;
 
@@ -104,6 +115,20 @@ export function selectDeliverable<
   const dropped: Array<{ title: string; why: string }> = [];
 
   for (;;) {
+    if (redraw) {
+      const drawn = redraw(chosen);
+      const none = drawn.findIndex((p) => p === null);
+      if (none !== -1) {
+        const why = `illustration.none — aucun dessin au-dessus du seuil ne dit « ${chosen[none].cardLine} » à ce rang`;
+        if (bench.length === 0) {
+          return { chosen, remaining: [{ check: "illustration.none", detail: why.slice("illustration.none — ".length) }], dropped };
+        }
+        dropped.push({ title: chosen[none].cardLine, why });
+        chosen = [...chosen.slice(0, none), ...chosen.slice(none + 1), bench.shift()!];
+        continue;
+      }
+      chosen = drawn as T[];
+    }
     const findings = checkMonth({
       posts: chosen.map(asPost), direction, practiceName, identityAllowList: allowList,
       modalities, completeness, eyebrowCatalogue: intentCatalogue,

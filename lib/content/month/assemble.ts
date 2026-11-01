@@ -125,6 +125,8 @@ export type AssemblePorts = {
 export type AssembleInput<T extends Assemblable> = {
   /** Les posts écrits et composés, dans l'ordre de préférence. */
   prepared: T[];
+  /** Les dessins réattribués sur l'ordre retenu (`selectDeliverable`). */
+  redraw?: (chosen: T[]) => Array<T | null>;
   /** Combien le mois doit livrer. */
   wanted: number;
   /** Les dates, une par créneau. */
@@ -247,7 +249,8 @@ export async function assembleMonth<T extends Assemblable>(
     input.intentCatalogue,
     input.licenceMention,
     input.modalities,
-    input.completeness
+    input.completeness,
+    input.redraw
   );
 
   /*
@@ -306,7 +309,13 @@ export async function assembleMonth<T extends Assemblable>(
    * vingt-neuf jours.
    */
   const queue = [...selection.chosen];
-  const spare = clean.filter((p) => !selection.chosen.includes(p));
+  /*
+   * ⚠ PAR SUJET, PAS PAR OBJET. Un post retenu dont le dessin a été réattribué
+   * est recomposé — un objet neuf (`redraw`) ; comparé par référence, son
+   * ancienne version restait au banc et pouvait être écrite une seconde fois.
+   */
+  const chosenTopics = new Set(selection.chosen.map((p) => p.candidate.topic.id));
+  const spare = clean.filter((p) => !chosenTopics.has(p.candidate.topic.id));
   const inserted: T[] = [];
   const insertRefused: InsertRefusal[] = [];
   let replacements = 0;

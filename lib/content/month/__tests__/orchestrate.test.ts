@@ -366,6 +366,38 @@ describe("le dessin de chaque post est choisi par le sens, et un post sans dessi
     expect(w.inserted).not.toContain("t1");
     expect(w.inserted).toHaveLength(3);
   });
+
+  /*
+   * Répétition locale du 2026-11-01 : dessins attribués sur la réserve,
+   * `prot-thorn-branch` à neuf posts du précédent dans le mois retenu, mois
+   * refusé. Les dessins sont maintenant rejoués sur l'ORDRE RETENU.
+   */
+  it("les dessins écrits sont ceux attribués sur l'ordre retenu, pas sur la réserve", async () => {
+    const w = world();
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    const calls = vi.mocked(w.ports.illustrate).mock.calls;
+    const last = calls[calls.length - 1][0];
+    const insert = vi.mocked(w.ports.assembleFor("m").insert);
+    expect(last).toHaveLength(insert.mock.calls.length);
+    /* Le stub dessine par rang : le rang dans le mois retenu, donc. */
+    insert.mock.calls.forEach(([row], i) => expect(row.illustrationKey).toBe(DRAWINGS[i % DRAWINGS.length]));
+  });
+
+  it("un post qu'aucun dessin ne dit à sa place dans le mois retenu est échangé contre le banc", async () => {
+    const w = world();
+    const first = vi.mocked(w.ports.illustrate).getMockImplementation()!;
+    let call = 0;
+    vi.mocked(w.ports.illustrate).mockImplementation((posts) => {
+      call += 1;
+      /* Le second appel (premier tour du sélecteur) refuse le rang 0. */
+      return call === 2 ? posts.map((_, i) => (i === 0 ? null : DRAWINGS[i])) : first(posts);
+    });
+    const out = await orchestrateMonth(w.ports, input());
+    expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
+    expect(w.inserted).not.toContain("t1");
+    expect(w.inserted).toHaveLength(3);
+  });
 });
 
 describe("un mois sort de bout en bout", () => {
