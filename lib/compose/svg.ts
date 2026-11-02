@@ -187,6 +187,14 @@ function decorLayers(composition: Composition): string {
   if (d.texture) {
     out += `<image data-texture="${esc(d.texture.id)}" href="${d.texture.href}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" opacity="${d.texture.opacity}" style="mix-blend-mode:multiply"/>`;
   }
+  if (d.photoClip) {
+    const c = d.photoClip;
+    const r = round2(c.box.w / 2);
+    const key = fnv(`${c.id}|${boxAttr(c.box)}`);
+    out +=
+      `<defs><clipPath id="eklio-clip-${key}"><circle cx="${round2(c.box.x + r)}" cy="${round2(c.box.y + r)}" r="${r}"/></clipPath></defs>` +
+      `<image data-photo="${esc(c.id)}" href="${c.href}" x="${round2(c.box.x)}" y="${round2(c.box.y)}" width="${round2(c.box.w)}" height="${round2(c.box.h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#eklio-clip-${key})"/>`;
+  }
   if (d.shape) {
     out += `<path data-shape="${esc(d.shape.id)}" d="${d.shape.d}" fill="${d.shape.fill}" fill-rule="evenodd" data-box="${boxAttr(d.shape.box)}"/>`;
   }

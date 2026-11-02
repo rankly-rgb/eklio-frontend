@@ -124,6 +124,8 @@ export function wantsPhoto(archetype: string, illustration: string): boolean {
 }
 
 export type Decor = {
+  /** Une photo découpée dans un cercle (idiome 2), hors du texte : sans voile. */
+  photoClip?: { id: string; href: string; box: Box };
   photo?: {
     id: string;
     href: string;

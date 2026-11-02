@@ -225,3 +225,18 @@ describe("idiomes 7 et 6 : pilules et bulles reliées", () => {
     }
   });
 });
+
+describe("idiome 2 : photo en cercle", () => {
+  it("une phrase seule sur crème : photo découpée en cercle, titre centré dessous, sans violation ni voile", () => {
+    const r = render({ ...base, archetype: "single_statement", payload: { statement: "Something can be long over and still shape today." }, ground: groundFor(KIT, "cream") });
+    expect(r.composition.idiom).toBe("circle");
+    expect(r.svg).toMatch(/<clipPath id="eklio-clip-[a-z0-9]+"><circle /);
+    expect(r.svg).toMatch(/<image data-photo="bg-[a-z-]+"[^>]*clip-path="url\(#eklio-clip-/);
+    expect(r.svg).not.toContain('data-veil="local"');
+    expect(violations(r.composition.placed)).toEqual([]);
+  });
+
+  it("dans un carrousel, les diapositives intérieures ne prennent pas le cercle", () => {
+    expect(idiomFor("single_statement", "cream", 2)).toBeNull();
+  });
+});

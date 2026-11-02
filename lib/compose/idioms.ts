@@ -27,7 +27,7 @@ import type { Box, FontRole, Line, Placed, Stroke } from "@/lib/compose/types";
  * ne s'en approche à moins de 64px). Le centrage est calculé, l'équilibrage des
  * lignes aussi (`fitTitle`).
  */
-export type Idiom = "big_drawing" | "quote_deep" | "carousel_cover";
+export type Idiom = "big_drawing" | "quote_deep" | "carousel_cover" | "circle";
 
 /** Les idiomes que la spec pose avec du vide voulu : la citation centrée, la couverture sur photo pleine page. */
 export const FILL_EXEMPT = new Set<string>(["quote_deep", "carousel_cover"]);
@@ -37,6 +37,8 @@ export function idiomFor(archetype: string, ground: Ground | undefined, slide?: 
   if (archetype === "single_statement" && (ground === "ochre" || ground === "terra")) return "big_drawing";
   if (archetype === "single_statement" && ground === "deep") return "quote_deep";
   if (slide === 0 && ground === "photo") return "carousel_cover";
+  /* 2 : une phrase seule sur crème — la photo dans un cercle, le titre centré dessous. */
+  if (archetype === "single_statement" && ground === "cream" && slide === undefined) return "circle";
   return null;
 }
 
@@ -146,6 +148,36 @@ export function composeIdiom(input: IdiomInput): Placed[] | null {
       placed.push({ role: "figure", band: "content", box, strokes: libraryDrawing(input.illustration)(box, gp.soft) });
     }
     return placed;
+  }
+
+  if (input.idiom === "circle") {
+    /*
+     * Spec 2 : surtitre centré, photo ronde de 560px, titre Cormorant 96px centré
+     * à 62px dessous. Le cercle rétrécit pour laisser au titre ses quatre lignes,
+     * jamais sous 360px ; sinon refus. La photo n'est pas sous le texte : pas de voile.
+     */
+    const eyebrowSize = 26;
+    const eyebrowText = input.eyebrow.toUpperCase();
+    const ew = round2(measure(eyebrowText, "sans", eyebrowSize) * 1.2);
+    if (ew > INNER.w) return null;
+    const fit = fitTitle(input.statement, "serif", INNER.w, span * 0.4, { min: SERIF_FROM, max: 96 }, 4, 1.02);
+    if (!fit) return null;
+    const textH = realHeight(fit, 1.02);
+    const eyebrowH = round2(eyebrowSize * LINE_HEIGHT);
+    const side = round2(Math.min(560, span - eyebrowH - 34 - 62 - textH));
+    if (side < 360) return null;
+    const blockH = eyebrowH + 34 + side + 62 + textH;
+    const top = round2(IDIOM_TOP + (span - blockH) / 2);
+    const eyebrowLine: Line = { text: eyebrowText, size: eyebrowSize, family: "sans", weight: 500, fill: gp.soft, anchor: "middle", box: { x: round2((CANVAS.width - ew) / 2), y: top, w: ew, h: eyebrowH } };
+    const circleBox = { x: round2((CANVAS.width - side) / 2), y: round2(top + eyebrowH + 34), w: side, h: side };
+    const titleTop = round2(circleBox.y + side + 62);
+    const lines = centred(fit, titleTop, "serif", 500, gp.ink).map((l, i) => ({ ...l, box: { ...l.box, y: round2(titleTop + i * fit.size * 1.02) } }));
+    return [
+      { role: "text", band: "eyebrow", box: eyebrowLine.box, lines: [eyebrowLine] },
+      /* La place de la photo ronde : une figure SANS trait — le décor y pose l'image (`photoClip`). */
+      { role: "figure", band: "content", box: circleBox, strokes: [] },
+      { role: "text", band: "headline", box: textBox(lines), lines },
+    ];
   }
 
   /* carousel_cover */

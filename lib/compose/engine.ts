@@ -9,7 +9,7 @@ import { toSvg } from "@/lib/compose/svg";
 import type { Box, Composition, Palette, Placed, RenderInput } from "@/lib/compose/types";
 import { DRAWING_FOR } from "@/lib/compose/illustrations";
 import { libraryDrawing } from "@/lib/compose/library";
-import { accentDrawing, decorFor } from "@/lib/compose/decor";
+import { accentDrawing, decorFor, imageHref, photoFor } from "@/lib/compose/decor";
 import { composeIdiom, FILL_EXEMPT, idiomFor, type Idiom } from "@/lib/compose/idioms";
 import { grainedWorst, SOFT_TARGET, softest } from "@/lib/compose/grounds";
 
@@ -291,6 +291,11 @@ function renderIdiom(input: RenderInput, idiom: Idiom, parsed: unknown, soft: st
     throw new CompositionError(`${input.archetype}: idiome ${idiom} — remplissage ${(verticalFill(placed) * 100).toFixed(0)} %`);
   }
   const decor = decorFor(input.archetype, input.illustration!, input.palette, placed, g.ground);
+  if (idiom === "circle") {
+    const slot = placed.find((p) => p.role === "figure" && p.strokes.length === 0)!;
+    const id = photoFor(input.illustration!);
+    decor.photoClip = { id, href: imageHref(id), box: slot.box };
+  }
   const composition: Composition = {
     archetype: input.archetype,
     paletteKey: input.palette.key,
