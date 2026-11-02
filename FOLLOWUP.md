@@ -4421,3 +4421,33 @@ sur photo. Non changé (une décision, et elle déplacerait toutes les palettes)
 Aucun cas reproductible isolé : la même rédaction de décembre (journal du run
 `7af5552e…`, 57 résultats) donne 48, 49 ou 50 posts au portillon selon l'appel du juge
 (reprises du 2026-11-01 et du 2026-11-02).
+
+## F105 — la citation au script n'accueille pas les phrases du mois réel
+
+Idiome 10 (spec : « Rest is not / a reward. »). Les phrases écrites pour décembre font 14 à 24
+mots : à 96 px et quatre lignes de script, deux sur trois ne tiennent pas, et la carte prend la
+mise en page ordinaire sur fond profond. Le plancher n'a pas bougé. Piste : que la rédaction
+écrive une phrase courte quand le plan du mois donne un fond profond (une surface à brancher).
+
+## F106 — le remplissage vertical est mesuré, pas contrôlé
+
+Planche du 2026-11-02 : 45,9 % et 47,1 % de la hauteur pour deux cartes, ≥ 74 % ailleurs. La
+règle « rien ne laisse un tiers vide » n'a pas encore de contrôle qui refuse.
+
+## F107 — onze idiomes de la spec restent à coder
+
+1, 2 (photo en arche, en cercle), 3, 4 (texte sur courbe — archétypes nouveaux), 5 (grille de
+six, un dessin par cellule), 6 (bulles reliées, connecteurs calculés), 7 (pilules), 8
+(interrupteurs — l'état d'une offre doit venir du brief, jamais du modèle), 11 (couches), 12
+(praticienne, monogramme). Mapping : `design/visual-library-2026-11-02-idiomes/MAPPING.md`.
+
+## F108 — l'italique coloré des titres
+
+La spec colore quelques mots du titre (`<em>`). Le moteur ne sait pas lesquels : il faudrait
+que la rédaction les marque — une surface de texte nouvelle, à faire entrer dans les contrôles.
+
+## F109 — la spec se contredit sur son idiome 14
+
+« Variante serif Cormorant » porte la classe `corm`, qui met le titre en Fraunces 122 px ; le 9
+est en Cormorant. Les images sont justes, l'étiquette est inversée. Retenu : Cormorant à partir
+de 80 px (`SERIF_FROM`), Fraunces en dessous.
