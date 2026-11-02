@@ -36,9 +36,9 @@ describe("la signature regroupe ce que l'œil regroupe", () => {
     expect(structureOf(bands).fields).toBe("bandes pleine largeur");
   });
 
-  it("une phrase seule : aucun aplat ; et le fond compte — la même image sur photo n'est plus la même", () => {
+  it("une phrase seule : aucun aplat ; et le fond ne compte PAS — la même pile sur photo est la même carte pour l'œil", () => {
     expect(structureOf(statement).fields).toBe("aucun aplat");
-    expect(structureOf(card("numbered_strategies", { items: three }, PHOTO)).signature).not.toBe(structureOf(numbered).signature);
+    expect(structureOf(card("numbered_strategies", { items: three }, PHOTO)).signature).toBe(structureOf(numbered).signature);
   });
 });
 

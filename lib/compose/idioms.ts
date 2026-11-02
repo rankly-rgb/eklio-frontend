@@ -29,6 +29,9 @@ import type { Box, FontRole, Line, Placed, Stroke } from "@/lib/compose/types";
  */
 export type Idiom = "big_drawing" | "quote_deep" | "carousel_cover";
 
+/** Les idiomes que la spec pose avec du vide voulu : la citation centrée, la couverture sur photo pleine page. */
+export const FILL_EXEMPT = new Set<string>(["quote_deep", "carousel_cover"]);
+
 export function idiomFor(archetype: string, ground: Ground | undefined, slide?: number): Idiom | null {
   if (!ground) return null;
   if (archetype === "single_statement" && (ground === "ochre" || ground === "terra")) return "big_drawing";

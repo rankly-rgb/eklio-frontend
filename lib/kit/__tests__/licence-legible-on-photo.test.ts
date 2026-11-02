@@ -6,6 +6,7 @@ import { contrastRatio } from "@/lib/brand/color";
 import { render } from "@/lib/compose/engine";
 import { DRAWABLE, PHOTOS, PHOTO_FIGURE_CONTRAST, PHOTO_TEXT_CONTRAST } from "@/lib/compose/decor";
 import { CONTRAST_TARGET } from "@/lib/kit/render/luminance";
+import { floorFor, textClass } from "@/lib/compose/text-class";
 import type { Box, Placed } from "@/lib/compose/types";
 
 /*
@@ -109,7 +110,9 @@ describe.each(FAMILIES)("$id", ({ id, direction }) => {
             const w = worstUnder(px, line.box, line.fill);
             m.worstText = Math.min(m.worstText, w);
             if (p.band === "footer") m.worstLicence = Math.min(m.worstLicence, w);
-            expect(w, `${PHOTOS[k % PHOTOS.length]} — ${p.band} « ${line.text} »`).toBeGreaterThanOrEqual(PHOTO_TEXT_CONTRAST);
+            /* Le plancher de la classe de la ligne (taille posée) ; la licence, 4,5:1 toujours. */
+            expect(w, `${PHOTOS[k % PHOTOS.length]} — ${p.band} « ${line.text} »`).toBeGreaterThanOrEqual(floorFor(textClass(line.size, line.weight, p.band)));
+            if (p.band === "footer") expect(w).toBeGreaterThanOrEqual(PHOTO_TEXT_CONTRAST);
           }
         }
         if (p.role === "figure") {

@@ -61,7 +61,13 @@ function readStructure(svg: string): Structure {
    */
   const ground = /\sdata-ground="([a-z]+)"/.exec(svg)?.[1] ?? (/\sdata-photo="/.test(svg) ? "photo" : "papier");
   const idiom = /\sdata-idiom="([a-z_]+)"/.exec(svg)?.[1];
-  if (idiom) return { fields: idiom, drawing: "idiome", ground, signature: `${idiom} · ${ground}` };
+  /*
+   * ⚠ LE FOND N'EST PAS DANS LA SIGNATURE (2026-11-02, sixième session). Une pile
+   * de blocs sur photo et la même sur crème sont la même carte pour l'œil ; les
+   * compter comme deux signatures faisait annoncer 7/30 là où l'œil en voyait une
+   * quinzaine. Le fond est déjà tenu par le plan du mois (`grounds-plan.ts`).
+   */
+  if (idiom) return { fields: idiom, drawing: "idiome", ground, signature: idiom };
 
   let kind: string;
   if (fields.length === 0) kind = "aucun aplat";
@@ -93,5 +99,5 @@ function readStructure(svg: string): Structure {
       else place = "dessin entre les aplats";
     }
   }
-  return { fields: kind, drawing: place, ground, signature: `${kind} · ${place} · ${ground}` };
+  return { fields: kind, drawing: place, ground, signature: `${kind} · ${place}` };
 }

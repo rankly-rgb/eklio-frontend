@@ -172,3 +172,24 @@ describe("le rythme du mois", () => {
     expect(r.windowsFailing).toBe(r.windows);
   });
 });
+
+describe("rien ne laisse un tiers vide (remplissage vertical)", () => {
+  it("provoqué : un titre seul en haut de carte couvre moins des deux tiers — le contrôle le voit", async () => {
+    const { verticalFill, FILL_FLOOR } = await import("@/lib/compose/engine");
+    const lone = [{ role: "text" as const, band: "headline" as const, box: { x: 72, y: 162, w: 600, h: 200 }, lines: [] }];
+    expect(verticalFill(lone)).toBeLessThan(FILL_FLOOR);
+  });
+
+  it("toute carte du générateur rendue (dessin de la bibliothèque, idiome non exempté) couvre au moins les deux tiers", async () => {
+    const { verticalFill, FILL_FLOOR } = await import("@/lib/compose/engine");
+    for (const archetype of ARCHETYPE_KEYS) {
+      if (archetype === "carousel") continue;
+      for (const g of GROUNDS) for (const length of ["short", "nominal", "ceiling"] as const) {
+        let r;
+        try { r = render({ ...base, archetype, payload: payloadFor(archetype, length), ground: groundFor(KIT, g) }); } catch { continue; }
+        if (r.composition.idiom === "quote_deep" || r.composition.idiom === "carousel_cover") continue;
+        expect(verticalFill(r.composition.placed), `${archetype}/${g}/${length}`).toBeGreaterThanOrEqual(FILL_FLOOR);
+      }
+    }
+  });
+});

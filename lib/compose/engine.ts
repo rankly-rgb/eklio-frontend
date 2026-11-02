@@ -10,7 +10,7 @@ import type { Box, Composition, Palette, Placed, RenderInput } from "@/lib/compo
 import { DRAWING_FOR } from "@/lib/compose/illustrations";
 import { libraryDrawing } from "@/lib/compose/library";
 import { accentDrawing, decorFor } from "@/lib/compose/decor";
-import { composeIdiom, idiomFor, type Idiom } from "@/lib/compose/idioms";
+import { composeIdiom, FILL_EXEMPT, idiomFor, type Idiom } from "@/lib/compose/idioms";
 import { grainedWorst, SOFT_TARGET, softest } from "@/lib/compose/grounds";
 
 
@@ -222,6 +222,36 @@ export function figureExtentShare(placed: Placed[]): number {
   return band > 0 ? extent(strokes.map((s) => s.box)) / band : 0;
 }
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  RIEN NE FLOTTE, RIEN NE LAISSE UN TIERS VIDE (spec visuelle, 2026-11-02)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * La part de la hauteur UTILE (de la marge haute à 64px du pied) que le contenu
+ * couvre, du premier élément posé au dernier. Sous `FILL_FLOOR`, la composition
+ * est refusée et le résolveur continue ; au bout, le repli descend.
+ *
+ * ⚠ DEUX IDIOMES EN SONT EXEMPTS, ET C'EST LA SPEC : la citation sur fond profond
+ * est un bloc centré dans le vide (spec 10), la couverture de carrousel pose son
+ * titre en bas d'une photo pleine page (spec 13) — l'image occupe le cadre.
+ */
+export const FILL_FLOOR = 2 / 3;
+const USABLE_TOP = EYEBROW.y;
+const USABLE_BOTTOM = FOOTER.y - CLEARANCE.aboveFooter;
+
+export function verticalFill(placed: Placed[]): number {
+  const boxes: Box[] = [];
+  for (const p of placed) {
+    if (p.band === "footer") continue;
+    if (p.role === "figure") boxes.push(...p.strokes.map((s) => s.box));
+    else boxes.push(p.box);
+  }
+  if (boxes.length === 0) return 0;
+  const top = Math.max(USABLE_TOP, Math.min(...boxes.map((b) => b.y)));
+  const bottom = Math.min(USABLE_BOTTOM, Math.max(...boxes.map((b) => b.y + b.h)));
+  return round2(Math.max(0, bottom - top) / (USABLE_BOTTOM - USABLE_TOP));
+}
+
 export function legibleAtThumb(placed: Placed[]): boolean {
   const px = smallestInContent(placed);
   return px === 0 || px >= CONTENT_MIN_AT_CANVAS;
@@ -257,6 +287,9 @@ function renderIdiom(input: RenderInput, idiom: Idiom, parsed: unknown, soft: st
   const placed = [...content, footer];
   const broken = violations(placed);
   if (broken.length > 0) throw new CompositionError(`${input.archetype}: idiome ${idiom} — ${broken[0].kind}`);
+  if (!FILL_EXEMPT.has(idiom) && verticalFill(placed) < FILL_FLOOR) {
+    throw new CompositionError(`${input.archetype}: idiome ${idiom} — remplissage ${(verticalFill(placed) * 100).toFixed(0)} %`);
+  }
   const decor = decorFor(input.archetype, input.illustration!, input.palette, placed, g.ground);
   const composition: Composition = {
     archetype: input.archetype,
@@ -315,6 +348,8 @@ export function render(input: RenderInput): RenderResult {
   let illegible = 0;
   /** La part couverte par le tracé au dernier essai refusé pour cette raison. */
   let tooSmall = 0;
+  /** Le remplissage vertical au dernier essai refusé pour cette raison. */
+  let tooEmpty = 0;
 
   /*
    * ⚠ A THIRD OF THE BODY, NOT A HALF.
@@ -436,6 +471,12 @@ export function render(input: RenderInput): RenderResult {
         }
       }
 
+      /* Sur les cartes du générateur (un dessin de la bibliothèque) ; une carte d'avant reste ce qu'elle était. */
+      if (input.illustration && verticalFill(placed) < FILL_FLOOR) {
+        tooEmpty = verticalFill(placed);
+        continue;
+      }
+
       if (figureScale < 1) resolution.push(`illustration shrunk to ${figureScale}`);
 
       /*
@@ -482,6 +523,12 @@ export function render(input: RenderInput): RenderResult {
     throw new CompositionError(
       `${input.archetype}: the drawing covers ${(tooSmall * 100).toFixed(1)}% of the content band, ` +
         `under the ${(MIN_FIGURE_EXTENT * 100).toFixed(0)}% floor — fall back to a form whose object fills its place`
+    );
+  }
+
+  if (tooEmpty > 0) {
+    throw new CompositionError(
+      `${input.archetype}: content covers ${(tooEmpty * 100).toFixed(0)}% of the usable height, under ${(FILL_FLOOR * 100).toFixed(0)}% — a third of the card would stay empty`
     );
   }
 

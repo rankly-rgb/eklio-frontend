@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { placeByDrawing } from "@/lib/content/month/select";
 import { illustrateMonth } from "@/lib/visual-library/illustrate";
+import { planGrounds } from "@/lib/content/month/grounds-plan";
+import { groundFor } from "@/lib/compose/grounds";
 import { composeCard } from "@/lib/content/month/compose-card";
 import { assembleMonth, shortfallDetail, type AssemblePorts, type InsertRefusal } from "@/lib/content/month/assemble";
 import { asMonthPost } from "@/lib/content/month/select";
@@ -78,10 +80,14 @@ const DRAWN = (() => {
   return signals.map((s) => at.get(s) ?? "ground-anchor");
 })();
 
+const GROUNDS_PLANNED = planGrounds(J.posts.map((p) => p.archetype));
+
 const prepared = () =>
   J.posts.map((p, i) => {
     const card = composeCard({
       illustration: DRAWN[i] ?? "ground-anchor",
+      /* Le plan du mois, comme l'orchestrateur le pose (2026-11-02) : les fonds, et donc les idiomes. */
+      ground: groundFor(J.kit.direction, GROUNDS_PLANNED[i]),
       archetype: p.archetype,
       payload: p.payload,
       palette: cardPalette(`2026-11-01-${i}`, J.kit.direction, false),
@@ -187,21 +193,22 @@ describe("novembre 2026, rejoué : la base garde 24 posts, le mois est REFUSÉ (
     expect(out.written).toBe(0);
     expect(out.inserted).toEqual([]);
     expect(out.shortfall?.check).toBe("count.written");
-    expect(out.shortfall?.detail).toContain("19 posts écrits sur 30 attendus");
+    /* 19 jusqu'au 2026-11-02 ; 17 depuis que le rejeu pose le plan des fonds (les idiomes changent la sélection). */
+    expect(out.shortfall?.detail).toContain("17 posts écrits sur 30 attendus");
     expect(out.shortfall?.detail).toContain(
-      "25 écritures refusées par la base (erreur technique — « null value in column \"archetype\" of relation \"content_items\" violates not-null constraint » ×25)"
+      "26 écritures refusées par la base (erreur technique — « null value in column \"archetype\" of relation \"content_items\" violates not-null constraint » ×26)"
     );
     /* ⚠ Et jamais confondus avec un refus de contenu. */
     expect(out.shortfall?.detail).toContain("aucune refusée pour son contenu");
-    expect(out.inserts).toMatchObject({ technical: 25, content: 0 });
+    expect(out.inserts).toMatchObject({ technical: 26, content: 0 });
 
     /* L'entonnoir dit où les posts se sont perdus. */
     expect(out.funnel).toMatchObject({ arrived: 57, passedAlone: 54, selected: 30, written: 0 });
 
-    /* Les 19 écrits sont retirés, leurs 19 réservations libérées — aucune réglée. */
-    expect(removed).toHaveLength(19);
+    /* Les 17 écrits sont retirés, leurs 17 réservations libérées — aucune réglée. */
+    expect(removed).toHaveLength(17);
     for (const id of removed) expect(published.has(id)).toBe(true);
-    expect(settled).toHaveLength(19);
+    expect(settled).toHaveLength(17);
     expect(settled.every(([, ok]) => ok === false)).toBe(true);
   });
 

@@ -9,6 +9,7 @@ import { contrastRatio } from "@/lib/brand/color";
 /* La seule mesure de contraste du produit (F99, 2026-11-02) : lib/brand/color.ts. */
 const contrast = contrastRatio;
 import { libraryVector, placeVector } from "@/lib/compose/library";
+import { floorFor, textClass } from "@/lib/compose/text-class";
 import { round2 } from "@/lib/compose/measure";
 import type { Box, Palette, Placed, Stroke } from "@/lib/compose/types";
 import { GRAIN, type Ground } from "@/lib/compose/grounds";
@@ -213,13 +214,14 @@ export function solveLocal(bands: Bands, from: number, to: number, paper: string
 }
 
 /** Les lignes de texte posées à même le fond — celles d'un aplat sont sur son aplat opaque. */
-function textOnGround(placed: Placed[]): Array<{ box: Box; fill: string }> {
+function textOnGround(placed: Placed[]): Array<{ box: Box; fill: string; floor: number }> {
   const fields = placed.filter((p) => p.role === "field").map((p) => p.box);
   const inside = (b: Box) => fields.some((f) => b.x >= f.x - 0.5 && b.y >= f.y - 0.5 && b.x + b.w <= f.x + f.w + 0.5 && b.y + b.h <= f.y + f.h + 0.5);
-  const out: Array<{ box: Box; fill: string }> = [];
+  const out: Array<{ box: Box; fill: string; floor: number }> = [];
   for (const p of placed) {
     if (p.role !== "text") continue;
-    for (const l of p.lines) if (!inside(l.box)) out.push({ box: l.box, fill: l.fill });
+    /* Le plancher de la CLASSE de la ligne, mesurée sur la taille posée (`text-class.ts`). */
+    for (const l of p.lines) if (!inside(l.box)) out.push({ box: l.box, fill: l.fill, floor: floorFor(textClass(l.size, l.weight, p.band)) });
   }
   return out;
 }
@@ -249,7 +251,7 @@ export function localVeil(
        * la signature et le surtitre, en teinte secondaire, ne tiennent que 4,5:1
        * même sur papier (2026-11-02). Jamais sous le plancher.
        */
-      const target = Math.max(PHOTO_TEXT_CONTRAST, Math.min(PHOTO_TEXT_COMFORT, contrast(line.fill, palette.paper) - 0.02));
+      const target = Math.max(line.floor, Math.min(PHOTO_TEXT_COMFORT, contrast(line.fill, palette.paper) - 0.02));
       const alpha = solveLocal(bands, b, b, palette.paper, line.fill, target);
       if (alpha === null) return null;
       need[b] = Math.max(need[b], alpha);
