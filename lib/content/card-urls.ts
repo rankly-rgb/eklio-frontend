@@ -33,11 +33,13 @@ export async function storedCardUrls(
    * recomposerait tout à la demande.
    */
   const drawings = new Map<string, string | null>();
+  const grounds = new Map<string, string | null>();
   if (items.length > 0) {
-    const read = await supabase.from("content_items").select("id, illustration_key").in("id", items.map((i) => i.id));
+    const read = await supabase.from("content_items").select("id, illustration_key, card_ground").in("id", items.map((i) => i.id));
     if (read.error) console.error("[content] storedCardUrls: illustration_key", { message: read.error.message });
-    for (const row of (read.data ?? []) as Array<{ id: string; illustration_key: string | null }>) {
+    for (const row of (read.data ?? []) as Array<{ id: string; illustration_key: string | null; card_ground: string | null }>) {
       drawings.set(row.id, row.illustration_key);
+      grounds.set(row.id, row.card_ground);
     }
   }
 
@@ -45,7 +47,7 @@ export async function storedCardUrls(
   for (const item of items) {
     const target = storedCardFor(
       kitId,
-      { ...item, illustration_key: drawings.get(item.id) ?? null },
+      { ...item, illustration_key: drawings.get(item.id) ?? null, card_ground: grounds.get(item.id) ?? null },
       null,
       direction,
       practiceName,

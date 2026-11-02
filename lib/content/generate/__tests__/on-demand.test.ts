@@ -288,6 +288,7 @@ describe("⚠ UN CARROUSEL HORS BUDGET : L'ORDRE DE RÉSOLUTION DU MOTEUR", () =
     const refused = carouselSlides({
       archetypeKey: "carousel",
       illustration: null,
+      ground: null,
       payload: { cards: [card(SHORT), card(SHORT), card(LONG)] },
       palette,
       eyebrow: "EYEBROW",
@@ -323,6 +324,7 @@ describe("un carrousel qui tient se rend carte par carte", () => {
   const slides = carouselSlides({
     archetypeKey: "carousel",
     illustration: null,
+      ground: null,
     payload: {
       cards: [
         card("Rest is not a reward you earn after everything else"),
@@ -362,6 +364,7 @@ describe("un carrousel qui tient se rend carte par carte", () => {
       carouselSlides({
         archetypeKey: "single_statement",
         illustration: null,
+      ground: null,
         payload: { statement: "Rest is not a reward you earn" },
         palette,
         eyebrow: "E",

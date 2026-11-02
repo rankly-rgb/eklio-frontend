@@ -11,6 +11,7 @@ const contrast = contrastRatio;
 import { libraryVector, placeVector } from "@/lib/compose/library";
 import { round2 } from "@/lib/compose/measure";
 import type { Box, Palette, Placed, Stroke } from "@/lib/compose/types";
+import type { Ground } from "@/lib/compose/grounds";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -99,7 +100,8 @@ const TEXT_PAD = 12;
 /** La descente du voile vers sa base, au-delà de la marge. */
 const FEATHER = 60;
 /** Une texture ne se devine qu'à peine. */
-export const TEXTURE_OPACITY = 0.06;
+/** Le grain : 4,5 %, en multiplication (spec visuelle du 2026-11-02 — il était à 6 %). */
+export const TEXTURE_OPACITY = 0.045;
 
 /**
  * Une carte sur deux prend un fond photo — TOUTES mises en page (F102, 2026-11-02).
@@ -182,7 +184,8 @@ function worstInBand(bands: Bands, b: number, paper: string, ink: string, alpha:
    * un niveau. Mesuré sur le rendu : des lignes à 4,47:1 là où le calcul disait
    * 4,5. Le plancher est donc vérifié deux pas de 8 bits plus bas.
    */
-  const rendered = Math.max(0, alpha - 2 / 255);
+  /* Un voile opaque se rend exactement : c'est le papier. */
+  const rendered = alpha >= 1 ? 1 : Math.max(0, alpha - 2 / 255);
   const lo = blend(hex(bands.min[b]), paper, rendered);
   const hi = blend(hex(bands.max[b]), paper, rendered);
   return Math.min(contrast(ink, lo), contrast(ink, hi));
@@ -241,7 +244,13 @@ export function localVeil(
     const from = bandOf(line.box.y - TEXT_PAD);
     const to = bandOf(line.box.y + line.box.h + TEXT_PAD);
     for (let b = Math.max(0, from); b <= Math.min(n - 1, to); b += 1) {
-      const alpha = solveLocal(bands, b, b, palette.paper, line.fill, PHOTO_TEXT_COMFORT);
+      /*
+       * La cible de confort, plafonnée par ce que la ligne tient sur papier plein —
+       * la signature et le surtitre, en teinte secondaire, ne tiennent que 4,5:1
+       * même sur papier (2026-11-02). Jamais sous le plancher.
+       */
+      const target = Math.max(PHOTO_TEXT_CONTRAST, Math.min(PHOTO_TEXT_COMFORT, contrast(line.fill, palette.paper) - 0.02));
+      const alpha = solveLocal(bands, b, b, palette.paper, line.fill, target);
       if (alpha === null) return null;
       need[b] = Math.max(need[b], alpha);
     }
@@ -347,9 +356,34 @@ export function accentDrawing(illustration: string) {
  * le dessin tient sur sa teinte et qu'aucun texte ne la recouvre. Une couche qui
  * ne tient pas n'est pas posée — on ne baisse rien pour la faire passer.
  */
-export function decorFor(archetype: string, illustration: string, palette: Palette, placed: Placed[]): Decor {
+export function decorFor(archetype: string, illustration: string, palette: Palette, placed: Placed[], ground?: Ground): Decor {
   const decor: Decor = {};
   const r = rank(illustration);
+
+  /*
+   * ⚠ AVEC UN FOND DU MOIS (2026-11-02), C'EST LUI QUI DÉCIDE : photo si et
+   * seulement si le plan l'a mise là ; le grain (4,5 %) sur la crème et les
+   * teintes pleines, pas sur le fond profond ; la forme sous le dessin sur la
+   * crème seulement (sur une teinte pleine elle se confondrait). Sans fond
+   * (une carte d'avant), la règle de rang de F102 tient.
+   */
+  if (ground) {
+    if (ground === "photo") {
+      const id = PHOTOS[r % PHOTOS.length];
+      const veil = localVeil(id, palette, placed);
+      if (veil) decor.photo = { id, href: dataUri(fileOf(id)), veil: palette.paper, ...veil };
+      return decor;
+    }
+    if (ground !== "deep") {
+      const id = TEXTURES[r % TEXTURES.length];
+      decor.texture = { id, href: dataUri(fileOf(id)), opacity: TEXTURE_OPACITY };
+    }
+    if (ground === "cream") {
+      const shape = shapeBehindDrawing(placed, palette, BACKDROP_SHAPES[r % BACKDROP_SHAPES.length]);
+      if (shape) decor.shape = shape;
+    }
+    return decor;
+  }
 
   if (wantsPhoto(archetype, illustration)) {
     const id = PHOTOS[r % PHOTOS.length];

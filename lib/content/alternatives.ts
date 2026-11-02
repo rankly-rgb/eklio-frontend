@@ -38,6 +38,8 @@ export type AlternativesInput = {
   archetypeKey: string;
   /** Le dessin du post : il suit le post d'une mise en page à l'autre. */
   illustration?: string | null;
+  /** La famille de fond du plan du mois, résolue (`ReviewCard.ground`). */
+  ground?: import("@/lib/compose/grounds").GroundPalette | null;
   payload: unknown;
   palette: Palette;
   eyebrow: string;
@@ -72,6 +74,7 @@ export function layoutAlternatives(input: AlternativesInput): LayoutAlternative[
     try {
       const result = render({
         illustration: input.illustration ?? null,
+        ground: input.ground ?? null,
         archetype: key,
         payload: input.payload,
         palette: input.palette,

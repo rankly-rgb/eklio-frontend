@@ -489,9 +489,32 @@ export function checkInventedIdentity(
 export { colourDistance };
 
 /** Les remplissages écrits dans un SVG, dédoublonnés, sans `none`. */
+const fillsSeen = new Map<string, string[]>();
+
+/** Mémorisé par SVG (voir `structureOf`) : le sélecteur relit les mêmes cartes à chaque tour. */
 export function fillsIn(svg: string): string[] {
+  const hit = fillsSeen.get(svg);
+  if (hit) return hit;
+  const out = readFills(svg);
+  if (fillsSeen.size > 400) fillsSeen.clear();
+  fillsSeen.set(svg, out);
+  return out;
+}
+
+function readFills(svg: string): string[] {
+  /*
+   * ⚠ LES APLATS, PAS LES ENCRES NI LE FOND (2026-11-02). Le texte avait une seule
+   * couleur, l'encre, déjà exclue ; la signature et le surtitre ont maintenant
+   * leur teinte secondaire (résolue à 4,5:1, contrôlée comme contraste), et le
+   * fond de la carte est celui du mois (crème, teinte pleine, profond). Ni l'un
+   * ni l'autre n'est un aplat : les compter ici ferait refuser une carte parce que
+   * son texte ressemble à un aplat. Les aplats lus restent tous les autres `fill`.
+   */
+  const body = svg
+    .replace(/<text\b[^>]*>[\s\S]*?<\/text>/g, "")
+    .replace(/^(<svg[^>]*>)<rect width="\d+" height="\d+" fill="#[0-9a-fA-F]{6}"\/>/, "$1");
   const out = new Set<string>();
-  for (const m of svg.matchAll(/fill="(#[0-9a-fA-F]{6})"/g)) out.add(m[1].toUpperCase());
+  for (const m of body.matchAll(/fill="(#[0-9a-fA-F]{6})"/g)) out.add(m[1].toUpperCase());
   return [...out];
 }
 

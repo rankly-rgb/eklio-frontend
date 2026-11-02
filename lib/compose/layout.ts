@@ -1,5 +1,5 @@
 import { CLEARANCE, LINE_HEIGHT, TYPE } from "@/lib/compose/constants";
-import { blockWidth, measure, round2, wrap } from "@/lib/compose/measure";
+import { blockWidth, emsOf, measure, round2, widthOfEms, wrap } from "@/lib/compose/measure";
 import { inkOnTintFor, tintFor } from "@/lib/compose/palette";
 import type { Band, Box, FontRole, Line, Palette, Placed, Stroke } from "@/lib/compose/types";
 
@@ -312,4 +312,93 @@ export function rows(box: Box, n: number): Box[] {
     const y = round2(box.y + i * (h + gapBetween));
     return { x: box.x, y, w: box.w, h: i === n - 1 ? round2(bottom - y) : h };
   });
+}
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  UN TITRE ÉQUILIBRÉ, SANS MOT SEUL EN FIN — ET UN NOMBRE DE LIGNES BORNÉ
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Spécification visuelle du 2026-11-02 : « pas de mot seul en fin de ligne »,
+ * « un nombre maximal de lignes par idiome, réduction si le texte déborde, refus
+ * sous le plancher ». La spec l'obtient en CSS par `text-wrap: balance` ; le
+ * moteur compose en SVG, donc c'est un CALCUL DE COUPURE : à nombre de lignes
+ * égal à celui du découpage glouton, la coupure qui minimise la ligne la plus
+ * longue (programmation dynamique sur les mots). Une coupure dont la dernière
+ * ligne porte un mot seul est refusée ; la taille descend ; sous le plancher, le
+ * titre est refusé — jamais posé avec une veuve.
+ */
+export function balancedLines(words: string[], family: FontRole, size: number, maxW: number, count: number): string[] | null {
+  const n = words.length;
+  if (count < 1 || count > n) return null;
+  /*
+   * Les largeurs par sommes cumulées : la somme des avances d'un segment est
+   * celle de ses mots plus ses espaces — exactement ce que `measure` calcule,
+   * sans reparcourir les caractères à chaque segment.
+   */
+  const prefix = [0];
+  for (const w of words) prefix.push(prefix[prefix.length - 1] + emsOf(w, family));
+  const space = emsOf(" ", family);
+  const width = (i: number, j: number) => widthOfEms(prefix[j] - prefix[i] + space * (j - i - 1), size);
+  // best[k][i] : la plus petite « plus longue ligne » pour poser words[i..] sur k lignes.
+  const best: number[][] = Array.from({ length: count + 1 }, () => new Array(n + 1).fill(Infinity));
+  const cut: number[][] = Array.from({ length: count + 1 }, () => new Array(n + 1).fill(-1));
+  best[0][n] = 0;
+  for (let k = 1; k <= count; k += 1) {
+    for (let i = n - 1; i >= 0; i -= 1) {
+      for (let j = i + 1; j <= n - (k - 1); j += 1) {
+        const w = width(i, j);
+        if (w > maxW) break;
+        // ⚠ La DERNIÈRE ligne (k === 1) porte au moins deux mots dès que le titre en a deux.
+        if (k === 1 && j !== n) continue;
+        if (k === 1 && n >= 2 && j - i < 2) continue;
+        const rest = best[k - 1][j];
+        if (rest === Infinity) continue;
+        const worst = Math.max(w, rest);
+        if (worst < best[k][i]) {
+          best[k][i] = worst;
+          cut[k][i] = j;
+        }
+      }
+    }
+  }
+  if (best[count][0] === Infinity) return null;
+  const lines: string[] = [];
+  let i = 0;
+  for (let k = count; k >= 1; k -= 1) {
+    const j = cut[k][i];
+    lines.push(words.slice(i, j).join(" "));
+    i = j;
+  }
+  return lines;
+}
+
+/** Vrai si un bloc de plusieurs lignes se termine par un mot seul. */
+export function endsWithLoneWord(lines: string[]): boolean {
+  if (lines.length < 2) return false;
+  return lines[lines.length - 1].trim().split(/\s+/).length < 2;
+}
+
+export function fitTitle(
+  text: string,
+  family: FontRole,
+  maxW: number,
+  maxH: number,
+  range: { min: number; max: number; floor?: number },
+  maxLines = Infinity,
+  lineHeight = LINE_HEIGHT
+): TextFit | null {
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
+  const floor = range.floor ?? range.min;
+  for (let size = range.max; size >= floor; size -= 1) {
+    const greedy = wrap(text, family, size, maxW);
+    for (let count = greedy.length; count <= Math.min(maxLines, words.length); count += 1) {
+      const lines = balancedLines(words, family, size, maxW, count);
+      if (!lines || endsWithLoneWord(lines)) continue;
+      const height = round2(lines.length * size * lineHeight);
+      if (height > maxH) break;
+      return { lines, size, height, width: round2(blockWidth(lines, family, size)) };
+    }
+  }
+  return null;
 }

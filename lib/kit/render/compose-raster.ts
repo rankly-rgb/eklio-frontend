@@ -43,11 +43,12 @@ import { getCachedFontBuffer } from "@/lib/kit/render/font-cache";
  */
 
 /** The three families the composition engine sets, and nothing else. */
-export const COMPOSE_FAMILIES = ["Fraunces", "Karla", "IBM Plex Mono"] as const;
+export const COMPOSE_FAMILIES = ["Fraunces", "Karla", "IBM Plex Mono", "Cormorant Garamond", "Parisienne"] as const;
 
 const GOOGLE_FONTS_URL =
   "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600" +
-  "&family=Karla:wght@400..600&family=IBM+Plex+Mono:wght@400;500&display=swap";
+  "&family=Karla:wght@400..600&family=IBM+Plex+Mono:wght@400;500" +
+  "&family=Cormorant+Garamond:wght@500&family=Parisienne&display=swap";
 
 let cachedPaths: string[] | null = null;
 

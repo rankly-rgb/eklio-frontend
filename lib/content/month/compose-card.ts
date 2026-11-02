@@ -61,6 +61,8 @@ export type ComposeCardInput = {
    * dessin est refusé avant d'arriver à cette fonction.
    */
   illustration: string;
+  /** La famille de fond donnée par le plan du mois, résolue (`lib/compose/grounds.ts`). */
+  ground?: RenderInput["ground"];
   archetype: string;
   payload: unknown;
   palette: RenderInput["palette"];
@@ -107,6 +109,7 @@ export function composeCard(input: ComposeCardInput): ComposedCard {
   const composed = composeWithFallback(
     {
       illustration: input.illustration,
+      ground: input.ground ?? null,
       archetype: input.archetype,
       payload: input.payload,
       palette: input.palette,

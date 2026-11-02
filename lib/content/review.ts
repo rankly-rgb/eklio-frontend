@@ -1,3 +1,4 @@
+import { groundFor, isGround, type GroundPalette } from "@/lib/compose/grounds";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cardPalette, type DirectionPalette } from "@/lib/compose/palette";
 import type { Palette } from "@/lib/compose/types";
@@ -26,6 +27,12 @@ export type ReviewCard = {
    * gardée portent LE MÊME dessin.
    */
   illustration: string | null;
+  /**
+   * La famille de fond que le plan du mois a donnée à ce post
+   * (`content_items.card_ground`), résolue pour la direction de marque, ou `null`
+   * (un post d'avant les fonds).
+   */
+  ground: GroundPalette | null;
   payload: unknown;
   palette: Palette;
   eyebrow: string;
@@ -195,19 +202,22 @@ export async function reviewCardFor(
    * est écrit à la génération, la cliente ne le choisit pas) : une lecture de la
    * colonne, que la RLS de `content_items` autorise déjà pour ses posts.
    */
-  const drawing = await supabase.from("content_items").select("illustration_key").eq("id", item.id).maybeSingle();
+  const drawing = await supabase.from("content_items").select("illustration_key, card_ground").eq("id", item.id).maybeSingle();
   if (drawing.error) {
     console.error("[content] reviewCardFor: illustration_key", { message: drawing.error.message });
   }
-  const illustrationKey = (drawing.data as { illustration_key?: string | null } | null)?.illustration_key ?? null;
+  const read = drawing.data as { illustration_key?: string | null; card_ground?: string | null } | null;
+  const illustrationKey = read?.illustration_key ?? null;
 
-  return reviewCardFrom({ ...item, illustration_key: illustrationKey }, topicRow, direction, practiceName, licence);
+  return reviewCardFrom({ ...item, illustration_key: illustrationKey, card_ground: read?.card_ground ?? null }, topicRow, direction, practiceName, licence);
 }
 
 /** Ce que `reviewCardFrom` lit d'un post. La route, l'écran et la génération le fournissent. */
 export type CardItem = Pick<ContentItem, "id" | "theme" | "title" | "payload" | "compose_archetype" | "topic"> & {
   /** `content_items.illustration_key` — absent de `content_item_json`, lu à part. */
   illustration_key?: string | null;
+  /** `content_items.card_ground` — la famille de fond du plan du mois, lue à part. */
+  card_ground?: string | null;
 };
 
 /**
@@ -244,6 +254,7 @@ export function reviewCardFrom(
   return {
     archetypeKey,
     illustration: item.illustration_key ?? null,
+    ground: isGround(item.card_ground) ? groundFor(direction, item.card_ground) : null,
     payload,
     /*
      * ⚠ CLAIRE, TOUJOURS, SUR CET ÉCRAN. Le choix clair/sombre appartient au

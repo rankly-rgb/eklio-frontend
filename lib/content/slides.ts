@@ -72,6 +72,7 @@ export function carouselSlides(card: ReviewCard | null): SlidesResult {
   try {
     const rendered = renderCarousel({
       illustration: card.illustration,
+      ground: card.ground,
       archetype: card.archetypeKey,
       payload: card.payload,
       palette: card.palette,

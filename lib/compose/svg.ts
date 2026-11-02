@@ -25,6 +25,8 @@ const FAMILY_STACK = {
   display: "Fraunces",
   sans: "Karla",
   mono: "IBM Plex Mono",
+  serif: "Cormorant Garamond",
+  script: "Parisienne",
 } as const;
 
 function esc(s: string): string {
@@ -183,7 +185,7 @@ function decorLayers(composition: Composition): string {
         .join("");
   }
   if (d.texture) {
-    out += `<image data-texture="${esc(d.texture.id)}" href="${d.texture.href}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" opacity="${round2(d.texture.opacity)}"/>`;
+    out += `<image data-texture="${esc(d.texture.id)}" href="${d.texture.href}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" opacity="${d.texture.opacity}" style="mix-blend-mode:multiply"/>`;
   }
   if (d.shape) {
     out += `<path data-shape="${esc(d.shape.id)}" d="${d.shape.d}" fill="${d.shape.fill}" fill-rule="evenodd" data-box="${boxAttr(d.shape.box)}"/>`;
@@ -198,7 +200,10 @@ export function toSvg(composition: Composition, paper: string): string {
     `width="${CANVAS.width}" height="${CANVAS.height}" ` +
     `viewBox="0 0 ${CANVAS.width} ${CANVAS.height}" ` +
     `data-archetype="${esc(composition.archetype)}" ` +
-    `data-palette="${esc(composition.paletteKey)}">` +
+    `data-palette="${esc(composition.paletteKey)}"` +
+    (composition.idiom ? ` data-idiom="${esc(composition.idiom)}"` : "") +
+    (composition.ground ? ` data-ground="${esc(composition.ground)}"` : "") +
+    `>` +
     `<rect width="${CANVAS.width}" height="${CANVAS.height}" fill="${paper}"/>` +
     decorLayers(composition) +
     body +

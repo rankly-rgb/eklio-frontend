@@ -62,6 +62,17 @@ export const CLEARANCE = {
  * read on a phone has failed at the only thing it was for, and it fails
  * silently, which is worse than refusing to compose it.
  */
+/**
+ * À partir de cette taille, le titre se compose en Cormorant Garamond ; en
+ * dessous, en Fraunces (spec visuelle du 2026-11-02 : Cormorant « devient trop
+ * maigre » sous ~80px ; comparer les idiomes 9 et 14). 80 : le seuil du prompt.
+ * La spec pose une fois Cormorant à 74px (l'arche) — idiome non codé ici.
+ */
+export const SERIF_FROM = 80;
+
+/** Au plus quatre lignes de titre, sur toutes les cartes. */
+export const TITLE_MAX_LINES = 4;
+
 export const TYPE = {
   display: { min: 64, max: 110 },
   /*
@@ -200,8 +211,10 @@ export const LINE_HEIGHT = 1.18;
  * dessins agrandis sur les phrases seules et dans `concentric_control`.
  * compose/4 (2026-11-02) : une seule colorimétrie (F99) ; fond photo sur une carte
  * sur deux, toutes mises en page (F102).
+ * compose/5 (2026-11-02) : spécification visuelle — Cormorant au-dessus de 80px,
+ * titres équilibrés sans veuve, signature centrée, cinq familles de fond, idiomes.
  */
-export const ENGINE_VERSION = "compose/4";
+export const ENGINE_VERSION = "compose/5";
 
 /*
  * ── LA VIGNETTE, QUI EST L'ENDROIT OÙ LA CARTE EST VRAIMENT LUE ─────────

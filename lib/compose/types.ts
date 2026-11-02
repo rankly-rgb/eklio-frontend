@@ -17,7 +17,12 @@ export type Line = {
   anchor: "start" | "middle";
 };
 
-export type FontRole = "display" | "sans" | "mono";
+/**
+ * `display` : Fraunces (titres sous `SERIF_FROM`) ; `serif` : Cormorant Garamond 500
+ * (titres à partir de `SERIF_FROM`, spec visuelle du 2026-11-02) ; `script` :
+ * Parisienne, pour la citation sur fond profond — jamais sur une courbe.
+ */
+export type FontRole = "display" | "sans" | "mono" | "serif" | "script";
 
 /**
  * A placed element. `role` is what the collision test reads: a `text` box may
@@ -93,6 +98,14 @@ export type RenderInput = {
    * générateur, lui, ne compose jamais sans dessin apparié : il refuse le post.
    */
   illustration?: string | null;
+  /**
+   * La famille de fond décidée À L'ÉCHELLE DU MOIS (`lib/content/month/grounds-plan.ts`),
+   * résolue pour la direction de marque (`lib/compose/grounds.ts`). Absente : la
+   * carte d'avant les fonds (crème implicite, fond photo par rang du dessin).
+   */
+  ground?: import("@/lib/compose/grounds").GroundPalette | null;
+  /** Le rang de la diapositive dans un carrousel (0 = couverture). */
+  slide?: number;
 };
 
 export type Composition = {
@@ -103,6 +116,10 @@ export type Composition = {
   overflowedToCarousel: boolean;
   /** What the resolver did, in order, so a caller can say why a card looks how it does. */
   resolution: string[];
+  /** L'idiome de la spécification visuelle, quand la carte en est un (`lib/compose/idioms.ts`). */
+  idiom?: string;
+  /** La famille de fond du plan du mois, quand la carte en a une. */
+  ground?: string;
   /** Fond photo voilé, texture, forme — posés sous tout le reste (`lib/compose/decor.ts`). */
   decor?: import("@/lib/compose/decor").Decor;
 };

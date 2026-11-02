@@ -2,6 +2,8 @@ import { preflight, type PreflightPort, type PreflightInput } from "@/lib/conten
 import { drawMonth, type DrawPorts, type DrawnTopic } from "@/lib/content/month/draw";
 import { composeCard, ComposeRefused } from "@/lib/content/month/compose-card";
 import { placeByDrawing, type Redraw } from "@/lib/content/month/select";
+import { planGrounds } from "@/lib/content/month/grounds-plan";
+import { groundFor, type Ground } from "@/lib/compose/grounds";
 import { assembleMonth, type AssemblePorts, type AssembleOutcome, type Assemblable } from "@/lib/content/month/assemble";
 import {
   abandonRun,
@@ -338,6 +340,8 @@ export type PreparedPost = Assemblable & {
   topicId: string;
   /** Le dessin de la bibliothèque que la carte porte. */
   illustration: string;
+  /** La famille de fond que le plan du mois lui a donnée (`grounds-plan.ts`). */
+  ground?: Ground;
   caption: string;
   altText: string;
 };
@@ -718,7 +722,9 @@ export async function orchestrateMonth(
       return [t.id, { title: t.title, hook: t.hook ?? null, cardLine: post.cardLine, payload: post.payload, caption: post.caption }];
     })
   );
-  const recomposeOf = new Map<string, (illustration: string) => ReturnType<typeof composeCard>>();
+  const recomposeOf = new Map<string, (illustration: string, ground?: Ground) => ReturnType<typeof composeCard>>();
+  /** L'archétype demandé de chaque post : c'est lui qui dit quels fonds il peut porter. */
+  const askedOf = new Map<string, string>();
 
   let index = 0;
   for (const topic of topics) {
@@ -731,9 +737,11 @@ export async function orchestrateMonth(
       continue;
     }
     const palette = input.paletteFor(index);
-    const make = (drawing: string) =>
+    askedOf.set(topic.id, topic.archetype_key);
+    const make = (drawing: string, ground: Ground = "cream") =>
       composeCard({
         illustration: drawing,
+        ground: groundFor(input.direction, ground),
         archetype: topic.archetype_key,
         payload: post.payload,
         palette,
@@ -756,6 +764,7 @@ export async function orchestrateMonth(
       prepared.push({
         topicId: topic.id,
         illustration,
+        ground: "cream",
         cardLine: post.cardLine,
         /*
          * ⚠ LA MISE EN PAGE VIENT DE L'APPELANT, pas de l'archétype composé. Elle
@@ -864,18 +873,25 @@ export async function orchestrateMonth(
    */
   const redraw: Redraw<PreparedPost> = {
     assign: (chosen) => ports.illustrate(chosen.map((p) => signalsOf.get(p.topicId)!)),
-    apply: (chosen, ids) =>
-      chosen.map((p, i) => {
+    /*
+     * ⚠ LE FOND AUSSI SE DÉCIDE SUR L'ORDRE RETENU (2026-11-02) : le rythme
+     * clair / sombre se lit sur la grille, donc sur la suite des trente.
+     */
+    apply: (chosen, ids) => {
+      const grounds = planGrounds(chosen.map((p) => askedOf.get(p.topicId) ?? p.composeArchetype));
+      return chosen.map((p, i) => {
         const drawing = ids[i] ?? null;
         if (!drawing) return null;
-        if (drawing === p.illustration) return p;
+        const ground = grounds[i];
+        if (drawing === p.illustration && ground === p.ground) return p;
         try {
-          const card = recomposeOf.get(p.topicId)!(drawing);
-          return { ...p, illustration: drawing, composeArchetype: card.archetype, payload: card.payload, svg: card.svg };
+          const card = recomposeOf.get(p.topicId)!(drawing, ground);
+          return { ...p, illustration: drawing, ground, composeArchetype: card.archetype, payload: card.payload, svg: card.svg };
         } catch {
           return null;
         }
-      }),
+      });
+    },
   };
 
   const month = await assembleMonth(assemblePorts, {

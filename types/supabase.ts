@@ -824,6 +824,7 @@ export type Database = {
           licence_state_code: string | null
           image_slot: string | null
           illustration_key: string | null
+          card_ground: string | null
           month_id: string | null
           on_image_text: string | null
           payload: Json | null
@@ -849,6 +850,7 @@ export type Database = {
           licence_state_code?: string | null
           image_slot?: string | null
           illustration_key?: string | null
+          card_ground?: string | null
           month_id?: string | null
           on_image_text?: string | null
           payload?: Json | null
@@ -874,6 +876,7 @@ export type Database = {
           licence_state_code?: string | null
           image_slot?: string | null
           illustration_key?: string | null
+          card_ground?: string | null
           month_id?: string | null
           on_image_text?: string | null
           payload?: Json | null

@@ -253,6 +253,7 @@ export default async function ContentItemPage({ params }: PageProps<"/app/conten
   const layouts: LayoutChoice[] = card
     ? layoutAlternatives({
         illustration: card.illustration,
+        ground: card.ground,
         archetypeKey: card.archetypeKey,
         payload: card.payload,
         palette: card.palette,

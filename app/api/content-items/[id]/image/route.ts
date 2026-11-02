@@ -143,6 +143,7 @@ export async function GET(
     try {
       svg = render({
         illustration: card.illustration,
+        ground: card.ground,
         archetype: card.archetypeKey,
         payload: card.payload,
         palette: card.palette,

@@ -38,6 +38,8 @@ export type Assemblable = {
   cardLine: string;
   /** Le dessin de la bibliothèque que la carte porte, choisi par le sens. */
   illustration?: string | null;
+  /** La famille de fond du plan du mois (`grounds-plan.ts`). */
+  ground?: string | null;
   /** La famille de mise en page, `content_items.archetype`, NOT NULL en base. */
   layout: string;
   composeArchetype: string;
@@ -84,6 +86,8 @@ export type ContentItemRow = {
   licenceStateCode: string;
   /** Le dessin de la carte (`content_items.illustration_key`), ou null. */
   illustrationKey: string | null;
+  /** `content_items.card_ground` : la famille de fond du plan du mois. */
+  groundKey?: string | null;
 };
 
 /** Ce que la base répond à une écriture refusée : son code SQL, et son message. */
@@ -340,6 +344,7 @@ export async function assembleMonth<T extends Assemblable>(
       scheduledFor: input.dates[index] ?? input.dates[input.dates.length - 1] ?? input.month,
       licenceStateCode: input.licenceStateCode,
       illustrationKey: post.illustration ?? null,
+      groundKey: post.ground ?? null,
     });
 
     if (error) {

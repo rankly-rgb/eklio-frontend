@@ -1,8 +1,8 @@
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { BODY, EYEBROW, FOOTER } from "@/lib/compose/constants-bands";
-import { CLEARANCE, TYPE, CANVAS, CONTENT_MIN_AT_CANVAS, FIGURE_SCALES, MIN_FIGURE_EXTENT, THUMB } from "@/lib/compose/constants";
+import { CLEARANCE, SERIF_FROM, TITLE_MAX_LINES, TYPE, CANVAS, CONTENT_MIN_AT_CANVAS, FIGURE_SCALES, MIN_FIGURE_EXTENT, THUMB } from "@/lib/compose/constants";
 import { BudgetExceededError, budgetErrors } from "@/lib/compose/budget";
-import { fitText, linesFrom, splitBody } from "@/lib/compose/layout";
+import { centreLines, fitText, fitTitle, linesFrom, splitBody } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
 import { gap } from "@/lib/compose/svg";
 import { toSvg } from "@/lib/compose/svg";
@@ -10,6 +10,8 @@ import type { Box, Composition, Palette, Placed, RenderInput } from "@/lib/compo
 import { DRAWING_FOR } from "@/lib/compose/illustrations";
 import { libraryDrawing } from "@/lib/compose/library";
 import { accentDrawing, decorFor } from "@/lib/compose/decor";
+import { composeIdiom, idiomFor, type Idiom } from "@/lib/compose/idioms";
+import { SOFT_TARGET, softest } from "@/lib/compose/grounds";
 
 
 /*
@@ -227,6 +229,48 @@ export function legibleAtThumb(placed: Placed[]): boolean {
 
 export type RenderResult = { svg: string; composition: Composition; smallestSize: number };
 
+/*
+ * ── LA SIGNATURE : UNE LIGNE, CENTRÉE, EN KARLA (spec visuelle 2026-11-02) ──
+ *
+ * Nom du cabinet, point médian, numéro de licence — le contenu légal ne change
+ * pas. Elle sort du mono (« ça faisait placeholder »). 25px (spec), jusqu'à 22
+ * si la ligne est longue ; au pied de la bande, centrée ; dans la teinte
+ * secondaire résolue à 4,5:1 sur le fond. Sur une photo, le voile local la
+ * protège comme toute ligne.
+ */
+function signature(text: string, fill: string): Placed | null {
+  const fit = fitText(text, "sans", FOOTER.w, FOOTER.h, { min: 22, max: 25, floor: 22 });
+  if (!fit || fit.lines.length > 1) return null;
+  const y = round2(FOOTER.y + FOOTER.h - fit.height);
+  const lines = centreLines(linesFrom(fit, FOOTER.x, y, FOOTER.w, "sans", 400, fill, "middle"), FOOTER);
+  return { role: "text", band: "footer", box: { x: FOOTER.x, y, w: FOOTER.w, h: fit.height }, lines };
+}
+
+function renderIdiom(input: RenderInput, idiom: Idiom, parsed: unknown, soft: string): RenderResult {
+  const g = input.ground!;
+  const statement =
+    (parsed as { statement?: string }).statement ?? input.headline;
+  const content = composeIdiom({ idiom, statement, eyebrow: input.eyebrow, illustration: input.illustration!, gp: { ...g, soft } });
+  if (!content) throw new CompositionError(`${input.archetype}: idiome ${idiom} — le texte ne tient pas au-dessus de son plancher`);
+  const footer = signature(input.footer, soft);
+  if (!footer) throw new CompositionError(`${input.archetype}: la signature ne tient pas sur une ligne`);
+  const placed = [...content, footer];
+  const broken = violations(placed);
+  if (broken.length > 0) throw new CompositionError(`${input.archetype}: idiome ${idiom} — ${broken[0].kind}`);
+  const decor = decorFor(input.archetype, input.illustration!, input.palette, placed, g.ground);
+  const composition: Composition = {
+    archetype: input.archetype,
+    paletteKey: input.palette.key,
+    placed,
+    overflowedToCarousel: false,
+    resolution: [`idiom: ${idiom}`],
+    idiom,
+    ground: g.ground,
+    decor,
+  };
+  return { svg: toSvg(composition, input.palette.paper), composition, smallestSize: smallest(placed) };
+}
+
 export function render(input: RenderInput): RenderResult {
   const archetype = ARCHETYPES[input.archetype];
   if (!archetype) throw new CompositionError(`unknown archetype: ${input.archetype}`);
@@ -237,6 +281,33 @@ export function render(input: RenderInput): RenderResult {
 
   const parsed = archetype.parse(input.payload);
   if (parsed === null) throw new CompositionError(`${input.archetype}: payload does not parse`);
+
+  /*
+   * ⚠ LE FOND DU MOIS DÉCIDE DU PAPIER ET DE L'ENCRE (2026-11-02). Les aplats
+   * restent ceux de la palette ; le papier devient le fond, l'encre celle qui y
+   * tient, et le texte secondaire la teinte résolue au plancher.
+   */
+  if (input.ground) {
+    const g = input.ground;
+    input = { ...input, palette: { ...input.palette, paper: g.ground === "photo" ? g.veil : g.background, ink: g.ink } };
+  }
+  const soft = input.ground?.soft ?? softest(input.palette.ink, input.palette.paper, input.palette.paper, SOFT_TARGET) ?? input.palette.ink;
+
+  const idiom = input.illustration && input.ground ? idiomFor(input.archetype, input.ground.ground, input.slide) : null;
+  /*
+   * ⚠ UN IDIOME QUI REFUSE LAISSE LA PLACE À LA MISE EN PAGE ORDINAIRE, SUR LE
+   * MÊME FOND. La citation au script n'accepte que trois lignes au-dessus de
+   * 110px : une phrase plus longue n'y est pas rapetissée sans fin, elle est
+   * composée comme une phrase seule sur fond profond. Rien ne passe sous un
+   * plancher ; la planche compte les idiomes réellement rendus.
+   */
+  if (idiom) {
+    try {
+      return renderIdiom(input, idiom, parsed, soft);
+    } catch (error) {
+      if (!(error instanceof CompositionError)) throw error;
+    }
+  }
 
   const display = archetype.displayText ? archetype.displayText(parsed) : input.headline;
   const resolution: string[] = [];
@@ -258,7 +329,13 @@ export function render(input: RenderInput): RenderResult {
    * A third leaves the content band about 700px, which is three cells with
    * their glosses, or five without. That is the shape of this product's cards.
    */
-  const displayFit = fitText(display, "display", BODY.w, BODY.h * 0.34, TYPE.display);
+  /*
+   * ⚠ ÉQUILIBRÉ, SANS VEUVE, AU PLUS `TITLE_MAX_LINES` LIGNES (2026-11-02). En
+   * Cormorant Garamond à partir de `SERIF_FROM`, en Fraunces en dessous.
+   */
+  const serifFit = fitTitle(display, "serif", BODY.w, BODY.h * 0.34, { min: SERIF_FROM, max: TYPE.display.max }, TITLE_MAX_LINES);
+  const displayFit = serifFit ?? fitTitle(display, "display", BODY.w, BODY.h * 0.34, { min: TYPE.display.min, max: SERIF_FROM - 1 }, TITLE_MAX_LINES);
+  const displayFamily = serifFit ? "serif" : "display";
   if (!displayFit) {
     throw new CompositionError(`${input.archetype}: the display line will not set above ${TYPE.display.min}px`);
   }
@@ -274,8 +351,8 @@ export function render(input: RenderInput): RenderResult {
    */
   const secondaryMax = Math.floor(displayFit.size / TYPE.minTitleToLabelRatio);
 
-  const eyebrow = bandText("eyebrow", EYEBROW, input.eyebrow, input.palette, secondaryMax);
-  const footer = bandText("footer", FOOTER, input.footer, input.palette, secondaryMax);
+  const eyebrow = bandText("eyebrow", EYEBROW, input.eyebrow, { ...input.palette, ink: soft }, secondaryMax);
+  const footer = signature(input.footer, soft);
   if (!eyebrow || !footer) {
     throw new CompositionError(
       `${input.archetype}: eyebrow or footer will not set between its floor and ${secondaryMax}px`
@@ -287,7 +364,7 @@ export function render(input: RenderInput): RenderResult {
     role: "text",
     band: "headline",
     box: { ...split.headline, h: displayFit.height },
-    lines: linesFrom(displayFit, BODY.x, BODY.y, BODY.w, "display", 500, input.palette.ink, "start"),
+    lines: linesFrom(displayFit, BODY.x, BODY.y, BODY.w, displayFamily, 500, input.palette.ink, "start"),
   };
 
   /*
@@ -367,7 +444,7 @@ export function render(input: RenderInput): RenderResult {
        * pose sous le dessin — il faut savoir où ils sont. Sans dessin de la
        * bibliothèque, aucune couche : la carte d'avant reste ce qu'elle était.
        */
-      const decor = input.illustration ? decorFor(input.archetype, input.illustration, input.palette, placed) : undefined;
+      const decor = input.illustration ? decorFor(input.archetype, input.illustration, input.palette, placed, input.ground?.ground) : undefined;
 
       const composition: Composition = {
         archetype: input.archetype,
@@ -376,6 +453,7 @@ export function render(input: RenderInput): RenderResult {
         overflowedToCarousel: false,
         resolution,
         ...(decor ? { decor } : {}),
+        ...(input.ground ? { ground: input.ground.ground } : {}),
       };
       return {
         svg: toSvg(composition, input.palette.paper),
@@ -448,6 +526,8 @@ export function renderCarousel(input: RenderInput): RenderResult[] {
       archetype: card.archetype_key,
       payload: card.payload,
       eyebrow: `${input.eyebrow} ${i + 1}/${parsed.cards.length}`,
+      slide: i,
+      ground: i === 0 || !input.ground || input.ground.ground !== "photo" ? input.ground : (input.ground.rest ?? null),
     })
   );
 }

@@ -43,6 +43,14 @@ const FAMILY: Record<FontRole, number> = {
   // IBM Plex Mono: every glyph is the same width, so the classes below do not
   // apply at all — handled as a special case in `advance`.
   mono: 0.6,
+  /*
+   * Cormorant Garamond 500 : plus étroite que Fraunces. Calibrée le 2026-11-02 sur
+   * l'encre rendue par resvg (fixture `estimator-calibration.json`) : rapport
+   * encre / estimation ≤ 0,82 à 1,0 ; 0,88 garde la même marge que Fraunces (~7 %).
+   */
+  serif: 0.88,
+  /* Parisienne : jusqu'à 0,95 sur des capitales — on garde 1,0. */
+  script: 1.0,
 };
 
 /** Characters far narrower than the norm. */
@@ -73,6 +81,18 @@ function classRatio(ch: string): number {
 export function advance(ch: string, family: FontRole): number {
   if (family === "mono") return FAMILY.mono;
   return classRatio(ch) * FAMILY[family];
+}
+
+/** La somme des avances de `text`, en em — ce que `measure` multiplie. */
+export function emsOf(text: string, family: FontRole): number {
+  let ems = 0;
+  for (const ch of text) ems += advance(ch, family);
+  return ems;
+}
+
+/** La largeur de `ems` em à `size` : exactement ce que `measure` rend. */
+export function widthOfEms(ems: number, size: number): number {
+  return round2(ems * size * SAFETY);
 }
 
 /** The width of `text` at `size`, in px. Deterministic and family-aware. */

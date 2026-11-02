@@ -33,13 +33,35 @@ function clusters(values: number[], tolerance = 24): number {
   return n;
 }
 
-export type Structure = { fields: string; drawing: string; ground: "photo" | "papier"; signature: string };
+export type Structure = { fields: string; drawing: string; ground: string; signature: string };
+
+/*
+ * ⚠ MÉMORISÉ PAR SVG. Le sélecteur relit les mêmes trente cartes à chaque tour ;
+ * une carte embarque ses JPEG (≈ 600 Ko, F97). Cache borné, même résultat.
+ */
+const seen = new Map<string, Structure>();
 
 export function structureOf(svg: string): Structure {
+  const hit = seen.get(svg);
+  if (hit) return hit;
+  const out = readStructure(svg);
+  if (seen.size > 400) seen.clear();
+  seen.set(svg, out);
+  return out;
+}
+
+function readStructure(svg: string): Structure {
   const fields = [...svg.matchAll(/<g data-role="field" data-band="content" data-box="([^"]+)"/g)].map((m) => parse(m[1]));
   const drawingBox = /data-library="[^"]+" [^>]*data-box="([^"]+)"/.exec(svg)?.[1];
   const drawing = drawingBox ? parse(drawingBox) : null;
-  const ground = /\sdata-photo="/.test(svg) ? "photo" : "papier";
+  /*
+   * Le fond : la famille du plan du mois quand la carte en a une (2026-11-02 —
+   * crème, photo, ocre, terracotta, profond), sinon photo / papier. Un idiome de
+   * la spec visuelle EST sa disposition : il remplace la lecture des aplats.
+   */
+  const ground = /\sdata-ground="([a-z]+)"/.exec(svg)?.[1] ?? (/\sdata-photo="/.test(svg) ? "photo" : "papier");
+  const idiom = /\sdata-idiom="([a-z_]+)"/.exec(svg)?.[1];
+  if (idiom) return { fields: idiom, drawing: "idiome", ground, signature: `${idiom} · ${ground}` };
 
   let kind: string;
   if (fields.length === 0) kind = "aucun aplat";
