@@ -110,26 +110,63 @@ export function withAlpha(hex: string, alpha: number): string {
   return `rgba(${Math.round(rgb.r)}, ${Math.round(rgb.g)}, ${Math.round(rgb.b)}, ${alpha})`;
 }
 
-/** Luminance relative WCAG. */
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LA SEULE COLORIMÉTRIE DU PRODUIT (F99, 2026-11-02)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Luminance, contraste et Lab vivent ICI et nulle part ailleurs. Le moteur de
+ * composition en portait une copie dont la luminance ne linéarisait pas le bleu
+ * (`0.0722 * (n & 255)`) : `contrast("#2B2A27", "#000000")` y valait 57,7 au lieu
+ * de 1,5, et plum_bone sombre posait une encre à 2,59:1 sous un plancher de 3:1.
+ * Le rendu des fichiers en avait une deuxième copie, juste, mais recopiée.
+ *
+ * `lib/__tests__/one-colorimetry.test.ts` lit le code source et échoue si une
+ * autre implémentation apparaît. Le jumeau SQL (`site_spec_relative_luminance`)
+ * ne peut pas importer ce module ; il porte le même seuil, 0,04045.
+ */
+
+/** Un canal sRGB (0–255) → linéaire. La fonction de transfert sRGB (seuil 0,04045). */
+export function linearChannel(channel8: number): number {
+  const c = channel8 / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+/** Luminance relative WCAG à partir de canaux déjà linéaires. */
+export function luminanceOfLinear(r: number, g: number, b: number): number {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Luminance relative WCAG d'une couleur hex. */
 export function relativeLuminance(hex: string): number {
   const rgb = hexToRgb(hex);
   if (!rgb) return 0;
-  const channel = (value: number) => {
-    const c = value / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  return (
-    0.2126 * channel(rgb.r) + 0.7152 * channel(rgb.g) + 0.0722 * channel(rgb.b)
-  );
+  return luminanceOfLinear(linearChannel(rgb.r), linearChannel(rgb.g), linearChannel(rgb.b));
+}
+
+/** Rapport de contraste WCAG entre deux luminances relatives, de 1 à 21. */
+export function contrastOfLuminances(a: number, b: number): number {
+  const lighter = Math.max(a, b);
+  const darker = Math.min(a, b);
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 /** Rapport de contraste WCAG entre deux couleurs, de 1 à 21. */
 export function contrastRatio(a: string, b: string): number {
-  const la = relativeLuminance(a);
-  const lb = relativeLuminance(b);
-  const lighter = Math.max(la, lb);
-  const darker = Math.min(la, lb);
-  return (lighter + 0.05) / (darker + 0.05);
+  return contrastOfLuminances(relativeLuminance(a), relativeLuminance(b));
+}
+
+/** CIE Lab (D65) d'une couleur hex, pour les distances perçues (ΔE76). */
+export function labOf(hex: string): [number, number, number] | null {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const [r, g, b] = [linearChannel(rgb.r), linearChannel(rgb.g), linearChannel(rgb.b)];
+  const x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+  const y = luminanceOfLinear(r, g, b);
+  const z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const [fx, fy, fz] = [f(x), f(y), f(z)];
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
 }
 
 export type AaSize = "normal" | "large";

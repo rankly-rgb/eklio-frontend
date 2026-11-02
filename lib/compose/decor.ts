@@ -6,13 +6,7 @@ import photoBandsJson from "@/lib/visual-library/photo-bands.generated.json";
 import { colourDistance, tintFor, TINT_INK_MIN_CONTRAST } from "@/lib/compose/palette";
 import { contrastRatio } from "@/lib/brand/color";
 
-/*
- * ⚠ LE CONTRASTE DU DÉCOR SE MESURE AVEC `contrastRatio` (lib/brand/color.ts),
- * PAS AVEC `contrast` DE lib/compose/palette.ts. Trouvé le 2026-11-01 : la
- * luminance de ce dernier ne linéarise pas le canal bleu (`0.0722 * (n & 255)`)
- * — `contrast("#2B2A27", "#000000")` y vaut 57,7 au lieu de 1,5. Un voile résolu
- * avec lui ne protégerait rien. Défaut hors de ce chantier : F99.
- */
+/* La seule mesure de contraste du produit (F99, 2026-11-02) : lib/brand/color.ts. */
 const contrast = contrastRatio;
 import { libraryVector, placeVector } from "@/lib/compose/library";
 import { round2 } from "@/lib/compose/measure";

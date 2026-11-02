@@ -1,3 +1,4 @@
+import { contrastRatio } from "@/lib/brand/color";
 import { z } from "zod";
 
 /*
@@ -89,7 +90,7 @@ export type Rendering = z.infer<typeof renderingSchema>;
  * une barre pleine ; un primaire clair a besoin du filet teinté.
  */
 export function defaultRendering(palette: Palette): Rendering {
-  const dark = isDarkEnoughForNavbar(palette.primary);
+  const dark = isDarkEnoughForNavbar(palette);
   return {
     nav_surface: dark ? "primary" : "light",
     cta_shape: "pill",
@@ -97,11 +98,17 @@ export function defaultRendering(palette: Palette): Rendering {
   };
 }
 
-/* Seuil de luminance : au-dessus, du texte clair ne tient plus sur le primaire. */
-function isDarkEnoughForNavbar(primary: string): boolean {
-  const value = Number.parseInt(primary.slice(1), 16);
-  const [r, g, b] = [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.32;
+/*
+ * La barre pleine porte son texte en `light` (lib/brand/derive.ts : onPrimary).
+ * Elle est choisie quand ce texte y tient 4,5:1.
+ *
+ * ⚠ MESURÉ, PLUS ESTIMÉ (F99, 2026-11-02). C'était une luma gamma sous 0,32 —
+ * une seconde mesure de contraste, fausse. Sur le catalogue, une seule famille
+ * change : slate_bone, dont `light` tient 6,68:1 sur le primaire et que
+ * l'estimation envoyait vers la barre claire.
+ */
+function isDarkEnoughForNavbar(palette: Palette): boolean {
+  return contrastRatio(palette.light, palette.primary) >= 4.5;
 }
 
 /* ── Direction ──────────────────────────────────────────────────────────── */

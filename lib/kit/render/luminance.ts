@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { contrastOfLuminances, linearChannel, luminanceOfLinear, relativeLuminance as relativeLuminanceOfHex } from "@/lib/brand/color";
 
 /*
  * ── THE SCRIM IS NOT DECORATION ─────────────────────────────────────────
@@ -38,34 +39,21 @@ export const WHOLE_FRAME: Region = { x: 0, y: 0, width: 1, height: 1 };
 export const HERO_TEXT_REGION: Region = { x: 0, y: 0, width: 1 / 3, height: 1 };
 export const POST_TEXT_REGION: Region = { x: 0, y: 0, width: 1, height: 2 / 3 };
 
-/** sRGB channel (0–255) → linear. The WCAG transfer function, not an approximation. */
-function linearize(channel8: number): number {
-  const c = channel8 / 255;
-  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-}
-
-/** WCAG relative luminance from linear channels. */
-function relativeLuminance(r: number, g: number, b: number): number {
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
+/*
+ * ⚠ LA COLORIMÉTRIE VIENT DE lib/brand/color.ts (F99, 2026-11-02) : la seule du
+ * produit. Ce fichier en portait une copie — juste, mais une copie.
+ */
+const linearize = linearChannel;
+const relativeLuminance = luminanceOfLinear;
 
 /** `#B4674A` → WCAG relative luminance. */
 export function hexLuminance(hex: string): number {
-  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!match) throw new Error(`Not a six-digit hex colour: ${hex}`);
-  const value = parseInt(match[1], 16);
-  return relativeLuminance(
-    linearize((value >> 16) & 0xff),
-    linearize((value >> 8) & 0xff),
-    linearize(value & 0xff)
-  );
+  if (!/^#?([0-9a-f]{6})$/i.test(hex.trim())) throw new Error(`Not a six-digit hex colour: ${hex}`);
+  return relativeLuminanceOfHex(hex);
 }
 
 /** WCAG contrast ratio between two relative luminances. Order-independent. */
-export function contrastRatio(a: number, b: number): number {
-  const [lighter, darker] = a >= b ? [a, b] : [b, a];
-  return (lighter + 0.05) / (darker + 0.05);
-}
+export const contrastRatio = contrastOfLuminances;
 
 /**
  * The mean relative luminance of one region of a photograph, measured from

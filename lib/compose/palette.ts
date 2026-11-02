@@ -24,35 +24,15 @@ export type DirectionPalette = {
   paper: string;
 };
 
-/** sRGB relative luminance, the WCAG definition. */
-export function luminance(hex: string): number {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return 0;
-  const n = parseInt(m[1], 16);
-  const channel = (c: number) => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  };
-  return (
-    0.2126 * channel((n >> 16) & 255) +
-    0.7152 * channel((n >> 8) & 255) +
-    0.0722 * (n & 255)
-  );
-}
+/*
+ * ⚠ LUMINANCE ET CONTRASTE VIENNENT DE lib/brand/color.ts (F99, 2026-11-02).
+ * Ce fichier en portait sa propre version, dont la luminance ne linéarisait pas
+ * le bleu ; tout le moteur en dépendait. Les noms restent, la fonction est la
+ * seule du produit.
+ */
+export { relativeLuminance as luminance, contrastRatio as contrast } from "@/lib/brand/color";
+import { contrastRatio as contrast, labOf } from "@/lib/brand/color";
 
-export function contrast(a: string, b: string): number {
-  const la = luminance(a);
-  const lb = luminance(b);
-  const [hi, lo] = la >= lb ? [la, lb] : [lb, la];
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-const rgbOf = (hex: string): [number, number, number] | null => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
 
 /**
  * La distance perceptuelle entre deux couleurs — ΔE76, dans l'espace Lab.
@@ -69,21 +49,7 @@ const rgbOf = (hex: string): [number, number, number] | null => {
  * séparés d'autant. Lab est fait pour cette question-là, et c'est l'unité dans
  * laquelle la remarque a été formulée.
  */
-function toLab(hex: string): [number, number, number] | null {
-  const rgb = rgbOf(hex);
-  if (!rgb) return null;
-  const lin = rgb.map((c) => {
-    const v = c / 255;
-    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  }) as [number, number, number];
-  // sRGB → XYZ (D65), puis XYZ → Lab.
-  const x = (0.4124 * lin[0] + 0.3576 * lin[1] + 0.1805 * lin[2]) / 0.95047;
-  const y = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-  const z = (0.0193 * lin[0] + 0.1192 * lin[1] + 0.9505 * lin[2]) / 1.08883;
-  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
-  const [fx, fy, fz] = [f(x), f(y), f(z)];
-  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
-}
+const toLab = labOf;
 
 export function colourDistance(a: string, b: string): number {
   const x = toLab(a);
