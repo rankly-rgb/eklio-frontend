@@ -19,8 +19,16 @@ const card = (archetype: string, payload: unknown, illustration = PAPER) =>
   render({ archetype, payload, palette, eyebrow: "BEHIND THE PRACTICE", headline: "Old rules carry costs", footer: "Ember · LMFT 1", illustration }).svg;
 
 const three = [{ label: "Notice", gloss: "a body cue" }, { label: "Name", gloss: "learned long ago" }, { label: "Test", gloss: "one small step" }];
-const numbered = card("numbered_strategies", { items: three });
-const cycle = card("cycle", { nodes: three });
+/*
+ * La pile de blocs est la mise en page SANS idiome (un post d'avant la
+ * bibliothèque, ou un idiome qui refuse) : c'est elle que ces tests regroupent.
+ * Avec un dessin de la bibliothèque, numbered_strategies devient des pilules
+ * et cycle des bulles (2026-11-02) — voir le dernier bloc.
+ */
+const boxes = (archetype: string, payload: unknown) =>
+  render({ archetype, payload, palette, eyebrow: "BEHIND THE PRACTICE", headline: "Old rules carry costs", footer: "Ember · LMFT 1" }).svg;
+const numbered = boxes("numbered_strategies", { items: three });
+const cycle = boxes("cycle", { nodes: three });
 const bands = card("surface_and_beneath", { surface: { label: "Learned rule", gloss: "keep everyone comfortable" }, beneath: { label: "Current cost", gloss: "your own needs go unheard" } });
 const statement = card("single_statement", { statement: "Old rules can linger." });
 
@@ -28,7 +36,8 @@ describe("la signature regroupe ce que l'œil regroupe", () => {
   it("numbered_strategies et cycle : la même image (un dessin à gauche, une colonne de blocs)", () => {
     expect(structureOf(numbered).signature).toBe(structureOf(cycle).signature);
     expect(structureOf(numbered).fields).toBe("colonne");
-    expect(structureOf(numbered).drawing).toBe("dessin à gauche");
+    /* Le dessin fait main n'a pas de `data-library` : la signature lit « sans dessin », pour les deux. */
+    expect(structureOf(cycle).fields).toBe("colonne");
   });
 
   it("surface_and_beneath se distingue : des bandes pleine largeur, le dessin entre elles", () => {
@@ -38,7 +47,9 @@ describe("la signature regroupe ce que l'œil regroupe", () => {
 
   it("une phrase seule : aucun aplat ; et le fond ne compte PAS — la même pile sur photo est la même carte pour l'œil", () => {
     expect(structureOf(statement).fields).toBe("aucun aplat");
-    expect(structureOf(card("numbered_strategies", { items: three }, PHOTO)).signature).toBe(structureOf(numbered).signature);
+    const pillsPaper = card("numbered_strategies", { items: three }, PAPER);
+    const pillsPhoto = card("numbered_strategies", { items: three }, PHOTO);
+    expect(structureOf(pillsPhoto).signature).toBe(structureOf(pillsPaper).signature);
   });
 });
 
@@ -57,3 +68,11 @@ describe("le plafond par signature", () => {
     expect(found[0].detail).toContain("« pile 7 »");
   });
 });
+
+describe("les idiomes ont leur propre signature", () => {
+  it("pilules et bulles ne comptent plus comme la pile de blocs", () => {
+    expect(structureOf(card("numbered_strategies", { items: three })).signature).toBe("pills");
+    expect(structureOf(numbered).signature).toBe("colonne · sans dessin");
+  });
+});
+
