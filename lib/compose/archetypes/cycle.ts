@@ -1,3 +1,5 @@
+import { bubbles } from "@/lib/compose/archetypes/idiom-content";
+import type { Ctx } from "@/lib/compose/archetypes/types";
 import { CLEARANCE, figureShare } from "@/lib/compose/constants";
 import { cell, rows } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
@@ -28,7 +30,24 @@ export const cycle: ArchetypeModule<Cycle> = {
     return nodes ? { nodes } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
+  /*
+   * ⚠ AVEC UN DESSIN DE LA BIBLIOTHÈQUE, L'IDIOME DE LA SPEC D'ABORD (2026-11-02) :
+   * bubbles. S'il ne tient pas, la mise en page d'avant — jamais une carte dégradée.
+   */
+  compose(ctx) {
+    const { payload } = ctx;
+    if (ctx.illustrated) {
+      const idiom = bubbles(payload.nodes, ctx)?.placed ?? null;
+      if (idiom) {
+        ctx.markIdiom?.("bubbles");
+        return idiom;
+      }
+    }
+    return composeBoxes(ctx);
+  },
+};
+
+function composeBoxes({ payload, palette, content, figureScale, secondaryMax, draw }: Ctx<Cycle>) {
     const placed: Placed[] = [];
 
     /*
@@ -92,5 +111,4 @@ export const cycle: ArchetypeModule<Cycle> = {
       placed.push(...built);
     }
     return placed;
-  },
-};
+}

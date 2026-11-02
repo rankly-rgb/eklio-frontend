@@ -162,7 +162,8 @@ describe("le rythme du mois", () => {
 
   it("décembre : les parts visées, aucun voisin identique hors crème, toutes les grilles de neuf tenues", () => {
     const r = groundRhythm(planGrounds(december));
-    expect(r.counts).toEqual({ cream: 12, photo: 9, deep: 3, ochre: 3, terra: 3 });
+    // photo 10 / terracotta 2 depuis que pilules et bulles préfèrent la photo (2026-11-02).
+    expect(r.counts).toEqual({ cream: 12, photo: 10, deep: 3, ochre: 3, terra: 2 });
     expect(r.sameNeighbours).toBe(0);
     expect(r.windowsFailing).toBe(0);
   });
@@ -190,6 +191,37 @@ describe("rien ne laisse un tiers vide (remplissage vertical)", () => {
         if (r.composition.idiom === "quote_deep" || r.composition.idiom === "carousel_cover") continue;
         expect(verticalFill(r.composition.placed), `${archetype}/${g}/${length}`).toBeGreaterThanOrEqual(FILL_FLOOR);
       }
+    }
+  });
+});
+
+describe("idiomes 7 et 6 : pilules et bulles reliées", () => {
+  const three = [{ label: "First days", gloss: "decisions need attention" }, { label: "Later", gloss: "feelings find some room" }, { label: "Months on", gloss: "the change feels more real" }];
+
+  it("sur photo, numbered_strategies devient des pilules et cycle des bulles — sans violation", () => {
+    for (const [archetype, payload, idiom] of [["numbered_strategies", { items: three }, "pills"], ["cycle", { nodes: three }, "bubbles"]] as const) {
+      const r = render({ ...base, archetype, payload, headline: "Feelings can arrive later", ground: groundFor(KIT, "photo") });
+      expect(r.composition.idiom, archetype).toBe(idiom);
+      expect(r.svg).toContain(`data-idiom="${idiom}"`);
+      expect(violations(r.composition.placed)).toEqual([]);
+    }
+  });
+
+  it("chaque connecteur part du bord bas d'une bulle et arrive au bord haut de la suivante", async () => {
+    const { bubbles } = await import("@/lib/compose/archetypes/idiom-content");
+    const { libraryDrawing } = await import("@/lib/compose/library");
+    const ctx = { payload: null, palette: base.palette, content: { x: 72, y: 470, w: 936, h: 634 }, figureScale: 1, secondaryMax: 48, draw: libraryDrawing("anx-iceberg"), illustrated: true, onPhoto: true };
+    const out = bubbles(three, ctx as never)!;
+    expect(out.connectors).toHaveLength(2);
+    for (const c of out.connectors) {
+      expect(c.start[1]).toBeCloseTo(c.from.y + c.from.h, 2);
+      expect(c.start[0]).toBeGreaterThanOrEqual(c.from.x);
+      expect(c.start[0]).toBeLessThanOrEqual(c.from.x + c.from.w);
+      expect(c.end[1]).toBeCloseTo(c.to.y, 2);
+      expect(c.end[0]).toBeGreaterThanOrEqual(c.to.x);
+      expect(c.end[0]).toBeLessThanOrEqual(c.to.x + c.to.w);
+      expect(c.d.startsWith(`M ${c.start[0]} ${c.start[1]}`)).toBe(true);
+      expect(c.d.endsWith(`${c.end[0]} ${c.end[1]}`)).toBe(true);
     }
   });
 });

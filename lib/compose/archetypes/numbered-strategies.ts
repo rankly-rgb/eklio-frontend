@@ -1,3 +1,5 @@
+import { pills } from "@/lib/compose/archetypes/idiom-content";
+import type { Ctx } from "@/lib/compose/archetypes/types";
 import { CLEARANCE, figureShare } from "@/lib/compose/constants";
 import { cell, line, rows } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
@@ -27,7 +29,24 @@ export const numberedStrategies: ArchetypeModule<NumberedStrategies> = {
     return items ? { items } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
+  /*
+   * ⚠ AVEC UN DESSIN DE LA BIBLIOTHÈQUE, L'IDIOME DE LA SPEC D'ABORD (2026-11-02) :
+   * pills. S'il ne tient pas, la mise en page d'avant — jamais une carte dégradée.
+   */
+  compose(ctx) {
+    const { payload } = ctx;
+    if (ctx.illustrated) {
+      const idiom = pills(payload.items, ctx);
+      if (idiom) {
+        ctx.markIdiom?.("pills");
+        return idiom;
+      }
+    }
+    return composeBoxes(ctx);
+  },
+};
+
+function composeBoxes({ payload, palette, content, figureScale, secondaryMax, draw }: Ctx<NumberedStrategies>) {
     const placed: Placed[] = [];
     /*
      * ⚠ L'ÉPINE SEULE N'ÉTAIT PAS UNE ILLUSTRATION. Un trait vertical et des
@@ -90,5 +109,4 @@ export const numberedStrategies: ArchetypeModule<NumberedStrategies> = {
       placed.push(...built);
     }
     return placed;
-  },
-};
+}

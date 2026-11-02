@@ -40,6 +40,13 @@ export type Ctx<P> = {
    * la carte a un dessin. Absent : le trait fait main.
    */
   accent?: (box: Box, colour: string) => Stroke[];
+  /**
+   * Un rendu d'idiome de la spec visuelle (pilules, bulles, grille) se déclare ici,
+   * pour que la carte porte `data-idiom` et que la signature structurelle le lise.
+   */
+  markIdiom?: (idiom: string) => void;
+  /** Vrai quand la carte est posée sur un fond photo (le plan du mois) : la photo y tient lieu de visuel. */
+  onPhoto?: boolean;
   palette: Palette;
   /** The content band, already separated from the headline. */
   content: Box;

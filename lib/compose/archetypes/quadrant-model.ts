@@ -1,3 +1,5 @@
+import { grid } from "@/lib/compose/archetypes/idiom-content";
+import type { Ctx } from "@/lib/compose/archetypes/types";
 import { CLEARANCE, figureShare, TYPE } from "@/lib/compose/constants";
 import { cell, columns, fitText, linesFrom, rows } from "@/lib/compose/layout";
 import { mirrored, variantOf } from "@/lib/compose/illustrations";
@@ -30,7 +32,24 @@ export const quadrantModel: ArchetypeModule<QuadrantModel> = {
     return items ? { axis_x: p.axis_x, axis_y: p.axis_y, items } : null;
   },
 
-  compose({ payload, palette, content, figureScale, secondaryMax, draw }) {
+  /*
+   * ⚠ AVEC UN DESSIN DE LA BIBLIOTHÈQUE, L'IDIOME DE LA SPEC D'ABORD (2026-11-02) :
+   * grid. S'il ne tient pas, la mise en page d'avant — jamais une carte dégradée.
+   */
+  compose(ctx) {
+    const { payload } = ctx;
+    if (ctx.illustrated) {
+      const idiom = grid(payload.items, ctx, null);
+      if (idiom) {
+        ctx.markIdiom?.("grid");
+        return idiom;
+      }
+    }
+    return composeBoxes(ctx);
+  },
+};
+
+function composeBoxes({ payload, palette, content, figureScale, secondaryMax, draw }: Ctx<QuadrantModel>) {
     const placed: Placed[] = [];
 
     /*
@@ -119,5 +138,4 @@ export const quadrantModel: ArchetypeModule<QuadrantModel> = {
     }
 
     return placed;
-  }
-};
+}

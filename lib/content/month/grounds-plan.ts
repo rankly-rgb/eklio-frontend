@@ -27,6 +27,7 @@ import type { Ground } from "@/lib/compose/grounds";
 export const TARGET: Record<Ground, number> = { cream: 0.4, photo: 0.3, deep: 0.1, ochre: 0.1, terra: 0.1 };
 export const WINDOW = 9;
 const DARK: Ground[] = ["photo", "deep"];
+const PREFERS_PHOTO = new Set(["numbered_strategies", "cycle"]);
 
 export function allowedGrounds(archetype: string): Ground[] {
   if (archetype === "single_statement") return ["cream", "photo", "deep", "ochre", "terra"];
@@ -48,6 +49,13 @@ export function planGrounds(archetypes: string[]): Ground[] {
       const needDark = 2 - dark;
       if (g === "cream" && needNonCream >= left) s -= 50; // R2 : la fenêtre n'a plus le droit à la crème
       if (!DARK.includes(g) && needDark >= left) s -= 50;
+      /*
+       * Les pilules et les bulles (spec 7 et 6) se posent sans dessin sur une photo,
+       * qui leur tient lieu de visuel ; sur crème, la place manque au dessin et la
+       * carte garde sa pile. Une préférence, pas une règle : R1, R2 et les parts
+       * passent devant (2026-11-02).
+       */
+      if (g === "photo" && PREFERS_PHOTO.has(archetype)) s += 1;
       return s;
     };
     const allowed = allowedGrounds(archetype);

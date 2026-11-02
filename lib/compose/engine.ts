@@ -425,6 +425,7 @@ export function render(input: RenderInput): RenderResult {
     if (pass === "glossless") resolution.push("cut words: glosses dropped");
 
     for (const figureScale of FIGURE_SCALES) {
+      let contentIdiom: string | undefined;
       const content = archetype.compose({
         payload,
         palette: input.palette,
@@ -434,6 +435,10 @@ export function render(input: RenderInput): RenderResult {
         draw,
         illustrated: !!input.illustration,
         accent,
+        onPhoto: input.ground?.ground === "photo",
+        markIdiom: (name: string) => {
+          contentIdiom = name;
+        },
       });
       if (content === null) continue;
 
@@ -463,7 +468,14 @@ export function render(input: RenderInput): RenderResult {
        * `single_statement` en est exempt : sa marque est spécifiée comme
        * petite, et lui imposer 9 % ferait d'une respiration un objet.
        */
-      if (archetype.illustrationZone !== "none" && input.archetype !== "single_statement") {
+      /*
+       * ⚠ LE PLANCHER PORTE SUR UN DESSIN, PAS SUR DES ICÔNES (2026-11-02). Un idiome
+       * sans dessin de la bibliothèque (des pilules sur photo : la photo est le
+       * visuel) n'a que des cases à cocher pour figures — les mesurer comme un
+       * dessin les déclarait « trop petites » et faisait retirer les gloses.
+       */
+      const carriesDrawing = placed.some((p) => p.role === "figure" && p.strokes.some((s) => s.library));
+      if (archetype.illustrationZone !== "none" && input.archetype !== "single_statement" && (!contentIdiom || carriesDrawing)) {
         const share = figureExtentShare(placed);
         if (share > 0 && share < MIN_FIGURE_EXTENT) {
           tooSmall = share;
@@ -495,6 +507,7 @@ export function render(input: RenderInput): RenderResult {
         resolution,
         ...(decor ? { decor } : {}),
         ...(input.ground ? { ground: input.ground.ground } : {}),
+        ...(contentIdiom ? { idiom: contentIdiom } : {}),
       };
       return {
         svg: toSvg(composition, input.palette.paper),
