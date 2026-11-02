@@ -1,4 +1,4 @@
-import { CANVAS, LINE_HEIGHT, MARGIN } from "@/lib/compose/constants";
+import { CANVAS, LINE_HEIGHT, MARGIN, SERIF_FROM } from "@/lib/compose/constants";
 import { EYEBROW, FOOTER } from "@/lib/compose/constants-bands";
 import { fitTitle, type TextFit } from "@/lib/compose/layout";
 import { measure, round2 } from "@/lib/compose/measure";
@@ -99,7 +99,13 @@ export function composeIdiom(input: IdiomInput): Placed[] | null {
 
   if (input.idiom === "big_drawing") {
     /* Titre Cormorant 138px (spec .xl), trois lignes au plus, jusqu'à 96px. */
-    const fit = fitTitle(input.statement, "serif", INNER.w, span * 0.42, { min: 96, max: 138 }, 3, 1.02);
+    /*
+     * Cormorant 138px (spec .xl) pour une phrase courte ; les phrases du mois
+     * réel vont jusqu'à 24 mots — quatre lignes au plus, jusqu'à 80px (le seuil
+     * Cormorant), puis refus. Mesuré sur décembre : à trois lignes / 96px, aucune
+     * des phrases du mois n'entrait.
+     */
+    const fit = fitTitle(input.statement, "serif", INNER.w, span * 0.45, { min: SERIF_FROM, max: 138 }, 4, 1.02);
     if (!fit) return null;
     const gap = 54;
     const textH = realHeight(fit, 1.02);
@@ -118,7 +124,8 @@ export function composeIdiom(input: IdiomInput): Placed[] | null {
 
   if (input.idiom === "quote_deep") {
     /* Script 168px (spec .script), trois lignes au plus, jusqu'à 110px : sous, un script ne se lit plus. */
-    const fit = fitTitle(input.statement, "script", INNER.w, span, { min: 110, max: 168 }, 3, 1.0);
+    /* Script 168px (spec), quatre lignes au plus, jusqu'à 96px (≈ 35px à 390 de large), puis refus. */
+    const fit = fitTitle(input.statement, "script", INNER.w, span, { min: 96, max: 168 }, 4, 1.0);
     if (!fit) return null;
     const textH = realHeight(fit, 1.0);
     const top = round2(IDIOM_TOP + Math.max(0, (span - textH - 48 - 170) / 2));
@@ -168,7 +175,8 @@ export function composeIdiom(input: IdiomInput): Placed[] | null {
     kind: "path",
     d: `M ${round2(cx - r)} ${round2(cy)} A ${r} ${r} 0 1 1 ${round2(cx + r)} ${round2(cy)} A ${r} ${r} 0 1 1 ${round2(cx - r)} ${round2(cy)} Z`,
     box: { x: round2(swipeBox.x - 1.5), y: round2(swipeBox.y - 1.5), w: swipe + 3, h: swipe + 3 },
-    stroke: gp.soft,
+    /* Sur photo, le cercle est clair (spec : #CFC8BD) — l'encre du fond, pas la teinte secondaire, qui s'y confondait (1:1 mesuré). */
+    stroke: gp.ink,
     strokeWidth: 3,
     fill: "none",
   };

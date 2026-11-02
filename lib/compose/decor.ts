@@ -11,7 +11,7 @@ const contrast = contrastRatio;
 import { libraryVector, placeVector } from "@/lib/compose/library";
 import { round2 } from "@/lib/compose/measure";
 import type { Box, Palette, Placed, Stroke } from "@/lib/compose/types";
-import type { Ground } from "@/lib/compose/grounds";
+import { GRAIN, type Ground } from "@/lib/compose/grounds";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -101,7 +101,7 @@ const TEXT_PAD = 12;
 const FEATHER = 60;
 /** Une texture ne se devine qu'à peine. */
 /** Le grain : 4,5 %, en multiplication (spec visuelle du 2026-11-02 — il était à 6 %). */
-export const TEXTURE_OPACITY = 0.045;
+export const TEXTURE_OPACITY = GRAIN;
 
 /**
  * Une carte sur deux prend un fond photo — TOUTES mises en page (F102, 2026-11-02).

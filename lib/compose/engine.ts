@@ -11,7 +11,7 @@ import { DRAWING_FOR } from "@/lib/compose/illustrations";
 import { libraryDrawing } from "@/lib/compose/library";
 import { accentDrawing, decorFor } from "@/lib/compose/decor";
 import { composeIdiom, idiomFor, type Idiom } from "@/lib/compose/idioms";
-import { SOFT_TARGET, softest } from "@/lib/compose/grounds";
+import { grainedWorst, SOFT_TARGET, softest } from "@/lib/compose/grounds";
 
 
 /*
@@ -291,7 +291,7 @@ export function render(input: RenderInput): RenderResult {
     const g = input.ground;
     input = { ...input, palette: { ...input.palette, paper: g.ground === "photo" ? g.veil : g.background, ink: g.ink } };
   }
-  const soft = input.ground?.soft ?? softest(input.palette.ink, input.palette.paper, input.palette.paper, SOFT_TARGET) ?? input.palette.ink;
+  const soft = input.ground?.soft ?? softest(input.palette.ink, input.palette.paper, grainedWorst(input.palette.paper, "paper"), SOFT_TARGET) ?? input.palette.ink;
 
   const idiom = input.illustration && input.ground ? idiomFor(input.archetype, input.ground.ground, input.slide) : null;
   /*

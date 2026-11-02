@@ -87,8 +87,14 @@ export function groundPalette(direction: DirectionPalette, ground: Ground): Grou
             : /* photo : le voile est sombre, l'encre claire */ mix(direction.dark, "#000000", 0.45);
   const ink = ground === "deep" || ground === "photo" ? lightInk : darkInk;
   if (contrastRatio(ink, background) < TEXT_FLOOR) return null;
-  /* Le texte secondaire : de l'encre vers le fond, jusqu'au plancher. */
-  const soft = softest(ink, background, background, SOFT_TARGET) ?? ink;
+  /*
+   * Le texte secondaire : de l'encre vers le fond, jusqu'au plancher — mesuré
+   * contre le fond AU PIRE PIXEL DU GRAIN. Le grain (4,5 %, en multiplication)
+   * assombrit le papier là où la texture est noire : résolue contre le papier nu,
+   * la signature sortait à 4,27:1 au rendu (planche du 2026-11-02).
+   */
+  const worst = grainedWorst(background, ground);
+  const soft = softest(ink, background, worst, SOFT_TARGET) ?? ink;
   return { ground, background, ink, soft, veil: background };
 }
 
@@ -101,4 +107,13 @@ export function groundFor(direction: DirectionPalette, ground: Ground): GroundPa
 
 export function isGround(value: unknown): value is Ground {
   return typeof value === "string" && (GROUNDS as readonly string[]).includes(value);
+}
+
+/** Le grain des cartes qui en portent (crème, teintes pleines) — `TEXTURE_OPACITY` de decor.ts. */
+export const GRAIN = 0.045;
+
+/** Le fond au pire pixel du grain : la texture noire, multipliée à `GRAIN`. Le profond n'en porte pas. */
+export function grainedWorst(background: string, ground: Ground | "paper"): string {
+  if (ground === "deep" || ground === "photo") return background;
+  return mix(background, "#000000", GRAIN);
 }

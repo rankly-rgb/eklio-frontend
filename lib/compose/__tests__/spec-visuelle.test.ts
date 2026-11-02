@@ -83,7 +83,7 @@ describe("pas de mot seul en fin de titre", () => {
 
   it("au plus n lignes, réduction jusqu'au plancher, puis refus", () => {
     const long = Array.from({ length: 40 }, (_, i) => `word${i}`).join(" ");
-    expect(fitTitle(long, "script", 900, 2000, { min: 110, max: 168 }, 3)).toBeNull();
+    expect(fitTitle(long, "script", 900, 2000, { min: 96, max: 168 }, 4)).toBeNull();
     expect(composeIdiom({ idiom: "quote_deep", statement: long, eyebrow: "E", illustration: "anx-iceberg", gp: groundFor(KIT, "deep")! })).toBeNull();
   });
 });
