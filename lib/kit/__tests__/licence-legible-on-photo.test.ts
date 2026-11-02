@@ -84,7 +84,11 @@ describe.each(FAMILIES)("$id", ({ id, direction }) => {
   it.each([false, true])("fond sombre : %s — sur les 27 fonds, chaque ligne tient 4,5:1 et chaque dessin 3:1, au pire pixel", (dark) => {
     const palette = cardPalette("k", direction, dark);
     const m: Measured = { family: id, dark, photos: 0, worstText: Infinity, worstLicence: Infinity, worstFigure: Infinity };
-    for (let k = 0; k < PHOTOS.length; k += 1) {
+    /*
+     * Une carte sur deux prend un fond photo, au rang PAIR du dessin (F102) ; le
+     * fond est le rang modulo 27. Les rangs pairs 0 à 52 couvrent les 27 fonds.
+     */
+    for (let k = 0; k < 2 * PHOTOS.length; k += 2) {
       const out = render({
         archetype: "single_statement",
         payload: { statement: "Old rules can linger long after the room they were made for has changed." },
@@ -105,14 +109,14 @@ describe.each(FAMILIES)("$id", ({ id, direction }) => {
             const w = worstUnder(px, line.box, line.fill);
             m.worstText = Math.min(m.worstText, w);
             if (p.band === "footer") m.worstLicence = Math.min(m.worstLicence, w);
-            expect(w, `${PHOTOS[k]} — ${p.band} « ${line.text} »`).toBeGreaterThanOrEqual(PHOTO_TEXT_CONTRAST);
+            expect(w, `${PHOTOS[k % PHOTOS.length]} — ${p.band} « ${line.text} »`).toBeGreaterThanOrEqual(PHOTO_TEXT_CONTRAST);
           }
         }
         if (p.role === "figure") {
           for (const s of p.strokes) {
             const w = worstUnder(px, s.box, s.fill !== "none" ? s.fill : s.stroke);
             m.worstFigure = Math.min(m.worstFigure, w);
-            expect(w, `${PHOTOS[k]} — dessin`).toBeGreaterThanOrEqual(PHOTO_FIGURE_CONTRAST);
+            expect(w, `${PHOTOS[k % PHOTOS.length]} — dessin`).toBeGreaterThanOrEqual(PHOTO_FIGURE_CONTRAST);
           }
         }
       }

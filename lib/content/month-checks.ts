@@ -2,6 +2,7 @@
 import { checkEthics } from "@/lib/ethics/rules";import { DANGLING } from "@/lib/content/generate/copy-batch";
 import { colourDistance, TINT_MIN_DISTANCE, type DirectionPalette } from "@/lib/compose/palette";
 import { checkVariety } from "@/lib/content/variety";
+import { structureOf } from "@/lib/compose/structure";
 import { REPEAT_SPACING } from "@/lib/visual-library/match";
 import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
 import { footerCarriesLicence, repeatedLicenceTitles } from "@/lib/content/licence";
@@ -63,6 +64,18 @@ export const MONTH_LIMITS = {
   minDistinctArchetypes: 7,
   /** Les phrases seules sous 40 %. */
   maxLoneSentenceShare: 0.4,
+  /**
+   * Aucune signature STRUCTURELLE au-delà de 25 % du mois — sept cartes sur
+   * trente, une même image au plus une fois sur quatre (F102, 2026-11-02).
+   *
+   * ⚠ PLUS SERRÉ QUE LE PLAFOND D'ARCHÉTYPE (30 %), ET C'EST VOULU. Une signature
+   * regroupe plusieurs archétypes qui produisent la même image (`numbered_strategies`
+   * et `cycle` : un dessin à gauche, une colonne de blocs) ; sous le même 30 %,
+   * neuf cartes identiques à l'œil passeraient. Décembre 2026 en portait onze
+   * (« phrase sur photo » : neuf phrases seules et deux couvertures de carrousel).
+   * Productibilité vérifiée sur la planche du 2026-11-02 avant d'être posée.
+   */
+  maxStructureShare: 0.25,
   /**
    * La distance RGB minimale entre deux aplats d'une même carte.
    *
@@ -902,6 +915,34 @@ export function checkIllustrationSpacing(posts: PostUnderCheck[]): Finding[] {
   return out;
 }
 
+/**
+ * Aucune image d'ensemble ne domine le mois (F102).
+ *
+ * La signature est lue dans le SVG livré (`lib/compose/structure.ts`) : la
+ * disposition des aplats, la place du dessin, le fond. Le constat nomme le
+ * DERNIER post de la signature dominante, pour que le sélecteur l'échange.
+ */
+export function checkStructureVariety(posts: PostUnderCheck[]): Finding[] {
+  const n = posts.length;
+  if (n < MIX_APPLIES_FROM) return [];
+  const by = new Map<string, PostUnderCheck[]>();
+  for (const post of posts) {
+    if (!post.svg) continue;
+    const sig = structureOf(post.svg).signature;
+    by.set(sig, [...(by.get(sig) ?? []), post]);
+  }
+  const out: Finding[] = [];
+  for (const [sig, group] of by) {
+    if (group.length / n <= MONTH_LIMITS.maxStructureShare) continue;
+    const last = group[group.length - 1];
+    out.push({
+      check: "structure.dominant",
+      detail: `« ${sig} » : ${group.length} cartes sur ${n}, plafond ${Math.floor(n * MONTH_LIMITS.maxStructureShare)} — la dernière : « ${last.cardLine} »`,
+    });
+  }
+  return out;
+}
+
 export function checkAcrossPosts(month: MonthUnderCheck): Finding[] {
   const out: Finding[] = [];
   out.push(...checkCount(month.posts.length, month.wanted));
@@ -912,6 +953,8 @@ export function checkAcrossPosts(month: MonthUnderCheck): Finding[] {
   out.push(...checkVariety(month.posts));
   /* ⚠ Le dessin, pas seulement la tournure (2026-11-01). */
   out.push(...checkIllustrationSpacing(month.posts));
+  /* ⚠ L'image d'ensemble, pas seulement le nom de l'archétype (F102, 2026-11-02). */
+  out.push(...checkStructureVariety(month.posts));
   return out;
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@/lib/compose/engine";
 import { cardPalette, contrast } from "@/lib/compose/palette";
-import { ACCENTS, decorFor, PHOTO_FIGURE_CONTRAST, PHOTO_TEXT_CONTRAST, shapeFill, TEXTURE_OPACITY, VEIL_FREE } from "@/lib/compose/decor";
+import { ACCENTS, DRAWABLE, decorFor, wantsPhoto, PHOTO_FIGURE_CONTRAST, PHOTO_TEXT_CONTRAST, shapeFill, TEXTURE_OPACITY, VEIL_FREE } from "@/lib/compose/decor";
 import { LIBRARY_STROKE_TARGET, libraryDrawing, libraryVector, placeVector, renderedWeight } from "@/lib/compose/library";
 import { violations } from "@/lib/compose/engine";
 
@@ -21,8 +21,12 @@ const diagram = {
   payload: { items: [{ label: "Notice the alarm", gloss: "a body cue" }, { label: "Name the rule", gloss: "learned long ago" }, { label: "Test it today", gloss: "one small step" }] },
 };
 
+/* Un dessin de rang pair prend un fond photo, un de rang impair le papier (F102). */
+const ON_PHOTO = DRAWABLE.find((_, i) => i % 2 === 0)!;
+const ON_PAPER = DRAWABLE.find((_, i) => i % 2 === 1)!;
+
 describe("une phrase seule prend un fond photo voilé et un accent", () => {
-  const svg = render({ ...statement, illustration: "ground-anchor" }).svg;
+  const svg = render({ ...statement, illustration: ON_PHOTO }).svg;
 
   it("la photo est sous un voile LOCAL : protégé derrière le texte, libre ailleurs", () => {
     expect(svg).toMatch(/<image data-photo="bg-[a-z-]+" href="data:image\/jpeg;base64,/);
@@ -36,7 +40,7 @@ describe("une phrase seule prend un fond photo voilé et un accent", () => {
   });
 
   it("deux cartes à fond photo ne partagent pas un identifiant de dégradé qui ne serait pas le leur", () => {
-    const other = render({ ...statement, payload: { statement: "A different sentence sits higher." }, illustration: "ground-anchor" }).svg;
+    const other = render({ ...statement, payload: { statement: "A different sentence sits higher." }, illustration: ON_PHOTO }).svg;
     const id = (s: string) => /id="(eklio-veil-[a-z0-9]+)"/.exec(s)?.[1];
     expect(id(svg)).not.toBe(id(other));
   });
@@ -119,3 +123,21 @@ describe("le trait des dessins est harmonisé, par le bas", () => {
     expect(s.stroke).toBe("none");
   });
 });
+
+describe("une carte sur deux prend un fond photo, toutes mises en page (F102)", () => {
+  it("rang pair : photo ; rang impair : papier ; jamais la couverture d'un carrousel", () => {
+    expect(wantsPhoto("quadrant_model", ON_PHOTO)).toBe(true);
+    expect(wantsPhoto("quadrant_model", ON_PAPER)).toBe(false);
+    expect(wantsPhoto("carousel", ON_PHOTO)).toBe(false);
+    const share = DRAWABLE.filter((id) => wantsPhoto("numbered_strategies", id)).length / DRAWABLE.length;
+    expect(share).toBeCloseTo(0.5, 1);
+  });
+
+  it("un diagramme sur photo garde ses aplats opaques, et le voile local protège ce qui est posé à même le fond", () => {
+    const svg = render({ ...diagram, illustration: ON_PHOTO }).svg;
+    expect(svg).toContain("data-photo=");
+    expect(svg).toContain('data-veil="local"');
+    expect(Number(/data-worst-text="([\d.]+)"/.exec(svg)?.[1])).toBeGreaterThanOrEqual(PHOTO_TEXT_CONTRAST);
+  });
+});
+

@@ -198,8 +198,10 @@ export const LINE_HEIGHT = 1.18;
  * accent à la place du trait, trait des dessins harmonisé.
  * compose/3 (2026-11-01) : voile local (par bandes, halos), forme sous le dessin,
  * dessins agrandis sur les phrases seules et dans `concentric_control`.
+ * compose/4 (2026-11-02) : une seule colorimétrie (F99) ; fond photo sur une carte
+ * sur deux, toutes mises en page (F102).
  */
-export const ENGINE_VERSION = "compose/3";
+export const ENGINE_VERSION = "compose/4";
 
 /*
  * ── LA VIGNETTE, QUI EST L'ENDROIT OÙ LA CARTE EST VRAIMENT LUE ─────────

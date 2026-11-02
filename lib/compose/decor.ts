@@ -101,8 +101,24 @@ const FEATHER = 60;
 /** Une texture ne se devine qu'à peine. */
 export const TEXTURE_OPACITY = 0.06;
 
-/** Les archétypes qui prennent un fond photo : ceux où une phrase tient la carte. */
-export const PHOTO_ARCHETYPES = new Set(["single_statement", "practitioner_card"]);
+/**
+ * Une carte sur deux prend un fond photo — TOUTES mises en page (F102, 2026-11-02).
+ *
+ * ⚠ LA RÈGLE A ÉTÉ ROUVERTE, PAS ÉLARGIE PAR DÉFAUT. Réservé aux phrases seules
+ * quand le voile était uniforme, le fond photo plafonnait à 11 cartes sur 30, et
+ * c'était 11 fois la même image. Avec la protection locale, mesuré le 2026-11-02
+ * au pire pixel du rendu sur les six mises en page de diagramme de décembre,
+ * 12 variantes de palette × 14 fonds : texte ≥ 7,13:1, dessins ≥ 3,71:1, aucun
+ * échec. L'alternance photo / papier se fait par le RANG du dessin choisi par le
+ * sens : déterministe, sans colonne en base, et la signature structurelle
+ * (`lib/compose/structure.ts`) compte le fond — une même image sur photo et sur
+ * papier n'est plus une même image.
+ *
+ * La couverture d'un carrousel n'est jamais rendue comme une carte : exclue.
+ */
+export function wantsPhoto(archetype: string, illustration: string): boolean {
+  return archetype !== "carousel" && rank(illustration) % 2 === 0;
+}
 
 export type Decor = {
   photo?: {
@@ -335,7 +351,7 @@ export function decorFor(archetype: string, illustration: string, palette: Palet
   const decor: Decor = {};
   const r = rank(illustration);
 
-  if (PHOTO_ARCHETYPES.has(archetype)) {
+  if (wantsPhoto(archetype, illustration)) {
     const id = PHOTOS[r % PHOTOS.length];
     const veil = localVeil(id, palette, placed);
     if (veil) {

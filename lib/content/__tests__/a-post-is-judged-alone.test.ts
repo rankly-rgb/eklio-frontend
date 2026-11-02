@@ -94,9 +94,9 @@ describe("chaque moitié reste dans son ressort", () => {
    * ⚠ CINQ DEPUIS NOVEMBRE 2026 (une tournure n'est répétée qu'à plusieurs),
    * SIX DEPUIS LE 2026-11-01 : un dessin ne revient trop tôt qu'à plusieurs.
    */
-  it("les transversaux sont bien les six attendus", () => {
+  it("les transversaux sont bien les sept attendus", () => {
     expect(callsIn("checkAcrossPosts")).toEqual([
-      "checkCount", "checkDuplicateTitles", "checkIdenticalPayloads", "checkIllustrationSpacing", "checkMix", "checkVariety",
+      "checkCount", "checkDuplicateTitles", "checkIdenticalPayloads", "checkIllustrationSpacing", "checkMix", "checkStructureVariety", "checkVariety",
     ]);
   });
 

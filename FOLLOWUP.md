@@ -4403,3 +4403,21 @@ Planche « après » : numbered_strategies 5, surface_and_beneath 4, cycle 2 —
 même image (titre, puis blocs étiquetés empilés dans une colonne). Le contrôle de mélange compte
 des noms d'archétype et ne le voit pas. Mesure dans `design/visual-library-2026-11-01/planche-*/mesures.json`
 (`structures`).
+
+## F103 — le fond photo revient à moins de dix posts (décembre, planche du 2026-11-02)
+
+Avec un fond sur une carte sur deux (F102), le tirage par rang de dessin (F96) fait revenir
+`bg-curtain-light` à sept posts d'écart (cartes 21 et 28). Les dessins tiennent l'écart de dix ;
+les fonds n'ont pas d'écart propre. À traiter avec F96 (thèmes ou humeurs des fonds, et un écart).
+
+## F104 — le texte sur aplat a un plancher de 3:1, pas 4,5
+
+`TINT_INK_MIN_CONTRAST = 3` (F72) : libellés et gloses posés sur un aplat. Le prompt du
+2026-11-02 parle de 4,5:1 « pour le texte » ; le produit n'applique 4,5 qu'au texte sur papier et
+sur photo. Non changé (une décision, et elle déplacerait toutes les palettes) : à trancher.
+
+## F101 — complément
+
+Aucun cas reproductible isolé : la même rédaction de décembre (journal du run
+`7af5552e…`, 57 résultats) donne 48, 49 ou 50 posts au portillon selon l'appel du juge
+(reprises du 2026-11-01 et du 2026-11-02).

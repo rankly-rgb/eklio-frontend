@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { placeByDrawing } from "@/lib/content/month/select";
+import { illustrateMonth } from "@/lib/visual-library/illustrate";
 import { composeCard } from "@/lib/content/month/compose-card";
 import { assembleMonth, shortfallDetail, type AssemblePorts, type InsertRefusal } from "@/lib/content/month/assemble";
 import { asMonthPost } from "@/lib/content/month/select";
@@ -61,11 +63,25 @@ const J = JSON.parse(
 };
 
 const footer = `${J.kit.practiceName} · ${J.kit.licenceMention}`;
+/*
+ * Les dessins du produit, attribués comme l'orchestrateur les attribue à la
+ * réserve (`placeByDrawing` + `illustrateMonth`). Un dessin fixe pour les trente
+ * (jusqu'au 2026-11-02) donnait trente cartes de même parité — toutes sur papier
+ * — et le contrôle de structure (F102) y voyait, à raison, dix fois la même
+ * image. Un post qu'aucun dessin ne dit garde le dessin fixe : ce rejeu éprouve
+ * F77 (l'écriture), pas l'appariement.
+ */
+const DRAWN = (() => {
+  const signals = J.posts.map((p) => ({ title: p.title, hook: p.hook, cardLine: p.cardLine, payload: p.payload, caption: p.caption }));
+  const placed = placeByDrawing(signals, (posts) => illustrateMonth(posts));
+  const at = new Map(placed.posts.map((s, i) => [s, placed.drawings[i]]));
+  return signals.map((s) => at.get(s) ?? "ground-anchor");
+})();
+
 const prepared = () =>
   J.posts.map((p, i) => {
-    /* Un dessin fixe : ce rejeu éprouve F77 (l'écriture), pas l'appariement. */
     const card = composeCard({
-      illustration: "ground-anchor",
+      illustration: DRAWN[i] ?? "ground-anchor",
       archetype: p.archetype,
       payload: p.payload,
       palette: cardPalette(`2026-11-01-${i}`, J.kit.direction, false),
