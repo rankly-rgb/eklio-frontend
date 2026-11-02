@@ -240,3 +240,13 @@ describe("idiome 2 : photo en cercle", () => {
     expect(idiomFor("single_statement", "cream", 2)).toBeNull();
   });
 });
+
+describe("idiome 7 sur crème", () => {
+  it("sans place sous elles, les pilules se resserrent et le dessin du post se pose à leur droite", () => {
+    const items = [{ label: "First days", gloss: "decisions need attention" }, { label: "Later", gloss: "feelings find some room" }, { label: "Months on", gloss: "the change feels more real" }];
+    const r = render({ ...base, archetype: "numbered_strategies", payload: { items }, headline: "Feelings can arrive later", ground: groundFor(KIT, "cream") });
+    expect(r.composition.idiom).toBe("pills");
+    expect(r.svg).toContain('data-library="anx-iceberg"');
+    expect(violations(r.composition.placed)).toEqual([]);
+  });
+});

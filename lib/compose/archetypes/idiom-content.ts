@@ -67,8 +67,28 @@ function drawingBelow(ctx: Ctx<unknown>, top: number): Placed | "none" | null {
 }
 
 /* ── 7. Pilules à case ─────────────────────────────────────────────────── */
+/**
+ * Pleine largeur d'abord (la spec) ; si le dessin du post n'a pas sa place
+ * dessous (sur crème, il en faut un), les pilules se resserrent et le dessin se
+ * pose à leur droite, centré sur elles.
+ */
 export function pills(items: Item[], ctx: Ctx<unknown>): Placed[] | null {
-  const { content, palette, secondaryMax } = ctx;
+  const full = pillsIn(items, ctx, ctx.content.w);
+  if (full) return full;
+  const side = round2(Math.min(260, ctx.content.w * 0.28));
+  const narrow = pillsIn(items, { ...ctx, onPhoto: true }, round2(ctx.content.w - side - CLEARANCE.glyphToStroke));
+  if (!narrow) return null;
+  const fields = narrow.filter((p) => p.role === "field");
+  const top = Math.min(...fields.map((f) => f.box.y));
+  const bottom = Math.max(...fields.map((f) => f.box.y + f.box.h));
+  if (bottom - top < side) return null;
+  const box = { x: round2(ctx.content.x + ctx.content.w - side), y: round2(top + (bottom - top - side) / 2), w: side, h: side };
+  return [...narrow.filter((p) => !(p.role === "figure" && p.strokes.some((st) => st.library))), { role: "figure", band: "content", box, strokes: ctx.draw(box, ctx.palette.ink) }];
+}
+
+function pillsIn(items: Item[], ctx: Ctx<unknown>, width: number): Placed[] | null {
+  const { palette, secondaryMax } = ctx;
+  const content = { ...ctx.content, w: width };
   const padX = 42;
   const padY = 26;
   const tick = 44;
@@ -106,7 +126,7 @@ export function pills(items: Item[], ctx: Ctx<unknown>): Placed[] | null {
   }
   /* Les pilules tiennent dans la bande de contenu, ou l'idiome refuse. */
   if (y - gap > content.y + content.h) return null;
-  const drawing = drawingBelow(ctx, round2(y - gap + CLEARANCE.glyphToStroke));
+  const drawing = drawingBelow({ ...ctx, content }, round2(y - gap + CLEARANCE.glyphToStroke));
   if (!drawing) return null;
   if (drawing !== "none") placed.push(drawing);
   return placed;
