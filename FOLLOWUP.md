@@ -4429,7 +4429,7 @@ mots : à 96 px et quatre lignes de script, deux sur trois ne tiennent pas, et l
 mise en page ordinaire sur fond profond. Le plancher n'a pas bougé. Piste : que la rédaction
 écrive une phrase courte quand le plan du mois donne un fond profond (une surface à brancher).
 
-## F106 — le remplissage vertical est mesuré, pas contrôlé
+## F106 — le remplissage vertical est mesuré, pas contrôlé (FAIT 2026-11-02 : contrôle 2/3, exemptions spec)
 
 Planche du 2026-11-02 : 45,9 % et 47,1 % de la hauteur pour deux cartes, ≥ 74 % ailleurs. La
 règle « rien ne laisse un tiers vide » n'a pas encore de contrôle qui refuse.
@@ -4451,3 +4451,31 @@ que la rédaction les marque — une surface de texte nouvelle, à faire entrer 
 « Variante serif Cormorant » porte la classe `corm`, qui met le titre en Fraunces 122 px ; le 9
 est en Cormorant. Les images sont justes, l'étiquette est inversée. Retenu : Cormorant à partir
 de 80 px (`SERIF_FROM`), Fraunces en dessous.
+
+## F110 — grille à taches décalées (idiome 5) : écrite, n'apparaît jamais
+
+`grid()` (`lib/compose/archetypes/idiom-content.ts`) rend `quadrant_model` en grille avec un
+dessin par cellule, et refuse si une cellule n'a pas de dessin apparié. Sur le mois réel,
+l'appariement par cellule tient ~40 % des libellés et aucun quadrant n'a ses quatre cellules :
+la grille ne sort jamais. Il faut un archétype dont la rédaction écrit les cellules POUR un
+dessin (`grid_six {cells[6]{label}}`), avec sa charge utile, son validateur, son schéma, ses
+surfaces sur les onze chemins et des sujets de banque — puis un mois rédigé.
+
+## F111 — interrupteurs (idiome 8) : une décision avant le code
+
+Un interrupteur « éteint » affirme qu'une pratique n'est pas offerte. Le brief n'a qu'un
+catalogue `session_style_ids`, pas d'offres opérationnelles avec un état. Décision à prendre :
+quelle source du brief porte l'état, et est-ce qu'un état « non » est publiable (déontologie).
+Tant que ce n'est pas décidé, l'idiome n'est pas codé.
+
+## F112 — idiomes 1, 3, 4, 11, 12 non codés
+
+Arche (1) et praticienne (12) sont des rendus ; courbe sur photo (3) et courbe autour d'un
+dessin (4) demandent des archétypes nouveaux (`arc_statement`, `ring_statement`) ; couches
+(11) est un rendu de `surface_and_beneath`. Mapping : `design/visual-library-2026-11-02-idiomes/MAPPING.md`.
+
+## F113 — un commit poussé avec verify rouge (dd8514c)
+
+`dd8514c` a été poussé alors que `npm run verify` échouait sur deux tests de signature (la
+chaîne shell utilisait `;` au lieu de `&&`). Corrigé par `7b733c8` (verify vert, 5 347 tests),
+sans réécriture d'historique. Toute chaîne verify → commit → push s'écrit avec `&&`.
