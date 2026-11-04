@@ -214,7 +214,7 @@ export const LINE_HEIGHT = 1.18;
  * compose/5 (2026-11-02) : spécification visuelle — Cormorant au-dessus de 80px,
  * titres équilibrés sans veuve, signature centrée, cinq familles de fond, idiomes.
  */
-export const ENGINE_VERSION = "compose/6";
+export const ENGINE_VERSION = "compose/7";
 
 /*
  * ── LA VIGNETTE, QUI EST L'ENDROIT OÙ LA CARTE EST VRAIMENT LUE ─────────

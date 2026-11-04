@@ -422,12 +422,29 @@ export function decorFor(archetype: string, illustration: string, palette: Palet
  * aucune ligne de texte ni aucun aplat ne la recouvre, sinon elle rétrécit,
  * sinon elle n'est pas posée.
  */
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LA RÈGLE DE LA TACHE (2026-11-04)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Dans la spec, la tache décalée appartient à la grille : six PETITS dessins
+ * alignés ont besoin d'un ancrage. Sous un dessin unique et grand, elle n'ajoute
+ * rien et elle uniformise — la planche du 2026-11-02 en portait onze sur trente,
+ * le second atome du moteur après le rectangle étiqueté.
+ *
+ * La tache ne se pose donc que sous un dessin rendu à 300 px de large au plus
+ * sur la toile de 1 080 (108 px vus à 390) ; au-delà, le dessin est posé nu.
+ * Le mois la plafonne et tient un plancher de traits nus (`checkDrawingTreatment`).
+ */
+export const SHAPE_MAX_DRAWING_WIDTH = 300;
+
 export function shapeBehindDrawing(placed: Placed[], palette: Palette, id: string): { id: string; d: string; fill: string; box: Box } | null {
   const drawing = placed
     .filter((p) => p.role === "figure")
     .flatMap((p) => (p as Extract<Placed, { role: "figure" }>).strokes)
     .find((s) => s.library);
   if (!drawing) return null;
+  if (drawing.box.w > SHAPE_MAX_DRAWING_WIDTH) return null;
   const fill = shapeFill(palette);
   if (!fill) return null;
   /*

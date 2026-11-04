@@ -242,11 +242,15 @@ describe("idiome 2 : photo en cercle", () => {
 });
 
 describe("idiome 7 sur crème", () => {
-  it("sans place sous elles, les pilules se resserrent et le dessin du post se pose à leur droite", () => {
+  it("pleine largeur, sans case ni dessin : une case affirmerait ce que le brief ne porte pas (2026-11-04)", () => {
     const items = [{ label: "First days", gloss: "decisions need attention" }, { label: "Later", gloss: "feelings find some room" }, { label: "Months on", gloss: "the change feels more real" }];
     const r = render({ ...base, archetype: "numbered_strategies", payload: { items }, headline: "Feelings can arrive later", ground: groundFor(KIT, "cream") });
     expect(r.composition.idiom).toBe("pills");
-    expect(r.svg).toContain('data-library="anx-iceberg"');
+    expect(r.svg).not.toContain("data-library");
+    expect(r.composition.placed.filter((p) => p.role === "figure" && p.band === "content")).toEqual([]);
+    const fields = r.composition.placed.filter((p) => p.role === "field");
+    expect(fields.length).toBe(3);
+    for (const f of fields) expect(f.box.w).toBe(fields[0].box.w);
     expect(violations(r.composition.placed)).toEqual([]);
   });
 });

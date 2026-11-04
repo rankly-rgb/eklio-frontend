@@ -14,11 +14,17 @@ import { violations } from "@/lib/compose/engine";
 const DIRECTION = { primary: "#B4674A", secondary: "#C08A3E", light: "#F4EEE3", dark: "#2B2A27", paper: "#FAF6EE" };
 const palette = cardPalette("card-1", DIRECTION, false);
 const statement = { archetype: "single_statement", payload: { statement: "Old rules can linger long after the room has changed." }, palette, eyebrow: "BEHIND THE PRACTICE", headline: "Old rules", footer: "Ember consulting · LMFT 123456" };
+/*
+ * ⚠ UN DIAGRAMME QUI GARDE SON DESSIN, ET UN PETIT (2026-11-04). Les étapes
+ * (`numbered_strategies`) sont devenues des pilules sans dessin, et la tache ne
+ * se pose que sous un dessin de 300 px au plus : `surface_and_beneath` pose le
+ * sien entre ses deux bandes, à 235 px.
+ */
 const diagram = {
   ...statement,
-  archetype: "numbered_strategies",
-  headline: "Three ways to notice an old rule",
-  payload: { items: [{ label: "Notice the alarm", gloss: "a body cue" }, { label: "Name the rule", gloss: "learned long ago" }, { label: "Test it today", gloss: "one small step" }] },
+  archetype: "surface_and_beneath",
+  headline: "What sits under an old rule",
+  payload: { surface: { label: "Keeping busy", gloss: "every task gets done" }, beneath: { label: "An old rule", gloss: "learned long ago" } },
 };
 
 /* Un dessin de rang pair prend un fond photo, un de rang impair le papier (F102). */

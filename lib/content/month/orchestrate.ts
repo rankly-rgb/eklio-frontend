@@ -878,7 +878,10 @@ export async function orchestrateMonth(
      * clair / sombre se lit sur la grille, donc sur la suite des trente.
      */
     apply: (chosen, ids) => {
-      const grounds = planGrounds(chosen.map((p) => askedOf.get(p.topicId) ?? p.composeArchetype));
+      const grounds = planGrounds(
+        chosen.map((p) => askedOf.get(p.topicId) ?? p.composeArchetype),
+        ids,
+      );
       return chosen.map((p, i) => {
         const drawing = ids[i] ?? null;
         if (!drawing) return null;

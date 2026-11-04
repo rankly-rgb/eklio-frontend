@@ -1,13 +1,13 @@
 import inventoryJson from "@/lib/visual-library/inventory.generated.json";
 import type { Inventory } from "@/lib/visual-library/inventory";
 import { candidates } from "@/lib/visual-library/match";
-import { CLEARANCE, LINE_HEIGHT, TYPE } from "@/lib/compose/constants";
+import { CLEARANCE, TYPE } from "@/lib/compose/constants";
 import { fitText, linesFrom, type TextFit } from "@/lib/compose/layout";
 import { round2 } from "@/lib/compose/measure";
 import { inkOnTintFor, tintFor } from "@/lib/compose/palette";
 import { libraryDrawing, libraryVector, placeVector } from "@/lib/compose/library";
 import type { Ctx, Item } from "@/lib/compose/archetypes/types";
-import type { Box, Line, Placed, Stroke } from "@/lib/compose/types";
+import type { Box, Line, Placed } from "@/lib/compose/types";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -66,34 +66,21 @@ function drawingBelow(ctx: Ctx<unknown>, top: number): Placed | "none" | null {
   return { role: "figure", band: "content", box, strokes: ctx.draw(box, ctx.palette.ink) };
 }
 
-/* ── 7. Pilules à case ─────────────────────────────────────────────────── */
+/* ── 7. Pilules ──────────────────────────────────────────────────────── */
 /**
- * Pleine largeur d'abord (la spec) ; si le dessin du post n'a pas sa place
- * dessous (sur crème, il en faut un), les pilules se resserrent et le dessin se
- * pose à leur droite, centré sur elles.
+ * Pleine largeur, ni case ni dessin (2026-11-04, décision de Naima).
+ *
+ * ⚠ UNE MÉTAPHORE D'INTERFACE PORTE UNE AFFIRMATION. Une case dit « fait » ou
+ * « pas fait » ; le brief ne porte pas cette donnée, et une case cochée partout
+ * n'informe de rien. La pilule garde sa forme, son alternance de remplissage ;
+ * la case est retirée. Le dessin du post aussi : la spec n'en met pas, la liste
+ * se suffit, et à sa droite il encombrait (planche du 2026-11-02, cartes 19, 30).
  */
 export function pills(items: Item[], ctx: Ctx<unknown>): Placed[] | null {
-  const full = pillsIn(items, ctx, ctx.content.w);
-  if (full) return full;
-  const side = round2(Math.min(260, ctx.content.w * 0.28));
-  const narrow = pillsIn(items, { ...ctx, onPhoto: true }, round2(ctx.content.w - side - CLEARANCE.glyphToStroke));
-  if (!narrow) return null;
-  const fields = narrow.filter((p) => p.role === "field");
-  const top = Math.min(...fields.map((f) => f.box.y));
-  const bottom = Math.max(...fields.map((f) => f.box.y + f.box.h));
-  if (bottom - top < side) return null;
-  const box = { x: round2(ctx.content.x + ctx.content.w - side), y: round2(top + (bottom - top - side) / 2), w: side, h: side };
-  return [...narrow.filter((p) => !(p.role === "figure" && p.strokes.some((st) => st.library))), { role: "figure", band: "content", box, strokes: ctx.draw(box, ctx.palette.ink) }];
-}
-
-function pillsIn(items: Item[], ctx: Ctx<unknown>, width: number): Placed[] | null {
-  const { palette, secondaryMax } = ctx;
-  const content = { ...ctx.content, w: width };
-  const padX = 42;
+  const { palette, secondaryMax, content } = ctx;
+  const padX = 48;
   const padY = 26;
-  const tick = 44;
-  const textX = padX + tick + CLEARANCE.glyphToStroke + 2; /* + 2 : le contour de la case (3px) déborde de 1,5px */
-  const innerW = content.w - textX - padX;
+  const innerW = content.w - padX * 2;
   const gap = CLEARANCE.fieldToField;
   const placed: Placed[] = [];
   let y = content.y;
@@ -104,31 +91,12 @@ function pillsIn(items: Item[], ctx: Ctx<unknown>, width: number): Placed[] | nu
     const tint = i % 2 === 0 ? 1 : 0;
     const box = { x: content.x, y, w: content.w, h };
     placed.push({ role: "field", band: "content", box, fill: tintFor(palette, tint), radius: round2(Math.min(h / 2, 60)) });
-    const ink = inkOnTintFor(palette, tint);
-    const lines = setText(fit, round2(content.x + textX), round2(y + padY), innerW, ink);
-    placed.push({ role: "text", band: "content", box: { x: round2(content.x + textX), y: round2(y + padY), w: innerW, h: height(fit) }, lines });
-    /* La case : un carré arrondi au trait, et la coche du pack — sur toutes les pilules (une case vide affirmerait « pas fait »). */
-    const cy = round2(y + padY + fit.label.size * LINE_HEIGHT * 0.5);
-    const cb = { x: round2(content.x + padX), y: round2(cy - tick / 2), w: tick, h: tick };
-    const r = 12;
-    const square: Stroke = {
-      kind: "path",
-      d: `M ${round2(cb.x + r)} ${cb.y} H ${round2(cb.x + tick - r)} A ${r} ${r} 0 0 1 ${round2(cb.x + tick)} ${round2(cb.y + r)} V ${round2(cb.y + tick - r)} A ${r} ${r} 0 0 1 ${round2(cb.x + tick - r)} ${round2(cb.y + tick)} H ${round2(cb.x + r)} A ${r} ${r} 0 0 1 ${cb.x} ${round2(cb.y + tick - r)} V ${round2(cb.y + r)} A ${r} ${r} 0 0 1 ${round2(cb.x + r)} ${cb.y} Z`,
-      box: { x: round2(cb.x - 1.5), y: round2(cb.y - 1.5), w: tick + 3, h: tick + 3 },
-      stroke: ink,
-      strokeWidth: 3,
-      fill: "none",
-    };
-    const tickBox = { x: round2(cb.x + 10), y: round2(cb.y + 11), w: 24, h: 22 };
-    const t = placeVector(libraryVector("mark-tick"), tickBox);
-    placed.push({ role: "figure", band: "content", box: cb, strokes: [square, { kind: "path", d: t.d, box: t.fitted, stroke: "none", strokeWidth: 0, fill: ink, fillRule: "evenodd" }] });
+    const lines = setText(fit, round2(content.x + padX), round2(y + padY), innerW, inkOnTintFor(palette, tint));
+    placed.push({ role: "text", band: "content", box: { x: round2(content.x + padX), y: round2(y + padY), w: innerW, h: height(fit) }, lines });
     y = round2(y + h + gap);
   }
   /* Les pilules tiennent dans la bande de contenu, ou l'idiome refuse. */
   if (y - gap > content.y + content.h) return null;
-  const drawing = drawingBelow({ ...ctx, content }, round2(y - gap + CLEARANCE.glyphToStroke));
-  if (!drawing) return null;
-  if (drawing !== "none") placed.push(drawing);
   return placed;
 }
 

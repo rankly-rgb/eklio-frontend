@@ -204,6 +204,7 @@ describe("les contrôles de texte prennent tous `written`", () => {
     Variety: "compare les TOURNURES d'ouverture entre posts, pas une ligne seule (novembre 2026)",
     IllustrationSpacing: "compare les DESSINS entre posts et leur écart dans le mois, pas un texte",
     StructureVariety: "compare les IMAGES D'ENSEMBLE des cartes (lues dans le SVG), pas un texte (F102)",
+    DrawingTreatment: "compte comment les DESSINS sont posés (tache, trait nu), lu dans le SVG, pas un texte",
   };
 
   it("ceux qui prennent les posts regardent une structure, et le disent", () => {

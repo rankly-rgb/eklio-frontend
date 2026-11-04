@@ -125,3 +125,16 @@ export function cardHasVisual(svg: string): boolean {
 }
 
 export class EmptyCard extends Error {}
+
+/**
+ * Un dessin d'UN SEUL trait ouvert (un sous-chemin) : un arc, une vague, un fil.
+ *
+ * ⚠ IL NE SE POSE PAS SUR UNE PHOTO (2026-11-04). En blanc sur la matière d'une
+ * photo, un trait seul se lit comme une rayure, pas comme une intention (planche
+ * du 2026-11-02, carte 9 : `priv-partial-outline`). Sur un aplat il tient — la
+ * carte au trait nu sur fond blush en est un. Le plan des fonds le lit.
+ */
+export function isLoneStroke(id: string): boolean {
+  if (!hasLibraryDrawing(id)) return false;
+  return (libraryVector(id).d.match(/[Mm]/g) ?? []).length === 1;
+}

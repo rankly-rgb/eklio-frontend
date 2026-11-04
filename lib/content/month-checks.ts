@@ -77,6 +77,16 @@ export const MONTH_LIMITS = {
    */
   maxStructureShare: 0.25,
   /**
+   * La tache sous le dessin : au plus 20 % du mois (six cartes sur trente), et
+   * au moins 20 % de cartes au TRAIT NU — un dessin posé seul sur la crème ou une
+   * teinte pleine (2026-11-04). Un plafond seul laisserait un mois sans aucune
+   * carte nue, et c'est elle que l'œil retient (deux lignes noires sur un fond
+   * blush). La règle de taille (`SHAPE_MAX_DRAWING_WIDTH`) tient le plafond par
+   * construction ; le contrôle le garde vrai si elle change.
+   */
+  maxShapeShare: 0.2,
+  minNakedShare: 0.2,
+  /**
    * La distance RGB minimale entre deux aplats d'une même carte.
    *
    * ⚠ EN ΔE76, PAS EN RGB, ET C'EST CE CHANGEMENT QUI A RÉVÉLÉ LE DÉFAUT.
@@ -966,6 +976,38 @@ export function checkStructureVariety(posts: PostUnderCheck[]): Finding[] {
   return out;
 }
 
+/**
+ * Le traitement du dessin sur le mois : la tache plafonnée, le trait nu tenu à
+ * un plancher (2026-11-04). Lu dans le SVG livré, comme la signature.
+ */
+export function checkDrawingTreatment(posts: PostUnderCheck[]): Finding[] {
+  const n = posts.length;
+  if (n < MIX_APPLIES_FROM) return [];
+  /*
+   * ⚠ SUR UN MOIS COMPOSÉ AVEC SON PLAN DE FONDS SEULEMENT. Le trait nu se pose
+   * sur la crème ou une teinte pleine, que seul le plan du mois donne
+   * (`data-ground`) ; un mois d'avant n'a que papier et photo, et le plancher
+   * l'aurait refusé pour une règle qui n'existait pas quand il a été composé.
+   */
+  if (posts.some((p) => !p.svg || !/\sdata-ground="/.test(p.svg))) return [];
+  const shaped = posts.filter((p) => structureOf(p.svg!).treatment === "sur tache");
+  const naked = posts.filter((p) => structureOf(p.svg!).treatment === "nu").length;
+  const out: Finding[] = [];
+  if (shaped.length / n > MONTH_LIMITS.maxShapeShare) {
+    out.push({
+      check: "drawing.shape_dominant",
+      detail: `${shaped.length} cartes sur ${n} posent leur dessin sur une tache, plafond ${Math.floor(n * MONTH_LIMITS.maxShapeShare)} — la dernière : « ${shaped[shaped.length - 1].cardLine} »`,
+    });
+  }
+  if (naked / n < MONTH_LIMITS.minNakedShare) {
+    out.push({
+      check: "drawing.too_few_naked",
+      detail: `${naked} cartes sur ${n} portent le trait nu, plancher ${Math.ceil(n * MONTH_LIMITS.minNakedShare)}`,
+    });
+  }
+  return out;
+}
+
 export function checkAcrossPosts(month: MonthUnderCheck): Finding[] {
   const out: Finding[] = [];
   out.push(...checkCount(month.posts.length, month.wanted));
@@ -978,6 +1020,8 @@ export function checkAcrossPosts(month: MonthUnderCheck): Finding[] {
   out.push(...checkIllustrationSpacing(month.posts));
   /* ⚠ L'image d'ensemble, pas seulement le nom de l'archétype (F102, 2026-11-02). */
   out.push(...checkStructureVariety(month.posts));
+  /* ⚠ Le traitement du dessin, pas seulement sa place (2026-11-04). */
+  out.push(...checkDrawingTreatment(month.posts));
   return out;
 }
 

@@ -10,9 +10,10 @@ import { libraryVector, placeVector, UnknownLibraryDrawing } from "@/lib/compose
  * consultait pas — `numbered_strategies` posait toujours la plante.
  */
 const DIRECTION = { primary: "#B4674A", secondary: "#C08A3E", light: "#F4EEE3", dark: "#2B2A27", paper: "#FAF6EE" };
+/* `numbered_strategies` rend maintenant des pilules sans dessin (2026-11-04) : le témoin est un archétype qui porte le sien. */
 const base = {
-  archetype: "numbered_strategies",
-  payload: { items: [{ label: "Notice the alarm", gloss: "a body cue" }, { label: "Name the rule", gloss: "learned long ago" }, { label: "Test it today", gloss: "one small step" }] },
+  archetype: "surface_and_beneath",
+  payload: { surface: { label: "Keeping busy", gloss: "every task gets done" }, beneath: { label: "An old rule", gloss: "learned long ago" } },
   palette: cardPalette("card-1", DIRECTION, false),
   eyebrow: "BEHIND THE PRACTICE",
   headline: "Old rules can linger",

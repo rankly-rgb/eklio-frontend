@@ -33,7 +33,10 @@ function clusters(values: number[], tolerance = 24): number {
   return n;
 }
 
-export type Structure = { fields: string; drawing: string; ground: string; signature: string };
+/** Comment le dessin est posé : c'est lui que l'œil lit autant que la disposition (2026-11-04). */
+export type Treatment = "nu" | "sur tache" | "sur photo" | "clair sur sombre" | "sans dessin";
+
+export type Structure = { fields: string; drawing: string; ground: string; treatment: Treatment; signature: string };
 
 /*
  * ⚠ MÉMORISÉ PAR SVG. Le sélecteur relit les mêmes trente cartes à chaque tour ;
@@ -67,7 +70,16 @@ function readStructure(svg: string): Structure {
    * compter comme deux signatures faisait annoncer 7/30 là où l'œil en voyait une
    * quinzaine. Le fond est déjà tenu par le plan du mois (`grounds-plan.ts`).
    */
-  if (idiom) return { fields: idiom, drawing: "idiome", ground, signature: idiom };
+  /*
+   * ⚠ LE TRAITEMENT DU DESSIN ENTRE DANS LA SIGNATURE (2026-11-04). Deux cartes
+   * identiques à ce détail près — un dessin nu, le même sur une tache — se lisent
+   * différemment ; deux cartes différentes portant la même tache se lisent
+   * pareil. La signature ne regardait que la disposition : la tache s'est
+   * généralisée sans qu'aucune mesure ne la voie.
+   */
+  const treatment = treatmentOf(svg, Boolean(drawing), ground);
+  const how = treatment === "sans dessin" ? "" : ` · ${treatment}`;
+  if (idiom) return { fields: idiom, drawing: "idiome", ground, treatment, signature: `${idiom}${how}` };
 
   let kind: string;
   if (fields.length === 0) kind = "aucun aplat";
@@ -99,5 +111,13 @@ function readStructure(svg: string): Structure {
       else place = "dessin entre les aplats";
     }
   }
-  return { fields: kind, drawing: place, ground, signature: `${kind} · ${place}` };
+  return { fields: kind, drawing: place, ground, treatment, signature: `${kind} · ${place}${how}` };
+}
+
+function treatmentOf(svg: string, hasDrawing: boolean, ground: string): Treatment {
+  if (!hasDrawing) return "sans dessin";
+  if (/\sdata-shape="/.test(svg)) return "sur tache";
+  if (ground === "photo") return "sur photo";
+  if (ground === "deep") return "clair sur sombre";
+  return "nu";
 }

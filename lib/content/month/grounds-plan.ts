@@ -1,4 +1,5 @@
 import type { Ground } from "@/lib/compose/grounds";
+import { isLoneStroke } from "@/lib/compose/library";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -29,12 +30,18 @@ export const WINDOW = 9;
 const DARK: Ground[] = ["photo", "deep"];
 const PREFERS_PHOTO = new Set(["numbered_strategies", "cycle"]);
 
-export function allowedGrounds(archetype: string): Ground[] {
-  if (archetype === "single_statement") return ["cream", "photo", "deep", "ochre", "terra"];
-  return ["cream", "photo"];
+/**
+ * ⚠ UN TRAIT SEUL NE VA PAS SUR UNE PHOTO (2026-11-04, `isLoneStroke`) : il s'y
+ * lit comme une rayure. Les pilules et les bulles n'y posent pas de dessin, la
+ * règle ne les touche pas.
+ */
+export function allowedGrounds(archetype: string, drawing?: string | null): Ground[] {
+  const all: Ground[] = archetype === "single_statement" ? ["cream", "photo", "deep", "ochre", "terra"] : ["cream", "photo"];
+  if (drawing && !PREFERS_PHOTO.has(archetype) && isLoneStroke(drawing)) return all.filter((g) => g !== "photo");
+  return all;
 }
 
-export function planGrounds(archetypes: string[]): Ground[] {
+export function planGrounds(archetypes: string[], drawings: (string | null)[] = []): Ground[] {
   const out: Ground[] = [];
   const count: Record<Ground, number> = { cream: 0, photo: 0, deep: 0, ochre: 0, terra: 0 };
   archetypes.forEach((archetype, i) => {
@@ -58,7 +65,7 @@ export function planGrounds(archetypes: string[]): Ground[] {
       if (g === "photo" && PREFERS_PHOTO.has(archetype)) s += 1;
       return s;
     };
-    const allowed = allowedGrounds(archetype);
+    const allowed = allowedGrounds(archetype, drawings[i]);
     const best = [...allowed].sort((a, b) => score(b) - score(a) || allowed.indexOf(a) - allowed.indexOf(b))[0];
     out.push(best);
     count[best] += 1;
