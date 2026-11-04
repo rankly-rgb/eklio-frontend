@@ -20,10 +20,9 @@ import { openAiBody, OPENAI_COPY_MODEL } from "@/lib/content/generate/provider";
 import { copyCallFor } from "@/lib/content/generate/copy-batch";
 import { chooseArchetype, scheduleDates } from "@/lib/content/generate/plan";
 import { CONTENT_REGISTERS, IMAGE_ARCHETYPES, type ContentRegister } from "@/lib/data/content-catalogue";
-import { cardPalette, type DirectionPalette } from "@/lib/compose/palette";
+import { cardPalette, curatedAccent, type DirectionPalette, type PaletteFamilyRow } from "@/lib/compose/palette";
 import { parseDirections } from "@/lib/data/brand-kit";
-import { FORMAT_FAMILIES } from "@/lib/content/month-checks";
-import { CANDIDATES_PER_ATTEMPT, POSTS_PER_MONTH } from "@/lib/content/bank";
+import { CANDIDATES_PER_ATTEMPT, DRAW_GROUPS, DRAW_ORDER, drawQuotas, POSTS_PER_MONTH } from "@/lib/content/bank";
 import {
   identityAllowList,
   practitionerLines,
@@ -157,7 +156,20 @@ export async function orchestrateMonthForKit(
     "brand_kits",
     from("brand_kits").select("selected_direction_id, directions").eq("id", KIT).maybeSingle()
   );
-  const palette = kit ? readPathPalette(kit) : null;
+  const read = kit ? readPathPalette(kit) : null;
+  /*
+   * ⚠ L'ACCENT CHOISI DE LA FAMILLE (F108, 2026-11-04) : la règle de
+   * `site_spec_curated_accent`, lue ici. Sans famille correspondante, l'emphase
+   * est en italique seul — jamais une encre dérivée.
+   */
+  const families = read
+    ? await must<PaletteFamilyRow[] | null>(
+        "palette_families",
+        (db.from("palette_families") as { select(c: string): unknown }).select("primary_hex, secondary_hex, light_hex, dark_hex, paper_hex, accent_hex")
+      )
+    : null;
+  const accent = read ? curatedAccent(read, families ?? []) : null;
+  const palette = read ? { ...read, ...(accent ? { accent } : {}) } : null;
   if (!palette) {
     return {
       ok: false,
@@ -282,9 +294,10 @@ export async function orchestrateMonthForKit(
       month,
       wanted: POSTS_PER_MONTH,
       candidates: CANDIDATES_PER_ATTEMPT,
-      perFamily: Math.ceil(CANDIDATES_PER_ATTEMPT / 3),
-      families: FORMAT_FAMILIES as unknown as Record<string, string[]>,
-      drawOrder: ["varied", "simple", "statement"],
+      /* ⚠ Le tirage par forme : quotas par groupe, sous le plafond de listes (`drawQuotas`). */
+      perFamily: drawQuotas(CANDIDATES_PER_ATTEMPT),
+      families: DRAW_GROUPS as unknown as Record<string, string[]>,
+      drawOrder: [...DRAW_ORDER],
       practitionerCap: PRACTITIONER_CARDS_PER_MONTH,
       practitionerPayload: practitionerLines(facts) !== null,
       demand: { practitioners: 1, attempts: 1, rounds: 1 },

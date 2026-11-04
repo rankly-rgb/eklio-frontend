@@ -243,7 +243,7 @@ export type OrchestrateInput = {
   wanted: number;
   /** Combien de candidats tirer — surgénération comprise. */
   candidates: number;
-  perFamily: number;
+  perFamily: number | Record<string, number>;
   families: Record<string, string[]>;
   drawOrder: string[];
   practitionerCap: number;

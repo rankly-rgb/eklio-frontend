@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { MONTH_LIMITS } from "@/lib/content/month-checks";
 import { readFileSync } from "node:fs";
 import { placeByDrawing } from "@/lib/content/month/select";
 import { illustrateMonth } from "@/lib/visual-library/illustrate";
@@ -157,6 +158,23 @@ function ports(accept: (topicId: string) => boolean) {
   };
   return { ports: p, settled, removed };
 }
+
+/*
+ * ⚠ NOVEMBRE A ÉTÉ TIRÉ SOUS L'ANCIEN PLAN, UN TIERS PAR FAMILLE (2026-11-04).
+ * Ses 57 réponses ne portent que 24 charges utiles à phrase, dont 18 phrases
+ * seules : sous le plafond de listes (12 sur 30) et celui des phrases seules
+ * (11), elles ne font au plus que 17 posts à phrase pour 18 nécessaires — aucun
+ * mois de trente n'existe dans ce jeu. Le plafond est levé POUR CE REJEU SEUL,
+ * qui éprouve la sélection, l'échange et le refus d'un mois court ; un mois tiré
+ * aujourd'hui l'est par `drawQuotas`, qui tient les deux plafonds.
+ */
+const LIST_CAP = MONTH_LIMITS.maxListShare;
+beforeAll(() => {
+  (MONTH_LIMITS as { maxListShare: number }).maxListShare = 1;
+});
+afterAll(() => {
+  (MONTH_LIMITS as { maxListShare: number }).maxListShare = LIST_CAP;
+});
 
 describe("novembre 2026, sur ses comptes enregistrés : le constat nomme 28 écritures refusées par la base", () => {
   it("24 écrites, 28 refusées pour `archetype` nul (journaux Postgres) → refusé, et dit technique", () => {

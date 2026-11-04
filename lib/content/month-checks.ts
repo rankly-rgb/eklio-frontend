@@ -3,6 +3,15 @@ import { checkEthics } from "@/lib/ethics/rules";import { DANGLING } from "@/lib
 import { colourDistance, TINT_MIN_DISTANCE, type DirectionPalette } from "@/lib/compose/palette";
 import { checkVariety } from "@/lib/content/variety";
 import { structureOf } from "@/lib/compose/structure";
+import { payloadShape } from "@/lib/compose/archetypes/schema";
+
+const isListShaped = (archetype: string) => {
+  try {
+    return payloadShape(archetype) === "list";
+  } catch {
+    return false;
+  }
+};
 import { REPEAT_SPACING } from "@/lib/visual-library/match";
 import { EYEBROW_MAX_CHARS, EYEBROW_MAX_WORDS } from "@/lib/content/bands";
 import { footerCarriesLicence, repeatedLicenceTitles } from "@/lib/content/licence";
@@ -76,6 +85,14 @@ export const MONTH_LIMITS = {
    * Productibilité vérifiée sur la planche du 2026-11-02 avant d'être posée.
    */
   maxStructureShare: 0.25,
+  /**
+   * Les archétypes à charge utile en LISTE (`payloadShape`) : au plus 40 % du
+   * mois, douze cartes sur trente (2026-11-04). Un contenu en liste produit des
+   * boîtes, quelle que soit la composition ; la pile de blocs ne baisse plus que
+   * par là. Tient avec `maxLoneSentenceShare` et `maxArchetypeShare` : 20 posts à
+   * phrase possibles pour 18 nécessaires (`drawQuotas`, `lib/content/bank.ts`).
+   */
+  maxListShare: 0.4,
   /**
    * La tache sous le dessin : au plus 20 % du mois (six cartes sur trente), et
    * au moins 20 % de cartes au TRAIT NU — un dessin posé seul sur la crème ou une
@@ -259,6 +276,15 @@ export function checkMix(archetypes: string[]): Finding[] {
         detail: `la famille ${family} ne porte que ${held} post(s) sur ${n}, plancher ${floor} (${keys.join(", ")})`,
       });
     }
+  }
+
+  /* ⚠ La forme de la charge utile, lue dans le schéma — pas une table (2026-11-04). */
+  const lists = archetypes.filter((a) => isListShaped(a)).length;
+  if (lists > Math.floor(n * MONTH_LIMITS.maxListShare)) {
+    out.push({
+      check: "mix.list",
+      detail: `${lists} posts sur ${n} ont une charge utile en liste, plafond ${Math.floor(n * MONTH_LIMITS.maxListShare)}`,
+    });
   }
 
   const carousels = counts.get(CAROUSEL) ?? 0;

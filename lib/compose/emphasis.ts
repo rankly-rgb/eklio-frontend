@@ -1,6 +1,5 @@
 import { contrastRatio } from "@/lib/brand/color";
 import { grainedWorst, type Ground } from "@/lib/compose/grounds";
-import { mix } from "@/lib/compose/palette";
 import { floorFor, textClass } from "@/lib/compose/text-class";
 import type { Line, Palette, Placed } from "@/lib/compose/types";
 
@@ -15,12 +14,13 @@ import type { Line, Palette, Placed } from "@/lib/compose/types";
  * du titre, il n'y a pas d'emphase — jamais une correspondance approximative,
  * qui mettrait l'italique au mauvais endroit.
  *
- * ⚠ LA COULEUR EST UNE TEINTE DE TEXTE DÉDIÉE, PAS LA TEINTE D'APLAT. La
- * terracotta de la spec tient 2,94:1 sur crème, sous 3:1 même en grand texte.
- * L'encre d'accent part de la teinte la plus saturée de la palette et fonce
- * vers l'encre du titre jusqu'au plancher de SA classe — mesurée à la taille
- * rendue (`textClass`), contre le fond au pire pixel du grain. Aucun plancher
- * n'est baissé ; aucune couleur de palette ne change.
+ * ⚠ LA COULEUR EST UNE ENCRE DE TEXTE CHOISIE, PAS UNE TEINTE D'APLAT ASSOMBRIE
+ * (2026-11-04). La première version la dérivait de la teinte la plus saturée et
+ * sortait brun-gris. C'est maintenant `palette_families.accent_hex`, l'accent
+ * que la famille a déjà choisi pour le site, lu par la direction : sur crème il
+ * tient 4,93 à 8,12:1 ; sur ocre et terracotta, où seul le grand dessin (≥ 80 px,
+ * grand texte) pose une phrase, 3,62 à 6,84:1. Sur fond profond et sur photo,
+ * l'italique seul. Mesuré à la taille rendue (`textClass`), au pire pixel du grain.
  *
  * ⚠ SUR PHOTO, L'ITALIQUE SEUL. Le voile local est calculé pour l'encre de la
  * ligne ; une autre encre dessus n'aurait aucune garantie. Le script (citation)
@@ -32,22 +32,19 @@ export function emphasisOf(payload: unknown): string | null {
   return typeof e === "string" && e.trim() ? e.trim() : null;
 }
 
-function saturation(hex: string): number {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  return max === 0 ? 0 : (max - min) / max;
-}
+/** Les fonds sur lesquels l'accent choisi tient son plancher par construction (`the-accent-is-chosen.test.ts`). */
+const ACCENT_GROUNDS = new Set(["cream", "ochre", "terra"]);
 
-/** L'encre d'accent : de la teinte la plus saturée vers l'encre, jusqu'au plancher. */
-export function accentInk(palette: Palette, lineFill: string, background: string, floor: number): string | null {
-  const source = [...palette.tints].sort((a, b) => saturation(b) - saturation(a))[0];
-  if (!source) return null;
-  for (let step = 0; step <= 100; step += 1) {
-    const c = mix(source, lineFill, step / 100);
-    if (contrastRatio(c, background) >= floor) return step >= 100 ? null : c;
-  }
-  return null;
+/**
+ * L'encre de l'emphase : l'accent CHOISI de la famille, s'il tient le plancher
+ * de la classe de la ligne sur ce fond au pire pixel du grain ; sinon l'encre
+ * de la ligne (italique seul). Jamais une couleur dérivée ici.
+ */
+export function emphasisInk(palette: Palette, lineFill: string, ground: Ground | undefined, floor: number): string {
+  if (!palette.accent || palette.dark) return lineFill;
+  if (ground && !ACCENT_GROUNDS.has(ground)) return lineFill;
+  const worst = grainedWorst(palette.paper, ground ?? "paper");
+  return contrastRatio(palette.accent, worst) >= floor ? palette.accent : lineFill;
 }
 
 /** Les lignes du titre (bande `headline`), hors script, avec l'emphase découpée en segments. */
@@ -65,7 +62,6 @@ export function emphasise(placed: Placed[], emphasis: string | null, palette: Pa
   if ((before !== undefined && /[\p{L}\p{N}]/u.test(before)) || (after !== undefined && /[\p{L}\p{N}]/u.test(after))) return placed;
   const end = at + emphasis.length;
 
-  const background = ground === "photo" ? null : grainedWorst(palette.paper, ground ?? "paper");
   const changed = new Map<Line, Line>();
   let offset = 0;
   for (const l of lines) {
@@ -75,7 +71,7 @@ export function emphasise(placed: Placed[], emphasis: string | null, palette: Pa
       const a = from - offset;
       const b = to - offset;
       const floor = floorFor(textClass(l.size, l.weight, "headline"));
-      const fill = background ? accentInk(palette, l.fill, background, floor) ?? l.fill : l.fill;
+      const fill = emphasisInk(palette, l.fill, ground, floor);
       changed.set(l, {
         ...l,
         spans: [

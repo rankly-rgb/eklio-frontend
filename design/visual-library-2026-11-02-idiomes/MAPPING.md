@@ -5,7 +5,7 @@ cette session livre ; le reste est nommé, pas à moitié codé.
 
 | # | Idiome (spec) | Archétype qui le rend | Nouveau ? | Surfaces de texte | Fond | Cette session |
 |---|---|---|---|---|---|---|
-| 1 | Photo en arche | single_statement | non (rendu) | statement, eyebrow, signature | crème | non |
+| 1 | Photo en arche | — | **abandonné (2026-11-04)** : la colonne à côté de l'arche ne tient pas 4 lignes à 80 px (52 % des phrases de 31–40 car., F120) | — | — | **abandonné** |
 | 2 | Photo en cercle | single_statement | non (rendu) | statement, eyebrow, signature | crème | non |
 | 3 | Photo pleine, texte sur courbe | — | **oui** : `arc_statement {arc, statement}` | arc (italique serif sur grand rayon), statement | photo | non |
 | 4 | Courbe autour d'un dessin | — | **oui** : `ring_statement {ring, statement}` | ring (capitales espacées), statement | ocre | non |

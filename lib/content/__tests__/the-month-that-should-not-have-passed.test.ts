@@ -85,6 +85,8 @@ describe("le mois livré le 2026-09-24 est refusé, et sur quatre motifs", () =>
   it("et les trois promesses d'efficacité que personne n'avait vues", () => {
     expect(findings().map((f) => f.check).sort()).toEqual([
       "mix.floor.statement",
+      /* Depuis le 2026-11-04 : le plafond d'archétypes à liste. */
+      "mix.list",
       "text.clinicalClaim",
       "text.clinicalClaim",
       "text.clinicalClaim",

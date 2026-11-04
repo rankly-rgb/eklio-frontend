@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
-  bankShortfall, bankTarget, CANDIDATES_PER_ATTEMPT, DEDUP_REFUSAL, drawnPerAttempt, fillTrigger,
+  bankShortfall, bankTarget, CANDIDATES_PER_ATTEMPT, DEDUP_REFUSAL, drawnPerAttempt, drawQuotas, fillTrigger,
   POSTS_PER_MONTH, retainedPerAttempt, WINDOW_ROUNDS,
 } from "@/lib/content/bank";
 import { FORMAT_FAMILIES } from "@/lib/content/month-checks";
@@ -41,8 +41,8 @@ describe("ce que le tirage demande, archétype par archétype", () => {
    * famille n'a que deux formats : une fois le plafond atteint, elle tire
    * seule jusqu'au bout du quota de famille.
    */
-  it("la phrase seule porte le reste de sa famille", () => {
-    const perFamily = Math.ceil(CANDIDATES_PER_ATTEMPT / 3);
+  it("la phrase seule porte le reste de son groupe de tirage (`drawQuotas`, 2026-11-04)", () => {
+    const perFamily = drawQuotas(CANDIDATES_PER_ATTEMPT).statement;
     expect(drawn.single_statement).toBe(perFamily - PRACTITIONER_CARDS_PER_MONTH);
   });
 
@@ -150,11 +150,12 @@ describe("le seuil qui déclenche un remplissage", () => {
     );
     expect(bankShortfall(drawable, { practitioners: 1, attempts: 4 })).toEqual([]);
 
-    drawable.cycle = 5;
+    /* Trois `cycle` tirés par essai depuis le plafond de listes : un seuil de cinq, et deux en stock. */
+    drawable.cycle = 2;
     const short = bankShortfall(drawable, { practitioners: 1, attempts: 4 });
     expect(short.map((s) => s.archetype)).toEqual(["cycle"]);
-    expect(short[0].drawable).toBe(5);
-    expect(short[0].needed).toBeGreaterThan(5);
+    expect(short[0].drawable).toBe(2);
+    expect(short[0].needed).toBeGreaterThan(2);
   });
 
   it("un archétype absent du compte est un archétype à zéro", () => {

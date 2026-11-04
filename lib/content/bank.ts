@@ -1,4 +1,4 @@
-import { FORMAT_FAMILIES } from "@/lib/content/month-checks";
+import { FORMAT_FAMILIES, MONTH_LIMITS } from "@/lib/content/month-checks";
 import { PRACTITIONER_CARDS_PER_MONTH } from "@/lib/content/practitioner";
 
 /*
@@ -148,16 +148,14 @@ const withRefusals = (n: number) => n / (1 - DEDUP_REFUSAL);
  * et `practitioner_card` sort de la ronde dès son plafond atteint.
  */
 export function drawnPerAttempt(candidates = CANDIDATES_PER_ATTEMPT): Record<string, number> {
-  const perFamily = Math.ceil(candidates / Object.keys(FORMAT_FAMILIES).length);
+  const quotas = drawQuotas(candidates);
   const out: Record<string, number> = {};
 
-  for (const [family, keys] of Object.entries(FORMAT_FAMILIES)) {
-    /* Les créneaux du tirage : `carousel` pèse double, et c'est mesuré. */
-    const slots = family === "varied" ? [keys[0], keys[1], keys[0], ...keys.slice(2)] : [...keys];
-    const live = [...slots];
+  for (const group of DRAW_ORDER) {
+    const live = [...DRAW_GROUPS[group]];
     let taken = 0;
     let k = 0;
-    while (taken < perFamily && live.length > 0) {
+    while (taken < quotas[group] && live.length > 0) {
       const archetype = live[k % live.length];
       out[archetype] = (out[archetype] ?? 0) + 1;
       taken += 1;
@@ -175,6 +173,45 @@ export function drawnPerAttempt(candidates = CANDIDATES_PER_ATTEMPT): Record<str
   }
   for (const key of Object.values(FORMAT_FAMILIES).flat()) out[key] ??= 0;
   return out;
+}
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LE TIRAGE PAR FORME : LE PLAFOND D'ARCHÉTYPES À LISTE (2026-11-04)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Le tirage prenait un tiers des candidats par famille de format ; huit
+ * archétypes sur onze ont une charge utile en liste (`payloadShape`), et le
+ * mois en portait 17 à 19 sur 30 — autant de piles de blocs. Le mois les
+ * plafonne maintenant à 40 % (`MONTH_LIMITS.maxListShare`, 12 sur 30), et le
+ * tirage suit la même part, sinon la sélection n'aurait pas de quoi échanger.
+ *
+ * ⚠ LES DEUX PLAFONDS TIENNENT ENSEMBLE, ET C'EST CALCULÉ (un test le tient) :
+ * 18 posts à phrase au moins, pour 20 possibles — 9 phrases seules (les 30 % de
+ * `maxArchetypeShare` mordent avant les 40 % de `maxLoneSentenceShare`),
+ * 9 carrousels, 2 cartes praticiennes. Une marge de deux, pas de quatre. La part des phrases au tirage est donc portée par les
+ * carrousels autant que par les phrases seules.
+ *
+ * Les groupes de tirage ne sont PAS les familles de format : celles-ci gardent
+ * leurs planchers (`mix.floor.*`) ; un groupe ne sert qu'à doser la ronde.
+ */
+export const DRAW_GROUPS: Record<string, readonly string[]> = {
+  carousel: ["carousel"],
+  diagram: FORMAT_FAMILIES.varied.filter((k) => k !== "carousel"),
+  simple: FORMAT_FAMILIES.simple,
+  statement: FORMAT_FAMILIES.statement,
+};
+export const DRAW_ORDER = ["carousel", "diagram", "simple", "statement"] as const;
+
+/** La part des posts à phrase portée par les carrousels, au tirage. */
+export const CAROUSEL_SHARE_OF_PHRASE = 0.35;
+
+export function drawQuotas(candidates = CANDIDATES_PER_ATTEMPT): Record<string, number> {
+  const list = Math.round(candidates * MONTH_LIMITS.maxListShare);
+  const phrase = candidates - list;
+  const carousel = Math.round(phrase * CAROUSEL_SHARE_OF_PHRASE);
+  const simple = Math.round((list * DRAW_GROUPS.simple.length) / (DRAW_GROUPS.simple.length + DRAW_GROUPS.diagram.length));
+  return { carousel, diagram: list - simple, simple, statement: phrase - carousel };
 }
 
 /**

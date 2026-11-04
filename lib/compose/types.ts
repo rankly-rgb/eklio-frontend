@@ -84,6 +84,8 @@ export type Palette = {
   /** Ink on each tinted field (same index as `tints`), computed per field. */
   inkOnTints: string[];
   dark: boolean;
+  /** L'encre d'accent choisie de la famille (F108), sur fond clair seulement. */
+  accent?: string;
 };
 
 export type RenderInput = {

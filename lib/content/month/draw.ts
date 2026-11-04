@@ -66,8 +66,11 @@ export type DrawInput = {
   families: Record<string, string[]>;
   /** L'ordre dans lequel les familles passent. */
   drawOrder: string[];
-  /** Combien de sujets par famille la ronde vise. */
-  perFamily: number;
+  /**
+   * Combien de sujets par famille la ronde vise : un nombre pour toutes, ou un
+   * quota par groupe (`drawQuotas`, le plafond d'archétypes à liste, 2026-11-04).
+   */
+  perFamily: number | Record<string, number>;
   /** Combien de candidats le mois demande en tout, rattrapage compris. */
   candidates: number;
   /** Le plafond de cartes praticiennes du mois. */
@@ -187,6 +190,7 @@ export async function drawMonth(ports: DrawPorts, input: DrawInput): Promise<Dra
   };
 
   for (const family of input.drawOrder) {
+    const quota = typeof input.perFamily === "number" ? input.perFamily : (input.perFamily[family] ?? 0);
     const archetypes = input.families[family] ?? [];
     let taken = 0;
     const live = archetypes.filter((a) => a !== PRACTITIONER || input.practitionerPayload);
@@ -212,8 +216,8 @@ export async function drawMonth(ports: DrawPorts, input: DrawInput): Promise<Dra
      * pipeline mesuré n'est pas un portage. Consigné en F51 ; un mois réel
      * tranchera.
      */
-    while (taken < input.perFamily && live.length > 0) {
-      for (let k = 0; k < live.length && taken < input.perFamily; ) {
+    while (taken < quota && live.length > 0) {
+      for (let k = 0; k < live.length && taken < quota; ) {
         const topic = await pull(live[k]);
         if (!topic) {
           live.splice(k, 1);
@@ -227,8 +231,8 @@ export async function drawMonth(ports: DrawPorts, input: DrawInput): Promise<Dra
         k += 1;
       }
     }
-    if (taken < input.perFamily) {
-      shortfall.push(`${family}: ${taken} of ${input.perFamily} (the bank had no more)`);
+    if (taken < quota) {
+      shortfall.push(`${family}: ${taken} of ${quota} (the bank had no more)`);
     }
   }
 

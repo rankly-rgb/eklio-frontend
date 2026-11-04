@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { contrastRatio } from "@/lib/brand/color";
 import { render } from "@/lib/compose/engine";
 import { cardPalette } from "@/lib/compose/palette";
-import { grainedWorst, groundFor } from "@/lib/compose/grounds";
+import { groundFor } from "@/lib/compose/grounds";
 import { fitTitle } from "@/lib/compose/layout";
 import { CANVAS, MARGIN } from "@/lib/compose/constants";
 import { IDIOM_BOTTOM, IDIOM_TOP } from "@/lib/compose/idioms";
-import { floorFor, textClass } from "@/lib/compose/text-class";
 import {
   EMPHASIS_MAX_CHARS,
   PAYLOAD_SCHEMAS,
@@ -106,7 +104,7 @@ describe("l'emphase : une sous-chaîne exacte du titre, ou rien", () => {
   });
 });
 
-describe("le rendu : italique, et une encre de texte dédiée qui tient le plancher de sa classe", () => {
+describe("le rendu : l'italique, sur tous les fonds ; la couleur, seulement si la direction en a choisi une", () => {
   const KITS = [
     { primary: "#B4674A", secondary: "#C08A3E", light: "#F4EEE3", dark: "#2B2A27", paper: "#FAF6EE" },
     { primary: "#6F8F7A", secondary: "#B9A27A", light: "#EEF0EA", dark: "#23302A", paper: "#F7F6F1" },
@@ -128,15 +126,8 @@ describe("le rendu : italique, et une encre de texte dédiée qui tient le planc
         expect(em.length).toBeGreaterThan(0);
         expect(em.map((l) => l.spans!.filter((s) => s.emphasis).map((s) => s.text).join(" ")).join(" ")).toBe("still shape today");
         expect(r.svg).toContain('font-style="italic"');
-        for (const l of em) {
-          if (g === "photo") {
-            expect(l.emphasisFill).toBe(l.fill);
-            continue;
-          }
-          const worst = grainedWorst(ground.background, g);
-          expect(contrastRatio(l.emphasisFill!, worst)).toBeGreaterThanOrEqual(floorFor(textClass(l.size, l.weight, "headline")));
-          expect(l.emphasisFill).not.toBe(l.fill);
-        }
+        /* Sans accent choisi dans la direction, l'italique seul : aucune encre n'est dérivée (2026-11-04). */
+        for (const l of em) expect(l.emphasisFill).toBe(l.fill);
       });
     }
   }

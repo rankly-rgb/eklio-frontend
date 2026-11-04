@@ -180,7 +180,8 @@ describe("un mois produit avant la mention est refusé", () => {
      * titres sur trente par « When… » (voir `a-month-that-passes.test.ts`). La
      * licence reste la seule raison qui touche chaque post.
      */
-    expect([...new Set(findings.map((f) => f.check))].sort()).toEqual(["licence.missing", "variety.opening"]);
+    /* ⚠ Tiré sous l'ancien plan (un tiers par famille) : il dépasse le plafond de listes posé le 2026-11-04. */
+    expect([...new Set(findings.map((f) => f.check))].sort()).toEqual(["licence.missing", "mix.list", "variety.opening"]);
   });
 
   /*
@@ -195,7 +196,8 @@ describe("un mois produit avant la mention est refusé", () => {
       modalities: ["emdr"], practiceName: "Corin Aldhelm Therapy",
     });
     /* ⚠ Le seul constat qui reste est celui de ses titres, pas de sa licence. */
-    expect(findings.map((f) => f.check)).toEqual(["variety.opening"]);
+    /* ⚠ Tiré sous l'ancien plan (un tiers par famille) : il dépasse le plafond de listes posé le 2026-11-04. */
+    expect(findings.map((f) => f.check)).toEqual(["mix.list", "variety.opening"]);
   });
 
   /* ⚠ Et un mois qui la porte passe. */

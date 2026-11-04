@@ -22,7 +22,40 @@ export type DirectionPalette = {
   light: string;
   dark: string;
   paper: string;
+  /**
+   * L'encre d'accent CHOISIE de la famille (`palette_families.accent_hex`), pour
+   * l'emphase du titre (F108). Une couleur de texte se choisit, elle ne se dérive
+   * pas d'un aplat : absente, l'emphase est en italique seul.
+   */
+  accent?: string;
 };
+
+export type PaletteFamilyRow = {
+  primary_hex: string;
+  secondary_hex: string;
+  light_hex: string;
+  dark_hex: string;
+  paper_hex: string;
+  accent_hex: string;
+};
+
+/**
+ * L'accent choisi d'une direction : celui de la famille dont les cinq teintes
+ * sont les siennes — la règle de `site_spec_curated_accent` en base, telle
+ * quelle. Une direction qui ne correspond à aucune famille n'en a pas.
+ */
+export function curatedAccent(direction: DirectionPalette, families: readonly PaletteFamilyRow[]): string | null {
+  const up = (h: string) => h.toUpperCase();
+  const f = families.find(
+    (r) =>
+      up(r.primary_hex) === up(direction.primary) &&
+      up(r.secondary_hex) === up(direction.secondary) &&
+      up(r.light_hex) === up(direction.light) &&
+      up(r.dark_hex) === up(direction.dark) &&
+      up(r.paper_hex) === up(direction.paper)
+  );
+  return f && /^#[0-9A-F]{6}$/i.test(f.accent_hex) && up(f.accent_hex) !== "#FF00FF" ? f.accent_hex : null;
+}
 
 /*
  * ⚠ LUMINANCE ET CONTRASTE VIENNENT DE lib/brand/color.ts (F99, 2026-11-02).
@@ -275,6 +308,8 @@ export function cardPalette(
   return {
     key: dark ? `${key}_dark` : key,
     paper,
+    /* L'accent choisi n'existe que sur fond clair : sur une carte sombre, l'emphase est en italique seul. */
+    ...(direction.accent && !dark ? { accent: direction.accent } : {}),
     tints,
     ink: inkFor(paper, direction.dark, direction.paper),
     /*

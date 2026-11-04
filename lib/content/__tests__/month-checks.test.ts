@@ -67,7 +67,8 @@ describe("les mois de F15 sont rejetés quand on les rejoue", () => {
    */
   it("isla.thornbury — validé à l'œil, il passe le mélange et les doublons", () => {
     const posts = monthFixture("isla");
-    expect(checkMix(posts.map((p) => p.archetype))).toEqual([]);
+    /* ⚠ Tiré sous l'ancien plan : seul le plafond de listes (2026-11-04) le refuse. */
+    expect(checkMix(posts.map((p) => p.archetype)).map((f) => f.check)).toEqual(["mix.list"]);
     expect(checkDuplicateTitles(posts.map((p) => p.cardLine))).toEqual([]);
   });
 
@@ -291,6 +292,8 @@ describe("un mois composé aujourd'hui est livrable", () => {
     const posts = monthFixture("isla").map((p) => ({ ...p }));
     const findings = checkMonth({ posts, direction: DIRECTION });
     // Le mois validé ne doit laisser passer ni mélange, ni doublon, ni recopie.
-    expect(names(findings).filter((n) => n.startsWith("mix.") || n === "titles.duplicate")).toEqual([]);
+    /* ⚠ Hors le plafond de listes posé après lui (2026-11-04). */
+    expect(names(findings).filter((n) => (n.startsWith("mix.") && n !== "mix.list") || n === "titles.duplicate")).toEqual([]);
+    expect(names(findings)).toContain("mix.list");
   });
 });
