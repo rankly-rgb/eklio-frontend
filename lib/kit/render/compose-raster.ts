@@ -45,6 +45,8 @@ import { getCachedFontBuffer } from "@/lib/kit/render/font-cache";
 /** The three families the composition engine sets, and nothing else. */
 export const COMPOSE_FAMILIES = ["Fraunces", "Karla", "IBM Plex Mono", "Cormorant Garamond", "Parisienne"] as const;
 
+const ITALIC_URL = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500&display=swap";
+
 const GOOGLE_FONTS_URL =
   "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600" +
   "&family=Karla:wght@400..600&family=IBM+Plex+Mono:wght@400;500" +
@@ -82,6 +84,17 @@ export async function composeFontFiles(): Promise<string[]> {
       return path;
     })
   );
+
+  /*
+   * ⚠ L'ITALIQUE DE CORMORANT, POUR L'EMPHASE DU TITRE (F108, 2026-11-04). Sans
+   * sa face, resvg rendrait le segment en romain : l'emphase ne serait plus
+   * qu'une couleur. Une face absente est une erreur, comme les autres.
+   */
+  const italic = await getCachedFontBuffer("Cormorant Garamond", ITALIC_URL, "italic");
+  if (!italic || italic.byteLength === 0) throw new Error(`compose: no font bytes for "Cormorant Garamond" italic.`);
+  const italicPath = join(dir, "cormorant-garamond-italic.ttf");
+  writeFileSync(italicPath, Buffer.from(italic));
+  paths.push(italicPath);
 
   cachedPaths = paths;
   return paths;

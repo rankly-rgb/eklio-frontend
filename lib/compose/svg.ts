@@ -111,7 +111,17 @@ function renderPlaced(p: Placed): string {
         `font-family="${FAMILY_STACK[l.family]}" font-size="${round2(l.size)}" ` +
         `font-weight="${l.weight}" fill="${l.fill}" ` +
         `text-anchor="${l.anchor}" ` +
-        `data-box="${boxAttr(l.box)}">${esc(l.text)}</text>`
+        `data-box="${boxAttr(l.box)}">` +
+        (l.spans
+          ? l.spans
+              .map((s) =>
+                s.emphasis
+                  ? `<tspan data-emphasis="1" font-style="italic" fill="${l.emphasisFill ?? l.fill}">${esc(s.text)}</tspan>`
+                  : esc(s.text)
+              )
+              .join("")
+          : esc(l.text)) +
+        `</text>`
       );
     })
     .join("");

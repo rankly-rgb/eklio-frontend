@@ -11,6 +11,7 @@ import { DRAWING_FOR } from "@/lib/compose/illustrations";
 import { libraryDrawing } from "@/lib/compose/library";
 import { accentDrawing, decorFor, imageHref, photoFor } from "@/lib/compose/decor";
 import { composeIdiom, FILL_EXEMPT, idiomFor, type Idiom } from "@/lib/compose/idioms";
+import { emphasise, emphasisOf } from "@/lib/compose/emphasis";
 import { grainedWorst, SOFT_TARGET, softest } from "@/lib/compose/grounds";
 
 
@@ -306,6 +307,7 @@ function renderIdiom(input: RenderInput, idiom: Idiom, parsed: unknown, soft: st
     ground: g.ground,
     decor,
   };
+  composition.placed = emphasise(composition.placed, emphasisOf(input.payload), input.palette, input.ground?.ground);
   return { svg: toSvg(composition, input.palette.paper), composition, smallestSize: smallest(placed) };
 }
 
@@ -514,6 +516,7 @@ export function render(input: RenderInput): RenderResult {
         ...(input.ground ? { ground: input.ground.ground } : {}),
         ...(contentIdiom ? { idiom: contentIdiom } : {}),
       };
+      composition.placed = emphasise(composition.placed, emphasisOf(input.payload), input.palette, input.ground?.ground);
       return {
         svg: toSvg(composition, input.palette.paper),
         composition,
@@ -589,7 +592,8 @@ export function renderCarousel(input: RenderInput): RenderResult[] {
     render({
       ...input,
       archetype: card.archetype_key,
-      payload: card.payload,
+      /* L'emphase du carrousel est celle de sa couverture (F108). */
+      payload: i === 0 && emphasisOf(input.payload) ? { ...(card.payload as object), emphasis: emphasisOf(input.payload) } : card.payload,
       eyebrow: `${input.eyebrow} ${i + 1}/${parsed.cards.length}`,
       slide: i,
       ground: i === 0 || !input.ground || input.ground.ground !== "photo" ? input.ground : (input.ground.rest ?? null),

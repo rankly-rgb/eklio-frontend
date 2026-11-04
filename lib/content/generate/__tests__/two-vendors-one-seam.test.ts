@@ -113,9 +113,9 @@ describe("l'enveloppe ET le payload sont contraints, en strict", () => {
     schema: { properties: Record<string, unknown>; required: string[]; additionalProperties: boolean };
   };
 
-  it("les cinq champs de l'enveloppe sont exigés", () => {
+  it("les six champs de l'enveloppe sont exigés — l'emphase comprise (F108)", () => {
     expect(format.type).toBe("json_schema");
-    expect(format.schema.required.sort()).toEqual(["alt_text", "caption", "card_line", "payload", "rationale"]);
+    expect(format.schema.required.sort()).toEqual(["alt_text", "caption", "card_line", "emphasis", "payload", "rationale"]);
     expect(format.schema.additionalProperties).toBe(false);
   });
 

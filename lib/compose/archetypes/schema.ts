@@ -83,8 +83,39 @@ export const LETTERED_ACRONYMS = [
  * assemblé depuis le brief ; son schéma sert à la parité avec les dix autres et
  * au test qui compare chaque module à son schéma.
  */
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LA LONGUEUR DE LA PHRASE SEULE, PORTÉE DANS LE SCHÉMA (F105, 2026-11-04)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Mesurée sur l'encre réelle des polices (`fitTitle`), sur toutes les coupes en
+ * fin de mot des 64 phrases seules de la banque et du mois de décembre :
+ *
+ *   citation au script, fond profond   ≤ 60 car. : 94 à 99 % entrent ; 61–70 : 69 % ; 71–80 : 6 %
+ *   cercle, grand dessin (serif ≥ 80)  ≤ 80 car. : 100 %
+ *
+ * La phrase atterrit sur un fond que le plan du mois choisit APRÈS l'écriture :
+ * la borne est donc celle de la mise en page la plus étroite qu'elle peut
+ * prendre, la citation — 60 caractères. Médiane des phrases écrites jusqu'ici :
+ * 78. Avant cette borne, deux citations sur trois retombaient en mise en page
+ * ordinaire (F105).
+ *
+ * ⚠ LE SCHÉMA COUPE, IL NE RÉÉCRIT PAS. Sondé le 2026-11-04 : un `maxLength` en
+ * mode strict tronque la sortie au caractère près, au milieu d'un mot, et y a
+ * glissé un caractère étranger (« held a银 »). La consigne vise donc plus bas
+ * (`STATEMENT_TARGET_CHARS`), et `validateCopy` refuse une phrase qui touche
+ * le plafond ou ne finit pas par une ponctuation : elle a été coupée.
+ */
+export const STATEMENT_MAX_CHARS = 60;
+export const STATEMENT_TARGET_CHARS = 55;
+
+/** L'emphase : une locution du titre, au plus quatre mots (F108). */
+export const EMPHASIS_MAX_CHARS = 32;
+
+const statementText: JsonSchema = { type: "string", maxLength: STATEMENT_MAX_CHARS };
+
 export const PAYLOAD_SCHEMAS: Record<string, JsonSchema> = {
-  single_statement: object({ statement: text }),
+  single_statement: object({ statement: statementText }),
   quadrant_model: object({ axis_x: text, axis_y: text, items: exactly(4) }),
   cycle: object({ nodes: exactly(3) }),
   surface_and_beneath: object({ surface: item, beneath: item }),
@@ -152,7 +183,7 @@ export function payloadSchema(archetypeKey: string): JsonSchema {
 export function schemaAccepts(schema: JsonSchema, value: unknown): boolean {
   const known = new Set([
     "type", "properties", "required", "additionalProperties", "items",
-    "minItems", "maxItems", "enum", "anyOf", "description",
+    "minItems", "maxItems", "enum", "anyOf", "description", "maxLength",
   ]);
   for (const key of Object.keys(schema)) {
     if (!known.has(key)) throw new Error(`schemaAccepts: unsupported keyword ${key}`);
@@ -165,7 +196,7 @@ export function schemaAccepts(schema: JsonSchema, value: unknown): boolean {
 
   switch (schema.type) {
     case "string":
-      return typeof value === "string";
+      return typeof value === "string" && (typeof schema.maxLength !== "number" || value.length <= schema.maxLength);
     case "boolean":
       return typeof value === "boolean";
     case "array": {
@@ -211,4 +242,33 @@ export function strictViolations(schema: JsonSchema, path = "$"): string[] {
   }
   if (schema.type === "array" && schema.items) out.push(...strictViolations(schema.items as JsonSchema, `${path}[]`));
   return out;
+}
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LA FORME D'UNE CHARGE UTILE : LISTE OU PHRASE (2026-11-04)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Un contenu en liste produit des boîtes ; une phrase n'en produit pas. Le
+ * critère est la forme du schéma, lue ici et pas recopiée dans une table : une
+ * charge utile qui porte DEUX ITEMS ÉTIQUETÉS OU PLUS (des objets à `label`,
+ * comptés au minimum de leur tableau) est une liste. Le carrousel prend la
+ * forme de sa couverture, une phrase — c'est elle que la grille montre.
+ */
+function labelledItems(schema: JsonSchema): number {
+  if (Array.isArray(schema.anyOf)) return Math.min(...(schema.anyOf as JsonSchema[]).map(labelledItems));
+  if (schema.type === "array") return ((schema.minItems as number) ?? 0) * labelledItems(schema.items as JsonSchema);
+  if (schema.type === "object") {
+    const props = (schema.properties ?? {}) as Record<string, JsonSchema>;
+    if ("label" in props) return 1;
+    return Object.values(props).reduce((n, p) => n + labelledItems(p), 0);
+  }
+  return 0;
+}
+
+export type PayloadShape = "list" | "phrase";
+
+export function payloadShape(archetypeKey: string): PayloadShape {
+  if (archetypeKey === "carousel") return "phrase";
+  return labelledItems(payloadSchema(archetypeKey)) >= 2 ? "list" : "phrase";
 }

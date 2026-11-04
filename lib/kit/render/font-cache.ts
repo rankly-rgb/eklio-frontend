@@ -93,9 +93,11 @@ export async function fetchFontFileUrl(googleFontsUrl: string, family: string): 
  */
 export async function getCachedFontBuffer(
   family: string,
-  googleFontsUrl: string
+  googleFontsUrl: string,
+  /** Une face d'une famille déjà en cache (l'italique) a sa propre clef. */
+  variant?: string
 ): Promise<ArrayBuffer> {
-  const cacheKey = `${slugify(family)}.ttf`;
+  const cacheKey = `${slugify(family)}${variant ? `-${slugify(variant)}` : ""}.ttf`;
   const admin = createAdminClient();
 
   const cached = await admin.storage.from("fonts").download(cacheKey);

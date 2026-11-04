@@ -4,6 +4,7 @@ import { anthropicBody, type CopyCall } from "@/lib/content/generate/provider";
 import { rationaleBody } from "@/lib/content/rationale";
 import { ARCHETYPES } from "@/lib/compose/archetypes/index";
 import { budgetErrors, type BudgetError } from "@/lib/compose/budget";
+import { EMPHASIS_MAX_CHARS, STATEMENT_MAX_CHARS, STATEMENT_TARGET_CHARS } from "@/lib/compose/archetypes/schema";
 import { CANVAS, CONTENT_MIN_AT_CANVAS, THUMB, TYPE } from "@/lib/compose/constants";
 
 /*
@@ -197,8 +198,8 @@ type Shape = { shape: string; example: string };
 
 const SHAPES: Record<string, Shape> = {
   single_statement: {
-    shape: `{"statement": "ONE sentence, between 3 and 24 words"}`,
-    example: `{"statement": "Rest is not a switch your body flips when the day ends."}  (11 words)`,
+    shape: `{"statement": "ONE sentence, between 3 and 24 words, AT MOST ${STATEMENT_TARGET_CHARS} CHARACTERS including spaces"}`,
+    example: `{"statement": "Rest is not a switch your body flips at night."}  (10 words)`,
   },
   quadrant_model: {
     shape:
@@ -335,7 +336,7 @@ const SHAPES: Record<string, Shape> = {
       `{"surface": {"label": "Handling it", "gloss": "every deadline met"}, ` +
       `"beneath": {"label": "Running empty", "gloss": "no memory of resting"}}}, ` +
       `{"archetype_key": "single_statement", "payload": ` +
-      `{"statement": "Safety is learned, and learning it takes longer than a weekend."}}]}`,
+      `{"statement": "Safety is learned, and the learning takes time."}}]}`,
   },
 };
 
@@ -416,7 +417,7 @@ export function archetypeInstruction(archetypeKey: string): string {
       `"payload" appears twice below and they are not the same one: the outer`,
       `envelope has one, and every card inside has its own. Your whole reply`,
       `is shaped like this, and anything else is thrown away:`,
-      `{"payload": {"cards": [...]}, "card_line": "...", "caption": "...",`,
+      `{"payload": {"cards": [...]}, "card_line": "...", "emphasis": "...", "caption": "...",`,
       ` "alt_text": "...", "rationale": "..."}`,
       ``,
       `A CONFORMING EXAMPLE of "payload" — count the words in it before you`,
@@ -673,11 +674,19 @@ export function cachedPrefixText(brand: BrandContext, archetypeKey: string): str
     ``,
     `OUTPUT FORMAT. Reply with ONE JSON object and nothing else — no prose`,
     `before it, no code fence around it:`,
-    `{"payload": {...}, "card_line": "...", "caption": "...", "alt_text": "...", "rationale": "..."}`,
+    `{"payload": {...}, "card_line": "...", "emphasis": "...", "caption": "...", "alt_text": "...", "rationale": "..."}`,
     ``,
     `- "payload" follows the archetype shape below, exactly.`,
     `- "card_line" is the line printed across the top of the card: AT MOST ${CARD_LINE_MAX}`,
     `  CHARACTERS, including spaces. Count them.`,
+    `- "emphasis" is 1 to 4 CONSECUTIVE WORDS COPIED EXACTLY from the card's title,`,
+    `  set in coloured italic: the statement on a single_statement card, the first`,
+    `  panel's statement on a carousel, "card_line" on every other card. Same`,
+    `  letters, same case, same punctuation. Pick the words that carry the turn of`,
+    `  the line, not its first words. Write "" for none. Anything not found`,
+    `  verbatim in the title is thrown away.`,
+    `- A "statement" is AT MOST ${STATEMENT_TARGET_CHARS} CHARACTERS, including spaces, and ends with`,
+    `  its punctuation. Count them: a longer one cannot be set on the card.`,
     `- "caption" is what she posts: at most ${CAPTION_MAX} characters.`,
     `- "alt_text" describes the card for a screen reader: at most ${ALT_TEXT_MAX} characters.`,
     `- "rationale" is one sentence, at most ${RATIONALE_MAX_WORDS} words, completing "Why this one:".`,
@@ -918,6 +927,8 @@ export type CopyResult = {
   altText?: string;
   rationale?: string;
   reason?: string;
+  /** Une emphase rendue par le modèle et écartée : absente du titre, ou mal bornée (F108). */
+  emphasisIgnored?: boolean;
   budget?: BudgetError[];
   usage?: { input: number; output: number; cacheRead: number; cacheWrite: number };
 };
@@ -1017,16 +1028,37 @@ function validateCopyResponse(archetypeKey: string, raw: string): CopyResult {
              cardLine: typeof o.card_line === "string" ? typographicQuotes(clampCardLine(o.card_line)) : undefined };
   }
 
+  /*
+   * ⚠ UNE PHRASE QUI TOUCHE SON PLAFOND A ÉTÉ COUPÉE (2026-11-04). Le schéma
+   * strict borne la phrase à `STATEMENT_MAX_CHARS` en tronquant la sortie au
+   * caractère près ; sondé, il a laissé « held a银 ». Une phrase plus longue que
+   * le plafond (un fournisseur sans schéma), ou qui ne finit pas sur sa
+   * ponctuation, ou qui porte une écriture étrangère, est refusée : publiée,
+   * elle serait une phrase que personne n'a finie.
+   */
+  for (const st of statementsOf(archetypeKey, payload)) {
+    if (st.length > STATEMENT_MAX_CHARS) return { ...base, reason: "statement_too_long" };
+    const touched = st.length >= STATEMENT_MAX_CHARS && !/[.!?…"”’)]$/.test(st.trim());
+    if (touched || /[^\u0000-\u024F\u2010-\u203A\u2026]/u.test(st)) return { ...base, reason: "statement_cut" };
+  }
+
+  const cardLine = typeof o.card_line === "string" ? typographicQuotes(clampCardLine(o.card_line)) : undefined;
+  const typed = deepTypographic(payload) as Record<string, unknown>;
+  const emphasis = typeof o.emphasis === "string" ? typographicQuotes(o.emphasis.trim()) : "";
+  const kept = emphasis ? validEmphasis(emphasis, titleOf(archetypeKey, typed, cardLine)) : false;
+
   return {
     topicId: "",
     ok: true,
+    ...(emphasis && !kept ? { emphasisIgnored: true } : {}),
     /*
      * ⚠ LA PONCTUATION EST NORMALISÉE ICI, UNE FOIS, POUR TOUT LE PAYLOAD.
      * Dix essais gelés sur dix ont été refusés sur des apostrophes droites :
      * le modèle écrit « isn't » parce que c'est l'anglais tel qu'on le tape.
      * Une substitution déterministe tient ce que la consigne ne tiendrait pas.
      */
-    payload: deepTypographic(payload),
+    /* L'emphase validée voyage avec le payload : le moteur la lit au rendu (`lib/compose/emphasis.ts`). */
+    payload: kept ? { ...typed, emphasis } : typed,
     /*
      * ⚠ TRONQUÉE, JAMAIS REFUSÉE, ET SUR UNE FRONTIÈRE DE MOT. Trente
      * caractères est une contrainte de rendu, pas une règle de fond : un
@@ -1034,12 +1066,53 @@ function validateCopyResponse(archetypeKey: string, raw: string): CopyResult {
      * du mois faisait déjà ce geste plus bas dans la chaîne ; le faire ici
      * évite qu'il y ait deux endroits où la même borne se décide.
      */
-    cardLine: typeof o.card_line === "string" ? typographicQuotes(clampCardLine(o.card_line)) : undefined,
+    cardLine,
     caption: typographicQuotes(String(o.caption)),
     altText: typographicQuotes(String(o.alt_text)),
     /* ⚠ Sans « Why this one: » : l'écran le pose, le modèle le recopie (lib/content/rationale.ts). */
     rationale: typeof o.rationale === "string" ? typographicQuotes(rationaleBody(o.rationale)) : "",
   };
+}
+
+/** Les phrases seules d'un payload : la sienne, ou celles des panneaux d'un carrousel. */
+function statementsOf(archetypeKey: string, payload: unknown): string[] {
+  const p = payload as { statement?: unknown; cards?: Array<{ archetype_key?: string; payload?: { statement?: unknown } }> };
+  if (archetypeKey === "single_statement" && typeof p?.statement === "string") return [p.statement];
+  if (archetypeKey === "carousel" && Array.isArray(p?.cards)) {
+    return p.cards.filter((c) => c?.archetype_key === "single_statement" && typeof c.payload?.statement === "string").map((c) => c.payload!.statement as string);
+  }
+  return [];
+}
+
+/**
+ * Le titre de la carte, celui que l'emphase doit citer : la phrase d'une
+ * phrase seule, celle de la couverture d'un carrousel, la `card_line` sinon.
+ */
+export function titleOf(archetypeKey: string, payload: unknown, cardLine: string | undefined): string {
+  const p = payload as { statement?: unknown; cards?: Array<{ archetype_key?: string; payload?: { statement?: unknown } }> };
+  if (archetypeKey === "single_statement" && typeof p?.statement === "string") return p.statement;
+  if (archetypeKey === "carousel") {
+    const first = p?.cards?.[0];
+    if (first?.archetype_key === "single_statement" && typeof first.payload?.statement === "string") return first.payload.statement;
+  }
+  return cardLine ?? "";
+}
+
+/**
+ * ⚠ SOUS-CHAÎNE EXACTE, SUR DES FRONTIÈRES DE MOT, UN À QUATRE MOTS (F108). Une
+ * locution approchée mettrait l'italique au mauvais endroit : elle est écartée,
+ * le post garde son titre sans emphase.
+ */
+export function validEmphasis(emphasis: string, title: string): boolean {
+  if (!emphasis || emphasis.length > EMPHASIS_MAX_CHARS || emphasis === title.trim()) return false;
+  const words = emphasis.split(/\s+/).filter(Boolean).length;
+  if (words < 1 || words > 4) return false;
+  const at = title.indexOf(emphasis);
+  if (at < 0) return false;
+  const before = title[at - 1];
+  const after = title[at + emphasis.length];
+  const letter = /[\p{L}\p{N}]/u;
+  return !(before && letter.test(before)) && !(after && letter.test(after));
 }
 
 /** `typographicQuotes` sur toute chaîne d'une structure, où qu'elle soit rangée. */

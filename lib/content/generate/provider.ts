@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { payloadSchema } from "@/lib/compose/archetypes/schema";
+import { EMPHASIS_MAX_CHARS, payloadSchema } from "@/lib/compose/archetypes/schema";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -242,11 +242,13 @@ export function copyEnvelopeFormat(archetypeKey: string): Record<string, unknown
       properties: {
         payload: payloadSchema(archetypeKey),
         card_line: { type: "string" },
+        /* L'emphase du titre (F108) : "" pour aucune ; `validateCopy` la vérifie mot à mot. */
+        emphasis: { type: "string", maxLength: EMPHASIS_MAX_CHARS },
         caption: { type: "string" },
         alt_text: { type: "string" },
         rationale: { type: "string" },
       },
-      required: ["payload", "card_line", "caption", "alt_text", "rationale"],
+      required: ["payload", "card_line", "emphasis", "caption", "alt_text", "rationale"],
     },
   };
 }

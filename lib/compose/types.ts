@@ -15,6 +15,10 @@ export type Line = {
   weight: number;
   fill: string;
   anchor: "start" | "middle";
+  /** L'emphase du titre (F108) : la ligne découpée, le segment `emphasis` en italique. */
+  spans?: Array<{ text: string; emphasis: boolean }>;
+  /** L'encre du segment en emphase — résolue au plancher de la classe de la ligne. */
+  emphasisFill?: string;
 };
 
 /**

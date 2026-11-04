@@ -5,7 +5,7 @@
       "intent": "behind_the_practice",
       "cardLine": "Your body remembers longer",
       "payload": {
-        "statement": "Your nervous system keeps living a story your mind has already closed."
+        "statement": "Your body keeps living a story your mind has closed."
       }
     },
     {
@@ -13,7 +13,7 @@
       "intent": "educate",
       "cardLine": "Competence can muffle rest",
       "payload": {
-        "statement": "Your body sends signals when it needs to rest. Competence can muffle those signals into silence."
+        "statement": "Competence can muffle your body’s signals to rest."
       }
     },
     {
@@ -21,7 +21,7 @@
       "intent": "invite",
       "cardLine": "When the script rewrites",
       "payload": {
-        "statement": "Your nervous system may still be living in the life you had before the change."
+        "statement": "Your body may still be living the life you had before."
       }
     },
     {
@@ -363,7 +363,7 @@
         "cards": [
           {
             "payload": {
-              "statement": "EMDR can move quickly through a memory without making the feeling around it disappear."
+              "statement": "EMDR can move quickly without the feeling disappearing."
             },
             "archetype_key": "single_statement"
           },
@@ -382,13 +382,13 @@
           },
           {
             "payload": {
-              "statement": "Healing has its own timeline, separate from how fast the brain reprocesses an image."
+              "statement": "Healing keeps its own timeline, apart from speed."
             },
             "archetype_key": "single_statement"
           },
           {
             "payload": {
-              "statement": "Speed inside a session is not a measure of how deep the work goes."
+              "statement": "Speed in a session is not depth."
             },
             "archetype_key": "single_statement"
           }
@@ -403,7 +403,7 @@
         "cards": [
           {
             "payload": {
-              "statement": "Finishing something and feeling finished are not the same."
+              "statement": "Finishing and feeling finished are not the same."
             },
             "archetype_key": "single_statement"
           },
