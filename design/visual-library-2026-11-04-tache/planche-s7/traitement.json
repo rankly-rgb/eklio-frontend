@@ -1,0 +1,31 @@
+{
+ "provenance": "harnais : structureOf (lib/compose/structure.ts, code de production) relu sur les SVG des deux planches",
+ "session6": {
+  "traitement": {
+   "nu": 5,
+   "sur tache": 11,
+   "sans dessin": 6,
+   "sur photo": 6,
+   "clair sur sombre": 2
+  },
+  "signature_max": [
+   "bubbles",
+   5
+  ],
+  "pile_de_blocs": 12
+ },
+ "session7": {
+  "traitement": {
+   "nu": 16,
+   "sur tache": 2,
+   "sans dessin": 4,
+   "sur photo": 5,
+   "clair sur sombre": 3
+  },
+  "signature_max": [
+   "grille · dessin à gauche · nu / big_drawing · nu / aucun aplat · dessin seul · nu",
+   4
+  ],
+  "pile_de_blocs": 14
+ }
+}

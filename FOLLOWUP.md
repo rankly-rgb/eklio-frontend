@@ -4461,7 +4461,7 @@ la grille ne sort jamais. Il faut un archétype dont la rédaction écrit les ce
 dessin (`grid_six {cells[6]{label}}`), avec sa charge utile, son validateur, son schéma, ses
 surfaces sur les onze chemins et des sujets de banque — puis un mois rédigé.
 
-## F111 — interrupteurs (idiome 8) : une décision avant le code
+## F111 — interrupteurs (idiome 8) : une décision avant le code (TRANCHÉ 2026-11-04 : idiome retiré, cases des pilules retirées)
 
 Un interrupteur « éteint » affirme qu'une pratique n'est pas offerte. Le brief n'a qu'un
 catalogue `session_style_ids`, pas d'offres opérationnelles avec un état. Décision à prendre :
@@ -4479,3 +4479,63 @@ dessin (4) demandent des archétypes nouveaux (`arc_statement`, `ring_statement`
 `dd8514c` a été poussé alors que `npm run verify` échouait sur deux tests de signature (la
 chaîne shell utilisait `;` au lieu de `&&`). Corrigé par `7b733c8` (verify vert, 5 347 tests),
 sans réécriture d'historique. Toute chaîne verify → commit → push s'écrit avec `&&`.
+
+## F114 — l'arche (idiome 1) ne tient pas ses planchers
+
+Mesuré le 2026-11-04 sur les 9 phrases seules de décembre, avec une colonne de texte de 408 px
+à côté de l'arche : aucune n'entre en 4 lignes à 80 px ou plus. Pour tenir en 4 lignes, il
+faudrait descendre de 34 à 56 px. À 80 px, il faudrait 6 à 12 lignes ou davantage. La spec
+pose une phrase de 42 caractères en Cormorant 74 px sur 5 lignes, donc sous nos deux planchers.
+L'arche demande des phrases d'environ 40 caractères au plus : c'est une contrainte d'écriture.
+
+## F115 — les couches (idiome 11) déplacent la sélection de novembre
+
+`surface_and_beneath` a été rendu sans boîtes : la surface à l'encre, un filet, le dessous à
+l'encre douce. Toutes les cartes se composaient sans violation et l'encre douce tenait 4,7:1.
+Mais le rejeu de novembre ne trouvait plus de mois propre : « rangée · dessin au-dessus · nu »
+montait à 8/30 pour un plafond de 7, et 4 tests échouaient. Je n'ai pas compris le mécanisme
+dans le temps de la session. L'idiome est retiré et non poussé. Il faut d'abord regarder ce que
+le sélecteur échange quand `surface_and_beneath` n'a plus de dessin.
+
+## F116 — les dessins d'un seul trait se lisent mal, même sur aplat
+
+Sur la planche du 2026-11-04 : `priv-partial-outline` (un arc, cartes 4 et 24) et
+`eft-shelter` (un chevron, carte 26) restent faibles, nus sur crème ou sur blush. La règle
+n'écarte ces traits que de la photo. C'est une question de banque : soit des dessins abstraits
+plus lisibles, soit les écarter des cartes où ils sont seuls.
+
+## F117 — le sélecteur ne garde pas la même sélection d'une version du moteur à l'autre
+
+Pour le même journal rédigé, la session 6 a retenu 2 `numbered_strategies` et 5 `cycle`, la
+session 7 5 `concentric_control` et 1 `cycle`. Comparer deux planches demande donc la même
+sélection. Un rejeu à sélection figée serait l'outil (harnais).
+
+## Ce que l'écriture devrait produire pour que les idiomes bloqués deviennent possibles
+
+Ce qui reste ne se règle plus dans la mise en page. Il dépend de ce que la rédaction écrit et
+de ce que contient la banque.
+
+1. **La grille (5, F110).** La rédaction écrirait 4 à 6 cellules, chacune un libellé de 1 à 3
+   mots qui nomme un objet dessinable : un nom concret comme « a key », « a chair » ou « an
+   anchor », pas une abstraction comme « safety ». À chaque libellé correspondrait un dessin de
+   la banque, choisi à l'écriture et validé contre l'inventaire. Le schéma porterait
+   `cells[{label, drawing}]` ; un dessin absent de la banque serait refusé à l'écriture.
+2. **L'emphase (F108).** Un champ `emphasis` contiendrait de 1 à 3 mots consécutifs pris dans
+   le titre ou la phrase, recopiés à l'identique. Le validateur exigerait que ce soit une
+   sous-chaîne exacte et la placerait en fin de phrase quand c'est possible. Un champ vide
+   veut dire pas d'italique.
+3. **Les longueurs par archétype (F105, F114).**
+   - citation au script sur fond profond : 60 caractères au plus ;
+   - arche : 40 caractères ;
+   - cercle et grand dessin : 70 caractères ;
+   - libellés de pilules et de bulles : 3 mots, gloses 6 mots ;
+   - couches : 4 lignes de 4 mots au plus.
+
+   Ces limites iraient dans le schéma de sortie structurée et dans le validateur, pas dans le
+   moteur, qui refuse aujourd'hui après coup.
+4. **Les courbes (3, 4).** Un champ `arc` court de 4 à 7 mots, une phrase qui se lit en
+   tournant, distincte du titre. C'est une surface de texte nouvelle : elle passe sous
+   `checkMonth`, sous la base déontologique et ses 11 chemins d'écriture, et dans le budget de
+   mots.
+5. **La carte praticienne (12).** Elle ne demande rien à l'écriture : son monogramme se tire du
+   nom du cabinet. Elle attend seulement qu'un mois en porte une.
