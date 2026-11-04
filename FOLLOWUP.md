@@ -4613,3 +4613,49 @@ entreront dans le schéma (libellés, gloses), il leur faudra le même garde.
 - **Le journal de décembre** de la base locale a été effacé pour la rédaction neuve. La
   sauvegarde a échoué faute de permission. L'ancien mois reste décrit par les planches
   commitées.
+
+## F122 — le mois sur la banque élargie est refusé (2026-11-04, session 9)
+
+Décembre a été récrit par l'orchestrateur complet sur la banque élargie, avec le tirage par
+forme et le plafond de listes. Il est refusé sur deux constats :
+- `mix.list` : 16 posts à liste sur 30, pour un plafond de 12 ;
+- `variety.opening` : 7 posts sur 30 en « when… ».
+
+Coût : 0,6786 $. Les chiffres sont dans `design/bank-2026-11-04/README.md`. Conformément au
+cadre, aucun troisième mois n'a été tenté.
+
+- **Cause 1 : le dessin, une cause nouvelle.** Les sujets situés ne trouvent pas de dessin
+  dans la bibliothèque. Seules 9 phrases seules sur 20 et 7 carrousels sur 12 en trouvent un.
+  L'entonnoir perd 13 posts avant le portillon (57 tirés, 44 arrivés), presque tous à phrase.
+  À trancher : soit la bibliothèque couvre ces situations, soit un post à phrase sans dessin
+  apparié entre au mois. La règle « zéro carte vide » le permet sur photo, et le cercle (idiome
+  2) n'a pas besoin de dessin.
+- **Cause 2 : « when… », le diagnostic de la session 9 était faux pour cette famille.** La
+  banque imposait « an unwanted… » et « EMDR is… », qui ont disparu du mois. Mais 4 des 9
+  lignes de carte en « When… » viennent de sujets neufs qui n'ouvrent pas ainsi. Le rédacteur
+  produit cette tournure. F118 redevient la bonne question pour elle : une consigne ou un
+  contrôle sur l'ouverture de `card_line` à l'écriture.
+
+## F123 — la marge des deux plafonds est de 2, pas de 4
+
+Le plafond de 30 % par archétype limite les phrases seules à 9 sur 30, avant celui de 40 %. On
+a donc au plus 9 + 9 + 2 = 20 posts à phrase pour 18 nécessaires. Le test
+`the-bank-carries-the-variety.test.ts` le tient. Une seule panne de dessin, ou une
+seule phrase refusée de plus, et le mois ne peut plus tenir.
+
+## F124 — ce que le remplissage n'a pas fait
+
+- **Les sujets de modalité communs à tous les kits (F80) ne sont pas faits.**
+  `content_topics.segment_id` est NOT NULL : il faudrait une migration et une règle de tirage.
+- **La situation n'est pas enregistrée** : aucune colonne ne la porte. Elle ne vit que dans la
+  consigne.
+- **Le remplissage de production n'est pas fait** : local seulement. En production, le pilote
+  est `scripts/local-render/12-topic-bank-openai.ts`, à lancer pour chaque praticienne servie.
+- **Le carrousel est compté « à phrase » par sa couverture**, alors que ses volets intérieurs
+  peuvent être des listes. Réserve de Naima, à regarder si le plafond ne donne pas l'effet
+  visuel attendu.
+
+## Notes sans vérification (session 9)
+
+F110 et le champ `arc` (sujets de banque), F120 (l'arche, abandonnée), F115, F116, F117, F104,
+F103, F101, F96, F97, F94, F100, F85, F90.
