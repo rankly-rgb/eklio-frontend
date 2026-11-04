@@ -4539,3 +4539,77 @@ de ce que contient la banque.
    mots.
 5. **La carte praticienne (12).** Elle ne demande rien à l'écriture : son monogramme se tire du
    nom du cabinet. Elle attend seulement qu'un mois en porte une.
+
+## F118 — le mois récrit avec l'emphase et la longueur a été refusé (2026-11-04)
+
+Décembre a été récrit par l'orchestrateur complet, avec le schéma, la consigne et le
+validateur du commit `cd7dc31`. Il est refusé à l'assemblage, après les échanges :
+- `variety.opening` : 7 ouvertures en « when… », 6 en « a unwanted… », 5 en « emdr is… »,
+  pour un plafond de 4 ;
+- `variety.negation` : la même négation revient deux fois.
+
+Le portillon a refusé 10 posts sur 53 : 7 `text.unfinished`, 2 `text.dangling`, 2
+`text.acronym`. Le mois précédent, avec l'ancienne consigne, en avait refusé 5 sur 54.
+Coût : 0,7105 $ pour un mois non livré.
+
+Un seul échantillon ne dit pas si la borne de 55 caractères resserre les tournures. Le rejeu de
+novembre montrait déjà des ouvertures en « when… » répétées. À mesurer avant d'aller plus loin,
+par exemple avec un second mois sur la même consigne, ou une limite de longueur sans emphase.
+
+## F119 — le plafond d'archétypes à liste : la banque ne suit pas sur douze mois
+
+La forme de la charge utile se lit dans le schéma (`payloadShape`) : 8 archétypes à liste et 3
+à phrase. `lettered_technique` et `annotated_curve` portent aussi des items étiquetés.
+
+Le plafond proposé est **12 sur 30 (40 %)**, ce qui demande 18 posts à phrase. Il tient avec le
+plafond des phrases seules : au plus 11 phrases seules (sous 40 %), au plus 9 carrousels (sous
+30 %) et au plus 2 cartes de praticienne, soit 22 posts à phrase possibles, avec une marge de 4.
+
+Tirage nécessaire, sur 57 candidats :
+- 20 phrases seules, 12 carrousels, 2 cartes de praticienne ;
+- 23 candidats à liste, soit 3 par archétype de la famille simple, 3 quadrants, 3 courbes et
+  2 techniques à lettres.
+
+Formule de `bankTarget`, une praticienne, trois tours bloqués :
+
+| archétype | stock | demande actuelle | demande plafonnée | manque | un seul mois |
+|---|---|---|---|---|---|
+| single_statement | 55 | 56 | 65 | **10** | 34, tient |
+| carousel | 26 | 26 | 39 | **13** | 20, tient |
+| les 8 archétypes à liste | 10 à 13 | 10 à 13 | 7 à 10 | 0 | tient |
+
+- **Un mois** : la banque tient.
+- **Douze mois** : il manque 23 sujets par praticienne, soit 0,067 $ au coût mesuré de
+  0,0029 $ le sujet. La banque garde au contraire 3 à 4 sujets de trop par archétype à liste.
+
+Ni le remplissage ni le plafond ne sont faits : c'est une décision pour Naima. Le tirage par
+forme est à écrire dans `drawnPerAttempt`, le contrôle dans `checkMix`.
+
+## F120 — l'arche (1) reste sous ses planchers, même avec des phrases courtes
+
+Remesuré le 2026-11-04 : avec une colonne de 408 px, 4 lignes au plus et 80 px au moins,
+**52 %** des coupes de 31 à 40 caractères entrent et **67 %** à 30. La borne d'environ 40
+caractères de F114 était fausse. L'arche n'est donc pas débloquée par la longueur de 60
+caractères. Il faudrait une colonne plus large que l'arche elle-même, ou un titre plus court
+que ce qui s'écrit.
+
+## F121 — le schéma strict tronque au caractère près
+
+Sondé avec `gpt-5.6-terra` : un `maxLength` de 30 a donné « At dawn, the calm lake held a银 ».
+La sortie est coupée au milieu d'un mot, avec un caractère étranger. `validateCopy` refuse donc
+une phrase seule qui touche son plafond sans ponctuation, ou qui porte une écriture étrangère.
+Les autres champs bornés (`emphasis`) sont revérifiés mot à mot. Le jour où d'autres longueurs
+entreront dans le schéma (libellés, gloses), il leur faudra le même garde.
+
+## Notes sans vérification
+
+- **F115** (couches retirées) : l'hypothèse de Naima est qu'elles partagent leur signature avec
+  `surface_and_beneath` et font passer ce groupe de 7 à 8. Notée, non vérifiée.
+- **F110** (cellules de grille) et le champ `arc` : ils attendent des sujets de banque.
+- **F116** : le chevron et l'arc sont retirés de la bibliothèque à la main par Naima.
+- **L'encre d'accent de l'emphase** part de la teinte de palette la plus saturée et fonce vers
+  l'encre du titre. Sur le kit de test, elle sort brun-gris, pas terracotta. Choisir plutôt la
+  teinte primaire de la direction est un arbitrage réversible.
+- **Le journal de décembre** de la base locale a été effacé pour la rédaction neuve. La
+  sauvegarde a échoué faute de permission. L'ancien mois reste décrit par les planches
+  commitées.
