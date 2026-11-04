@@ -162,8 +162,8 @@ describe("le rythme du mois", () => {
 
   it("décembre : les parts visées, aucun voisin identique hors crème, toutes les grilles de neuf tenues", () => {
     const r = groundRhythm(planGrounds(december));
-    // photo 10 / terracotta 2 depuis que pilules et bulles préfèrent la photo (2026-11-02).
-    expect(r.counts).toEqual({ cream: 12, photo: 10, deep: 3, ochre: 3, terra: 2 });
+    // Les parts visées (photo 30 % = 9) : pilules et bulles ne préfèrent plus la photo depuis qu'elles ne portent de dessin sur aucun fond (2026-11-04).
+    expect(r.counts).toEqual({ cream: 12, photo: 9, deep: 3, ochre: 3, terra: 3 });
     expect(r.sameNeighbours).toBe(0);
     expect(r.windowsFailing).toBe(0);
   });
@@ -238,6 +238,16 @@ describe("idiome 2 : photo en cercle", () => {
 
   it("dans un carrousel, les diapositives intérieures ne prennent pas le cercle", () => {
     expect(idiomFor("single_statement", "cream", 2)).toBeNull();
+  });
+});
+
+describe("idiome 6 sur crème", () => {
+  it("les bulles se posent sans dessin dessous, comme dans la spec (2026-11-04)", () => {
+    const nodes = [{ label: "First thought", gloss: "the future feels decided" }, { label: "Small pause", gloss: "a prediction meets questions" }, { label: "New evidence", gloss: "the map can change" }];
+    const r = render({ ...base, archetype: "cycle", payload: { nodes }, headline: "Predictions need a test", ground: groundFor(KIT, "cream") });
+    expect(r.composition.idiom).toBe("bubbles");
+    expect(r.svg).not.toContain("data-library");
+    expect(violations(r.composition.placed)).toEqual([]);
   });
 });
 

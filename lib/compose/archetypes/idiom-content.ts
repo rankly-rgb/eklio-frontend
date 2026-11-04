@@ -50,22 +50,6 @@ function setText(fit: { label: TextFit; gloss: TextFit | null }, x: number, y: n
 
 const height = (fit: { label: TextFit; gloss: TextFit | null }) => round2(fit.label.height + (fit.gloss ? 6 + fit.gloss.height : 0));
 
-/**
- * Le dessin du post dans l'espace qui reste sous `top`, s'il y a la place (≥ 160px).
- *
- * ⚠ LA SPEC NE MET PAS DE DESSIN SUR LES PILULES NI SUR LES BULLES. Sur un fond
- * photo, la photo tient lieu de visuel (« zéro carte vide » le lit) : sans place,
- * pas de dessin. Sur crème, il en faut un ; sans place, l'idiome refuse et
- * l'archétype garde sa mise en page d'avant.
- */
-function drawingBelow(ctx: Ctx<unknown>, top: number): Placed | "none" | null {
-  const free = round2(ctx.content.y + ctx.content.h - top);
-  const side = round2(Math.min(free, 340, ctx.content.w * 0.4));
-  if (side < 160) return ctx.onPhoto ? "none" : null;
-  const box = { x: round2(ctx.content.x + ctx.content.w - side), y: round2(ctx.content.y + ctx.content.h - side), w: side, h: side };
-  return { role: "figure", band: "content", box, strokes: ctx.draw(box, ctx.palette.ink) };
-}
-
 /* ── 7. Pilules ──────────────────────────────────────────────────────── */
 /**
  * Pleine largeur, ni case ni dessin (2026-11-04, décision de Naima).
@@ -152,9 +136,12 @@ export function bubbles(nodes: Item[], ctx: Ctx<unknown>): { placed: Placed[]; c
       strokes: [{ kind: "path", d, box: { x: round2(Math.min(sx, ex) - 2), y: sy, w: round2(Math.abs(ex - sx) + 4), h: round2(ey - sy) }, stroke: tintFor(palette, 3), strokeWidth: 4, fill: "none" }],
     });
   }
-  const drawing = drawingBelow(ctx, round2(y - vgap + CLEARANCE.glyphToStroke));
-  if (!drawing) return null;
-  if (drawing !== "none") placed.push(drawing);
+  /*
+   * ⚠ NI DESSIN DESSOUS, SUR AUCUN FOND (2026-11-04). La spec n'en met pas ; sur
+   * crème, faute de place pour lui, les bulles refusaient et le cycle retombait
+   * en pile de blocs — cinq cartes sur la planche du 2026-11-04. Même raison que
+   * les pilules : les bulles reliées se suffisent.
+   */
   return { placed, connectors };
 }
 
