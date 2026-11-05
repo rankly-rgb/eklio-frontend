@@ -4659,3 +4659,64 @@ seule phrase refusée de plus, et le mois ne peut plus tenir.
 
 F110 et le champ `arc` (sujets de banque), F120 (l'arche, abandonnée), F115, F116, F117, F104,
 F103, F101, F96, F97, F94, F100, F85, F90.
+
+## F125 — session 10 : la configuration de repli ne livre pas non plus (2026-11-05)
+
+La configuration de repli (`244bdaa`) a rédigé janvier 2027 à neuf, dans un worktree séparé.
+Le mois est refusé : « when… » 7/30 et « a unwanted… » 5/30. Le rédacteur écrit **11 lignes de
+carte en « When… » sur 57** avec l'ANCIENNE consigne, contre 9 avec la nouvelle. Le tic est
+antérieur aux consignes d'écriture. Le « mois qui livrait » de la session 7 était une reprise
+d'un journal de la session 5. Mesures : `design/month-2026-11-05/README.md`.
+
+## F126 — la marge des posts à phrase est de +2, et les deux corrections n'y changent rien
+
+Calcul à sec. Un mois porte au plus 20 posts à phrase : 9 phrases seules et 9 carrousels
+(chacun sous le plafond de 30 % par archétype), plus 2 cartes praticiennes. Le plafond de
+listes en exige 18. L'écart est **+2**, que les posts soient disponibles ou non. Le portillon en
+laissait passer bien plus (34 tirés à phrase en session 9), mais aucun ne peut entrer au-delà
+de 20.
+
+Les options qui donnent au moins +4 sont à arbitrer par Naima :
+- **(a)** un plafond de listes à 14 sur 30 : 16 posts à phrase nécessaires, écart +4 ;
+- **(b)** un plafond par archétype à 35 % : 10 phrases seules et 10 carrousels, 22 possibles,
+  écart +4 avec le plafond de listes à 12 ;
+- **(c)** les deux : écart +6.
+
+Un tirage plus large ne change rien à cet écart : la limite tient au mois, pas au tirage.
+
+## F127 — les corrections 1 et 2 de la session 10 ne sont pas faites
+
+- **Correction 1** (portillon aligné sur « zéro carte vide »). Un post à phrase sans dessin
+  apparié doit pouvoir entrer sur fond photo. Il faut :
+  - que le moteur choisisse la photo sans dessin (aujourd'hui `photoFor(illustration)`) ;
+  - que `PreparedPost`, `composeCard`, le redessin du sélecteur et `reviewCardFrom` acceptent
+    `illustration: null` ;
+  - que le plan des fonds force la photo pour ces posts.
+
+  Coût mesuré du problème : 13 posts perdus en session 9, 10 en session 10.
+- **Correction 2** (quota d'ouverture au portillon). Après `checkPostAlone`, garder au plus
+  `openingCap(30)` posts par famille d'ouverture (`openingsOf` : ligne de carte, ligne d'image,
+  première phrase de la légende), dans l'ordre de la file. Les autres vont au banc, et
+  l'assemblage garde son contrôle comme filet. C'est le levier direct des deux derniers refus.
+
+Je ne les ai pas faites. La clause de marge (F126) arrêtait toute rédaction sur la
+configuration actuelle, et le repli a été refusé avant que je les commence. Le contexte de la
+session ne suffisait plus pour la correction 1, qui touche cinq modules.
+
+## F128 — deux générateurs de banque
+
+`scripts/local-render/10-topic-bank.ts` (Anthropic Batch) et `12-topic-bank-openai.ts`
+(OpenAI, avec le contrôle de variété à la source) partagent aujourd'hui la consigne et les
+gardes. C'est la forme de défaut la plus fréquente de ce dépôt : deux chemins, un seul mis à
+jour. **Le contrôle de variété à la source n'existe que dans le second.**
+
+## F129 — la mécanique des goulots
+
+Élargir la banque avec des situations neuves (un licenciement, un repas de fête, un
+anniversaire) a créé le manque de dessins : 13 posts perdus. La prochaine fois qu'on élargit
+la banque, la bibliothèque de dessins doit suivre dans le même mouvement.
+
+## Notes sans vérification (session 10)
+
+F124 (sujets de modalité communs, migration), F110 et le champ `arc`, F120, F115, F116, F117,
+F104, F103, F101, F96, F97, F94, F100, F85, F90.
