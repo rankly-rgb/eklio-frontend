@@ -4740,3 +4740,20 @@ Les deux corrections de la session ont fait ce qu'on attendait :
 - le dessin ne fait plus perdre que 2 posts avant le portillon, contre 13 ;
 - le quota d'ouverture a consommé 12 échanges au portillon, et l'assemblage n'a plus aucun
   constat `variety.opening`.
+
+## F131 — mars 2027 livré ; ce que la planche montre et que les mesures ne disent pas
+
+Le mois est sorti à 30 (`design/month-2027-03/README.md`). Trois constats, non corrigés :
+
+1. **Les neuf carrousels ouvrent la grille d'affilée** (cartes 1 à 9), et les phrases seules
+   la ferment. Aucun contrôle ne regarde l'ORDRE des formats : la signature structurelle et le
+   rythme des fonds ne le voient pas. Dans une grille de neuf, c'est la première chose que
+   l'œil lit.
+2. **Une carte sans dessin sur photo peut laisser la moitié de sa hauteur vide.** Les cartes
+   1 et 28 sont à 30 % de remplissage. Le contrôle de remplissage ne s'applique qu'aux cartes
+   illustrées ; une carte posée sur photo seule y échappe. La couverture de carrousel sans
+   dessin ne prend pas non plus l'idiome 13, qui exige un dessin.
+3. **6 phrases seules seulement**, pour 10 permises : les 16 posts à phrase passent surtout
+   par les carrousels (9). Le plafond de 35 % n'a pas servi ; c'est le carrousel, dont les
+   volets peuvent être des listes, qui porte la marge. C'est la réserve de Naima sur le
+   carrousel, observée ici.
