@@ -145,18 +145,32 @@ export type ApplyWriteInput = {
   costUsd: number | null;
 };
 
+/** Un `null` SQL pour un argument qui l'accepte, que le type généré déclare non nul. */
+function sqlNull<T>(value: T | null): T {
+  return value as T;
+}
+
 export async function applyWrite(
   supabase: Client,
   input: ApplyWriteInput
 ): Promise<ContentResult<z.infer<typeof appliedSchema>>> {
   const { data, error } = await supabase.rpc("apply_on_demand_write", {
     p_write_id: input.writeId,
-    p_title: input.title ?? undefined,
-    p_caption: input.caption ?? undefined,
-    p_on_image_text: input.onImageText ?? undefined,
-    p_alt_text: input.altText ?? undefined,
-    p_compose_archetype: input.composeArchetype ?? undefined,
-    p_payload: (input.payload ?? undefined) as never,
+    /*
+     * ⚠ F142 (2026-11-05) : CES SIX ARGUMENTS N'ONT PAS DE VALEUR PAR DÉFAUT EN
+     * BASE. Leur passer `undefined` retirait la clé de l'appel, et PostgREST ne
+     * trouvait plus la fonction : un post écrit à la demande dont l'un de ces
+     * champs était nul échouait. La fonction fait `coalesce(p_x, valeur actuelle)` :
+     * elle attend un `null` EXPLICITE pour « ne rien changer ». Le générateur de
+     * types rend un argument SQL en `string` sans dire qu'il accepte null ;
+     * `sqlNull` le dit, ici et nulle part ailleurs.
+     */
+    p_title: sqlNull(input.title),
+    p_caption: sqlNull(input.caption),
+    p_on_image_text: sqlNull(input.onImageText),
+    p_alt_text: sqlNull(input.altText),
+    p_compose_archetype: sqlNull(input.composeArchetype),
+    p_payload: sqlNull(input.payload ?? null) as never,
     p_rationale: input.rationale ?? undefined,
     p_topic_id: input.topicId ?? undefined,
     p_cost_usd: input.costUsd ?? undefined,

@@ -236,7 +236,8 @@ describe("le lecteur de déclarations se vérifie lui-même", () => {
   it("aucune déclaration sans argument n'emprunte un paramètre", () => {
     const types = readFileSync(join(ROOT, "types/supabase.ts"), "utf8");
     const block = types.slice(types.indexOf("    Functions: {"));
-    const nullary = [...block.matchAll(/^ {6}(\w+):\s*\{\s*Args:\s*never/gm)].map((m) => m[1]);
+    /* `Args: never` (générateur d'avant) ou `Args: Record<PropertyKey, never>` (CLI 3, 2026-11-05) : la même chose. */
+    const nullary = [...block.matchAll(/^ {6}(\w+):\s*\{\s*Args:\s*(?:never|Record<PropertyKey, never>)/gm)].map((m) => m[1]);
     expect(nullary.length, "plus aucune fonction sans argument : ce test n'a plus de témoin")
       .toBeGreaterThan(10);
     for (const fn of nullary) {
