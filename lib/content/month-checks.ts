@@ -486,6 +486,26 @@ const PRACTICE_NAME = /\b[A-Z][\w'-]+(?:\s+[A-Z][\w'-]+)*\s+(?:Therapy|Counselli
  * téléphone : ces informations vivent dans le profil, pas dans le contenu.
  * Le nom du cabinet, lui, n'est autorisé que s'il EST celui du compte.
  */
+/**
+ * ⚠ UN TEXTE DE CARTE ÉGAL À UNE VALEUR DE LA FICHE EST UNE ÉTIQUETTE BRUTE
+ * (2026-11-05). La carte 25 de mars 2027 portait « EMDR » puis « California »,
+ * lus dans la fiche et imprimés tels quels. `checkInventedIdentity` les
+ * AUTORISAIT — sa liste blanche dit « ce nom est-il dans le brief ? », pas « ce
+ * texte n'est-il QUE le brief ? ». Un champ de payload dont le texte entier est
+ * le nom du cabinet, une modalité, une ville ou un État est refusé. Un texte qui
+ * les nomme dans une phrase reste permis ; la licence vit dans le pied.
+ */
+export function checkBriefLabel(payload: unknown, brief: string[]): Finding[] {
+  const values = new Set(brief.map((v) => v.trim().toLowerCase()).filter((v) => v.length > 0));
+  const out: Finding[] = [];
+  for (const { where, text } of stringsIn(payload)) {
+    if (values.has(text.trim().toLowerCase())) {
+      out.push({ check: "identity.briefLabel", detail: `${where} n'est qu'une valeur de la fiche, imprimée telle quelle : « ${text} »` });
+    }
+  }
+  return out;
+}
+
 export function checkInventedIdentity(
   payload: unknown,
   practiceName: string,
@@ -1147,6 +1167,7 @@ export function checkPostAlone(post: PostUnderCheck, context: PostContext): Find
     if (month.practiceName) {
       out.push(...checkInventedIdentity(post.payload, month.practiceName, month.identityAllowList ?? []));
     }
+    out.push(...checkBriefLabel(post.payload, [month.practiceName ?? "", ...(month.identityAllowList ?? [])]));
     if (post.svg) out.push(...checkTints(post.svg, month.direction));
   }
   return out;

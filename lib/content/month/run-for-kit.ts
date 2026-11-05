@@ -25,7 +25,6 @@ import { parseDirections } from "@/lib/data/brand-kit";
 import { CANDIDATES_PER_ATTEMPT, DRAW_GROUPS, DRAW_ORDER, drawQuotas, POSTS_PER_MONTH } from "@/lib/content/bank";
 import {
   identityAllowList,
-  practitionerLines,
   PRACTITIONER_CARDS_PER_MONTH,
   type PractitionerFacts,
 } from "@/lib/content/practitioner";
@@ -232,7 +231,15 @@ export async function orchestrateMonthForKit(
     /* ⚠ Le chemin produit n'écrit pas de thèmes (F75) : on n'en invente pas ici. */
     themes: [],
     practiceName,
-    practitionerLines: practitionerLines(facts),
+    /*
+     * ⚠ LA FICHE NE S'IMPRIME PAS SUR UNE CARTE (2026-11-05, carte 25 de mars
+     * 2027). `practitionerLines` posait la modalité et l'État tels quels —
+     * « EMDR », « California » — comme deux étiquettes brutes sous un titre de
+     * mythe. Un champ de la fiche ne s'affiche jamais comme étiquette sur une
+     * carte publiable ; la mention de licence a son propre chemin (le pied).
+     * Sans lignes, la carte praticienne n'entre plus dans la ronde.
+     */
+    practitionerLines: null,
     concurrency: 6,
   });
 
@@ -299,7 +306,7 @@ export async function orchestrateMonthForKit(
       families: DRAW_GROUPS as unknown as Record<string, string[]>,
       drawOrder: [...DRAW_ORDER],
       practitionerCap: PRACTITIONER_CARDS_PER_MONTH,
-      practitionerPayload: practitionerLines(facts) !== null,
+      practitionerPayload: false,
       demand: { practitioners: 1, attempts: 1, rounds: 1 },
       ceiling: { capUsd: MONTH_CAP_USD, estimatedCostPerPostUsd: worstPost, maxTopics: CANDIDATES_PER_ATTEMPT },
       direction: palette as never,
