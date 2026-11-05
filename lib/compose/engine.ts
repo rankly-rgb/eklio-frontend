@@ -281,7 +281,7 @@ function renderIdiom(input: RenderInput, idiom: Idiom, parsed: unknown, soft: st
   const g = input.ground!;
   const statement =
     (parsed as { statement?: string }).statement ?? input.headline;
-  const content = composeIdiom({ idiom, statement, eyebrow: input.eyebrow, illustration: input.illustration!, gp: { ...g, soft } });
+  const content = composeIdiom({ idiom, statement, eyebrow: input.eyebrow, illustration: input.illustration ?? null, gp: { ...g, soft } });
   if (!content) throw new CompositionError(`${input.archetype}: idiome ${idiom} — le texte ne tient pas au-dessus de son plancher`);
   const footer = signature(input.footer, soft);
   if (!footer) throw new CompositionError(`${input.archetype}: la signature ne tient pas sur une ligne`);
@@ -291,7 +291,7 @@ function renderIdiom(input: RenderInput, idiom: Idiom, parsed: unknown, soft: st
   if (!FILL_EXEMPT.has(idiom) && verticalFill(placed) < FILL_FLOOR) {
     throw new CompositionError(`${input.archetype}: idiome ${idiom} — remplissage ${(verticalFill(placed) * 100).toFixed(0)} %`);
   }
-  const decor = decorFor(input.archetype, input.illustration!, input.palette, placed, g.ground);
+  const decor = decorFor(input.archetype, input.illustration ?? photoKeyOf(input.payload, input.headline), input.palette, placed, g.ground);
   if (idiom === "circle") {
     const slot = placed.find((p) => p.role === "figure" && p.strokes.length === 0)!;
     const id = photoFor(input.illustration!);
@@ -340,7 +340,7 @@ export function render(input: RenderInput): RenderResult {
   }
   const soft = input.ground?.soft ?? softest(input.palette.ink, input.palette.paper, grainedWorst(input.palette.paper, "paper"), SOFT_TARGET) ?? input.palette.ink;
 
-  const idiom = input.illustration && input.ground ? idiomFor(input.archetype, input.ground.ground, input.slide) : null;
+  const idiom = input.ground ? idiomFor(input.archetype, input.ground.ground, input.slide, Boolean(input.illustration)) : null;
   /*
    * ⚠ UN IDIOME QUI REFUSE LAISSE LA PLACE À LA MISE EN PAGE ORDINAIRE, SUR LE
    * MÊME FOND. La citation au script n'accepte que trois lignes au-dessus de
@@ -498,7 +498,12 @@ export function render(input: RenderInput): RenderResult {
       }
 
       /* Sur les cartes du générateur (un dessin de la bibliothèque) ; une carte d'avant reste ce qu'elle était. */
-      if (input.illustration && verticalFill(placed) < FILL_FLOOR) {
+      /*
+       * ⚠ LE CONTRÔLE VISE TOUTE CARTE DU MOIS, DESSIN OU NON (2026-11-05, F131).
+       * Il ne regardait que les cartes illustrées ; les cartes sur photo seule y
+       * échappaient — la même faute de portée que sur le contraste.
+       */
+      if ((input.illustration || input.ground) && verticalFill(placed) < FILL_FLOOR) {
         tooEmpty = verticalFill(placed);
         continue;
       }

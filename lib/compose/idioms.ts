@@ -27,13 +27,31 @@ import type { Box, FontRole, Line, Placed, Stroke } from "@/lib/compose/types";
  * ne s'en approche à moins de 64px). Le centrage est calculé, l'équilibrage des
  * lignes aussi (`fitTitle`).
  */
-export type Idiom = "big_drawing" | "quote_deep" | "carousel_cover" | "circle";
+export type Idiom = "big_drawing" | "quote_deep" | "carousel_cover" | "circle" | "photo_statement";
 
-/** Les idiomes que la spec pose avec du vide voulu : la citation centrée, la couverture sur photo pleine page. */
-export const FILL_EXEMPT = new Set<string>(["quote_deep", "carousel_cover"]);
+/**
+ * Les idiomes que la spec pose avec du vide voulu : la citation centrée.
+ *
+ * ⚠ LA COUVERTURE N'EN EST PLUS (2026-11-05, F131). Son surtitre se posait juste
+ * au-dessus du titre, au milieu de la carte : cartes 3 et 8 de mars 2027, à 44 et
+ * 53 % de hauteur tenue, le haut vide. Le surtitre est maintenant en haut, le
+ * titre ancré en bas ; la couverture passe le contrôle comme les autres.
+ */
+export const FILL_EXEMPT = new Set<string>(["quote_deep"]);
 
-export function idiomFor(archetype: string, ground: Ground | undefined, slide?: number): Idiom | null {
+export function idiomFor(archetype: string, ground: Ground | undefined, slide?: number, hasDrawing = true): Idiom | null {
   if (!ground) return null;
+  /*
+   * ⚠ SANS DESSIN, SUR PHOTO (2026-11-05) : la couverture pour la diapositive 1,
+   * et la même composition sans pastille pour une phrase seule — titre ancré en
+   * bas, surtitre en haut. La mise en page ordinaire laissait le bas vide (cartes
+   * 1, 26, 28, 29 de mars 2027, 30 à 37 % de hauteur tenue).
+   */
+  if (!hasDrawing) {
+    if (archetype !== "single_statement" || ground !== "photo") return null;
+    if (slide === 0) return "carousel_cover";
+    return slide === undefined ? "photo_statement" : null;
+  }
   if (archetype === "single_statement" && (ground === "ochre" || ground === "terra")) return "big_drawing";
   if (archetype === "single_statement" && ground === "deep") return "quote_deep";
   if (slide === 0 && ground === "photo") return "carousel_cover";
@@ -89,7 +107,7 @@ export type IdiomInput = {
   idiom: Idiom;
   statement: string;
   eyebrow: string;
-  illustration: string;
+  illustration: string | null;
   gp: GroundPalette;
 };
 
@@ -119,6 +137,7 @@ export function composeIdiom(input: IdiomInput): Placed[] | null {
     const blockH = side + gap + textH;
     const top = round2(IDIOM_TOP + (span - blockH) / 2);
     const box = { x: round2((CANVAS.width - side) / 2), y: top, w: side, h: side };
+    if (!input.illustration) return null;
     const strokes = libraryDrawing(input.illustration)(box, gp.ink);
     const lines = centred(fit, top + side + gap, "serif", 500, gp.ink).map((l, i) => ({ ...l, box: { ...l.box, y: round2(top + side + gap + i * fit.size * 1.02) } }));
     return [
@@ -143,7 +162,7 @@ export function composeIdiom(input: IdiomInput): Placed[] | null {
     const under = round2(top + textH + 48);
     const side = round2(Math.min(170, IDIOM_BOTTOM - under));
     const placed: Placed[] = [{ role: "text", band: "headline", box: textBox(lines), lines }];
-    if (side >= 110) {
+    if (side >= 110 && input.illustration) {
       const box = { x: round2((CANVAS.width - side) / 2), y: under, w: side, h: side };
       placed.push({ role: "figure", band: "content", box, strokes: libraryDrawing(input.illustration)(box, gp.soft) });
     }
@@ -190,7 +209,8 @@ export function composeIdiom(input: IdiomInput): Placed[] | null {
   const lines = left(fit, INNER.x, titleTop, "serif", 500, gp.ink, 1.02);
   /* Surtitre : Karla 26px, capitales espacées (spec .eyebrow), au-dessus du titre. */
   const eyebrowSize = 26;
-  const eyebrowTop = round2(titleTop - 34 - eyebrowSize * LINE_HEIGHT);
+  /* Le surtitre en haut de la carte, le titre ancré en bas : la hauteur est tenue (F131). */
+  const eyebrowTop = IDIOM_TOP;
   const eyebrowText = input.eyebrow.toUpperCase();
   const eyebrowLine: Line = {
     text: eyebrowText,
@@ -201,7 +221,14 @@ export function composeIdiom(input: IdiomInput): Placed[] | null {
     anchor: "start",
     box: { x: INNER.x, y: eyebrowTop, w: round2(measure(eyebrowText, "sans", eyebrowSize) * 1.2), h: round2(eyebrowSize * LINE_HEIGHT) },
   };
-  if (eyebrowLine.box.w > INNER.w || eyebrowTop < EYEBROW.y) return null;
+  if (eyebrowLine.box.w > INNER.w || eyebrowTop < EYEBROW.y || eyebrowTop + eyebrowLine.box.h + 34 > titleTop) return null;
+  /* La phrase seule ne se balaie pas : la même composition, sans pastille. */
+  if (input.idiom === "photo_statement") {
+    return [
+      { role: "text", band: "eyebrow", box: eyebrowLine.box, lines: [eyebrowLine] },
+      { role: "text", band: "headline", box: textBox(lines), lines },
+    ];
+  }
   /* La pastille : un cercle au trait, et la flèche du pack dedans. */
   const r = swipe / 2;
   const cx = swipeBox.x + r;

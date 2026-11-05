@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render } from "@/lib/compose/engine";
+import { render, verticalFill } from "@/lib/compose/engine";
 import { cardPalette } from "@/lib/compose/palette";
 import { groundFor } from "@/lib/compose/grounds";
 import { allowedGrounds, planGrounds } from "@/lib/content/month/grounds-plan";
@@ -45,5 +45,23 @@ describe("une carte à phrase sans dessin, sur photo", () => {
         footer: "Ember consulting · LMFT 123456", licenceMention: "LMFT 123456",
       } as never)
     ).toThrow();
+  });
+});
+
+describe("le remplissage vertical vise aussi les cartes sans dessin (F131)", () => {
+  const FLOOR = 2 / 3;
+  const base = { eyebrow: "A SOFT INVITATION", footer: "Ember consulting · LMFT 123456", palette: cardPalette("c", KIT, false), ground: groundFor(KIT, "photo") };
+
+  it("une phrase sans dessin sur photo : titre ancré en bas, surtitre en haut, deux tiers tenus", () => {
+    const r = render({ ...base, archetype: "single_statement", payload, headline: "Life after work" });
+    expect(r.composition.idiom).toBe("photo_statement");
+    expect(verticalFill(r.composition.placed)).toBeGreaterThanOrEqual(FLOOR);
+    expect(r.svg).toContain("LMFT 123456");
+  });
+
+  it("la couverture de carrousel aussi : elle n'est plus exemptée", () => {
+    const r = render({ ...base, archetype: "single_statement", payload, headline: "Life after work", slide: 0 });
+    expect(r.composition.idiom).toBe("carousel_cover");
+    expect(verticalFill(r.composition.placed)).toBeGreaterThanOrEqual(FLOOR);
   });
 });
