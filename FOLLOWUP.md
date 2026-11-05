@@ -4757,3 +4757,46 @@ Le mois est sorti à 30 (`design/month-2027-03/README.md`). Trois constats, non 
    par les carrousels (9). Le plafond de 35 % n'a pas servi ; c'est le carrousel, dont les
    volets peuvent être des listes, qui porte la marge. C'est la réserve de Naima sur le
    carrousel, observée ici.
+
+## F132 — les anneaux concentriques
+
+Cartes 21 et 22 de mars 2027, et 10, 15, 22, 23 d'avril : les anneaux sont minuscules, ils
+portent une pile de blocs dessous et n'apportent rien. L'idiome est à refaire ou à retirer,
+pas à bricoler.
+
+## F133 — les libellés RAIN pâles sur photo (carte 12 de mars 2027)
+
+Ils sont validés par le contrôle de contraste, mais peu lisibles à 390 px : l'écart entre le
+seuil calculé et la lisibilité perçue à cette taille est à instruire, sans baisser aucun
+plancher.
+
+## F134 — neuf dessins à régénérer, par Naima
+
+`eft-shelter`, `priv-partial-outline` et les sept défectueux du lot 1. Avril 2027 en porte
+encore : le chevron en carte 3, l'arc en carte 18.
+
+## F135 — sans carte praticienne, la marge des posts à phrase tombe à +3
+
+La fiche ne s'imprime plus sur une carte (`413e17f`), donc la carte praticienne n'entre plus
+dans la ronde. On a au plus 10 phrases seules et 9 carrousels, soit 19 posts à phrase pour 16
+nécessaires : +3 au lieu de +5. Le tirage la sert encore à zéro. `DRAW_GROUPS.statement` et
+le plancher de la famille `statement` (dont elle fait partie) sont à revoir si l'archétype
+ne revient pas sous une forme rédigée.
+
+## F136 — deux mesures du remplissage vertical
+
+Le harnais de planche divise par la hauteur totale (1 350 px), le contrôle du moteur
+(`verticalFill`) par la hauteur utile. Mesuré par le harnais, `photo_statement` tient 63,3 % ;
+par le moteur, plus des deux tiers. Avant/après selon le moteur : 5 → 0 ; selon le harnais :
+7 → 5. C'est la forme du défaut des implémentations en double. Le harnais devrait appeler
+`verticalFill`.
+
+## F137 — défauts vus sur la planche d'avril 2027, non traités
+
+- **La couverture de carrousel avec dessin sur photo** (carte 9) garde l'ancienne mise en
+  page, titre en haut et dessin dessous. Elle ne prend l'idiome 13 que sans dessin, car un
+  dessin n'a pas sa place sur la couverture pleine photo.
+- **La courbe annotée** (carte 7) : un trait fin et un petit motif en fin de courbe, peu
+  lisibles à 390 px.
+- **Les cinq `photo_statement`** sont la même composition. Si le prochain mois en tire plus,
+  la signature structurelle les comptera ensemble (plafond de 7).
