@@ -183,13 +183,13 @@ export function drawnPerAttempt(candidates = CANDIDATES_PER_ATTEMPT): Record<str
  * Le tirage prenait un tiers des candidats par famille de format ; huit
  * archétypes sur onze ont une charge utile en liste (`payloadShape`), et le
  * mois en portait 17 à 19 sur 30 — autant de piles de blocs. Le mois les
- * plafonne maintenant à 40 % (`MONTH_LIMITS.maxListShare`, 12 sur 30), et le
+ * plafonne maintenant à 14 sur 30 (`MONTH_LIMITS.maxListShare`, 0,47), et le
  * tirage suit la même part, sinon la sélection n'aurait pas de quoi échanger.
  *
- * ⚠ LES DEUX PLAFONDS TIENNENT ENSEMBLE, ET C'EST CALCULÉ (un test le tient) :
- * 18 posts à phrase au moins, pour 20 possibles — 9 phrases seules (les 30 % de
- * `maxArchetypeShare` mordent avant les 40 % de `maxLoneSentenceShare`),
- * 9 carrousels, 2 cartes praticiennes. Une marge de deux, pas de quatre. La part des phrases au tirage est donc portée par les
+ * ⚠ LES PLAFONDS TIENNENT ENSEMBLE, ET C'EST CALCULÉ (un test le tient) :
+ * 16 posts à phrase au moins (listes à 14 sur 30), pour 21 possibles — 10
+ * phrases seules (leur plafond de 35 %), 9 carrousels (30 %), 2 cartes
+ * praticiennes. Marge +5 (2026-11-05 ; elle était de +2 avec 12 et 30 %). La part des phrases au tirage est donc portée par les
  * carrousels autant que par les phrases seules.
  *
  * Les groupes de tirage ne sont PAS les familles de format : celles-ci gardent

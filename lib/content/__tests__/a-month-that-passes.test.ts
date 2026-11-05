@@ -62,7 +62,7 @@ describe("le mois livré le 2027-01 passe, et doit continuer à passer", () => {
     const all = findings();
     /* ⚠ Tiré sous l'ancien plan (un tiers par famille) : seul le plafond de listes, posé le 2026-11-04, le refuse. */
     expect(all.filter((f) => !f.check.startsWith("variety.")).map((f) => `${f.check} — ${f.detail.slice(0, 90)}`)).toEqual([
-      "mix.list — 17 posts sur 30 ont une charge utile en liste, plafond 12",
+      "mix.list — 17 posts sur 30 ont une charge utile en liste, plafond 14",
     ]);
     expect(all.filter((f) => f.check.startsWith("variety.")).map((f) => f.detail.slice(0, 69))).toEqual([
       "10 posts sur 30 s'ouvrent sur la même construction (when…), au plus 4",

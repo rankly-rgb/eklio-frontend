@@ -69,6 +69,15 @@ export type Finding = {
 export const MONTH_LIMITS = {
   /** Aucun archétype au-delà de 30 % du mois. */
   maxArchetypeShare: 0.3,
+  /**
+   * ⚠ LA PHRASE SEULE A SON PROPRE PLAFOND, 35 % (2026-11-05, décision de Naima).
+   * À 30 %, elle était bornée à neuf posts et la marge des posts à phrase tombait
+   * à deux (F123, F126). La marge vient d'elle et d'elle seule : le carrousel
+   * reste à 30 %, parce qu'il compte « à phrase » par sa couverture alors que
+   * ses volets peuvent être des listes — le relever améliorerait le chiffre en
+   * dégradant la chose mesurée.
+   */
+  archetypeShareCaps: { single_statement: 0.35 } as Record<string, number>,
   /** Au moins 7 archétypes distincts sur 30 posts. */
   minDistinctArchetypes: 7,
   /** Les phrases seules sous 40 %. */
@@ -87,12 +96,13 @@ export const MONTH_LIMITS = {
   maxStructureShare: 0.25,
   /**
    * Les archétypes à charge utile en LISTE (`payloadShape`) : au plus 40 % du
-   * mois, douze cartes sur trente (2026-11-04). Un contenu en liste produit des
+   * mois — quatorze cartes sur trente depuis le 2026-11-05 (douze le 2026-11-04 :
+   * marge de deux posts à phrase seulement ; 0,47 × 30 = 14,1, arrondi en dessous). Un contenu en liste produit des
    * boîtes, quelle que soit la composition ; la pile de blocs ne baisse plus que
-   * par là. Tient avec `maxLoneSentenceShare` et `maxArchetypeShare` : 20 posts à
-   * phrase possibles pour 18 nécessaires (`drawQuotas`, `lib/content/bank.ts`).
+   * par là. Tient avec les plafonds de phrases seules (35 % : dix) et de carrousels
+   * (30 % : neuf) : 21 posts à phrase possibles pour 16 nécessaires, marge +5.
    */
-  maxListShare: 0.4,
+  maxListShare: 0.47,
   /**
    * La tache sous le dessin : au plus 20 % du mois (six cartes sur trente), et
    * au moins 20 % de cartes au TRAIT NU — un dessin posé seul sur la crème ou une
@@ -233,10 +243,11 @@ export function checkMix(archetypes: string[]): Finding[] {
 
   for (const [archetype, count] of counts) {
     const share = count / n;
-    if (share > MONTH_LIMITS.maxArchetypeShare) {
+    const cap = MONTH_LIMITS.archetypeShareCaps[archetype] ?? MONTH_LIMITS.maxArchetypeShare;
+    if (share > cap) {
       out.push({
         check: "mix.dominant",
-        detail: `${archetype} occupe ${(share * 100).toFixed(1)} % du mois (${count}/${n}), plafond ${MONTH_LIMITS.maxArchetypeShare * 100} %`,
+        detail: `${archetype} occupe ${(share * 100).toFixed(1)} % du mois (${count}/${n}), plafond ${cap * 100} %`,
       });
     }
   }

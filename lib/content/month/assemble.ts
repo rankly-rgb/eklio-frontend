@@ -1,4 +1,5 @@
 import { checkAcrossPosts, checkPostAlone, type Finding, type PostContext } from "@/lib/content/month-checks";
+import { openingCap, openingFamiliesOf } from "@/lib/content/variety";
 import { asMonthPost, selectDeliverable, type Deliverable, type Redraw } from "@/lib/content/month/select";
 import { aPurchaseWouldHelp, type CreditPort, type ReserveRefusal } from "@/lib/credits/paid-call";
 import type { CompletenessVerdicts } from "@/lib/content/writing-checks";
@@ -238,6 +239,36 @@ export async function assembleMonth<T extends Assemblable>(
       checks: [...new Set(findings.map((f: Finding) => f.check))],
       detail: findings.map((f: Finding) => f.detail).join("; ").slice(0, 200),
     });
+  }
+
+  /*
+   * ── ⚠ LE QUOTA D'OUVERTURE AU PORTILLON (2026-11-05) ─────────────────
+   *
+   * Le plafond de `variety.opening` (quatre posts par famille sur trente) se
+   * vérifiait à l'assemblage : trente posts écrits et payés, puis le mois
+   * entier tombait pour sept « when… ». Il est tenu ICI, un post à la fois,
+   * dans l'ordre de la file : un post dont une famille d'ouverture est déjà au
+   * quota est refusé à cet instant, et la sélection prend un autre post. Même
+   * plafond, même compte (ligne de carte, ligne d'image, première phrase de la
+   * légende), même définition de famille ; seul le moment change. Le contrôle
+   * d'assemblage reste en place comme filet.
+   */
+  const cap = openingCap(input.wanted);
+  const heldOpenings = new Map<string, number>();
+  for (let i = 0; i < clean.length; ) {
+    const families = openingFamiliesOf(asMonthPost(clean[i]));
+    const full = families.find((f) => (heldOpenings.get(f) ?? 0) >= cap);
+    if (full) {
+      const [post] = clean.splice(i, 1);
+      refused.push({
+        topic: post.candidate.topic.title,
+        checks: ["variety.opening"],
+        detail: `quota d'ouverture « ${full.replace(/^(lead|neg):/, "")}… » déjà à ${cap} au portillon`,
+      });
+      continue;
+    }
+    for (const f of families) heldOpenings.set(f, (heldOpenings.get(f) ?? 0) + 1);
+    i += 1;
   }
 
   const byCheck: Record<string, number> = {};

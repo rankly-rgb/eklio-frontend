@@ -60,8 +60,11 @@ describe("le plafond d'archétypes à liste, et le tirage qui le porte", () => {
   it("les deux plafonds tiennent ensemble : assez de posts à phrase possibles sans dépasser les phrases seules", () => {
     const n = POSTS_PER_MONTH;
     const phraseNeeded = n - Math.floor(n * MONTH_LIMITS.maxListShare);
-    /* ⚠ Les phrases seules sont bornées par DEUX plafonds : 40 % (phrases seules) et 30 % (tout archétype) — 9 sur 30. */
-    const loneMax = Math.min(Math.ceil(n * MONTH_LIMITS.maxLoneSentenceShare) - 1, Math.floor(n * MONTH_LIMITS.maxArchetypeShare));
+    /* ⚠ Les phrases seules sont bornées par DEUX plafonds : 40 % (phrases seules) et le leur, 35 % — 10 sur 30. */
+    const loneMax = Math.min(Math.ceil(n * MONTH_LIMITS.maxLoneSentenceShare) - 1, Math.floor(n * MONTH_LIMITS.archetypeShareCaps.single_statement));
+    expect(loneMax).toBe(10);
+    /* La marge : 21 possibles, 16 nécessaires (2026-11-05). */
+    expect(loneMax + Math.floor(n * MONTH_LIMITS.maxArchetypeShare) + PRACTITIONER_CARDS_PER_MONTH - phraseNeeded).toBe(5);
     const carouselMax = Math.floor(n * MONTH_LIMITS.maxArchetypeShare);
     expect(loneMax + carouselMax + PRACTITIONER_CARDS_PER_MONTH).toBeGreaterThanOrEqual(phraseNeeded);
     /* Et un mois qui les tient tous est un mois que `checkMix` accepte. */
@@ -69,15 +72,15 @@ describe("le plafond d'archétypes à liste, et le tirage qui le porte", () => {
       ...Array(loneMax).fill(LONE_SENTENCE),
       ...Array(phraseNeeded - loneMax - PRACTITIONER_CARDS_PER_MONTH).fill("carousel"),
       ...Array(PRACTITIONER_CARDS_PER_MONTH).fill("practitioner_card"),
-      ...["surface_and_beneath", "comparison_pair", "numbered_strategies", "cycle", "concentric_control", "quadrant_model", "annotated_curve", "lettered_technique", "comparison_pair", "surface_and_beneath", "cycle", "quadrant_model"],
+      ...["surface_and_beneath", "comparison_pair", "numbered_strategies", "cycle", "concentric_control", "quadrant_model", "annotated_curve", "lettered_technique", "comparison_pair", "surface_and_beneath", "cycle", "quadrant_model", "numbered_strategies", "concentric_control"],
     ];
     expect(month).toHaveLength(n);
     expect(checkMix(month)).toEqual([]);
   });
 
-  it("un treizième post à liste est refusé", () => {
-    const month = [...Array(11).fill(LONE_SENTENCE), ...Array(6).fill("carousel"), "practitioner_card", ...Array(12).fill("quadrant_model")];
-    const swapped = [...month.slice(0, 17), ...Array(13).fill("comparison_pair")];
+  it("un quinzième post à liste est refusé ; une onzième phrase seule aussi", () => {
+    const swapped = [...Array(10).fill(LONE_SENTENCE), ...Array(5).fill("carousel"), ...Array(15).fill("comparison_pair")];
+    expect(checkMix([...Array(11).fill(LONE_SENTENCE), ...Array(5).fill("carousel"), ...Array(14).fill("comparison_pair")]).map((f) => f.check)).toContain("mix.dominant");
     expect(checkMix(swapped).map((f) => f.check)).toContain("mix.list");
   });
 });

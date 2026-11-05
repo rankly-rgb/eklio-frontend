@@ -152,6 +152,14 @@ export function negationsIn(text: string): string[] {
  * s'ouvrent sur « When… » — dont « When plans change » et « When the plan
  * changes ». La règle lisait l'accroche et la légende, pas ce qui est dessiné.
  */
+/**
+ * Les familles d'ouverture d'un post, telles que `variety.opening` les compte.
+ * Lu aussi par le portillon (`assembleMonth`), qui tient le quota post par post.
+ */
+export function openingFamiliesOf(post: PostUnderCheck): string[] {
+  return [...new Set(openingsOf(post).flatMap((s) => openingFamilies(firstSentence(s))))];
+}
+
 function openingsOf(post: PostUnderCheck): string[] {
   return [post.cardLine, post.hook, firstSentence(post.caption)].filter(
     (t): t is string => !!t && t.trim().length > 0

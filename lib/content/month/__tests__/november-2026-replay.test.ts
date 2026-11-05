@@ -239,10 +239,20 @@ describe("novembre 2026, rejoué : la base garde 24 posts, le mois est REFUSÉ (
   it("le portillon d'aujourd'hui écarte 3 des 5 posts que ce jour-là a écartés avant l'écriture", async () => {
     const { ports: p } = ports((id) => published.has(id));
     const out = await assembleMonth(p, input(prepared()));
-    expect(out.gate.refused.map((r) => r.checks.join("+")).sort()).toEqual(["text.acronym", "text.acronym", "text.echo"]);
+    /* Hors le quota d'ouverture, tenu au portillon depuis le 2026-11-05 (voir le test suivant). */
+    expect(out.gate.refused.map((r) => r.checks.join("+")).filter((c) => c !== "variety.opening").sort()).toEqual(["text.acronym", "text.acronym", "text.echo"]);
     /* Aucun de ces trois n'avait été publié : ils étaient dans les cinq écartés avant l'écriture. */
-    const gated = new Set(out.gate.refused.map((r) => r.topic));
+    const gated = new Set(out.gate.refused.filter((r) => !r.checks.includes("variety.opening")).map((r) => r.topic));
     for (const p of J.posts.filter((x) => gated.has(x.title))) expect(p.published).toBe(false);
+  });
+
+  it("le quota d'ouverture est tenu au portillon : aucune famille au-delà de quatre parmi les posts admis", async () => {
+    const { ports: p } = ports(() => true);
+    const out = await assembleMonth(p, input(prepared()));
+    const quota = out.gate.refused.filter((r) => r.checks.includes("variety.opening"));
+    expect(quota.length).toBeGreaterThan(0);
+    expect(out.gate.byCheck["variety.opening"]).toBe(quota.length);
+    expect(checkVariety(out.inserted.map(asMonthPost)).filter((f) => f.check === "variety.opening")).toEqual([]);
   });
 
   it("avec des mises en page valides, les mêmes réponses font un mois de 30, sans constat de variété", async () => {
