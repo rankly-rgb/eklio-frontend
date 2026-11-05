@@ -3,7 +3,16 @@ import {
   type Finding,
   type PostUnderCheck,
 } from "@/lib/content/month-checks";
-import { familyOf } from "@/lib/content/month-checks";
+import { checkMix, familyOf } from "@/lib/content/month-checks";
+import { payloadShape } from "@/lib/compose/archetypes/schema";
+
+const shapeOf = (archetype: string) => {
+  try {
+    return payloadShape(archetype);
+  } catch {
+    return null;
+  }
+};
 import type { CompletenessVerdicts } from "@/lib/content/writing-checks";
 import type { DirectionPalette } from "@/lib/compose/palette";
 
@@ -83,6 +92,26 @@ export function placeByDrawing<T>(chosen: T[], assign: (posts: T[]) => Array<str
       }
     }
   }
+}
+
+/**
+ * L'échange ciblé de `mix.list` (F130) : l'indice du post à liste qui sort et
+ * celui du post à phrase du banc qui entre, ou `null` si aucune paire ne laisse
+ * le mélange sans nouveau constat (plancher, distincts, carrousels, plafonds).
+ * Les remplaçants dans l'ordre du banc ; les sortants du dernier au premier.
+ */
+export function listSwap(chosen: string[], bench: string[]): [number, number] | null {
+  const others = (list: string[]) => checkMix(list).filter((f) => f.check !== "mix.list").map((f) => f.check);
+  const before = new Set(others(chosen));
+  for (let s = 0; s < bench.length; s += 1) {
+    if (shapeOf(bench[s]) !== "phrase") continue;
+    for (let out = chosen.length - 1; out >= 0; out -= 1) {
+      if (shapeOf(chosen[out]) !== "list") continue;
+      const trial = [...chosen.slice(0, out), ...chosen.slice(out + 1), bench[s]];
+      if (others(trial).every((c) => before.has(c))) return [out, s];
+    }
+  }
+  return null;
 }
 
 export type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ title: string; why: string }> };
@@ -225,6 +254,31 @@ export function selectDeliverable<
       const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
       const out = chosen.map((p) => p.composeArchetype).lastIndexOf(dominant ?? "");
       if (out === -1) return { chosen, remaining: findings, dropped };
+      dropped.push({ title: chosen[out].cardLine, why: `${finding.check} — ${finding.detail}` });
+      const [replacement] = bench.splice(spare, 1);
+      chosen = [...chosen.slice(0, out), ...chosen.slice(out + 1), replacement];
+      continue;
+    }
+
+    /*
+     * ── ⚠ TROP DE LISTES : UNE LISTE SORT, UNE PHRASE ENTRE (F130, 2026-11-05) ─
+     *
+     * Traité par la branche générique, `mix.list` retirait le dernier post de
+     * l'archétype le plus fréquent — la phrase seule — et prenait le premier du
+     * banc, quelle que soit sa forme : février 2027 a été refusé à 16 listes sur
+     * 14 avec 25 posts à phrase au banc.
+     *
+     * L'échange est maintenant ciblé : un post à LISTE sort, un post à PHRASE
+     * entre. ⚠ ET IL NE BRISE AUCUN PLANCHER. Chaque paire est essayée sur le
+     * mélange (`checkMix`) : elle n'est retenue que si elle ne fait naître aucun
+     * autre constat de mélange — plancher de famille, archétypes distincts,
+     * carrousels, plafonds par archétype. Si aucune paire ne le permet, le mois
+     * est refusé tel quel : on ne corrige pas un constat en en créant un autre.
+     */
+    if (finding.check === "mix.list") {
+      const pair = listSwap(chosen.map((p) => p.composeArchetype), bench.map((p) => p.composeArchetype));
+      if (!pair) return { chosen, remaining: findings, dropped };
+      const [out, spare] = pair;
       dropped.push({ title: chosen[out].cardLine, why: `${finding.check} — ${finding.detail}` });
       const [replacement] = bench.splice(spare, 1);
       chosen = [...chosen.slice(0, out), ...chosen.slice(out + 1), replacement];
