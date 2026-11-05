@@ -4800,3 +4800,30 @@ par le moteur, plus des deux tiers. Avant/après selon le moteur : 5 → 0 ; sel
   lisibles à 390 px.
 - **Les cinq `photo_statement`** sont la même composition. Si le prochain mois en tire plus,
   la signature structurelle les comptera ensemble (plafond de 7).
+
+## F138 — le produit n'a plus aucune carte qui dit qui est la praticienne
+
+Décision de Naima (2026-11-05) : la carte praticienne ne revient pas sous sa forme
+d'étiquettes. Elle reviendra rédigée : une publication qui présente la praticienne, écrite par
+le modèle à partir de sa fiche, jamais des valeurs de fiche imprimées. D'ici là, aucun post du
+mois ne dit qui elle est, comment elle travaille ni où elle exerce. Ce n'est pas qu'une
+question de marge de banc (F135) : c'est un manque sur un profil de thérapeute.
+
+## F139 — la pile de pastilles
+
+`numbered_strategies`, `cycle` et les autres piles de pastilles ou de blocs restent le mobilier
+le plus répétitif du mois. C'est à reprendre une fois qu'il y aura une cliente.
+
+## F140 — le harnais de planche vit hors du dépôt
+
+Le harnais `planche7.ts` (et `cards7.ts`, `sheet.py`) est dans le brouillon de session, pas
+dans le dépôt. Il appelle maintenant `verticalFillOfSvg` du moteur (F136), mais rien ne garantit
+qu'une prochaine session le retrouve, ni qu'il reste aligné sur le moteur. Il faut le verser
+dans `scripts/`.
+
+## F141 — la branche Supabase de la mise en production n'a pas pu être créée (2026-11-05)
+
+La création d'une branche de développement (`create_branch`, facturée à l'heure) a été
+refusée : l'accord sur le coût a été décliné. Les deux migrations en attente et leurs rollbacks
+ont été éprouvés sur une copie de la base locale, pas sur une branche. Elles ne sont pas
+appliquées en production.
