@@ -4837,3 +4837,25 @@ L'ancien fichier `types/supabase.ts` les disait facultatifs, et `lib/data/on-dem
 `?? undefined`. Pour un post écrit à la demande dont l'un de ces champs est nul, la clé
 disparaît de l'appel, et PostgREST ne trouve plus la fonction. Le fichier de types régénéré
 n'est pas commité tant que ce défaut n'est pas corrigé : il fait échouer la compilation.
+
+## F143 — `measure.ts` recompose les cartes au lieu de relire les PNG stockés
+
+La planche d'un mois en production est recomposée par le chemin réel (`storeMonthCards` →
+`serverCardRasteriser`, sans dépôt). Elle ne lit pas les PNG déposés dans le Storage au
+moment de la génération. Si le moteur change entre la génération et la mesure, la planche
+montre le moteur du jour, pas l'image publiée. Il faudrait lire les cartes stockées et
+garder la recomposition pour les mesures.
+
+## F144 — le plafond de dépense d'un mois compte les tentatives refusées
+
+Le plafond est de 3 $ par mois et par kit. Un mois refusé (0,64 à 0,71 $ mesuré) reste compté
+dans ce plafond. Après trois refus environ, le même mois ne peut plus être retenté : c'est
+arrivé à décembre 2026 en répétition. Le mode d'emploi le dit, mais rien ne le montre à
+l'écran.
+
+## F145 — `fillBank` ne connaît pas le modèle de la banque
+
+Le remplissage écrit sur `OPENAI_COPY_MODEL` (`gpt-5.6-terra`), le modèle de rédaction des
+posts. L'ancien générateur (Anthropic) écrivait la banque sur un modèle économique. Aucun
+choix n'a été fait : celui-ci est hérité. C'est à décider quand le prix d'un remplissage par
+praticienne comptera.

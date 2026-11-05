@@ -65,25 +65,38 @@ function openingNote(closed: string[]): string {
   ].join("\n");
 }
 
-async function main() {
-  if (!process.argv.includes("--confirm")) {
-    console.error("\n✗ Refusing without --confirm. This spends money.\n");
-    process.exit(1);
-  }
-  const key = process.env.EKLIO_OPENAI_API_KEY;
-  if (!key) throw new Error("EKLIO_OPENAI_API_KEY is required.");
-  const perSegment: Array<[string, number]> = [["single_statement", arg("--single", 6)], ["carousel", arg("--carousel", 6)]];
-  const capUsd = arg("--cap", 1.5);
-  const model = OPENAI_COPY_MODEL;
+export type FillOptions = {
+  /** Le client Supabase (service), fourni par l'appelant. */
+  db: ReturnType<typeof admin>;
+  /** La clé OpenAI ; inutile en simulation. */
+  key: string | null;
+  /** Les segments à remplir ; tous si absent. */
+  segments?: string[];
+  /**
+   * ⚠ DES CIBLES, PAS DES AJOUTS (2026-11-05). Chaque segment est complété
+   * jusqu'à `targets[archétype]` sujets : relancé, le remplissage ne trouve
+   * plus rien à écrire et ne paie rien. Idempotent.
+   */
+  targets: Record<string, number>;
+  /** Faux par défaut : rien n'est appelé ni écrit, le plan est rendu. */
+  write: boolean;
+  capUsd: number;
+};
 
-  const db = admin();
-  const { data: segments } = await untypedTable<Seg>(db, "content_segments").select("id, modality_id, persona_id, state_code");
-  if (!segments?.length) throw new Error("No segments.");
+export type FillPlan = Array<{ segment: string; archetype: string; held: number; target: number; toWrite: number }>;
+
+export async function fillBank(options: FillOptions) {
+  const { db, segments: only, targets, write, capUsd } = options;
+  const key = options.key ?? "";
+  const model = OPENAI_COPY_MODEL;
+  const { data: allSegments } = await untypedTable<Seg>(db, "content_segments").select("id, modality_id, persona_id, state_code");
+  const segments = (allSegments ?? []).filter((s) => !only || only.includes(s.id));
+  if (!segments.length) throw new Error("No segments.");
   const { data: modalities } = await db.from("modality_cards").select("id, label");
   const { data: personas } = await db.from("client_persona_cards").select("id, label, description");
   const { data: rules } = await db.from("ethics_rules").select("id, short_label, description");
   if (!rules?.length) throw new Error("No ethics rules in the catalogue.");
-  const { data: held } = await untypedTable<{ segment_id: string; title: string; hook: string; intent: string }>(db, "content_topics").select("segment_id, title, hook, intent");
+  const { data: held } = await untypedTable<{ segment_id: string; title: string; hook: string; intent: string; archetype_key: string }>(db, "content_topics").select("segment_id, title, hook, intent, archetype_key");
 
   const bySegment = new Map<string, BankTopicText[]>();
   for (const t of held ?? []) bySegment.set(t.segment_id, [...(bySegment.get(t.segment_id) ?? []), { title: t.title, hook: t.hook, intent: t.intent }]);
@@ -122,12 +135,22 @@ async function main() {
     }
   };
 
+  /* Le plan : ce qui manque à chaque segment pour atteindre ses cibles. */
+  const plan: FillPlan = [];
+  for (const seg of segments) {
+    for (const [archetype, target] of Object.entries(targets)) {
+      const n = (held ?? []).filter((t) => t.segment_id === seg.id && t.archetype_key === archetype).length;
+      plan.push({ segment: seg.id, archetype, held: n, target, toWrite: Math.max(0, target - n) });
+    }
+  }
+  if (!write) return { plan, written: 0, drawable: 0, calls: 0, costUsd: 0, failures: {} as Record<string, number> };
+
   let k = 0;
   outer: for (const seg of segments) {
     const modality = modalities?.find((m) => m.id === seg.modality_id);
     const persona = personas?.find((p) => p.id === seg.persona_id);
     const topics = bySegment.get(seg.id) ?? [];
-    for (const [archetype, count] of perSegment) {
+    for (const { archetype, toWrite: count } of plan.filter((p) => p.segment === seg.id)) {
       for (let i = 0; i < count; i += 1, k += 1) {
         if (spent >= capUsd) {
           console.error(`▸ plafond ${capUsd} $ atteint (${spent.toFixed(4)} $) : arrêt`);
@@ -191,10 +214,22 @@ async function main() {
   }
 
   noteSpend(spent, "remplissage de banque (OpenAI, variété à la source)");
-  console.log(JSON.stringify({ step: "topic-bank-openai", model, calls, written, drawable: reviewed, retriedOnOpening, failures, usage: usageTotal, costUsd: Number(spent.toFixed(5)), capUsd }, null, 2));
+  return { plan, written, drawable: reviewed, calls, retriedOnOpening, failures, usage: usageTotal, costUsd: Number(spent.toFixed(5)), model };
 }
 
-main().catch((error) => {
+/* Lancé seul (base locale) : les anciennes options, en cibles. */
+async function main() {
+  if (!process.argv.includes("--confirm")) {
+    console.error("\n✗ Refusing without --confirm. This spends money.\n");
+    process.exit(1);
+  }
+  const key = process.env.EKLIO_OPENAI_API_KEY;
+  if (!key) throw new Error("EKLIO_OPENAI_API_KEY is required.");
+  const out = await fillBank({ db: admin(), key, targets: { single_statement: arg("--single", 15), carousel: arg("--carousel", 10) }, write: true, capUsd: arg("--cap", 1.5) });
+  console.log(JSON.stringify({ step: "topic-bank-openai", ...out, plan: undefined }, null, 2));
+}
+
+if (process.argv[1]?.endsWith("12-topic-bank-openai.ts")) main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
