@@ -114,6 +114,67 @@ export function listSwap(chosen: string[], bench: string[]): [number, number] | 
   return null;
 }
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LE RYTHME DES FORMATS SUR LA GRILLE (F131, 2026-11-05)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Mars 2027 se lisait en trois pavés : neuf carrousels, quatorze piles de
+ * blocs, sept phrases seules. Un profil s'ouvre sur une grille de neuf : c'est
+ * le rythme des FORMATS que l'œil voit, et rien ne le tenait.
+ *
+ * Trois formats : carrousel, liste (charge utile en liste), phrase (le reste).
+ * Chaque post reçoit une position cible, (k + ½) / n de son format, et le mois
+ * est trié sur elle : chaque format est étalé régulièrement sur les trente. Un
+ * tri stable, sans hasard — le même mois donne le même ordre. Une permutation,
+ * jamais une substitution : aucun post n'entre ni ne sort.
+ *
+ * Ce que l'étalement tient, et que `formatRhythm` mesure : dans toute fenêtre de
+ * neuf, au moins trois formats et aucun au-delà de cinq ; jamais plus de trois
+ * d'un même format à la suite. Si la composition du mois le rend impossible (un
+ * format au-delà de quinze), l'étalement reste la meilleure répartition, et la
+ * mesure le dit.
+ */
+export type Format = "carousel" | "list" | "phrase";
+
+export function formatOf(archetype: string): Format {
+  if (archetype === "carousel") return "carousel";
+  return shapeOf(archetype) === "list" ? "list" : "phrase";
+}
+
+export function orderByFormat<T>(posts: T[], archetypeOf: (p: T) => string): T[] {
+  const byFormat = new Map<Format, number>();
+  for (const p of posts) byFormat.set(formatOf(archetypeOf(p)), (byFormat.get(formatOf(archetypeOf(p))) ?? 0) + 1);
+  const seen = new Map<Format, number>();
+  const ORDER: Format[] = ["carousel", "list", "phrase"];
+  return posts
+    .map((p, i) => {
+      const f = formatOf(archetypeOf(p));
+      const k = seen.get(f) ?? 0;
+      seen.set(f, k + 1);
+      return { p, i, f, at: (k + 0.5) / byFormat.get(f)! };
+    })
+    .sort((a, b) => a.at - b.at || ORDER.indexOf(a.f) - ORDER.indexOf(b.f) || a.i - b.i)
+    .map((x) => x.p);
+}
+
+/** La mesure : formats distincts et format le plus présent par fenêtre de neuf, plus longue série. */
+export function formatRhythm(formats: Format[], window = 9): { distinct: number[]; maxInWindow: number[]; longestRun: number } {
+  const distinct: number[] = [];
+  const maxInWindow: number[] = [];
+  for (let i = 0; i + window <= formats.length; i += 1) {
+    const w = formats.slice(i, i + window);
+    distinct.push(new Set(w).size);
+    maxInWindow.push(Math.max(...(["carousel", "list", "phrase"] as Format[]).map((f) => w.filter((x) => x === f).length)));
+  }
+  let longestRun = 0;
+  for (let i = 0, run = 0; i < formats.length; i += 1) {
+    run = i > 0 && formats[i] === formats[i - 1] ? run + 1 : 1;
+    longestRun = Math.max(longestRun, run);
+  }
+  return { distinct, maxInWindow, longestRun };
+}
+
 export type Deliverable<T> = { chosen: T[]; remaining: Finding[]; dropped: Array<{ title: string; why: string }> };
 
 /**
@@ -193,6 +254,12 @@ export function selectDeliverable<
   const dropped: Array<{ title: string; why: string }> = [];
 
   for (;;) {
+    /*
+     * ⚠ L'ORDRE DES FORMATS AVANT LE REDESSIN (2026-11-05). Le plan des fonds et
+     * l'espacement des dessins se calculent sur l'ordre retenu : permuter ici,
+     * à chaque tour, les fait recalculer sur l'ordre final au lieu de le casser.
+     */
+    chosen = orderByFormat(chosen, (p) => p.composeArchetype);
     if (redraw) {
       const placed = placeByDrawing(chosen, redraw.assign);
       chosen = placed.posts;
