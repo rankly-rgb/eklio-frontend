@@ -253,6 +253,28 @@ export function verticalFill(placed: Placed[]): number {
   return round2(Math.max(0, bottom - top) / (USABLE_BOTTOM - USABLE_TOP));
 }
 
+/**
+ * ⚠ LE REMPLISSAGE LU DANS LE SVG LIVRÉ, PAR LA MÊME FONCTION (F136, 2026-11-05).
+ * Le harnais de planche recalculait le remplissage à sa façon (sur la hauteur
+ * totale) : 5 cartes sous le plancher pour lui, 0 pour le moteur. Il appelle
+ * maintenant celle-ci, qui relit les boîtes écrites dans le SVG — celles du
+ * groupe pour un texte ou un aplat, celles des traits pour une figure, comme
+ * `verticalFill` — et rend `verticalFill`. Un test tient l'égalité.
+ */
+export function verticalFillOfSvg(svg: string): number {
+  const box = (s: string) => {
+    const [x, y, w, h] = s.split(",").map(Number);
+    return { x, y, w, h };
+  };
+  const placed: Placed[] = [];
+  for (const m of svg.matchAll(/<g data-role="([a-z]+)" data-band="([a-z]+)" data-box="([^"]+)"[^>]*>([\s\S]*?)<\/g>/g)) {
+    const [, role, band, at, body] = m;
+    const strokes = role === "figure" ? [...body.matchAll(/<path [^>]*data-box="([^"]+)"/g)].map((b) => ({ box: box(b[1]) })) : [];
+    placed.push({ role, band, box: box(at), strokes, lines: [] } as unknown as Placed);
+  }
+  return verticalFill(placed);
+}
+
 export function legibleAtThumb(placed: Placed[]): boolean {
   const px = smallestInContent(placed);
   return px === 0 || px >= CONTENT_MIN_AT_CANVAS;
