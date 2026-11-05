@@ -4720,3 +4720,23 @@ la banque, la bibliothèque de dessins doit suivre dans le même mouvement.
 
 F124 (sujets de modalité communs, migration), F110 et le champ `arc`, F120, F115, F116, F117,
 F104, F103, F101, F96, F97, F94, F100, F85, F90.
+
+## F130 — `mix.list` est échangé à l'aveugle par le sélecteur (session 11, 2026-11-05)
+
+Février 2027 a été refusé sur un seul constat : `mix.list` 16/30, pour un plafond de 14. Il y
+avait 25 posts à phrase après le portillon, pour 16 nécessaires.
+
+La branche générique `mix.*` de `selectDeliverable` (`lib/content/month/select.ts`) retire le
+dernier post de l'archétype le plus fréquent, ici `single_statement`, c'est-à-dire une PHRASE.
+Elle le remplace par `bench.shift()`, quelle que soit sa forme. Pour « trop de listes », elle
+peut donc retirer une phrase et ajouter une liste. `mix.carousel` et `mix.floor.*` ont chacun
+une branche ciblée, avec une victime et un remplaçant du bon type. `mix.list` n'en a pas.
+
+Ce qui manque est un échange ciblé : une victime à liste, un remplaçant à phrase. Ce serait une
+correction du sélecteur, pas une contrainte en plus ni en moins. Je ne l'ai pas faite, comme
+convenu. Mesures : `design/month-2026-11-05-b/README.md`.
+
+Les deux corrections de la session ont fait ce qu'on attendait :
+- le dessin ne fait plus perdre que 2 posts avant le portillon, contre 13 ;
+- le quota d'ouverture a consommé 12 échanges au portillon, et l'assemblage n'a plus aucun
+  constat `variety.opening`.
