@@ -4827,3 +4827,13 @@ La création d'une branche de développement (`create_branch`, facturée à l'he
 refusée : l'accord sur le coût a été décliné. Les deux migrations en attente et leurs rollbacks
 ont été éprouvés sur une copie de la base locale, pas sur une branche. Elles ne sont pas
 appliquées en production.
+
+## F142 — `apply_on_demand_write` reçoit `undefined` pour des arguments obligatoires
+
+Les types régénérés depuis un rejeu propre du dépôt (2026-11-05) déclarent obligatoires
+`p_title`, `p_caption`, `p_on_image_text`, `p_alt_text`, `p_compose_archetype` et `p_payload`.
+La signature en production est la même : ces arguments n'ont pas de valeur par défaut.
+L'ancien fichier `types/supabase.ts` les disait facultatifs, et `lib/data/on-demand.ts` passe
+`?? undefined`. Pour un post écrit à la demande dont l'un de ces champs est nul, la clé
+disparaît de l'appel, et PostgREST ne trouve plus la fonction. Le fichier de types régénéré
+n'est pas commité tant que ce défaut n'est pas corrigé : il fait échouer la compilation.
