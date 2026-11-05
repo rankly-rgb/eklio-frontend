@@ -356,7 +356,12 @@ describe("le dessin de chaque post est choisi par le sens, et un post sans dessi
     for (const [row] of insert.mock.calls) expect(row.illustrationKey).not.toBeNull();
   });
 
-  it("le post auquel aucun dessin ne correspond est écarté avant composition, et remplacé", async () => {
+  /*
+   * ⚠ DEPUIS LE 2026-11-05, UNE PHRASE SANS DESSIN N'EST PLUS ÉCARTÉE : le monde
+   * de ces tests est fait de phrases seules, qu'un fond photo porte seul (« zéro
+   * carte vide »). Elle entre sur photo, sans clé de dessin.
+   */
+  it("la phrase à laquelle aucun dessin ne correspond entre sur photo, sans dessin", async () => {
     const w = world();
     /* Aucun dessin ne dit t1, à aucun rang. */
     vi.mocked(w.ports.illustrate).mockImplementation((posts) =>
@@ -365,8 +370,13 @@ describe("le dessin de chaque post est choisi par le sens, et un post sans dessi
     const out = await orchestrateMonth(w.ports, input());
     expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
     if (!out.ok) return;
-    expect(out.illustrationRefused).toEqual(["t1"]);
-    expect(w.inserted).not.toContain("t1");
+    expect(out.illustrationRefused).toEqual([]);
+    const insert = vi.mocked(w.ports.assembleFor("m").insert);
+    const row = insert.mock.calls.map(([r]) => r).find((r) => r.topicId === "t1");
+    if (row) {
+      expect(row.illustrationKey).toBeNull();
+      expect(row.groundKey).toBe("photo");
+    }
     expect(w.inserted).toHaveLength(3);
   });
 
@@ -406,7 +416,7 @@ describe("le dessin de chaque post est choisi par le sens, et un post sans dessi
     expect(w.inserted).toHaveLength(3);
   });
 
-  it("un post qu'aucun dessin ne dit à aucun rang est échangé contre le banc", async () => {
+  it("une phrase qu'aucun dessin ne dit à aucun rang reste au mois, sur photo (2026-11-05)", async () => {
     const w = world();
     const first = TITLES[0];
     let call = 0;
@@ -417,8 +427,9 @@ describe("le dessin de chaque post est choisi par le sens, et un post sans dessi
     });
     const out = await orchestrateMonth(w.ports, input());
     expect(out.ok, out.ok ? "" : out.refusal).toBe(true);
-    expect(w.inserted).not.toContain("t1");
     expect(w.inserted).toHaveLength(3);
+    const insert = vi.mocked(w.ports.assembleFor("m").insert);
+    for (const [row] of insert.mock.calls) if (row.illustrationKey === null) expect(row.groundKey).toBe("photo");
   });
 });
 

@@ -56,11 +56,12 @@ export class ComposeRefused extends Error {}
 
 export type ComposeCardInput = {
   /**
-   * Le dessin de la bibliothèque choisi pour ce post. OBLIGATOIRE ici : le
-   * générateur ne compose jamais une carte sans dessin apparié — le post sans
-   * dessin est refusé avant d'arriver à cette fonction.
+   * Le dessin de la bibliothèque choisi pour ce post, ou `null` pour une carte à
+   * PHRASE sans dessin apparié, que le plan des fonds pose sur photo (2026-11-05).
+   * Une carte qui ne porte ni dessin, ni forme, ni photo reste refusée plus bas
+   * (`EmptyCard`) : c'est le SVG qui fait foi.
    */
-  illustration: string;
+  illustration: string | null;
   /** La famille de fond donnée par le plan du mois, résolue (`lib/compose/grounds.ts`). */
   ground?: RenderInput["ground"];
   archetype: string;
@@ -108,7 +109,7 @@ export function composeCard(input: ComposeCardInput): ComposedCard {
 
   const composed = composeWithFallback(
     {
-      illustration: input.illustration,
+      illustration: input.illustration ?? undefined,
       ground: input.ground ?? null,
       archetype: input.archetype,
       payload: input.payload,

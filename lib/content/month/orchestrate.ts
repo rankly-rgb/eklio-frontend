@@ -3,6 +3,17 @@ import { drawMonth, type DrawPorts, type DrawnTopic } from "@/lib/content/month/
 import { composeCard, ComposeRefused } from "@/lib/content/month/compose-card";
 import { placeByDrawing, type Redraw } from "@/lib/content/month/select";
 import { planGrounds } from "@/lib/content/month/grounds-plan";
+import { payloadShape } from "@/lib/compose/archetypes/schema";
+
+/** Un archétype qu'un fond photo seul peut porter : la phrase seule et le carrousel (sa couverture). */
+function photoCarries(archetype: string): boolean {
+  if (archetype === "practitioner_card") return false;
+  try {
+    return payloadShape(archetype) === "phrase";
+  } catch {
+    return false;
+  }
+}
 import { groundFor, type Ground } from "@/lib/compose/grounds";
 import { assembleMonth, type AssemblePorts, type AssembleOutcome, type Assemblable } from "@/lib/content/month/assemble";
 import {
@@ -338,8 +349,8 @@ export type OrchestrateOutcome =
 /** Un post rédigé ET composé, prêt pour l'assemblage. */
 export type PreparedPost = Assemblable & {
   topicId: string;
-  /** Le dessin de la bibliothèque que la carte porte. */
-  illustration: string;
+  /** Le dessin de la bibliothèque que la carte porte ; `null` pour une carte à phrase posée sur photo seule. */
+  illustration: string | null;
   /** La famille de fond que le plan du mois lui a donnée (`grounds-plan.ts`). */
   ground?: Ground;
   caption: string;
@@ -722,7 +733,7 @@ export async function orchestrateMonth(
       return [t.id, { title: t.title, hook: t.hook ?? null, cardLine: post.cardLine, payload: post.payload, caption: post.caption }];
     })
   );
-  const recomposeOf = new Map<string, (illustration: string, ground?: Ground) => ReturnType<typeof composeCard>>();
+  const recomposeOf = new Map<string, (illustration: string | null, ground?: Ground) => ReturnType<typeof composeCard>>();
   /** L'archétype demandé de chaque post : c'est lui qui dit quels fonds il peut porter. */
   const askedOf = new Map<string, string>();
 
@@ -731,14 +742,23 @@ export async function orchestrateMonth(
     const post = alreadyWritten.get(topic.id);
     if (!post) continue;
     const illustration = drawingOf.get(topic.id) ?? null;
-    if (!illustration) {
-      /* ⚠ AUCUN DESSIN NE DIT CE SUJET : le post n'est pas composé, le banc le remplace. */
+    /*
+     * ⚠ LE PORTILLON SUIT LA RÈGLE DE COMPOSITION (2026-11-05). « Zéro carte
+     * vide » admet trois voies : un dessin, une forme, un fond photo. Un post à
+     * PHRASE dont aucun dessin ne dit le sens reste donc recevable : le plan des
+     * fonds lui donne une photo (`allowedGrounds(…, null)`), et la garde finale
+     * (`EmptyCard`, sur le SVG) refuse toujours une carte qui n'en porte aucune.
+     * Mesuré : 13 posts perdus ici en session 9, 10 en session 10, presque tous
+     * à phrase. Un post à liste sans dessin reste refusé : ses aplats ne se
+     * posent pas sur une photo pleine.
+     */
+    if (!illustration && !photoCarries(topic.archetype_key)) {
       illustrationRefused.push(topic.id);
       continue;
     }
     const palette = input.paletteFor(index);
     askedOf.set(topic.id, topic.archetype_key);
-    const make = (drawing: string, ground: Ground = "cream") =>
+    const make = (drawing: string | null, ground: Ground = drawing ? "cream" : "photo") =>
       composeCard({
         illustration: drawing,
         ground: groundFor(input.direction, ground),
@@ -764,7 +784,7 @@ export async function orchestrateMonth(
       prepared.push({
         topicId: topic.id,
         illustration,
-        ground: "cream",
+        ground: illustration ? "cream" : "photo",
         cardLine: post.cardLine,
         /*
          * ⚠ LA MISE EN PAGE VIENT DE L'APPELANT, pas de l'archétype composé. Elle
@@ -884,7 +904,7 @@ export async function orchestrateMonth(
       );
       return chosen.map((p, i) => {
         const drawing = ids[i] ?? null;
-        if (!drawing) return null;
+        if (!drawing && !photoCarries(askedOf.get(p.topicId) ?? p.composeArchetype)) return null;
         const ground = grounds[i];
         if (drawing === p.illustration && ground === p.ground) return p;
         try {

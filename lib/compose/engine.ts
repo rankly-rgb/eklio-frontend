@@ -311,6 +311,13 @@ function renderIdiom(input: RenderInput, idiom: Idiom, parsed: unknown, soft: st
   return { svg: toSvg(composition, input.palette.paper), composition, smallestSize: smallest(placed) };
 }
 
+/** La clef de photo d'une carte sans dessin : sa phrase (ou celle de sa couverture), sinon son titre. Persistée par le payload. */
+export function photoKeyOf(payload: unknown, headline: string): string {
+  const p = payload as { statement?: unknown; cards?: Array<{ payload?: { statement?: unknown } }> } | null;
+  const s = typeof p?.statement === "string" ? p.statement : typeof p?.cards?.[0]?.payload?.statement === "string" ? (p.cards[0].payload!.statement as string) : headline;
+  return `photo:${s}`;
+}
+
 export function render(input: RenderInput): RenderResult {
   const archetype = ARCHETYPES[input.archetype];
   if (!archetype) throw new CompositionError(`unknown archetype: ${input.archetype}`);
@@ -504,7 +511,13 @@ export function render(input: RenderInput): RenderResult {
        * pose sous le dessin — il faut savoir où ils sont. Sans dessin de la
        * bibliothèque, aucune couche : la carte d'avant reste ce qu'elle était.
        */
-      const decor = input.illustration ? decorFor(input.archetype, input.illustration, input.palette, placed, input.ground?.ground) : undefined;
+      /*
+       * ⚠ SANS DESSIN, SUR PHOTO (2026-11-05) : une carte à phrase dont aucun
+       * dessin ne dit le sens est posée sur un fond photo — la règle « zéro carte
+       * vide » admet ce fond seul. La photo est choisie par le texte de la carte.
+       */
+      const decorKey = input.illustration ?? (input.ground?.ground === "photo" ? photoKeyOf(input.payload, input.headline) : null);
+      const decor = decorKey ? decorFor(input.archetype, decorKey, input.palette, placed, input.ground?.ground) : undefined;
 
       const composition: Composition = {
         archetype: input.archetype,

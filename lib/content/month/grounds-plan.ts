@@ -37,6 +37,12 @@ const NO_DRAWING = new Set(["numbered_strategies", "cycle"]);
  * règle ne les touche pas.
  */
 export function allowedGrounds(archetype: string, drawing?: string | null): Ground[] {
+  /*
+   * ⚠ `null` : UNE CARTE À PHRASE SANS DESSIN APPARIÉ (2026-11-05). Elle n'entre
+   * au mois que sur photo, et le plan la lui doit : sinon la carte serait vide
+   * et refusée plus loin, ce qui ne ferait que déplacer le refus.
+   */
+  if (drawing === null) return ["photo"];
   const all: Ground[] = archetype === "single_statement" ? ["cream", "photo", "deep", "ochre", "terra"] : ["cream", "photo"];
   if (drawing && !NO_DRAWING.has(archetype) && isLoneStroke(drawing)) return all.filter((g) => g !== "photo");
   return all;

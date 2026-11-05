@@ -330,7 +330,16 @@ export function shapeFill(palette: Palette): string | null {
 
 function rank(illustration: string): number {
   const i = DRAWABLE.indexOf(illustration);
-  return i < 0 ? 0 : i;
+  if (i >= 0) return i;
+  /*
+   * ⚠ UNE CLEF QUI N'EST PAS UN DESSIN : celle d'une carte à phrase sans dessin
+   * apparié, posée sur photo (2026-11-05, `photoKeyOf`). Un hachage stable du
+   * texte : la même carte retrouve la même photo à la relecture, deux cartes
+   * différentes en prennent rarement une même.
+   */
+  let h = 0;
+  for (let k = 0; k < illustration.length; k += 1) h = (h * 31 + illustration.charCodeAt(k)) >>> 0;
+  return h;
 }
 
 export function photoFor(illustration: string): string {
