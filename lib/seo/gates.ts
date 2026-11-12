@@ -133,6 +133,7 @@ export function specificityFindings(text: string, facts: SpecificFacts): Finding
  * réponse la lisent. Les mots diffèrent ; les racines de la question, non.
  */
 export const QUESTION_OVERLAP_MAX = 0.5;
+export const QUESTION_NEAR_IDENTICAL = 0.75;
 
 /*
  * ⚠ DEUX APPROCHES, DEUX QUESTIONS. Session 1 : « EMDR therapy » est dans presque
@@ -175,7 +176,17 @@ export function questionOverlapFindings(
     for (const other of answeredElsewhere) {
       const theirs = read(other);
       if (theirs.named !== mine.named) continue;
-      if (jaccardSimilarity(mine.roots, theirs.roots) >= QUESTION_OVERLAP_MAX) {
+      /*
+       * ⚠ DEUX MOTS EN COMMUN NE FONT PAS UNE QUESTION. « Can I stop bilateral
+       * stimulation if I do not like it? » et « What is bilateral stimulation? »
+       * partagent leur sujet et rien d'autre : 2 racines sur 4, Jaccard 0,5, une
+       * réécriture payée (mois 3 de Lena, session 2). Une répétition est soit
+       * quasi identique (≥ 0,75), soit un vrai recouvrement de trois racines au moins.
+       */
+      const j = jaccardSimilarity(mine.roots, theirs.roots);
+      let shared = 0;
+      for (const r of mine.roots) if (theirs.roots.has(r)) shared += 1;
+      if (j >= QUESTION_NEAR_IDENTICAL || (shared >= 3 && j >= QUESTION_OVERLAP_MAX)) {
         out.push({
           check: "gate.question_repeated",
           detail: `"${q}" is already answered on another of her pages ("${other}"); ask a different question.`,

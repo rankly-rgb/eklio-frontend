@@ -262,3 +262,19 @@ describe("deux questions sur deux approches différentes ne se répètent pas (s
     expect(questionOverlapFindings(["Why might new parents consider EMDR therapy?"], ["Who may consider EMDR therapy?"], VOCAB)).toEqual([]);
   });
 });
+
+describe("une question courte qui partage un sujet n'est pas la même question (session 2, mois 3 de Lena)", () => {
+  const VOCAB = ["EMDR therapy", "IFS therapy"];
+  it("« Can I stop bilateral stimulation… » ≠ « What is bilateral stimulation? » (faux positif réel)", () => {
+    expect(questionOverlapFindings(["Can I stop bilateral stimulation if I do not like it?"], ["What is bilateral stimulation?"], VOCAB)).toEqual([]);
+  });
+  it.each([
+    // Les vraies répétitions du même mois, qui doivent rester prises.
+    ["Who may consider EMDR therapy?", "Who may consider EMDR therapy?"],
+    ["What should I ask an EMDR therapist?", "What should I ask an EMDR therapist?"],
+    ["What happens in an EMDR therapy session?", "What happens in an EMDR session?"],
+    ["Do I have to talk through a difficult memory in detail?", "Do I have to talk through every detail of a difficult experience?"],
+  ])("« %s » répète « %s »", (mine, other) => {
+    expect(checks(questionOverlapFindings([mine], [other], VOCAB))).toEqual(["gate.question_repeated"]);
+  });
+});
