@@ -1,4 +1,4 @@
-import type { SeoKind } from "@/lib/seo/kinds";
+import { TITLE_MAX, type SeoKind } from "@/lib/seo/kinds";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -161,6 +161,15 @@ export function deriveTargets(
         };
         const intentKey = fill(template.intentPattern, keys);
         if (seen.has(intentKey)) continue;
+        const primaryQuery = fill(template.queryPattern, words);
+        /*
+         * ⚠ UNE CIBLE IMPOSSIBLE N'EST PAS PROPOSÉE. Le title doit contenir la
+         * requête exacte ET tenir en 60 caractères : une requête plus longue ne
+         * peut jamais passer. Mesuré (session 2, profil C′) : « what to expect
+         * in a first Gottman Method couples therapy session » — 64 caractères,
+         * deux appels payés, quarantaine sur `seo.query_missing`.
+         */
+        if (primaryQuery.length > TITLE_MAX) continue;
         seen.add(intentKey);
         out.push({
           kind: template.kind,
@@ -169,7 +178,7 @@ export function deriveTargets(
           populationKey,
           state: needsPlace ? state : null,
           city: needsPlace ? city : null,
-          primaryQuery: fill(template.queryPattern, words),
+          primaryQuery,
           intentKey,
           priority: template.priority,
           modalityRank,

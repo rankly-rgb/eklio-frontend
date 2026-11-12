@@ -153,3 +153,23 @@ describe("anti-cannibalisation et quota", () => {
     expect(targetMatchesBrief(local, { ...GRID, modalityKeys: ["ifs"] })).toBe(false);
   });
 });
+
+describe("une cible impossible n'est pas proposée (session 2, profil C′)", () => {
+  it("une requête de plus de 60 caractères ne peut pas entrer dans un title de 60 : elle est écartée", () => {
+    const terms: SearchTerms = {
+      modality: new Map([["gottman", "Gottman Method couples therapy"]]),
+      population: new Map([["couples_roommates", "couples"]]),
+    };
+    const t = deriveTargets(
+      { modalityKeys: ["gottman"], populationKeys: ["couples_roommates"], state: "CA", city: "San Diego" },
+      TEMPLATES,
+      terms
+    );
+    // La requête réelle, 64 caractères, qui a fini en quarantaine sur seo.query_missing.
+    expect("what to expect in a first Gottman Method couples therapy session".length).toBe(64);
+    expect(t.map((x) => x.primaryQuery)).not.toContain("what to expect in a first Gottman Method couples therapy session");
+    expect(t.every((x) => x.primaryQuery.length <= 60)).toBe(true);
+    // Les autres cibles de la même grille restent.
+    expect(t.map((x) => x.primaryQuery)).toContain("Gottman Method couples therapy in San Diego, CA");
+  });
+});
