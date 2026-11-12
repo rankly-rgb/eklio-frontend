@@ -74,11 +74,12 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
     `- h1: contains the exact phrase "${brief.primaryQuery}". It is the only H1; never put one in the body.`,
     `- intro: one paragraph whose first sentence contains the exact phrase "${brief.primaryQuery}".`,
     /*
-     * ⚠ SESSIONS 1 ET 2 : six metas à 132-139 caractères, même après une réécriture
-     * qui donnait le nombre exact à ajouter. Le modèle compte mal les caractères et
-     * bien les mots : la consigne donne les deux, et dit de quel côté on se trompe.
+     * ⚠ RETIRÉ (session 2) : donner la longueur en mots et dire « too short is the
+     * most common mistake » a fait passer les erreurs de « trop court » (132-139) à
+     * « trop long » (163, 168, 172) sans faire monter le taux de passage du premier
+     * coup. Consigne d'origine rétablie ; voir FOLLOWUP S8 (une aide côté code).
      */
-    `- meta_description: ${META_RANGE.min} to ${META_RANGE.max} characters, which is about 24 to 26 words in two sentences. Aim for 150 characters; too short is the most common mistake, so when in doubt add a few words. No quotation marks.`,
+    `- meta_description: ${META_RANGE.min} to ${META_RANGE.max} characters (count them; aim for 150), one or two sentences, no quotation marks.`,
     "",
     "WHAT YOU MAY SAY",
     "- Psychoeducation only: what the approach is, how it generally works, what a session usually looks like, who it is commonly used with, what to ask a therapist. Describe the work, never its results.",
