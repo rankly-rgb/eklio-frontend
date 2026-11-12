@@ -8,6 +8,7 @@ import {
 } from "@/lib/content/generate/openai";
 import { writerSystemPrompt, writerUserPrompt, type FailureReport, type SeoWriterBrief } from "@/lib/seo/brief";
 import { writerOutputJsonSchema } from "@/lib/seo/output";
+import { META_RANGE, TITLE_MAX } from "@/lib/seo/kinds";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -45,12 +46,84 @@ export type SeoWriteResult = {
   usage: CopyUsage;
 };
 
+/*
+ * ── LA RÉPARATION D'UN CHAMP (session 3) ────────────────────────────────
+ *
+ * La meta description trop courte (ou trop longue), le title trop long : la première
+ * cause d'échec mesurée, et un défaut du modèle que le brief n'a pas su corriger.
+ * Les réécrire en réécrivant TOUTE la pièce coûtait un appel complet et remettait en
+ * jeu tout le reste du texte. La réparation est un appel COURT, qui ne rend que le
+ * champ fautif, avec le début de la pièce en contexte. Le pipeline repasse ensuite la
+ * pièce réparée par TOUS les contrôles, Ethics Guard compris.
+ */
+export type RepairableField = "meta_description" | "title";
+
+export type FieldRepairRequest = {
+  field: RepairableField;
+  current: string;
+  /** Le constat, tel que le contrôle l'a écrit. */
+  problem: string;
+  primaryQuery: string;
+  h1: string;
+  /** Le premier paragraphe de la pièce : de quoi elle parle. */
+  intro: string;
+};
+
+export type FieldRepairResult = {
+  /** Le nouveau texte du champ, ou null si la réponse n'en contenait pas. */
+  value: string | null;
+  model: string;
+  costUsd: number;
+  usage: CopyUsage;
+};
+
 export type SeoWriterPort = {
   readonly model: string;
   /** Le pire coût de cet appel, en dollars — ce que le livre réserve avant. */
   worstCaseUsd(request: SeoWriteRequest): number;
   write(request: SeoWriteRequest): Promise<SeoWriteResult>;
+  worstCaseRepairUsd(request: FieldRepairRequest): number;
+  repairField(request: FieldRepairRequest): Promise<FieldRepairResult>;
 };
+
+const FIELD_RULE: Record<RepairableField, (r: FieldRepairRequest) => string> = {
+  meta_description: () =>
+    `${META_RANGE.min} to ${META_RANGE.max} characters (aim for 150), one or two sentences, no quotation marks. Count the characters before answering.`,
+  title: (r) => `at most ${TITLE_MAX} characters, and it contains the exact phrase "${r.primaryQuery}".`,
+};
+
+/** Le plafond d'une réparation : une phrase, plus le raisonnement facturé en sortie. */
+const REPAIR_MAX_OUTPUT_TOKENS = 2_000;
+
+export function repairRequestBody(model: string, r: FieldRepairRequest): Record<string, unknown> {
+  return {
+    model,
+    instructions: [
+      "You fix ONE field of a web page written for a licensed psychotherapist in the United States. American English.",
+      `The field is the page ${r.field === "title" ? "title (the <title> tag)" : "meta description"}.`,
+      `It must be ${FIELD_RULE[r.field](r)}`,
+      "Keep the meaning and the tone of the current version. Describe the work; never promise an outcome, never diagnose, no testimonials, no superlatives.",
+      "Return only the JSON object the schema describes.",
+    ].join("\n"),
+    input: [
+      `Current ${r.field}: ${JSON.stringify(r.current)}`,
+      `Why it fails: ${r.problem}`,
+      `Page H1: ${JSON.stringify(r.h1)}`,
+      `Opening paragraph: ${JSON.stringify(r.intro.slice(0, 1200))}`,
+    ].join("\n"),
+    max_output_tokens: REPAIR_MAX_OUTPUT_TOKENS,
+    reasoning: { effort: "low" },
+    text: {
+      format: {
+        type: "json_schema",
+        name: "eklio_seo_field",
+        strict: true,
+        schema: { type: "object", additionalProperties: false, required: ["value"], properties: { value: { type: "string" } } },
+      },
+    },
+    store: false,
+  };
+}
 
 /**
  * Le plafond de sortie : 1 600 mots ≈ 2 200 jetons, la FAQ, l'enveloppe JSON, et
@@ -107,6 +180,25 @@ export function openAiSeoWriter(config: {
         return { output: JSON.parse(text), problem: null, model, costUsd, usage };
       } catch {
         return { output: null, problem: "the answer was not valid JSON", model, costUsd, usage };
+      }
+    },
+    worstCaseRepairUsd: (request) => worstCaseCallUsd(model, repairRequestBody(model, request)),
+    async repairField(request) {
+      const { response, usage, costUsd } = await meteredCall(
+        config.transport,
+        config.meter,
+        model,
+        repairRequestBody(model, request),
+        `seo:repair:${request.field}`
+      );
+      if (openAiRefusal(response) || (response.status && response.status !== "completed")) {
+        return { value: null, model, costUsd, usage };
+      }
+      try {
+        const parsed = JSON.parse(openAiText(response)) as { value?: unknown };
+        return { value: typeof parsed.value === "string" ? parsed.value.trim() : null, model, costUsd, usage };
+      } catch {
+        return { value: null, model, costUsd, usage };
       }
     },
   };

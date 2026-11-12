@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { spendMeter, type OpenAiResponse } from "@/lib/content/generate/openai";
 import { writerSystemPrompt, writerUserPrompt, type SeoWriterBrief } from "@/lib/seo/brief";
-import { openAiSeoWriter, seoRequestBody } from "@/lib/seo/writer";
+import { openAiSeoWriter, repairRequestBody, seoRequestBody } from "@/lib/seo/writer";
 import {
   assembleBody,
   firstParagraphOf,
@@ -139,5 +139,39 @@ describe("le rédacteur OpenAI", () => {
     const result = await writer.write({ brief: BRIEF });
     expect(result.output).toBeNull();
     expect(result.problem).toMatch(/JSON/);
+  });
+});
+
+describe("la réparation d'un champ (session 3)", () => {
+  const req = {
+    field: "meta_description" as const,
+    current: "Too short.",
+    problem: "the meta description is 10 characters; it must be 140 to 160: add 130 to 150 characters.",
+    primaryQuery: "EMDR therapy in Oakland, CA",
+    h1: "EMDR therapy in Oakland, CA",
+    intro: "EMDR therapy in Oakland, CA is a structured approach.",
+  };
+
+  it("un appel court, strict, sans stockage, qui ne demande que le champ", () => {
+    const body = seoRequestBody("gpt-5.6-terra", { brief: BRIEF });
+    const repair = repairRequestBody("gpt-5.6-terra", req);
+    expect(repair.store).toBe(false);
+    expect((repair.text as { format: { strict: boolean; schema: { required: string[] } } }).format.schema.required).toEqual(["value"]);
+    expect(Number(repair.max_output_tokens)).toBeLessThan(Number(body.max_output_tokens));
+    expect(String(repair.instructions)).toContain("140 to 160 characters");
+    expect(String(repair.input)).toContain("add 130 to 150 characters");
+  });
+
+  it("passe par le compteur, et rend la valeur", async () => {
+    const meter = spendMeter(1);
+    const writer = openAiSeoWriter({
+      transport: async () => ({ status: "completed", output_text: JSON.stringify({ value: "  A longer description.  " }), usage: { input_tokens: 500, output_tokens: 300 } }),
+      meter,
+      model: "gpt-5.6-terra",
+    });
+    const r = await writer.repairField(req);
+    expect(r.value).toBe("A longer description.");
+    expect(meter.spentUsd()).toBeCloseTo((500 * 2 + 300 * 12) / 1e6, 6);
+    expect(writer.worstCaseRepairUsd(req)).toBeLessThan(writer.worstCaseUsd({ brief: BRIEF }));
   });
 });

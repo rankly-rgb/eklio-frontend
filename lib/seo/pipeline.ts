@@ -4,7 +4,7 @@ import type { ClaimResult, ChecklistStep, InternalLink, SeoColumn } from "@/lib/
 import type { SeoContext } from "@/lib/seo/context";
 import type { MonthPlan, StoredCandidate } from "@/lib/seo/plan";
 import type { FailureReport, SeoWriterBrief } from "@/lib/seo/brief";
-import type { SeoWriterPort, SeoWriteResult } from "@/lib/seo/writer";
+import type { FieldRepairRequest, RepairableField, SeoWriterPort, SeoWriteResult } from "@/lib/seo/writer";
 import type { Finding } from "@/lib/seo/finding";
 import { assembleBody, sectionsOf, writerOutputSchema, type WriterOutput } from "@/lib/seo/output";
 import { allText, deterministicFindings, sentenceCase, slugFor } from "@/lib/seo/checks";
@@ -47,6 +47,27 @@ import { checklistFor, internalLinksFor, primaryJsonLd, type LinkablePiece } fro
  */
 
 export const MAX_ATTEMPTS = 2;
+
+export type PassStage = "first" | "field_repair" | "rewrite" | null;
+
+/** Les constats qu'une réparation de champ peut lever, et le champ qu'elle répare. */
+const REPAIRABLE: Record<string, (f: Finding) => RepairableField | null> = {
+  "seo.meta_length": () => "meta_description",
+  "seo.title_length": () => "title",
+  "seo.query_missing": (f) => (f.detail.startsWith("the title ") ? "title" : null),
+};
+
+/** Les champs à réparer, ou null si un seul constat sort de ce que la réparation sait faire. */
+export function repairableFields(findings: readonly Finding[]): RepairableField[] | null {
+  if (findings.length === 0) return null;
+  const fields = new Set<RepairableField>();
+  for (const f of findings) {
+    const field = REPAIRABLE[f.check]?.(f) ?? null;
+    if (!field) return null;
+    fields.add(field);
+  }
+  return [...fields];
+}
 
 export type PieceInsert = {
   user_id: string;
@@ -118,6 +139,11 @@ export type PieceOutcome = {
   attempts: number;
   /** Tous les contrôles passés dès le premier appel. */
   firstPass: boolean;
+  /**
+   * Où la pièce a passé tous les contrôles : au premier appel, après la réparation
+   * d'un champ (session 3), après la réécriture complète — ou nulle part (null).
+   */
+  stage: PassStage;
   costUsd: number;
   findings: Finding[];
   detail?: string;
@@ -151,7 +177,7 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
       /* ── 1. réserver ─────────────────────────────────────────────── */
       const claim = await ports.claim(kind);
       if (!claim.ok || !claim.claim_id) {
-        pieces.push({ targetId: target.id, intentKey: target.intentKey, kind, status: "not_claimed", attempts: 0, firstPass: false, costUsd: 0, findings: [], detail: claim.reason });
+        pieces.push({ targetId: target.id, intentKey: target.intentKey, kind, status: "not_claimed", attempts: 0, firstPass: false, stage: null, costUsd: 0, findings: [], detail: claim.reason });
         break; // ⚠ un refus de la base vaut pour tout ce genre ce mois-ci
       }
       const claimId = claim.claim_id;
@@ -165,32 +191,84 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
       let model = input.writer.model;
       let attempts = 0;
 
+      let stage: PassStage = null;
+      const repaired: RepairableField[] = [];
+
+      /** Un appel payant, réservé puis réglé au livre ; une panne du fournisseur arrête le mois. */
+      const paid = async <T extends { costUsd: number; model: string }>(worst: number, call: () => Promise<T>): Promise<T> => {
+        const reservation = await ports.reserveCost(claimId, worst, input.writer.model);
+        if (!reservation) throw new WriterStopped("the cost book refused the reservation");
+        let out: T;
+        try {
+          out = await call();
+        } catch (error) {
+          await ports.settleCost(reservation, 0, false);
+          if (error instanceof SpendCapReached || error instanceof ProviderUnavailable || error instanceof ProviderRejected) {
+            throw new WriterStopped(error.message);
+          }
+          throw error;
+        }
+        await ports.settleCost(reservation, out.costUsd, true);
+        cost += out.costUsd;
+        model = out.model;
+        return out;
+      };
+
       try {
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
           attempts = attempt;
           /* ── 2. rédiger, au livre ──────────────────────────────────── */
           const request = { brief, failure };
-          const reservation = await ports.reserveCost(claimId, input.writer.worstCaseUsd(request), input.writer.model);
-          if (!reservation) throw new WriterStopped("the cost book refused the reservation");
-          let result: SeoWriteResult;
-          try {
-            result = await input.writer.write(request);
-          } catch (error) {
-            await ports.settleCost(reservation, 0, false);
-            if (error instanceof SpendCapReached || error instanceof ProviderUnavailable || error instanceof ProviderRejected) {
-              throw new WriterStopped(error.message);
-            }
-            throw error;
-          }
-          await ports.settleCost(reservation, result.costUsd, true);
-          cost += result.costUsd;
-          model = result.model;
+          const result: SeoWriteResult = await paid(input.writer.worstCaseUsd(request), () => input.writer.write(request));
 
           /* ── 3. contrôler ──────────────────────────────────────────── */
           last = await evaluate(ports, input, target, result, own, allowedUrls);
           if (attempt === 1) firstFindings = last.findings;
-          if (last.findings.length === 0) break;
-          failure = { findings: last.findings, previous: result.output };
+          if (last.findings.length === 0) {
+            stage = attempt === 1 ? "first" : "rewrite";
+            break;
+          }
+
+          /*
+           * ── 3 bis. LA RÉPARATION DU SEUL CHAMP FAUTIF (session 3) ───────
+           * Après le premier passage seulement, et seulement quand TOUS les
+           * constats portent sur la longueur de la meta ou du title : un appel
+           * court par champ, puis la pièce réparée repasse par TOUS les contrôles.
+           * Si elle échoue encore, on revient au chemin d'avant : la réécriture
+           * complète, puis la quarantaine.
+           */
+          const fields = attempt === 1 && last.output ? repairableFields(last.findings) : null;
+          if (fields && last.output) {
+            let output: WriterOutput = last.output;
+            let complete = true;
+            for (const field of fields) {
+              const req: FieldRepairRequest = {
+                field,
+                current: output[field],
+                problem: last.findings.filter((f) => REPAIRABLE[f.check]?.(f) === field).map((f) => f.detail).join(" "),
+                primaryQuery: target.primaryQuery,
+                h1: output.h1,
+                intro: output.intro,
+              };
+              const fix = await paid(input.writer.worstCaseRepairUsd(req), () => input.writer.repairField(req));
+              if (!fix.value) {
+                complete = false;
+                break;
+              }
+              output = { ...output, [field]: fix.value };
+              repaired.push(field);
+            }
+            if (complete) {
+              const again = await evaluate(ports, input, target, { ...result, output }, own, allowedUrls);
+              if (again.findings.length === 0) {
+                last = again;
+                stage = "field_repair";
+                break;
+              }
+              last = again;
+            }
+          }
+          failure = { findings: last.findings, previous: last.output ?? result.output };
         }
       } catch (error) {
         if (!(error instanceof WriterStopped)) {
@@ -202,7 +280,7 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
         await ports.release(claimId, `writer stopped: ${error.message}`.slice(0, 400));
         await ports.unassignTarget(target.id);
         total += cost;
-        pieces.push({ targetId: target.id, intentKey: target.intentKey, kind, status: "stopped", attempts, firstPass: false, costUsd: cost, findings: [], detail: error.message });
+        pieces.push({ targetId: target.id, intentKey: target.intentKey, kind, status: "stopped", attempts, firstPass: false, stage: null, costUsd: cost, findings: [], detail: error.message });
         return { pieces, costUsd: total, stopped: error.message };
       }
 
@@ -215,6 +293,8 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
         attempts,
         firstFindings,
         linkable: own,
+        stage,
+        repaired,
       });
 
       /* ── 4 et 5. écrire, ou mettre en quarantaine ─────────────────────── */
@@ -263,6 +343,7 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
         pieceId,
         attempts,
         firstPass: firstFindings.length === 0,
+        stage: status === "needs_review" ? stage : null,
         costUsd: cost,
         findings: last?.findings ?? [],
         ...(detail ? { detail } : {}),
@@ -384,7 +465,16 @@ function toInsert(
   target: StoredCandidate,
   claimId: string,
   last: Evaluated | null,
-  meta: { passed: boolean; cost: number; model: string; attempts: number; firstFindings: Finding[]; linkable: readonly LinkablePiece[] }
+  meta: {
+    passed: boolean;
+    cost: number;
+    model: string;
+    attempts: number;
+    firstFindings: Finding[];
+    linkable: readonly LinkablePiece[];
+    stage: PassStage;
+    repaired: RepairableField[];
+  }
 ): PieceInsert {
   const { ctx } = input;
   const output = last?.output ?? null;
@@ -421,6 +511,9 @@ function toInsert(
       passed: meta.passed,
       attempts: meta.attempts,
       first_pass: meta.firstFindings.length === 0,
+      // Session 3 : où elle a passé (first | field_repair | rewrite), et quels champs ont été réparés.
+      stage: meta.passed ? meta.stage : null,
+      repaired_fields: meta.repaired,
       first_findings: meta.firstFindings,
       final_findings: meta.passed ? [] : finalFindings,
       ...(meta.passed ? {} : { reason: finalFindings[0]?.check ?? "unknown" }),

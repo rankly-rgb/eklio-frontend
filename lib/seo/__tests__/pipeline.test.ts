@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SpendCapReached } from "@/lib/content/generate/openai";
-import { runSeoMonth, type PieceInsert, type PipelineInput, type PipelinePorts } from "@/lib/seo/pipeline";
-import type { SeoWriterPort, SeoWriteRequest } from "@/lib/seo/writer";
+import { repairableFields, runSeoMonth, type PieceInsert, type PipelineInput, type PipelinePorts } from "@/lib/seo/pipeline";
+import type { FieldRepairRequest, SeoWriterPort, SeoWriteRequest } from "@/lib/seo/writer";
 import type { StoredCandidate } from "@/lib/seo/plan";
 import type { SeoKind } from "@/lib/seo/kinds";
 import { fixtureOutput } from "@/lib/seo/__tests__/fixture-output";
@@ -113,11 +113,18 @@ function fakePorts(opts: { quota?: Record<SeoKind, number>; bookRefuses?: boolea
 }
 
 /** Un rédacteur doublure : une sortie par appel, dans l'ordre donné. */
-function fakeWriter(plan: Array<(req: SeoWriteRequest) => unknown | Error>) {
+function fakeWriter(plan: Array<(req: SeoWriteRequest) => unknown | Error>, repair?: (req: FieldRepairRequest) => string | null) {
   const calls: SeoWriteRequest[] = [];
+  const repairs: FieldRepairRequest[] = [];
   const writer: SeoWriterPort = {
     model: "fixture-model",
     worstCaseUsd: () => 0.15,
+    worstCaseRepairUsd: () => 0.02,
+    async repairField(req) {
+      repairs.push(req);
+      const value = repair ? repair(req) : null;
+      return { value, model: "fixture-model", costUsd: 0.005, usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } };
+    },
     async write(req) {
       calls.push(req);
       const step = plan[Math.min(calls.length - 1, plan.length - 1)](req);
@@ -125,7 +132,7 @@ function fakeWriter(plan: Array<(req: SeoWriteRequest) => unknown | Error>) {
       return { output: step, problem: null, model: "fixture-model", costUsd: 0.05, usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } };
     },
   };
-  return { writer, calls };
+  return { writer, calls, repairs };
 }
 
 const good = (seed: number) => (req: SeoWriteRequest) =>
@@ -200,8 +207,9 @@ describe("réécriture ciblée, puis quarantaine — jamais de boucle", () => {
     expect(calls).toHaveLength(2);
     expect(calls[1].failure?.findings.map((f) => f.check)).toContain("seo.title_length");
     expect(out.pieces[0]).toMatchObject({ status: "needs_review", attempts: 2, firstPass: false });
-    expect(log.inserted[0].gates_report).toMatchObject({ passed: true, attempts: 2, first_pass: false });
-    expect(log.reserved).toBe(2);
+    expect(log.inserted[0].gates_report).toMatchObject({ passed: true, attempts: 2, first_pass: false, stage: "rewrite" });
+    // Session 3 : la réparation du title a été tentée d'abord (elle n'a rien rendu), d'où trois réservations.
+    expect(log.reserved).toBe(3);
   });
 
   it("deux échecs : quarantaine, cible retirée, aucun troisième appel", async () => {
@@ -272,6 +280,66 @@ describe("les questions déjà sur son site : les plus récentes d'abord (sessio
     const firstOf = (row: PieceInsert) => (row.faq ?? [])[0].question;
     expect(list.indexOf(firstOf(log.inserted[1]))).toBeGreaterThan(-1);
     expect(list.indexOf(firstOf(log.inserted[1]))).toBeLessThan(list.indexOf(firstOf(log.inserted[0])));
+  });
+});
+
+describe("la réparation du seul champ fautif (session 3)", () => {
+  const shortTitle = (req: FieldRepairRequest) => req.primaryQuery;
+
+  it("un title trop long est réparé par un appel court, sans réécrire la pièce", async () => {
+    const { writer, calls, repairs } = fakeWriter([tooLongTitle], shortTitle);
+    const { ports, log } = fakePorts();
+    const out = await runSeoMonth(ports, input(writer, { local_page: [LOCAL], article: [] }));
+    expect(calls).toHaveLength(1);
+    expect(repairs.map((r) => r.field)).toEqual(["title"]);
+    expect(out.pieces[0]).toMatchObject({ status: "needs_review", firstPass: false, stage: "field_repair", attempts: 1 });
+    expect(log.inserted[0].gates_report).toMatchObject({ stage: "field_repair", repaired_fields: ["title"] });
+    expect(log.inserted[0].title).toBe("EMDR therapy in Oakland, CA");
+    expect(out.pieces[0].costUsd).toBeCloseTo(0.055, 6);
+  });
+
+  it("le champ réparé repasse par TOUS les contrôles : une phrase bannie renvoie à la réécriture complète", async () => {
+    const { writer, calls, repairs } = fakeWriter([tooLongTitle, good(90)], () => "EMDR therapy in Oakland, CA: a safe space");
+    const { ports } = fakePorts({ banned: (t) => (t.includes("a safe space") ? ["safe space"] : []) });
+    const out = await runSeoMonth(ports, input(writer, { local_page: [LOCAL], article: [] }));
+    expect(repairs).toHaveLength(1);
+    expect(calls).toHaveLength(2);
+    expect(calls[1].failure?.findings.map((f) => f.check)).toContain("banned_phrase");
+    expect(out.pieces[0]).toMatchObject({ status: "needs_review", stage: "rewrite" });
+  });
+
+  it("un constat hors meta et title : pas de réparation, réécriture complète directement", async () => {
+    let first = true;
+    const { writer, calls, repairs } = fakeWriter([tooLongTitle, good(91)], shortTitle);
+    const { ports } = fakePorts({
+      banned: () => {
+        if (first) {
+          first = false;
+          return ["safe space"];
+        }
+        return [];
+      },
+    });
+    await runSeoMonth(ports, input(writer, { local_page: [LOCAL], article: [] }));
+    expect(repairs).toHaveLength(0);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("réparation échouée, réécriture échouée : quarantaine, jamais de troisième appel complet", async () => {
+    const { writer, calls, repairs } = fakeWriter([tooLongTitle], () => null);
+    const { ports, log } = fakePorts();
+    const out = await runSeoMonth(ports, input(writer, { local_page: [LOCAL], article: [] }));
+    expect(repairs).toHaveLength(1);
+    expect(calls).toHaveLength(2);
+    expect(out.pieces[0]).toMatchObject({ status: "quarantined", stage: null });
+    expect(log.retired).toEqual(["t-local"]);
+  });
+
+  it("seuls la meta et le title se réparent", () => {
+    expect(repairableFields([{ check: "seo.meta_length", detail: "the meta description is 132 characters" }])).toEqual(["meta_description"]);
+    expect(repairableFields([{ check: "seo.query_missing", detail: 'the title must contain the exact phrase "x".' }])).toEqual(["title"]);
+    expect(repairableFields([{ check: "seo.query_missing", detail: 'the h1 must contain the exact phrase "x".' }])).toBeNull();
+    expect(repairableFields([{ check: "seo.meta_length", detail: "" }, { check: "structure.word_count", detail: "" }])).toBeNull();
   });
 });
 

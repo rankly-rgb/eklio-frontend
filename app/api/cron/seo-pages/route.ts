@@ -80,6 +80,7 @@ export async function GET(request: Request) {
                 status: p.status,
                 attempts: p.attempts,
                 firstPass: p.firstPass,
+                stage: p.stage,
                 costUsd: p.costUsd,
                 checks: p.findings.map((f) => f.check),
                 ...(p.detail ? { detail: p.detail } : {}),
