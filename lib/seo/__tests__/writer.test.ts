@@ -55,6 +55,8 @@ describe("le brief", () => {
     expect(sys).toContain('"safe space"');
     expect(sys).toContain("Location: Oakland, CA");
     expect(sys).toContain("Do NOT write a byline");
+    // Session 2 : « get rid of » a déclenché l'Ethics Guard sur deux pièces (A, E).
+    expect(sys).toContain('"get rid of"');
     // Session 2 (mois 3 de Lena) : la consigne noyée au milieu n'était pas suivie.
     expect(sys).toContain("HEADINGS AND QUESTIONS ALREADY ON HER SITE");
     expect(sys.trimEnd().endsWith('- "Is EMDR the same as hypnosis?"')).toBe(true);

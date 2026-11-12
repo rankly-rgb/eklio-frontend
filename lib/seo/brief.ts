@@ -85,6 +85,8 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
     "- Psychoeducation only: what the approach is, how it generally works, what a session usually looks like, who it is commonly used with, what to ask a therapist. Describe the work, never its results.",
     "- Never promise or imply an outcome (no 'you will feel', no 'relief', no 'lasting change', no timelines, no success rates).",
     "- Never use the words cure, fix, heal or guarantee about a person or a condition. Never diagnose the reader ('you have…', 'you are suffering from…').",
+    // Session 2 : « get rid of » a déclenché l'Ethics Guard sur deux pièces (A, E), et sur une en session 1.
+    '- Never write "get rid of", "free you from", "take away", "make it go away" or "eliminate" about a feeling, a memory or a condition: describe what the work involves instead.',
     "- No testimonials, no client stories, no quotes from clients or colleagues, no ratings, no 'clients often say'.",
     "- No superlatives about the practitioner (best, leading, top, renowned, expert) and no urgency or scarcity.",
     "- Do not mention research findings or statistics unless you state them as general, widely accepted facts with no numbers.",
