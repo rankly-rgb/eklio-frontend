@@ -78,7 +78,8 @@ export function serverPipelinePorts(admin: Admin, input: { userId: string; month
         .from("seo_pieces")
         .select("id, title, slug, status, published_url, body_md, faq")
         .eq("user_id", userId)
-        .neq("status", "quarantined");
+        .neq("status", "quarantined")
+        .order("created_at");
       if (error) throw new Error(`seo_pieces (own): ${error.message}`);
       const rows = (data ?? []) as Array<{ id: string; title: string | null; slug: string | null; status: string; published_url: string | null; body_md: string | null; faq: unknown }>;
       const texts = await piecesText(rows);

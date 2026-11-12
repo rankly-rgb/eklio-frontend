@@ -157,7 +157,7 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
       const claimId = claim.claim_id;
       await ports.assignTarget(target.id);
 
-      const brief = briefFor(target, input, own.flatMap((o) => o.questions));
+      const brief = briefFor(target, input, [...own].reverse().flatMap((o) => o.questions));
       let cost = 0;
       let failure: FailureReport | undefined;
       let firstFindings: Finding[] = [];
@@ -288,7 +288,8 @@ function briefFor(target: StoredCandidate, input: PipelineInput, answeredElsewhe
     sources: ctx.sources,
     ethicsRules: input.ethicsRules,
     bannedPhrases: input.bannedList,
-    answeredElsewhere: [...new Set(answeredElsewhere)].slice(0, 40),
+    // Les plus récentes d'abord ; 80 au plus (à 40, la liste était tronquée dès le 3ᵉ mois).
+    answeredElsewhere: [...new Set(answeredElsewhere)].slice(0, 80),
   };
 }
 

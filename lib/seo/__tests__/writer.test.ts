@@ -58,7 +58,9 @@ describe("le brief", () => {
     // Session 2 : la meta trop courte est la faute la plus répétée (132 à 139 caractères).
     expect(sys).toContain("24 to 26 words");
     expect(sys).toContain("too short is the most common mistake");
-    expect(sys).toContain('do not ask or answer them again, in the FAQ or as a heading: "Is EMDR the same as hypnosis?"');
+    // Session 2 (mois 3 de Lena) : la consigne noyée au milieu n'était pas suivie.
+    expect(sys).toContain("HEADINGS AND QUESTIONS ALREADY ON HER SITE");
+    expect(sys.trimEnd().endsWith('- "Is EMDR the same as hypnosis?"')).toBe(true);
   });
 
   it("un article ne reçoit aucun lieu", () => {

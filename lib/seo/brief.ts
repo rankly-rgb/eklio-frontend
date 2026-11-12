@@ -79,9 +79,6 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
      * bien les mots : la consigne donne les deux, et dit de quel côté on se trompe.
      */
     `- meta_description: ${META_RANGE.min} to ${META_RANGE.max} characters, which is about 24 to 26 words in two sentences. Aim for 150 characters; too short is the most common mistake, so when in doubt add a few words. No quotation marks.`,
-    brief.answeredElsewhere.length > 0
-      ? `- Her other pages already answer these questions; do not ask or answer them again, in the FAQ or as a heading: ${brief.answeredElsewhere.map((q) => `"${q}"`).join("; ")}`
-      : null,
     "",
     "WHAT YOU MAY SAY",
     "- Psychoeducation only: what the approach is, how it generally works, what a session usually looks like, who it is commonly used with, what to ask a therapist. Describe the work, never its results.",
@@ -118,6 +115,20 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
     "",
     "PHRASES THAT MUST NOT APPEAR (every therapist site says them)",
     brief.bannedPhrases.length > 0 ? brief.bannedPhrases.map((p) => `"${p}"`).join(", ") : "(none)",
+    /*
+     * ⚠ EN DERNIER, EN LISTE, À L'IMPÉRATIF. Session 2, mois 3 de Lena : la
+     * consigne tenait sur une ligne au milieu des faits, et le modèle a recopié
+     * à l'identique « Who may consider EMDR therapy? », « What should I ask an
+     * EMDR therapist? » et la section de contact de ses pages précédentes.
+     */
+    ...(brief.answeredElsewhere.length > 0
+      ? [
+          "",
+          "HEADINGS AND QUESTIONS ALREADY ON HER SITE",
+          "Every section heading and every FAQ question you write must ask something different from each of these (a contact section included). Do not reuse them, even reworded:",
+          ...brief.answeredElsewhere.map((q) => `- "${q}"`),
+        ]
+      : []),
   ]
     .filter((line): line is string => line !== null)
     .join("\n");

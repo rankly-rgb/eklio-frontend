@@ -256,8 +256,22 @@ describe("ses pages ne répondent pas deux fois à la même question", () => {
     const { ports } = fakePorts();
     const out = await runSeoMonth(ports, input(writer, { local_page: [], article: [ART1, ART2] }));
     expect(calls[1].brief.answeredElsewhere).toContain(shared.question);
+
     expect(calls[2].failure?.findings.map((f) => f.check)).toContain("gate.question_repeated");
     expect(out.pieces.map((p) => p.status)).toEqual(["needs_review", "needs_review"]);
+  });
+});
+
+describe("les questions déjà sur son site : les plus récentes d'abord (session 2)", () => {
+  it("le brief du troisième texte liste les questions du deuxième avant celles du premier", async () => {
+    let seed = 80;
+    const { writer, calls } = fakeWriter([(r) => good(seed++)(r)]);
+    const { ports, log } = fakePorts();
+    await runSeoMonth(ports, input(writer));
+    const list = calls[2].brief.answeredElsewhere;
+    const firstOf = (row: PieceInsert) => (row.faq ?? [])[0].question;
+    expect(list.indexOf(firstOf(log.inserted[1]))).toBeGreaterThan(-1);
+    expect(list.indexOf(firstOf(log.inserted[1]))).toBeLessThan(list.indexOf(firstOf(log.inserted[0])));
   });
 });
 
