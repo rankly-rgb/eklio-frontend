@@ -68,7 +68,7 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
     `- The body (intro + sections, FAQ excluded) is ${range.min} to ${range.max} words. Aim for the middle of that range.`,
     "- 4 to 7 sections. Each section heading is a question or a plain topic a reader would search for. No '#' characters in headings.",
     "- ANSWER FIRST: the first sentence under every section heading directly answers that heading in one plain sentence. Then explain.",
-    "- Paragraphs are plain prose. The only formatting allowed inside them is a Markdown link [anchor](url) or **bold**. Use bullets only where a list is genuinely clearer; each bullet is an item, never a lead-in sentence ending with a colon. Bullets are shown right after the section's paragraphs, so only the LAST paragraph of a section may introduce them.",
+    "- Paragraphs are plain prose. The only formatting allowed inside them is a Markdown link [anchor](url) or **bold**. Use bullets only where a list is genuinely clearer; each bullet is an item, never a lead-in sentence. Put the sentence that introduces a list in bullets_intro (it is placed right before the bullets; leave it empty when there is no list). Never end a paragraph with a colon.",
     `- FAQ: ${FAQ_RANGE.min} to ${FAQ_RANGE.max} questions real people ask about this topic, each answered in 2 to 4 sentences, answer first. Do not repeat a section heading as a question.`,
     `- title: at most ${TITLE_MAX} characters, and it contains the exact phrase "${brief.primaryQuery}".`,
     `- h1: contains the exact phrase "${brief.primaryQuery}". It is the only H1; never put one in the body.`,

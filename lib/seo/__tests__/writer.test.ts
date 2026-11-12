@@ -38,9 +38,9 @@ const OUTPUT = {
   h1: "EMDR therapy in Oakland, CA",
   intro: "EMDR therapy in Oakland, CA is offered by Dana Whitfield.",
   sections: [
-    { heading: "What is EMDR?", paragraphs: ["EMDR is a structured therapy.", "More."], bullets: [], subsections: [] },
-    { heading: "# How does a session go?", paragraphs: ["A session follows set phases."], bullets: ["One", "Two"], subsections: [{ heading: "Preparation", paragraphs: ["First you prepare."] }] },
-    { heading: "Who is it for?", paragraphs: ["It is used with adults."], bullets: [], subsections: [] },
+    { heading: "What is EMDR?", paragraphs: ["EMDR is a structured therapy.", "More."], bullets_intro: "", bullets: [], subsections: [] },
+    { heading: "# How does a session go?", paragraphs: ["A session follows set phases.", "It also has a closing step."], bullets_intro: "Phases include:", bullets: ["One", "Two"], subsections: [{ heading: "Preparation", paragraphs: ["First you prepare."] }] },
+    { heading: "Who is it for?", paragraphs: ["It is used with adults."], bullets_intro: "", bullets: [], subsections: [] },
   ],
   faq: [{ question: "Q?", answer: "A." }],
 };
@@ -86,6 +86,8 @@ describe("la sortie", () => {
     expect(body).not.toMatch(/^# /m);
     expect(body).toContain("## How does a session go?");
     expect(body).toContain("- One\n- Two");
+    // Session 2 : l'introduction de la liste est placée JUSTE avant elle, quel que soit le nombre de paragraphes.
+    expect(body).toContain("It also has a closing step.\n\nPhases include:\n\n- One\n- Two");
     expect(body).toContain("### Preparation");
     expect(firstParagraphOf(body)).toBe(OUTPUT.intro);
     expect(sectionsOf(body).map((s) => s.firstParagraph)).toEqual([
