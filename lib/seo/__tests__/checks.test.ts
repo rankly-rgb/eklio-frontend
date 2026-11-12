@@ -222,3 +222,20 @@ describe("défauts relevés à la relecture du premier mois réel", () => {
     expect(sentenceCase("what to expect in a first EMDR therapy session")).toBe("What to expect in a first EMDR therapy session");
   });
 });
+
+describe("une étape décrite n'est pas une promesse (session 2, profil D)", () => {
+  it("« you will be invited to notice » décrit la séance : pas de constat", () => {
+    // La phrase réelle, qui a mis la page locale de D en quarantaine deux fois.
+    const real =
+      "When bilateral stimulation is used, you will be invited to notice what arises while keeping one part of your attention in the present.";
+    expect(clinicalFindings(real)).toEqual([]);
+    expect(clinicalFindings("You will be asked about your history.")).toEqual([]);
+  });
+  it("une promesse reste une promesse, et le constat cite la phrase", () => {
+    const found = clinicalFindings("After a few sessions you will feel lighter and calmer.");
+    expect(checks(found)).toEqual(["clinical.claim"]);
+    expect(found[0].detail).toContain("you will feel");
+    expect(checks(clinicalFindings("You'll be free of it."))).toEqual(["clinical.claim"]);
+    expect(checks(clinicalFindings("You will be able to stop worrying."))).toEqual(["clinical.claim"]);
+  });
+});

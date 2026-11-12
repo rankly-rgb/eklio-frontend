@@ -342,12 +342,32 @@ export function practiceFactFindings(text: string): Finding[] {
 const CLINICAL: Array<[RegExp, string]> = [
   [/\bcur(e|es|ed|ing)\b/i, `never use "cure"`],
   [/\b(diagnose[sd]?|diagnosing)\b|\byour diagnosis\b/i, "do not diagnose or talk about diagnosing the reader"],
-  [/\byou(['’]ll| will) (feel|be|get|stop|no longer|finally|notice|experience|find)\b/i, "do not promise what the reader will feel or achieve"],
+  /*
+   * ⚠ « YOU WILL BE INVITED » N'EST PAS UNE PROMESSE. La règle prenait tout
+   * « you will be » : la page locale de D (session 2) a été mise en quarantaine
+   * deux fois pour « you will be invited to notice what arises » — la
+   * description d'une étape de la séance. Une étape (asked, invited, offered…)
+   * n'est pas un résultat ; « you will be free / able to stop… », si.
+   */
+  [
+    /\byou(['’]ll| will) (feel|get|stop|no longer|finally|notice|experience|find)\b|\byou(['’]ll| will) be (?!(asked|invited|offered|given|encouraged|welcome|guided|shown|told)\b)\w+/i,
+    "do not promise what the reader will feel or achieve",
+  ],
   [/\b(success rates?|proven to|highly effective|most effective|works for everyone)\b/i, "do not claim effectiveness"],
 ];
 
+/** Le constat cite la phrase : sans elle, ni la réécriture ni la relecture ne savent quoi changer. */
 export function clinicalFindings(text: string): Finding[] {
-  return CLINICAL.filter(([re]) => re.test(text)).map(([, what]) => ({ check: "clinical.claim", detail: what + "." }));
+  const out: Finding[] = [];
+  for (const [re, what] of CLINICAL) {
+    const m = re.exec(text);
+    if (!m) continue;
+    const start = Math.max(0, text.lastIndexOf(".", m.index) + 1);
+    const end = text.indexOf(".", m.index + m[0].length);
+    const sentence = text.slice(start, end === -1 ? undefined : end + 1).trim().slice(0, 200);
+    out.push({ check: "clinical.claim", detail: `${what}: rewrite "${sentence}".` });
+  }
+  return out;
 }
 
 /* ── 4f. La licence est posée par le code, jamais dans le texte ───────── */
