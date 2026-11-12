@@ -301,3 +301,22 @@ describe("une réponse sur ce qu'il faut faire répond à la question (session 2
     expect(answersHeading("What is EMDR?", "You can learn a lot from this page.")).toBe(false);
   });
 });
+
+describe("réponse d'abord : les formes fléchies (session 3, phrases du tour 3)", () => {
+  it("positif — « uses » répond à « Used » (C′, page locale de janvier, refusée à tort)", () => {
+    expect(
+      answersHeading(
+        "What Approaches Are Used in Couples Therapy?",
+        "This practice uses Gottman Method and EFT to examine relationship patterns from complementary angles."
+      )
+    ).toBe(true);
+  });
+  it("négatif — une ouverture évasive reste refusée (E, page locale de janvier)", () => {
+    expect(
+      answersHeading(
+        "Next considerations",
+        "You can contact Ellis Counseling to ask whether patient EMDR and IFS for adults healing from the past are appropriate topics to explore."
+      )
+    ).toBe(false);
+  });
+});

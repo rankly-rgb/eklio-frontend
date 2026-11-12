@@ -118,12 +118,31 @@ const QUESTION_WORDS = new Set([
   "works", "mean", "need", "know", "happen", "happens", "expect",
 ]);
 
+/**
+ * La forme de base d'un mot, avant de le tronquer à 5 lettres.
+ *
+ * ⚠ SESSION 3 : « uses » et « used » donnaient « uses » et « used », deux
+ * racines différentes — « What Approaches Are Used…? » → « This practice uses
+ * Gottman Method… » était refusé. Les flexions anglaises courantes (-ies, -ing,
+ * -ed, -es, -s) sont retirées, puis un « e » final : uses, used, use → « us ».
+ */
+export function baseForm(word: string): string {
+  let w = word;
+  if (w.length > 4 && w.endsWith("ies")) w = `${w.slice(0, -3)}y`;
+  else if (w.length > 5 && w.endsWith("ing")) w = w.slice(0, -3);
+  else if (w.length > 3 && w.endsWith("ed")) w = w.slice(0, -2);
+  else if (w.length > 3 && w.endsWith("es")) w = w.slice(0, -2);
+  else if (w.length > 3 && w.endsWith("s") && !w.endsWith("ss")) w = w.slice(0, -1);
+  if (w.length > 3 && w.endsWith("e")) w = w.slice(0, -1);
+  return w;
+}
+
 function contentRoots(text: string): Set<string> {
   return new Set(
     plain(text)
       .split(" ")
       .filter((w) => w.length > 2 && !QUESTION_WORDS.has(w))
-      .map((w) => w.slice(0, 5))
+      .map((w) => baseForm(w).slice(0, 5))
   );
 }
 
