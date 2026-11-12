@@ -34,6 +34,14 @@ export type Practitioner = {
   credential: string | null;
   /** La mention de licence (« LMFT 123456 »), selon les règles de son État. */
   licenceMention: string;
+  /**
+   * Le titre professionnel en toutes lettres (« Licensed Marriage and Family Therapist »),
+   * lu dans `license_types.description` par le `license_type_id` STRUCTURÉ du brief —
+   * jamais dans le texte libre du nom. Null seulement si le catalogue n'a pas la ligne.
+   */
+  title: string | null;
+  /** Le brief porte un doctorat (`degrees.full_name` « Doctor of … »). Seul droit au « Dr. ». */
+  doctorate: boolean;
 };
 
 export type Brand = {
@@ -80,6 +88,7 @@ const briefSchema = z.object({
   practice_name: z.string().nullable(),
   positioning: z.string().nullable(),
   usp_statement: z.string().nullable(),
+  degree_id: z.string().nullable(),
 });
 
 const voiceSchema = z
@@ -147,7 +156,7 @@ export async function readSeoContext(db: SeoClient, userId: string): Promise<Con
   const briefRead = await db
     .from("project_briefs")
     .select(
-      "project_id, modality_ids, client_persona_ids, state, city, builder_target_id, site_url, practice_name, positioning, usp_statement"
+      "project_id, modality_ids, client_persona_ids, state, city, builder_target_id, site_url, practice_name, positioning, usp_statement, degree_id"
     )
     .eq("project_id", kit.projectId)
     .maybeSingle();
@@ -171,7 +180,14 @@ export async function readSeoContext(db: SeoClient, userId: string): Promise<Con
     .maybeSingle();
   if (specRead.error) throw new Error(`site_specs: ${specRead.error.message}`);
   const details = (specRead.data?.practice_details ?? {}) as { practitioner_name?: unknown };
-  const name = typeof details.practitioner_name === "string" ? details.practitioner_name.trim() : "";
+  /*
+   * ⚠ LE « Dr. » (session 3). `practitioner_name` est un texte libre : le profil A y
+   * portait « Dr. Ines Alvarez » sans aucun doctorat dans son brief, et la signature
+   * l'imprimait. Le droit au titre vient du diplôme STRUCTURÉ ; sans lui, on le retire.
+   */
+  const credentials = await authorCredentials(db, facts.licenseTypeId, brief.degree_id);
+  const rawName = typeof details.practitioner_name === "string" ? details.practitioner_name.trim() : "";
+  const name = authorName(rawName, credentials.doctorate);
   if (!name) {
     return { ok: false, reason: "practitioner_name_missing", detail: "site_specs.practice_details.practitioner_name" };
   }
@@ -200,7 +216,13 @@ export async function readSeoContext(db: SeoClient, userId: string): Promise<Con
         state: brief.state,
         city: brief.city,
       },
-      practitioner: { name, credential: facts.abbreviation ?? null, licenceMention: mention },
+      practitioner: {
+        name,
+        credential: facts.abbreviation ?? null,
+        licenceMention: mention,
+        title: credentials.title,
+        doctorate: credentials.doctorate,
+      },
       brand: {
         practiceName: (brief.practice_name ?? "").trim() || name,
         positioning: (brief.positioning ?? "").trim(),
@@ -213,6 +235,49 @@ export async function readSeoContext(db: SeoClient, userId: string): Promise<Con
       sources: z.array(z.object({ label: z.string(), url: z.string() })).parse(sourcesRead.data ?? []),
     },
   };
+}
+
+/**
+ * Le titre lisible de sa licence et son droit au « Dr. », depuis les deux champs
+ * structurés du brief (`license_type_id`, `degree_id`). Lecture seule du catalogue —
+ * le tamponnage partagé avec Instagram (`licenceMention`) n'est pas touché.
+ */
+export async function authorCredentials(
+  db: SeoClient,
+  licenseTypeId: string | null | undefined,
+  degreeId: string | null | undefined
+): Promise<{ title: string | null; doctorate: boolean }> {
+  let title: string | null = null;
+  if (licenseTypeId) {
+    const { data, error } = await db.from("license_types").select("description").eq("id", licenseTypeId).maybeSingle();
+    if (error) throw new Error(`license_types: ${error.message}`);
+    title = ((data as { description?: string } | null)?.description ?? "").trim() || null;
+  }
+  let doctorate = false;
+  if (degreeId) {
+    const { data, error } = await db.from("degrees").select("full_name").eq("id", degreeId).maybeSingle();
+    if (error) throw new Error(`degrees: ${error.message}`);
+    doctorate = isDoctorate((data as { full_name?: string } | null)?.full_name ?? null);
+  }
+  return { title, doctorate };
+}
+
+/** « Doctor of Psychology », « Doctor of Philosophy »… — le catalogue `degrees` le dit en toutes lettres. */
+export function isDoctorate(fullName: string | null): boolean {
+  return !!fullName && /^\s*doctor\s+of\b/i.test(fullName);
+}
+
+const HONORIFIC = /^\s*(?:dr\.\s*|dr\s+|doctor\s+)/i;
+const DOCTORAL_SUFFIX = /,?\s*\b(?:ph\.?\s?d|psy\.?\s?d|ed\.?\s?d|m\.?\s?d)\.?\s*$/i;
+
+/**
+ * Le nom tel qu'il signe. Sans doctorat au brief, ni « Dr. » devant, ni « PhD » derrière.
+ * Avec un doctorat, le nom reste tel qu'elle l'a écrit : on n'AJOUTE jamais un titre.
+ */
+export function authorName(raw: string, doctorate: boolean): string {
+  const name = raw.trim().replace(/\s+/g, " ");
+  if (doctorate) return name;
+  return name.replace(HONORIFIC, "").replace(DOCTORAL_SUFFIX, "").trim();
 }
 
 /* ── La banque, les termes, les métriques, ses cibles ─────────────────── */

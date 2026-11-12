@@ -92,7 +92,7 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
     "- Do not mention research findings or statistics unless you state them as general, widely accepted facts with no numbers.",
     "",
     "FACTS: use ONLY these. Never invent anything about the practice.",
-    `- Practitioner: ${brief.practitioner.name}${brief.practitioner.credential ? `, ${brief.practitioner.credential}` : ""}.`,
+    `- Practitioner: ${brief.practitioner.name}${(brief.practitioner.title ?? brief.practitioner.credential) ? `, ${brief.practitioner.title ?? brief.practitioner.credential}` : ""}.`,
     `- Practice name: ${brief.brand.practiceName}.`,
     brief.kind === "local_page" && brief.city && brief.state
       ? `- Location: ${brief.city}, ${brief.state}. Name only this city and state. No neighborhoods, streets, landmarks, nearby towns, commute times or "near me" phrasing.`

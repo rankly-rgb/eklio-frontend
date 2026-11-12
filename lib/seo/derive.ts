@@ -63,11 +63,24 @@ export function markdownToHtml(md: string): string {
 /* ── La signature ─────────────────────────────────────────────────────── */
 
 /**
- * « By Dana Whitfield, LMFT 123456 » — le nom, puis la mention de licence telle
+ * « By Dana Whitfield, Licensed Marriage and Family Therapist, LMFT 123456 » — le nom,
+ * le titre professionnel en toutes lettres (session 3), puis la mention de licence telle
  * que `licenceMention` la compose selon les règles de son État (F12, F73).
  */
-export function bylineFor(p: Practitioner): string {
-  return `By ${p.name}, ${p.licenceMention}`;
+export function bylineFor(p: Pick<Practitioner, "name" | "licenceMention"> & { title?: string | null }): string {
+  return `By ${[p.name, p.title, p.licenceMention].filter((x) => x && x.trim()).join(", ")}`;
+}
+
+/**
+ * La signature d'une pièce DÉJÀ écrite : le nom et le titre tels que son JSON-LD les a
+ * figés, la mention relue aujourd'hui (le tamponnage existant). Pour la page et l'export.
+ */
+export function bylineFromStored(schemaJsonLd: unknown, mention: string | null): string | null {
+  const author = ((schemaJsonLd ?? {}) as { author?: { name?: unknown; jobTitle?: unknown } }).author ?? {};
+  const name = typeof author.name === "string" ? author.name.trim() : "";
+  if (!name) return null;
+  const title = typeof author.jobTitle === "string" && author.jobTitle.includes(" ") ? author.jobTitle : null;
+  return bylineFor({ name, title, licenceMention: mention ?? "" });
 }
 
 /* ── Le JSON-LD ───────────────────────────────────────────────────────── */
@@ -93,7 +106,8 @@ export function primaryJsonLd(i: JsonLdInput): Record<string, unknown> {
   const author: Record<string, unknown> = {
     "@type": "Person",
     name: i.practitioner.name,
-    ...(i.practitioner.credential ? { jobTitle: i.practitioner.credential } : {}),
+    // Le titre lisible d'abord ; le sigle seulement si le catalogue n'a pas de titre.
+    ...((i.practitioner.title ?? i.practitioner.credential) ? { jobTitle: i.practitioner.title ?? i.practitioner.credential } : {}),
   };
   return {
     "@context": "https://schema.org",

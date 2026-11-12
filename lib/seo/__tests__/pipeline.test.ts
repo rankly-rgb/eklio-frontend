@@ -41,7 +41,7 @@ function input(writer: SeoWriterPort, chosen = { local_page: [LOCAL], article: [
       brandKitId: "k1",
       projectId: "p1",
       grid: { modalityKeys: ["emdr"], populationKeys: [], state: "CA", city: "Oakland" },
-      practitioner: { name: "Dana Whitfield", credential: "LMFT", licenceMention: "LMFT 123456" },
+      practitioner: { name: "Dana Whitfield", credential: "LMFT", licenceMention: "LMFT 123456", title: "Licensed Marriage and Family Therapist", doctorate: false },
       brand: { practiceName: "Whitfield Therapy", positioning: "", usp: "", soundsLike: [], neverWrite: [] },
       builder: "squarespace",
       siteUrl: null,

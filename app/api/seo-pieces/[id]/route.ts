@@ -4,7 +4,7 @@ import { z } from "zod";
 import { applyPieceAction, editFindings, pieceActionSchema } from "@/lib/seo/actions";
 import { readLinkablePieces, readPiece } from "@/lib/seo/read";
 import { exportOpen } from "@/lib/seo/screen";
-import { bylineFor, exportHtml, exportMarkdown, internalLinksFor } from "@/lib/seo/derive";
+import { bylineFromStored, exportHtml, exportMarkdown, internalLinksFor } from "@/lib/seo/derive";
 import { licenceMentionFor } from "@/lib/content/review";
 import { loadHome } from "@/lib/data/home";
 
@@ -67,7 +67,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/seo-pieces/
     if (action.action === "export" && action.format !== "copy") {
       const home = await loadHome(supabase, userId);
       const mention = home.brandKit ? await licenceMentionFor(supabase, home.brandKit.projectId) : null;
-      const author = (piece.schema_jsonld?.author as { name?: string } | undefined)?.name ?? "";
       const links = internalLinksFor(piece.id, await readLinkablePieces(supabase), null);
       const exportable = {
         kind: piece.kind,
@@ -79,7 +78,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/seo-pieces/
         faq: piece.faq ?? [],
         schemaJsonLd: piece.schema_jsonld ?? {},
         internalLinks: links,
-        byline: mention && author ? bylineFor({ name: author, credential: null, licenceMention: mention }) : `By ${author}`,
+        byline: bylineFromStored(piece.schema_jsonld, mention) ?? "",
       };
       const content = action.format === "markdown" ? exportMarkdown(exportable) : exportHtml(exportable);
       return json({ ok: true, filename: `${piece.slug}.${action.format === "markdown" ? "md" : "html"}`, content });

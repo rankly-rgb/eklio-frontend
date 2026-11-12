@@ -16,7 +16,7 @@ if (!userId || !month || !profile) throw new Error("usage: <user_id> <month> <pr
 
 const { createAdminClient } = await import("@/lib/supabase/server");
 const { PIECE_COLUMNS, pieceRowSchema, seoDb } = await import("@/lib/seo/db");
-const { exportMarkdown, internalLinksFor } = await import("@/lib/seo/derive");
+const { bylineFromStored, exportMarkdown, internalLinksFor } = await import("@/lib/seo/derive");
 const { latestKitFor } = await import("@/lib/seo/context");
 const { serverPreflightPort } = await import("@/lib/content/month/server-ports");
 const { licenceMention } = await import("@/lib/content/licence");
@@ -35,7 +35,6 @@ if (error) throw new Error(error.message);
 
 const pieces = (data ?? []).map((r: unknown) => pieceRowSchema.parse(r));
 for (const [i, p] of pieces.entries()) {
-  const author = (p.schema_jsonld?.author as { name?: string } | undefined)?.name ?? "";
   const md = exportMarkdown({
     kind: p.kind,
     title: p.title ?? "",
@@ -46,7 +45,7 @@ for (const [i, p] of pieces.entries()) {
     faq: p.faq ?? [],
     schemaJsonLd: p.schema_jsonld ?? {},
     internalLinks: internalLinksFor(p.id, pieces, null),
-    byline: mention ? `By ${author}, ${mention}` : `By ${author}`,
+    byline: bylineFromStored(p.schema_jsonld, mention) ?? "",
   });
   const file = `${prefix}/REAL-PRODUCT-PATH_profile-${profile}_${month}_${i + 1}_${p.kind}_${p.slug}.md`;
   const head =

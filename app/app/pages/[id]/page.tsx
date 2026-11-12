@@ -10,7 +10,7 @@ import { CopyPanel, PublishForm, ReviewPanel } from "@/components/pages/piece-ac
 import { KIND_LABEL } from "@/lib/seo/kinds";
 import { readLinkablePieces, readPiece } from "@/lib/seo/read";
 import { STATUS_TEXT, exportOpen, monthLabel, searchLine } from "@/lib/seo/screen";
-import { builderLabel, faqJsonLd, internalLinksFor, jsonLdScripts } from "@/lib/seo/derive";
+import { builderLabel, bylineFromStored, faqJsonLd, internalLinksFor, jsonLdScripts } from "@/lib/seo/derive";
 
 /*
  * /app/pages/[id] — une pièce : l'aperçu rendu, puis ce qu'elle en fait.
@@ -39,8 +39,7 @@ export default async function WebsitePagePage({ params }: PageProps<"/app/pages/
     loadHome(supabase, user.id),
   ]);
   const mention = home.brandKit ? await licenceMentionFor(supabase, home.brandKit.projectId) : null;
-  const author = (piece.schema_jsonld?.author as { name?: string } | undefined)?.name ?? "";
-  const byline = author ? `By ${author}${mention ? `, ${mention}` : ""}` : null;
+  const byline = bylineFromStored(piece.schema_jsonld, mention);
   const links = internalLinksFor(piece.id, linkable, null);
   const status = piece.status as keyof typeof STATUS_TEXT;
   const open = exportOpen(piece.status);

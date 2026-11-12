@@ -18,7 +18,7 @@ const BRIEF: SeoWriterBrief = {
   populationTerm: null,
   city: "Oakland",
   state: "CA",
-  practitioner: { name: "Dana Whitfield", credential: "LMFT", licenceMention: "LMFT 123456" },
+  practitioner: { name: "Dana Whitfield", credential: "LMFT", licenceMention: "LMFT 123456", title: "Licensed Marriage and Family Therapist", doctorate: false },
   brand: {
     practiceName: "Whitfield Therapy",
     positioning: "Steady, structured trauma work for adults who are tired of talking around it.",

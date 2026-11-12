@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bylineFor,
+  bylineFromStored,
   checklistFor,
   exportHtml,
   exportMarkdown,
@@ -12,7 +13,13 @@ import {
   type ExportPiece,
 } from "@/lib/seo/derive";
 
-const PRACTITIONER = { name: "Dana Whitfield", credential: "LMFT", licenceMention: "LMFT 123456" };
+const PRACTITIONER = {
+  name: "Dana Whitfield",
+  credential: "LMFT",
+  licenceMention: "LMFT 123456",
+  title: "Licensed Marriage and Family Therapist",
+  doctorate: false,
+};
 
 describe("le HTML propre", () => {
   it("échappe tout, puis rend seulement liens http(s) et gras", () => {
@@ -35,7 +42,7 @@ describe("le JSON-LD, calculé", () => {
   it("Article avec auteur Person pour un article", () => {
     const ld = primaryJsonLd({ kind: "article", title: "T", meta: "M", practitioner: PRACTITIONER, topic: "EMDR therapy", place: null, url: null });
     expect(ld["@type"]).toBe("Article");
-    expect(ld.author).toEqual({ "@type": "Person", name: "Dana Whitfield", jobTitle: "LMFT" });
+    expect(ld.author).toEqual({ "@type": "Person", name: "Dana Whitfield", jobTitle: "Licensed Marriage and Family Therapist" });
   });
   it("jamais de LocalBusiness ni d'adresse pour une page locale", () => {
     const ld = primaryJsonLd({ kind: "local_page", title: "T", meta: "M", practitioner: PRACTITIONER, topic: null, place: "Oakland, CA", url: null });
@@ -48,7 +55,7 @@ describe("le JSON-LD, calculé", () => {
     expect((ld.mainEntity as unknown[]).length).toBe(1);
   });
   it("la signature porte la mention de licence", () => {
-    expect(bylineFor(PRACTITIONER)).toBe("By Dana Whitfield, LMFT 123456");
+    expect(bylineFor(PRACTITIONER)).toBe("By Dana Whitfield, Licensed Marriage and Family Therapist, LMFT 123456");
   });
 });
 
@@ -113,5 +120,25 @@ describe("les exports", () => {
     expect(html.match(/<h1>/g)).toHaveLength(1);
     expect(html.match(/application\/ld\+json/g)).toHaveLength(2);
     expect(html).toContain('"@type": "FAQPage"');
+  });
+});
+
+describe("la ligne d'autrice et le Person (session 3)", () => {
+  it("le titre lisible paraît dans la signature ET en jobTitle", () => {
+    const psy = { name: "Ines Alvarez", credential: null, licenceMention: "PSY 28456", title: "Licensed Psychologist", doctorate: false };
+    expect(bylineFor(psy)).toBe("By Ines Alvarez, Licensed Psychologist, PSY 28456");
+    const ld = primaryJsonLd({ kind: "article", title: "T", meta: "M", practitioner: psy, topic: null, place: null, url: null });
+    expect(ld.author).toEqual({ "@type": "Person", name: "Ines Alvarez", jobTitle: "Licensed Psychologist" });
+  });
+  it("sans titre au catalogue, le sigle reste le jobTitle", () => {
+    const ld = primaryJsonLd({ kind: "article", title: "T", meta: "M", practitioner: { ...PRACTITIONER, title: null }, topic: null, place: null, url: null });
+    expect((ld.author as { jobTitle?: string }).jobTitle).toBe("LMFT");
+  });
+  it("une pièce déjà écrite signe avec le nom et le titre figés dans son JSON-LD", () => {
+    const stored = { author: { "@type": "Person", name: "Diego Ramirez", jobTitle: "Licensed Marriage and Family Therapist" } };
+    expect(bylineFromStored(stored, "LMFT 98765")).toBe("By Diego Ramirez, Licensed Marriage and Family Therapist, LMFT 98765");
+    // les pièces des sessions 1–2 n'avaient qu'un sigle (ou rien) : pas de titre doublé
+    expect(bylineFromStored({ author: { name: "Dana Whitfield", jobTitle: "LMFT" } }, "LMFT 123456")).toBe("By Dana Whitfield, LMFT 123456");
+    expect(bylineFromStored({}, "LMFT 1")).toBeNull();
   });
 });
