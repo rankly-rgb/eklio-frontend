@@ -18,9 +18,18 @@
  * l'emplacement et s'arrête proprement (`WriterStopped`), sans quarantaine.
  */
 
-export const SESSION_STOP_USD = 2.5;
+/*
+ * Session 3 : plafond 2 $, arrêt à 1,70 $ (consigne). `--stop` le change pour une
+ * autre session ; il ne peut que se lire, jamais se lever au-delà de ce qu'on passe.
+ */
+export const SESSION_STOP_USD = Number(arg("--stop") ?? "1.70");
 /** Le pire coût d'un appel SEO (`worstCaseCallUsd`, ≈ 0,15 $), arrondi au-dessus. */
 const WORST_CALL_USD = 0.2;
+/**
+ * Un appel DÉJÀ parti, compté avant son règlement : le plus cher observé sur 92 appels
+ * SEO réglés au livre local (0,0479 $), arrondi au-dessus avec une marge.
+ */
+const IN_FLIGHT_CALL_USD = 0.06;
 export const LOCAL = "http://127.0.0.1:54321";
 
 /*
@@ -76,15 +85,27 @@ export async function prepareSession(): Promise<{ since: string; before: number 
   }
 
   const native = globalThis.fetch.bind(globalThis);
+  let inFlight = 0;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (url.startsWith("https://api.openai.com/")) {
-      const spent = (await spentSince(since, native)).usd;
-      if (spent + WORST_CALL_USD > SESSION_STOP_USD) {
-        throw new TypeError(`arrêt de session : ${spent.toFixed(4)} $ + ${WORST_CALL_USD} $ au pire > ${SESSION_STOP_USD} $`);
-      }
+    if (!url.startsWith("https://api.openai.com/")) return native(input, init);
+    /*
+     * ⚠ SESSION 3 : LES APPELS EN VOL COMPTENT. Le cron parallèle en lance jusqu'à
+     * `SEO_MAX_PARALLEL_CALLS` à la fois ; le livre ne voit que les réglés. On réserve
+     * donc ici, au pire, chaque appel parti et pas encore revenu.
+     */
+    const spent = (await spentSince(since, native)).usd;
+    if (spent + inFlight * IN_FLIGHT_CALL_USD + WORST_CALL_USD > SESSION_STOP_USD) {
+      throw new TypeError(
+        `arrêt de session : ${spent.toFixed(4)} $ + ${inFlight} en vol × ${IN_FLIGHT_CALL_USD} $ + ${WORST_CALL_USD} $ > ${SESSION_STOP_USD} $`
+      );
     }
-    return native(input, init);
+    inFlight += 1;
+    try {
+      return await native(input, init);
+    } finally {
+      inFlight -= 1;
+    }
   }) as typeof fetch;
 
   process.env.NEXT_PUBLIC_SUPABASE_URL = supabaseBase();

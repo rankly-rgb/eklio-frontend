@@ -1,0 +1,221 @@
+{
+  "label": "REAL PRODUCT PATH — local database",
+  "startedAt": "2027-01-02T20:47:43.847Z",
+  "status": 200,
+  "spentBeforeUsd": 0.808362,
+  "spentAfterUsd": 1.1988560000000001,
+  "body": {
+    "armed": true,
+    "month": "2027-02-01",
+    "runId": "e9592e67-b7c2-441a-be8d-6b5c2b8b1dbe",
+    "served": [
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000c1",
+        "ok": false,
+        "stage": "context",
+        "reason": "state_unverified",
+        "detail": "state TX is not verified for lpc (F12)"
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000b1",
+        "ok": false,
+        "stage": "context",
+        "reason": "state_unverified",
+        "detail": "state NY is not verified for lcsw (F12)"
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000d1",
+        "ok": false,
+        "stage": "quota",
+        "quota": {
+          "local_page": 1,
+          "article": 2
+        }
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000a1",
+        "ok": true,
+        "pieces": [
+          {
+            "kind": "local_page",
+            "intent": "local:pop-first_time_therapy:los-angeles-ca",
+            "status": "needs_review",
+            "attempts": 1,
+            "firstPass": true,
+            "stage": "first",
+            "costUsd": 0.03267,
+            "checks": []
+          },
+          {
+            "kind": "article",
+            "intent": "article:act:how-it-works",
+            "status": "needs_review",
+            "attempts": 1,
+            "firstPass": true,
+            "stage": "first",
+            "costUsd": 0.032584,
+            "checks": []
+          }
+        ],
+        "costUsd": 0.065254,
+        "stopped": null,
+        "recovered": {
+          "busy": false,
+          "released": 0,
+          "unassigned": 0
+        }
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000e1",
+        "ok": true,
+        "pieces": [
+          {
+            "kind": "local_page",
+            "intent": "local:pop-caregivers:oakland-ca",
+            "status": "needs_review",
+            "attempts": 1,
+            "firstPass": true,
+            "stage": "first",
+            "costUsd": 0.023588,
+            "checks": []
+          },
+          {
+            "kind": "article",
+            "intent": "article:ifs:for-caregivers",
+            "status": "needs_review",
+            "attempts": 1,
+            "firstPass": true,
+            "stage": "first",
+            "costUsd": 0.037828,
+            "checks": []
+          },
+          {
+            "kind": "article",
+            "intent": "article:ifs:how-it-works",
+            "status": "needs_review",
+            "attempts": 1,
+            "firstPass": false,
+            "stage": "field_repair",
+            "costUsd": 0.031064,
+            "checks": []
+          }
+        ],
+        "costUsd": 0.09248,
+        "stopped": null,
+        "recovered": {
+          "busy": false,
+          "released": 0,
+          "unassigned": 0
+        }
+      },
+      {
+        "userId": "5e0c0001-0000-4000-8000-000000000003",
+        "ok": true,
+        "pieces": [
+          {
+            "kind": "local_page",
+            "intent": "local:pop-high_functioning:berkeley-ca",
+            "status": "needs_review",
+            "attempts": 1,
+            "firstPass": false,
+            "stage": "field_repair",
+            "costUsd": 0.025506,
+            "checks": []
+          },
+          {
+            "kind": "article",
+            "intent": "article:ifs:for-high_functioning",
+            "status": "needs_review",
+            "attempts": 2,
+            "firstPass": false,
+            "stage": "rewrite",
+            "costUsd": 0.060686000000000004,
+            "checks": []
+          },
+          {
+            "kind": "article",
+            "intent": "article:ifs:how-it-works",
+            "status": "needs_review",
+            "attempts": 1,
+            "firstPass": true,
+            "stage": "first",
+            "costUsd": 0.029142,
+            "checks": []
+          }
+        ],
+        "costUsd": 0.115334,
+        "stopped": null,
+        "recovered": {
+          "busy": false,
+          "released": 0,
+          "unassigned": 0
+        }
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000c2",
+        "ok": true,
+        "pieces": [
+          {
+            "kind": "local_page",
+            "intent": "local:pop-new_parents:san-diego-ca",
+            "status": "needs_review",
+            "attempts": 2,
+            "firstPass": false,
+            "stage": "rewrite",
+            "costUsd": 0.08149200000000001,
+            "checks": []
+          },
+          {
+            "kind": "article",
+            "intent": "article:eft:how-it-works",
+            "status": "needs_review",
+            "attempts": 1,
+            "firstPass": false,
+            "stage": "field_repair",
+            "costUsd": 0.035934,
+            "checks": []
+          }
+        ],
+        "costUsd": 0.117426,
+        "stopped": null,
+        "recovered": {
+          "busy": false,
+          "released": 0,
+          "unassigned": 0
+        }
+      }
+    ],
+    "deferred": [],
+    "durations": [
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000c1",
+        "ms": 51
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000b1",
+        "ms": 66
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000d1",
+        "ms": 158
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000a1",
+        "ms": 32759
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000e1",
+        "ms": 40062
+      },
+      {
+        "userId": "5e0c0001-0000-4000-8000-000000000003",
+        "ms": 44317
+      },
+      {
+        "userId": "5e5e0001-0000-4000-8000-0000000000c2",
+        "ms": 69348
+      }
+    ],
+    "elapsedMs": 69363
+  }
+}
