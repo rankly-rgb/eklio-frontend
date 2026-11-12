@@ -278,3 +278,13 @@ describe("une question courte qui partage un sujet n'est pas la même question (
     expect(checks(questionOverlapFindings([mine], [other], VOCAB))).toEqual(["gate.question_repeated"]);
   });
 });
+
+describe("une introduction de liste n'est pas un fragment (session 2, mois 3 de Lena)", () => {
+  it("« Topics may include: » suivi de ses puces passe ; « paragraphs » seul reste un fragment", () => {
+    const p = piece();
+    const intro = p.bodyMd.replace("\n\n## ", "\n\nTopics may include:\n\n- sleep\n- work\n\n## ");
+    expect(checks(structureFindings({ ...p, bodyMd: intro }))).not.toContain("structure.fragment");
+    const stray = p.bodyMd.replace("\n\n## ", "\n\nparagraphs\n\n## ");
+    expect(checks(structureFindings({ ...p, bodyMd: stray }))).toContain("structure.fragment");
+  });
+});

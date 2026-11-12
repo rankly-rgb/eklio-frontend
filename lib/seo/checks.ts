@@ -196,11 +196,19 @@ export function structureFindings(p: PieceText): Finding[] {
    * Un « paragraphe » de un à trois mots n'en est pas un : au premier mois réel,
    * le modèle a écrit le mot « paragraphs » — le nom du champ — comme paragraphe.
    */
-  for (const b of p.bodyMd.split(/\n{2,}/).map((x) => x.trim())) {
-    if (b && !/^(#|-\s)/.test(b) && b.split(/\s+/).length < 4) {
+  /*
+   * ⚠ SAUF UNE INTRODUCTION DE LISTE SUIVIE DE SA LISTE. « Topics may include: »
+   * devant ses puces est du texte correct ; le contrôle l'a refusé deux fois au
+   * mois 3 de Lena (session 2). Une introduction SANS liste derrière reste prise,
+   * ici comme fragment ou plus bas comme liste détachée.
+   */
+  const fragmentBlocks = p.bodyMd.split(/\n{2,}/).map((x) => x.trim());
+  fragmentBlocks.forEach((b, i) => {
+    const introducesList = /:\s*$/.test(b) && /^-\s/.test(fragmentBlocks[i + 1] ?? "");
+    if (b && !introducesList && !/^(#|-\s)/.test(b) && b.split(/\s+/).length < 4) {
       out.push({ check: "structure.fragment", detail: `remove the stray fragment "${b.slice(0, 60)}": every paragraph is a full sentence.` });
     }
-  }
+  });
   /* Un paragraphe qui annonce une liste (« … the following: ») doit être suivi de la liste. */
   const blocks = p.bodyMd.split(/\n{2,}/).map((b) => b.trim());
   blocks.forEach((b, i) => {
