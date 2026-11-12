@@ -72,7 +72,7 @@ export function fixtureOutput(input: {
     // Cinq phrases par paragraphe : un paragraphe reste sous la borne du schéma.
     const grouped: string[] = [];
     for (let i = 0; i < paragraphs.length; i += 5) grouped.push(paragraphs.slice(i, i + 5).join(" "));
-    return { heading, paragraphs: grouped, bullets_intro: "", bullets: [], subsections: [] };
+    return { heading, paragraphs: grouped, bullets: [], subsections: [] };
   });
   return {
     title: input.title ?? input.query,

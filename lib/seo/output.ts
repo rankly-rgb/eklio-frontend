@@ -26,13 +26,6 @@ const text = z.string().trim().min(1);
 export const sectionSchema = z.object({
   heading: text.max(120),
   paragraphs: z.array(text.max(2000)).min(1).max(8),
-  /*
-   * La phrase qui introduit la liste, ou "" : le code la pose JUSTE avant les
-   * puces. Session 2 : « You might ask about: », « Consider asking questions such
-   * as: » écrits comme paragraphes, séparés de leur liste par d'autres paragraphes
-   * (deux pièces, alors que le brief l'interdisait déjà). La structure le garantit.
-   */
-  bullets_intro: z.string().trim().max(300),
   bullets: z.array(text.max(400)).max(8),
   subsections: z
     .array(z.object({ heading: text.max(120), paragraphs: z.array(text.max(2000)).min(1).max(6) }))
@@ -69,11 +62,10 @@ export function writerOutputJsonSchema(): Record<string, unknown> {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["heading", "paragraphs", "bullets_intro", "bullets", "subsections"],
+          required: ["heading", "paragraphs", "bullets", "subsections"],
           properties: {
             heading: str,
             paragraphs: strings,
-            bullets_intro: str,
             bullets: strings,
             subsections: {
               type: "array",
@@ -113,10 +105,7 @@ export function assembleBody(output: WriterOutput): string {
   for (const section of output.sections) {
     blocks.push(`## ${clean(section.heading)}`);
     for (const p of section.paragraphs) blocks.push(p.trim());
-    if (section.bullets.length > 0) {
-      if (section.bullets_intro.trim()) blocks.push(section.bullets_intro.trim());
-      blocks.push(section.bullets.map((b) => `- ${b.trim()}`).join("\n"));
-    }
+    if (section.bullets.length > 0) blocks.push(section.bullets.map((b) => `- ${b.trim()}`).join("\n"));
     for (const sub of section.subsections) {
       blocks.push(`### ${clean(sub.heading)}`);
       for (const p of sub.paragraphs) blocks.push(p.trim());
