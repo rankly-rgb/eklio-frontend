@@ -55,6 +55,9 @@ describe("le brief", () => {
     expect(sys).toContain('"safe space"');
     expect(sys).toContain("Location: Oakland, CA");
     expect(sys).toContain("Do NOT write a byline");
+    // Session 2 : la meta trop courte est la faute la plus répétée (132 à 139 caractères).
+    expect(sys).toContain("24 to 26 words");
+    expect(sys).toContain("too short is the most common mistake");
     expect(sys).toContain('do not ask or answer them again, in the FAQ or as a heading: "Is EMDR the same as hypnosis?"');
   });
 

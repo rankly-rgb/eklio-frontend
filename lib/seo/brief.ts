@@ -73,7 +73,12 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
     `- title: at most ${TITLE_MAX} characters, and it contains the exact phrase "${brief.primaryQuery}".`,
     `- h1: contains the exact phrase "${brief.primaryQuery}". It is the only H1; never put one in the body.`,
     `- intro: one paragraph whose first sentence contains the exact phrase "${brief.primaryQuery}".`,
-    `- meta_description: ${META_RANGE.min} to ${META_RANGE.max} characters (count them; aim for 150), one or two sentences, no quotation marks.`,
+    /*
+     * ⚠ SESSIONS 1 ET 2 : six metas à 132-139 caractères, même après une réécriture
+     * qui donnait le nombre exact à ajouter. Le modèle compte mal les caractères et
+     * bien les mots : la consigne donne les deux, et dit de quel côté on se trompe.
+     */
+    `- meta_description: ${META_RANGE.min} to ${META_RANGE.max} characters, which is about 24 to 26 words in two sentences. Aim for 150 characters; too short is the most common mistake, so when in doubt add a few words. No quotation marks.`,
     brief.answeredElsewhere.length > 0
       ? `- Her other pages already answer these questions; do not ask or answer them again, in the FAQ or as a heading: ${brief.answeredElsewhere.map((q) => `"${q}"`).join("; ")}`
       : null,
