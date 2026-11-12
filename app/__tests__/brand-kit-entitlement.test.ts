@@ -431,6 +431,17 @@ const OTHER_GATE: Record<string, string> = {
   "app/app/briefs": "The pre-purchase brief. Free on purpose: it is the thing being sold.",
   "app/app/checkout": "The checkout itself. Gating it on having paid would be a closed loop.",
   "app/app/settings": "Account settings, user-scoped and unrelated to any kit.",
+  /*
+   * Website pages (2026-11-12) follow MONTHLY PRESENCE, not the kit purchase,
+   * and the guard is in the database: `seo_pieces` RLS lets an UPDATE through
+   * only on her own rows AND while `monthly_presence_entitled()` is true, with
+   * column-level grants and a transition trigger behind it. Reading stays open
+   * to the owner after cancellation, by decision: her past pages are hers.
+   */
+  "app/api/seo-pieces":
+    "Every write is a session-client UPDATE that seo_pieces RLS refuses outside her own rows or without monthly_presence_entitled(); reads are her own rows only.",
+  "app/app/pages":
+    "Her own seo_pieces under RLS. Without Monthly Presence it explains the offer instead of redirecting, and past pages stay readable after cancellation by decision.",
 };
 
 describe("aucune surface n'échappe au classement", () => {

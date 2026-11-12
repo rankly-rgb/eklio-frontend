@@ -109,6 +109,15 @@ export function AppHeader({
       active: pathname.startsWith("/app/content"),
       icon: <SectionGlyph section="words" />,
     },
+    // Website pages (2026-11-12): monthly pages for HER site, next to Content.
+    // Always reachable with a kit: without Monthly Presence the page explains
+    // the offer instead of hiding the section.
+    {
+      label: "Website pages",
+      href: brandKitId ? "/app/pages" : null,
+      active: pathname.startsWith("/app/pages"),
+      icon: <SectionGlyph section="site" />,
+    },
     // LOT 7 shipped: the slot is live. It still needs a kit, like Content --
     // Check reads the six rules against her copy inside the paid space.
     {
