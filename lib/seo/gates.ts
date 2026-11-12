@@ -156,6 +156,19 @@ function signatures(vocabulary: readonly string[]): Array<{ term: string; words:
     .filter((s) => s.words.length > 0);
 }
 
+/*
+ * ⚠ UNE SECTION DE CONTACT N'EST PAS UNE QUESTION QU'ON CHERCHE (session 3). Chaque
+ * page locale finit par « Contact … » ou « How can I contact …? » : la gate les prenait
+ * pour une répétition (A, tour 3), alors qu'elles ne visent aucune requête et ne se
+ * concurrencent pas. Elles sont écartées des DEUX côtés de la comparaison.
+ */
+const CONTACT_SECTION =
+  /^\s*(how (can|do|should) (i|you|we) )?(contact|reach( out to)?|get in touch( with)?|book( a| an)?( first)? (session|consultation|appointment) with|schedule (a|an) (session|consultation|appointment) with)\b/i;
+
+export function isContactSection(heading: string): boolean {
+  return CONTACT_SECTION.test(heading);
+}
+
 export function questionOverlapFindings(
   questions: readonly string[],
   answeredElsewhere: readonly string[],
@@ -170,10 +183,12 @@ export function questionOverlapFindings(
     return { named, roots: new Set(tokenize(q, skip)) };
   };
   const out: Finding[] = [];
+  const asked = answeredElsewhere.filter((q) => !isContactSection(q));
   for (const q of questions) {
+    if (isContactSection(q)) continue;
     const mine = read(q);
     if (mine.roots.size === 0) continue;
-    for (const other of answeredElsewhere) {
+    for (const other of asked) {
       const theirs = read(other);
       if (theirs.named !== mine.named) continue;
       /*

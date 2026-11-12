@@ -334,3 +334,17 @@ describe("un diagnostic écarté n'est pas un diagnostic (session 3, phrase du t
     ]);
   });
 });
+
+describe("une section de contact n'est pas une question répétée (session 3)", () => {
+  const VOCAB = ["EMDR therapy", "CBT therapy", "acceptance and commitment therapy"];
+  it("positif — « How can I contact Alvarez Psychology? » vs « Contact Alvarez Psychology about ACT » (A, tour 3, refusé à tort)", () => {
+    expect(questionOverlapFindings(["How can I contact Alvarez Psychology?"], ["Contact Alvarez Psychology about ACT"], VOCAB)).toEqual([]);
+    // Et dans l'autre sens.
+    expect(questionOverlapFindings(["Contact Alvarez Psychology about ACT"], ["How can I contact Alvarez Psychology?"], VOCAB)).toEqual([]);
+  });
+  it("négatif — une vraie question répétée reste prise (Lena, janvier, session 2 : aucune autre au tour 3)", () => {
+    expect(checks(questionOverlapFindings(["Who may consider EMDR therapy?"], ["Who may consider EMDR therapy?"], VOCAB))).toEqual([
+      "gate.question_repeated",
+    ]);
+  });
+});
