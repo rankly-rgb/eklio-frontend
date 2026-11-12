@@ -4429,3 +4429,26 @@ code que sur le title et le H1.
 La route sert toutes les abonnées à la fois. Pour l'étape 7 du runbook, le harnais
 `scripts/seo-pages/run-user-month.ts` accepte un mode production explicite
 (`--production-url` ET `--i-write-production`). C'est un outil de harnais, à usage manuel.
+
+## S22 — Une praticienne sans licence complète lit encore une date d'arrivée
+Session 3 : l'écran dit « not available in your state » à un État non vérifié, avec la
+même source que le pipeline (`licenceEligibility`). Le refus `licence_missing` (type ou
+numéro absent du brief) n'a pas de message : elle lit « Your first pages arrive on… »
+alors que rien ne sera généré tant que son brief n'est pas complété.
+
+## S23 — La réserve de cibles s'épuise au quatrième mois
+Mesure finale de la session 3 (février, 4ᵉ mois de A, C′, D, E et Lena) : D n'a plus
+aucune cible écrivable (0 pièce, stade `quota`), A et C′ n'ont plus qu'un article (2
+pièces au lieu de 3). Les cibles restantes dépassent 60 caractères (`writableTarget`,
+« somatic experiencing therapy for adults healing from the past »), les autres sont
+écrites ou retirées. La banque de modèles (`seo_query_templates`) et les termes ne
+renouvellent pas assez d'intentions pour une abonnée à deux modalités et deux
+populations. Rien ne le dit à l'abonnée : son mois a simplement moins de pièces.
+
+## S24 — Un appel coupé laisse une réservation `overhead` sans issue
+Preuve de reprise (session 3, base locale) : un processus tué en plein appel laisse ses
+réservations `reserve_credit` sans règlement. Le balayeur des 15 minutes
+(`release_stale_credit_reservations`) ne prend que `delta < 0` ; une réservation
+`overhead` (delta 0) reste donc ouverte indéfiniment. Elle ne retient aucun crédit, mais
+si l'appel avait été facturé par OpenAI avant la coupure, ce coût n'entre jamais au livre :
+les seuils de coût du runbook le sous-estiment d'autant.

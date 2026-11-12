@@ -268,3 +268,111 @@ Lue dans `credit_ledger` : `reason = 'settled: seo_piece_write'`, à partir du d
 **Harnais `scripts/seo-pages/`** :
 - `03-session2-profiles.sql`, `session.ts`, `run-user-month.ts`, `regen-check.ts`, `measure.ts`, `publish-month.mjs`, `byline.mjs` ;
 - un mode production explicite pour l'étape 7 du runbook (S21).
+
+---
+
+# Session 3 — lever les blocages d'armement, puis mesurer
+
+**Premier passage 50 % · final 100 % · quarantaine 0 % · 0,098 $ par abonnée servie (0,078 $ sur les 5 profils) · 7 candidates sur 7 servies en un appel de 69 s, contre 1 par appel de 120 s avant · armable après le runbook, une fois la cadence choisie : oui.**
+
+Un mois complet (février 2027) par la route cron parallélisée, sur la base locale, profils californiens A, C′, D, E et Lena. B (New York) et C (Texas) étaient dans le même appel : refusés à 0 $.
+
+## Les pièces
+
+| Profil | Pièce | Premier jet | Après réparation d'un champ | Final | Coût |
+|---|---|---|---|---|---|
+| A | page locale, « therapy for people new to therapy in Los Angeles, CA » | passe | — | relecture | 0,0327 $ |
+| A | article, « how acceptance and commitment therapy works » | passe | — | relecture | 0,0326 $ |
+| A | 2ᵉ article | aucune cible écrivable (S23) | | | |
+| C′ | page locale, « therapy for new parents in San Diego, CA » | question déjà traitée un mois précédent | — | relecture après réécriture | 0,0815 $ |
+| C′ | article, « how emotionally focused therapy works » | meta à 162 caractères | passe (meta) | relecture | 0,0359 $ |
+| C′ | 2ᵉ article | aucune cible écrivable (S23) | | | |
+| D | les trois pièces | aucune cible écrivable (S23) | | | 0 $ |
+| E | page locale, « therapy for caregivers in Oakland, CA » | passe | — | relecture | 0,0236 $ |
+| E | article, « IFS therapy for caregivers » | passe | — | relecture | 0,0378 $ |
+| E | article, « how IFS therapy works » | meta à 132 caractères | passe (meta) | relecture | 0,0311 $ |
+| Lena | page locale, « therapy for high-achieving professionals in Berkeley, CA » | meta à 136 caractères | passe (meta) | relecture | 0,0255 $ |
+| Lena | article, « IFS therapy for high-achieving professionals » | 957 mots, un fragment | — | relecture après réécriture | 0,0607 $ |
+| Lena | article, « how IFS therapy works » | passe | — | relecture | 0,0291 $ |
+
+- **Taux** : 5/10 au premier jet, 8/10 après réparation d'un champ, 10/10 au final, aucune quarantaine.
+- **Limites de débit** : aucun 429, aucune panne du fournisseur.
+- **Ethics Guard et phrases bannies** : aucun constat sur les 10 premiers jets.
+
+**Lecture de A**, avec la nouvelle signature :
+- les deux pièces signent « By Ines Alvarez, Licensed Psychologist, PSY 28456 » ;
+- le JSON-LD porte `jobTitle: "Licensed Psychologist"` ;
+- le texte reste sobre, explique la démarche sans promesse et n'invente rien sur le cabinet ;
+- un défaut connu reste (S20) : le premier paragraphe de la page locale commence par la requête en minuscule.
+
+## Les correctifs
+
+Chaque commit est vert isolément.
+
+| Commit | Correctif | Effet mesuré |
+|---|---|---|
+| a9158da | « Réponse d'abord » compare les formes de base (« uses » répond à « Used ») | `answer_first` au premier jet : 3 en janvier (15 pièces), 0 en février (10) |
+| 4a5d471 | Écarter un diagnostic n'est pas en poser un (négation, dans le contrôle SEO `CLINICAL`, pas l'Ethics Guard) | `clinical.claim` : 1 en janvier, 0 en février |
+| 140a50f | Les sections de contact sortent du contrôle des questions répétées | `question_repeated` : 8 en janvier, 1 en février. Celle qui reste est une vraie répétition d'un mois précédent. |
+| 1fef591 | Réparation du seul champ meta ou title, puis tous les contrôles, avant la réécriture complète | 3 réparations sur 3 réussies, à 0,0022–0,0024 $ l'appel, contre 0,03 $ environ pour une réécriture |
+| 5e448e9 | État non vérifié : « Website pages aren't available yet for clinicians licensed in {State}… », même source que le pipeline (`licenceEligibility`) | Écran de B joué dans le navigateur : `SAMPLES/session-3/REAL-PRODUCT-PATH_app-pages_profile-B_NY_state-unavailable.png` |
+| caeda6a | Ligne d'autrice et `jobTitle` : titre en toutes lettres, lu dans le `license_type_id` du brief ; « Dr. » seulement avec un doctorat au brief | Les 5 signatures réelles sont justes. A perd un « Dr. » sans doctorat au brief (son nom libre le portait). |
+| b30f173 | Cron parallèle : pièces d'une abonnée ensemble, `floor(SEO_MAX_PARALLEL_CALLS / 3)` abonnées à la fois, reprise d'une exécution coupée, garde de temps | 1 abonnée par appel avant ; 7 candidates en 69 s après. Une abonnée prend 33 à 69 s, contre 101 à 186 s avant. |
+| 934dee2 | Preuves sur la vraie base locale, rédacteur fixture, 0 $ | Deux exécutions simultanées : 3 pièces, aucune 4ᵉ, aucune cible en double. SIGKILL en plein vol : l'appel suivant immédiat voit une exécution vivante et n'y touche pas ; l'appel suivant à plus de 10 minutes rend 3 emplacements, reprend 3 cibles et écrit 3 pièces, sans doublon ni emplacement resté `claimed`. |
+
+**`maxDuration` n'a pas bougé.** L'atomicité reste celle de `claim_seo_slot`. S'y ajoute une prise de cible conditionnelle (`status = available`) : une exécution concurrente rend son emplacement sans appel.
+
+**Le prix du parallélisme.** Les premiers jets d'un mois ne voient plus les questions de leurs sœurs, seulement leurs requêtes (`siblingQueries`). Le contrôle, lui, reste dans l'ordre et les voit. En février, aucune répétition entre pièces d'un même mois.
+
+## Trouvé, non corrigé
+
+- **Ethics Guard et `banned_phrases`** : aucun faux positif observé en session 3. Le faux positif « diagnoses » vivait dans le contrôle SEO, d'où sa correction.
+- **Numéro de licence de A, « PSY 28456 »** : forme attendue en Californie, où PSY est le préfixe du numéro et pas un sigle (`lib/brief/license-state.ts`). C'est un numéro de fixture. Rien de douteux dans le tamponnage existant, que je n'ai pas modifié.
+- **S20** : premier paragraphe en minuscule, toujours présent (page locale de A).
+- **S22** : un brief sans licence complète lit encore une date d'arrivée.
+- **S23** : la réserve de cibles s'épuise au 4ᵉ mois. D n'a reçu aucune pièce, A et C′ deux.
+- **S24** : un appel coupé laisse une réservation `overhead` sans issue au livre. Le balayeur des 15 minutes ne la voit pas.
+
+## Dépense
+
+Lue dans `credit_ledger` (`settled: seo_piece_write`), session 3 :
+- **0,3905 $** pour 15 appels réels : 10 premiers jets, 3 réparations et 2 réécritures. L'appel le plus cher a coûté 0,0518 $.
+- 6 appels fixture des preuves, réglés à 0 $.
+- Sous l'arrêt de 1,70 $ ; la réserve de 0,80 $ pour la mesure finale n'a pas été entamée avant elle.
+
+⚠ Un filtre « depuis le début de session » sur `created_at` compte aussi 0,81 $ de la session 2. Ce sont les lignes écrites quand la base locale avait l'horloge avancée (mois de janvier) ; elles ne sont pas de cette session.
+
+Le garde de session compte maintenant les appels en vol (0,06 $ chacun, d'après le plus cher observé), puisque le cron en lance jusqu'à 15 à la fois.
+
+Aucun appel à DataForSEO, Semrush, une recherche web ou Stripe, et aucune écriture en production.
+
+## Tests
+
+**Vitest : 5 366 → 5 402 tests** (249 → 251 fichiers), tous verts. Typecheck et lint verts.
+
+## Décisions qui restent ouvertes
+
+1. **Cadence du cron** : je recommande toutes les heures si ton plan Vercel l'autorise ; 300 abonnées tiennent alors en 30 heures. En quotidien, 300 abonnées prennent 30 jours. Tableau au runbook, étape 6.
+2. **Réserve de cibles (S23)** : je recommande d'élargir la banque de modèles avant le 4ᵉ mois de la première cohorte. Ce n'est pas bloquant pour armer.
+3. **URL profondes dans `insight_sources` (étape 5)** : je recommande quelques pages par modalité avant d'armer, faute de quoi aucune pièce ne cite de source.
+4. **Termes curés (S19)** : je recommande de relire « CBT therapy » et « adults healing from the past ».
+5. **Quota de l'essai gratuit** : je recommande de le garder à 0.
+6. **« Trauma-informed » au catalogue (S13)** : je recommande de ne pas l'ajouter en v1.
+7. **Message d'une licence incomplète (S22)** : je recommande « complete your license in your brief » plutôt qu'une date.
+8. **Réservations `overhead` orphelines (S24)** : je recommande d'étendre le balayeur aux réservations sans issue, côté backend.
+9. **`SEO_MAX_PARALLEL_CALLS` = 15 et la plus lente par défaut = 186 s** : je recommande de les garder jusqu'aux premières mesures de production, et de baisser la première au premier `rate_limited`.
+
+## Livrables
+
+- **`SAMPLES/session-3/`** :
+  - les 10 pièces de février, étiquetées vrai chemin produit, profil et mois ;
+  - la capture de l'écran de B.
+- **Harnais** :
+  - `capture-state.mjs` ;
+  - `proof-concurrency.ts` ;
+  - `04-session3-exclusions.sql` : les abonnements locaux de Dana et Maya passent à `canceled`. Leur novembre local porte maintenant les pièces fixture des preuves.
+  - `session.ts` : arrêt à 1,70 $, appels en vol comptés.
+- **Runbook** :
+  - étape 6 : cadence et tableau 25/100/300, et le geste en cas de 429 ;
+  - étapes 7 et 8 : reprise à 10 minutes ;
+  - requêtes du lendemain : étape de passage, cibles épuisées, emplacements non repris.

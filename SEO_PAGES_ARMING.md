@@ -188,13 +188,35 @@ Ne supprime pas la ligne : `insight_cards.source_id` la référence.
 
 ## 6. Ajouter la route cron à `vercel.json`
 
-**Geste.** Dans `eklio-frontend/vercel.json`, ajoute à `crons` :
+**Geste.** Dans `eklio-frontend/vercel.json`, ajoute à `crons` l'entrée qui correspond à ton plan Vercel. Toutes les heures :
 ```json
-{ "path": "/api/cron/seo-pages", "schedule": "*/15 * * * *" }
+{ "path": "/api/cron/seo-pages", "schedule": "0 * * * *" }
 ```
-**Pourquoi toutes les 15 minutes.** Un déclenchement sert une à deux abonnées, et un mois d'abonnée prend 1,5 à 2,5 minutes (S11). La route est idempotente : une fois toutes ses abonnées servies, un appel ne fait que des lectures, sans réservation ni dépense. À 15 minutes, environ 100 abonnées sont servies en 12 heures. Une cadence sous la journée suppose un plan Vercel qui l'autorise ; un seul appel par jour ne servirait qu'une ou deux abonnées par jour.
+Une fois par jour :
+```json
+{ "path": "/api/cron/seo-pages", "schedule": "0 9 * * *" }
+```
+
+**Ce qu'un appel sert (session 3).** La route est parallèle :
+- les trois pièces d'une abonnée partent ensemble ;
+- `floor(SEO_MAX_PARALLEL_CALLS / 3)` abonnées tournent à la fois (5 avec la valeur 15, dans `lib/seo/cron.ts`) ;
+- une abonnée n'est pas commencée si le temps restant (300 s moins 20 s de marge) ne suffit pas à finir la plus lente mesurée (186 s par défaut). Elle reste due, et l'appel suivant la reprend.
+
+Mesuré en local, février, par la route : les 5 profils californiens et les 2 refus d'État servis en **69 s**, en un seul appel. Une abonnée prend 33 à 69 s, contre 101 à 186 s en séquentiel. En session 2, la route servait **1 abonnée par appel**.
+
+Capacité retenue pour la cadence : **10 abonnées par appel**. C'est le calcul prudent : 5 travailleuses, chacune peut commencer une abonnée jusqu'à 94 s (280 s − 186 s), et une abonnée dure au plus 69 s mesurées, soit deux chacune. Avec la durée moyenne mesurée (47 s), ce serait 15.
+
+| Abonnées | Appels pour un mois | Toutes les heures | Une fois par jour | Avant (séquentiel, 1 par appel), toutes les heures |
+|---|---|---|---|---|
+| 25 | 3 | 3 h | 3 jours | 25 h |
+| 100 | 10 | 10 h | 10 jours | 100 h (≈ 4 jours) |
+| 300 | 30 | 30 h | 30 jours : trop juste pour un mois | 300 h (≈ 12,5 jours) |
+
+La route reste idempotente : une fois toutes ses abonnées servies, un appel ne fait que des lectures, sans réservation ni dépense. Une cadence horaire ne coûte donc rien de plus qu'une cadence quotidienne.
 
 Commite, ouvre une PR, fusionne, déploie.
+
+**Si les logs montrent `rate_limited`** (réponse 429 d'OpenAI, après les essais du transport) : baisse `SEO_MAX_PARALLEL_CALLS` dans `lib/seo/cron.ts`, puis redéploie. C'est une constante de code, pas une variable d'environnement. Une abonnée arrêtée ainsi rend ses emplacements sans quarantaine, et l'appel suivant la reprend.
 
 **Vérification.** Vercel → Settings → Cron Jobs doit lister `/api/cron/seo-pages`. Les logs de la route montrent des `503` (drapeau toujours éteint). En SQL, le bloc « Étape 4 et 6 » reste à `0 | 0 | 0`.
 
@@ -212,7 +234,7 @@ Commite, ouvre une PR, fusionne, déploie.
 - un nom de praticienne dans la spec du site ;
 - Monthly Presence active.
 
-La route servirait **toutes** les abonnées à la fois. Ce mois-ci se lance donc par le harnais, pour ton seul compte. Le harnais refuse la production sauf si les deux drapeaux sont présents ensemble, et il s'arrête avant 2,50 $ lus dans `credit_ledger`.
+La route servirait **toutes** les abonnées à la fois. Ce mois-ci se lance donc par le harnais, pour ton seul compte. Le harnais refuse la production sauf si les deux drapeaux sont présents ensemble. Il s'arrête avant 1,70 $ lus dans `credit_ledger` (`--stop` pour une autre valeur), en comptant aussi les appels déjà partis.
 
 **Geste.** Depuis `eklio-frontend`, sur ta machine, avec les clés dans ton seul shell :
 ```bash
@@ -224,7 +246,7 @@ SUPABASE_SERVICE_ROLE_KEY="<clé service de production>" EKLIO_OPENAI_API_KEY="<
 select kind, status, (gates_report->>'first_pass')::boolean as first_pass, gates_report->>'reason' as reason, cost_usd
   from public.seo_pieces where user_id = '<uid>' and month = '<M>' order by created_at;
 ```
-Attendu : 3 lignes (1 `local_page`, 2 `article`), statut `needs_review` (une `quarantined` reste acceptable, raison lisible).
+Attendu : 3 lignes (1 `local_page`, 2 `article`), statut `needs_review` (une `quarantined` reste acceptable, raison lisible). Moins de 3 lignes sans quarantaine signifie que sa réserve de cibles est épuisée (S23).
 
 ```sql
 select status, count(*) from public.seo_slot_claims where user_id = '<uid>' and month = '<M>' group by 1;
@@ -239,13 +261,13 @@ Attendu : environ 0,15 $, et toujours moins de 0,50 $.
 
 Ensuite, ouvre `/app/pages?month=<M>` et **lis les trois pièces en entier** :
 - relecture, copie, puis « Where did you publish it? » sur au moins une pièce ;
-- sur la page de la pièce, vérifie la ligne d'autrice telle qu'affichée.
+- sur la page de la pièce, vérifie la ligne d'autrice telle qu'affichée : « By <nom>, <titre en toutes lettres>, <mention de licence> », sans « Dr. » si ton brief ne porte pas de doctorat.
 
 **T'arrêter si :**
 - une pièce contient une affirmation clinique, un lieu, un prix, une assurance ou une URL que tu n'as pas fournis ;
 - la ligne d'autrice ou la licence est fausse ;
 - le coût dépasse 0,50 $ ;
-- un emplacement reste `claimed` plus de deux heures.
+- un emplacement reste `claimed` une fois le script terminé.
 
 **Revenir en arrière.** Tes pièces ne sont visibles que de toi. Pour les effacer :
 ```sql
@@ -274,7 +296,8 @@ Les deux valeurs doivent croître de déclenchement en déclenchement.
 
 **Revenir en arrière.** Remets `false`, puis redéploie : la route répond `503` dès le déploiement. Rien n'est perdu :
 - les pièces écrites restent ;
-- un emplacement réservé mais jamais rempli est rendu automatiquement (`stale_claim`) à la réservation suivante de la même abonnée, au-delà de deux heures.
+- un emplacement réservé mais jamais rempli (appel coupé) est rendu par l'appel suivant qui sert cette abonnée, s'il a plus de dix minutes (`recoverInterrupted`). Ses cibles sans pièce redeviennent disponibles. Le rendu coûte une tentative du mois (`monthly_attempts`), jamais un emplacement ;
+- au-delà de deux heures, la base le rend aussi d'elle-même (`stale_claim`).
 
 ---
 
@@ -292,6 +315,10 @@ select count(*) as pieces,
        round(100.0 * count(*) filter (where (gates_report->>'first_pass')::boolean) / nullif(count(*), 0), 1) as premier_coup_pct
   from public.seo_pieces where month = '<M>';
 
+-- 2 bis. Où les pièces passent : premier jet, réparation d'un champ, réécriture complète
+select coalesce(gates_report->>'stage', 'quarantaine') as etape, count(*) from public.seo_pieces
+ where month = '<M>' group by 1 order by 2 desc;
+
 -- 3. Pourquoi les quarantaines
 select gates_report->>'reason' as raison, count(*) from public.seo_pieces
  where month = '<M>' and status = 'quarantined' group by 1 order by 2 desc;
@@ -303,14 +330,30 @@ select round(sum(actual_cost_usd), 2) as total_usd, count(distinct user_id) as a
        round(sum(actual_cost_usd) / nullif(count(distinct user_id), 0), 3) as usd_par_abonnee
   from public.credit_ledger where reason = 'settled: seo_piece_write' and month = '<M>';
 
--- 5. Des emplacements bloqués (exécution coupée)
-select count(*) from public.seo_slot_claims where month = '<M>' and status = 'claimed' and claimed_at < now() - interval '2 hours';
+-- 5. Des emplacements bloqués (exécution coupée et pas encore reprise)
+--    La reprise a lieu au passage suivant du cron : intervalle du cron + 10 minutes.
+--    '70 minutes' pour une cadence horaire, '24 hours 10 minutes' pour une cadence quotidienne.
+select count(*) from public.seo_slot_claims where month = '<M>' and status = 'claimed' and claimed_at < now() - interval '70 minutes';
+
+-- 6. Les abonnées servies avec moins de trois pièces (réserve de cibles épuisée, S23)
+select user_id, count(*) from public.seo_pieces where month = '<M>' and status <> 'quarantined'
+ group by 1 having count(*) < 3;
 ```
+
+Dans les logs de la route, regarde aussi :
+- `deferred` : les abonnées que la garde de temps a laissées à l'appel suivant ;
+- `durations` : la durée de chaque abonnée ;
+- `stage: "busy"` : une autre exécution la tenait ;
+- `rate_limited` : voir l'étape 6.
 
 Repères mesurés en session 2, sur 44 pièces réelles :
 - 50 à 58 % de passage du premier coup ;
 - 8 % de quarantaine au dernier tour (33 % au pire tour, dont 3 sur 4 avaient une cause depuis corrigée) ;
 - 0,15 $ par mois d'abonnée en moyenne, 0,21 $ au plus.
+
+Repères de la session 3, sur 10 pièces de février :
+- 50 % au premier jet, 80 % après réparation d'un champ, 100 % au final, 0 % de quarantaine ;
+- 0,098 $ par abonnée servie.
 
 **Éteins le drapeau (étape 8, retour arrière) si l'un de ces seuils est franchi :**
 
@@ -319,5 +362,5 @@ Repères mesurés en session 2, sur 44 pièces réelles :
 | **Quarantaine au-dessus de 20 %** sur au moins 15 pièces | Plus du double du dernier tour mesuré : quelque chose a changé (modèle, données, banque) |
 | **Une même raison concentre plus de la moitié des quarantaines** | Défaut systématique : un contrôle ou une cible, pas le modèle |
 | **Coût moyen au-dessus de 0,50 $ par abonnée**, ou une abonnée au plafond de 1,50 $ | Trois fois la mesure : boucle ou modèle changé |
-| **Un emplacement `claimed` depuis plus de deux heures** sur plusieurs abonnées | Exécutions coupées : la cadence ou la durée de la route |
+| **Un emplacement `claimed` depuis plus d'un intervalle du cron + 10 minutes** (requête 5) sur plusieurs abonnées | Exécutions coupées que l'appel suivant n'a pas reprises : la cadence ou la durée de la route |
 | **Une pièce en relecture avec une affirmation clinique, un lieu ou une URL inventés**, trouvée en la lisant | Les contrôles ne tiennent plus : c'est le seul signal qui ne se lit pas en SQL |
