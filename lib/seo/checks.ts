@@ -378,9 +378,18 @@ export function practiceFactFindings(text: string): Finding[] {
 
 /* ── 4e. Psychoéducation seulement ────────────────────────────────────── */
 
-const CLINICAL: Array<[RegExp, string]> = [
-  [/\bcur(e|es|ed|ing)\b/i, `never use "cure"`],
-  [/\b(diagnose[sd]?|diagnosing)\b|\byour diagnosis\b/i, "do not diagnose or talk about diagnosing the reader"],
+/** Une règle clinique ; `negatable` : une négation proche l'annule (« not … diagnoses »). */
+type ClinicalRule = [RegExp, string, { negatable?: boolean }?];
+
+const CLINICAL: ClinicalRule[] = [
+  [/\bcur(e|es|ed|ing)\b/gi, `never use "cure"`],
+  /*
+   * ⚠ ÉCARTER UN DIAGNOSTIC N'EST PAS EN POSER UN (session 3). « These labels describe
+   * observable communication behaviors, not fixed traits or diagnoses. » était refusé :
+   * la phrase dit précisément le contraire d'un diagnostic. Une négation dans le même
+   * membre de phrase, juste avant, annule la règle — et seulement celle-ci.
+   */
+  [/\b(diagnose[sd]?|diagnosing)\b|\byour diagnosis\b/gi, "do not diagnose or talk about diagnosing the reader", { negatable: true }],
   /*
    * ⚠ « YOU WILL BE INVITED » N'EST PAS UNE PROMESSE. La règle prenait tout
    * « you will be » : la page locale de D (session 2) a été mise en quarantaine
@@ -389,17 +398,26 @@ const CLINICAL: Array<[RegExp, string]> = [
    * n'est pas un résultat ; « you will be free / able to stop… », si.
    */
   [
-    /\byou(['’]ll| will) (feel|get|stop|no longer|finally|notice|experience|find)\b|\byou(['’]ll| will) be (?!(asked|invited|offered|given|encouraged|welcome|guided|shown|told)\b)\w+/i,
+    /\byou(['’]ll| will) (feel|get|stop|no longer|finally|notice|experience|find)\b|\byou(['’]ll| will) be (?!(asked|invited|offered|given|encouraged|welcome|guided|shown|told)\b)\w+/gi,
     "do not promise what the reader will feel or achieve",
   ],
-  [/\b(success rates?|proven to|highly effective|most effective|works for everyone)\b/i, "do not claim effectiveness"],
+  [/\b(success rates?|proven to|highly effective|most effective|works for everyone)\b/gi, "do not claim effectiveness"],
 ];
 
 /** Le constat cite la phrase : sans elle, ni la réécriture ni la relecture ne savent quoi changer. */
+const NEGATION = /\b(not|no|never|nor|without|isn['’]t|aren['’]t|rather than|instead of)\b/i;
+
+/** Le membre de phrase qui précède `index` : depuis la dernière ponctuation forte ou virgule. */
+function clauseBefore(text: string, index: number): string {
+  const head = text.slice(0, index);
+  const cut = Math.max(head.lastIndexOf("."), head.lastIndexOf(","), head.lastIndexOf(";"), head.lastIndexOf(":"), head.lastIndexOf("\n"));
+  return head.slice(cut + 1).split(/\s+/).slice(-6).join(" ");
+}
+
 export function clinicalFindings(text: string): Finding[] {
   const out: Finding[] = [];
-  for (const [re, what] of CLINICAL) {
-    const m = re.exec(text);
+  for (const [re, what, opts] of CLINICAL) {
+    const m = [...text.matchAll(re)].find((x) => !(opts?.negatable && NEGATION.test(clauseBefore(text, x.index ?? 0))));
     if (!m) continue;
     const start = Math.max(0, text.lastIndexOf(".", m.index) + 1);
     const end = text.indexOf(".", m.index + m[0].length);

@@ -320,3 +320,17 @@ describe("réponse d'abord : les formes fléchies (session 3, phrases du tour 3)
     ).toBe(false);
   });
 });
+
+describe("un diagnostic écarté n'est pas un diagnostic (session 3, phrase du tour 3)", () => {
+  it("positif — « not fixed traits or diagnoses » (C′, article Gottman de janvier, refusé à tort)", () => {
+    expect(clinicalFindings("These labels describe observable communication behaviors, not fixed traits or diagnoses.")).toEqual([]);
+  });
+  it("négatif — un vrai diagnostic reste refusé (phrase écrite pour le test : aucune des 56 pièces n'en contient)", () => {
+    expect(checks(clinicalFindings("In the first session, we will diagnose what is going on and explain your diagnosis."))).toEqual([
+      "clinical.claim",
+    ]);
+    expect(checks(clinicalFindings("Couples are not always aware of it, so the therapist will diagnose the problem."))).toEqual([
+      "clinical.claim",
+    ]);
+  });
+});
