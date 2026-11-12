@@ -288,3 +288,16 @@ describe("une introduction de liste n'est pas un fragment (session 2, mois 3 de 
     expect(checks(structureFindings({ ...p, bodyMd: stray }))).toContain("structure.fragment");
   });
 });
+
+describe("une réponse sur ce qu'il faut faire répond à la question (session 2, second tour, profil D)", () => {
+  it("« How much detail do you need to share? » → « You do not need to tell the full story… » (phrase réelle)", () => {
+    expect(
+      answersHeading("How much detail do you need to share?", "You do not need to tell the full story of a difficult experience in your first appointment.")
+    ).toBe(true);
+    expect(answersHeading("Can I pause a session?", "You can pause whenever you need to.")).toBe(true);
+  });
+  it("une phrase d'ambiance reste refusée", () => {
+    expect(answersHeading("How much detail do you need to share?", "Many people wonder about this before they start.")).toBe(false);
+    expect(answersHeading("What is EMDR?", "You can learn a lot from this page.")).toBe(false);
+  });
+});

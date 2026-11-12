@@ -162,6 +162,18 @@ export function answersHeading(heading: string, sentence: string): boolean {
    * pièces en quarantaine pour une réponse exemplaire. Une phrase qui OUVRE sur
    * une réponse explicite répond.
    */
+  /*
+   * ⚠ UNE QUESTION SUR CE QU'IL FAUT FAIRE SE RÉPOND PAR CE QU'ON FAIT. « How much
+   * detail do you need to share? » → « You do not need to tell the full story… »
+   * ne partage aucune racine avec la question, et répond (second tour, session 2).
+   * Seulement quand le titre porte lui-même le verbe modal.
+   */
+  if (
+    /\b(need|have to|can|should|must|may)\b/i.test(heading) &&
+    /^you (do not |don['’]t |)(need|have to|can|should|must|may)\b/i.test(s)
+  ) {
+    return true;
+  }
   const h = contentRoots(heading);
   if (h.size === 0) return true;
   const roots = contentRoots(s);
