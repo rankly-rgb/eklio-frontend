@@ -1,5 +1,5 @@
 import type { SeoKind } from "@/lib/seo/kinds";
-import { seoQuotaFor, type SeoClient, type TargetRow } from "@/lib/seo/db";
+import { seoPatch, seoQuotaFor, type SeoClient, type TargetRow } from "@/lib/seo/db";
 import { readMetrics, readSearchTerms, readTargets, readTemplates, type SeoContext } from "@/lib/seo/context";
 import {
   chooseMonthTargets,
@@ -51,7 +51,7 @@ export async function planSeoMonth(db: SeoClient, ctx: SeoContext, month: string
   const derived = deriveTargets(ctx.grid, templates, terms);
   if (derived.length > 0) {
     const { error } = await db.from("seo_targets").upsert(
-      derived.map((t) => ({
+      derived.map((t) => seoPatch("seo_targets", {
         user_id: ctx.userId,
         brand_kit_id: ctx.brandKitId,
         kind: t.kind,

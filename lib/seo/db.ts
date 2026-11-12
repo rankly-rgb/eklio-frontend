@@ -40,6 +40,37 @@ export function seoDb(client: unknown): SeoClient {
   return client as SeoClient;
 }
 
+/* ── Les colonnes du chantier, déclarées une fois ─────────────────────── */
+
+/**
+ * Les colonnes des deux tables que le code ÉCRIT. Toute ligne écrite est typée
+ * contre cette liste (`SeoRow<…>`), et `__tests__/rpc-contract.test.ts` la
+ * confronte au `create table` des migrations : une colonne renommée en SQL fait
+ * échouer le test, pas la production.
+ */
+export const SEO_COLUMNS = {
+  seo_targets: [
+    "id", "user_id", "brand_kit_id", "kind", "template_id", "modality_key", "population_key", "state",
+    "city", "primary_query", "intent_key", "status", "assigned_month", "created_at",
+  ],
+  seo_pieces: [
+    "id", "user_id", "target_id", "month", "kind", "status", "title", "meta_description", "slug", "h1",
+    "body_md", "faq", "schema_jsonld", "internal_links", "checklist", "ethics_report", "gates_report",
+    "writer_model", "cost_usd", "run_id", "approved_at", "exported_at", "published_url", "created_at",
+    "updated_at", "slot_id",
+  ],
+} as const;
+
+export type SeoTable = keyof typeof SEO_COLUMNS;
+export type SeoColumn<T extends SeoTable> = (typeof SEO_COLUMNS)[T][number];
+/** Une ligne (ou un patch) qui ne nomme que des colonnes déclarées. */
+export type SeoRow<T extends SeoTable> = Partial<Record<(typeof SEO_COLUMNS)[T][number], unknown>>;
+
+/** L'écriture d'un patch, colonnes vérifiées à la compilation. */
+export function seoPatch<T extends SeoTable>(_table: T, values: SeoRow<T>): SeoRow<T> {
+  return values;
+}
+
 /* ── Les RPC du chantier, et leurs paramètres exacts ──────────────────── */
 
 export const SEO_RPC_ARGS = {
