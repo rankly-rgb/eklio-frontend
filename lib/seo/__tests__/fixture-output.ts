@@ -38,12 +38,26 @@ export function fixtureOutput(input: {
   meta?: string;
 }): WriterOutput {
   const next = rng(input.seed);
-  const pick = () => VOCAB[Math.floor(next() * VOCAB.length)];
+  /*
+   * Des mots propres à la GRAINE pour les titres et les questions : deux
+   * fixtures ne posent jamais la même question (la gate « question répétée »
+   * les prendrait, à raison, pour deux pages qui se concurrencent).
+   */
+  let counter = 0;
+  const own = () => {
+    let n = input.seed * 1000 + counter++;
+    let w = "";
+    do {
+      w = String.fromCharCode(97 + (n % 26)) + w;
+      n = Math.floor(n / 26);
+    } while (n > 0);
+    return `${w}ex`;
+  };
   const headings = [
-    `What is the ${pick()} ${pick()}`,
-    `How does the ${pick()} ${pick()} work`,
-    `Who is the ${pick()} ${pick()} for`,
-    `What should you ask about ${pick()} ${pick()}`,
+    `What is the ${own()} ${own()}`,
+    `How does the ${own()} ${own()} work`,
+    `Who is the ${own()} ${own()} for`,
+    `When does the ${own()} ${own()} matter`,
   ];
   const perSection = Math.floor((input.bodyWords - 40) / headings.length);
   const sections = headings.map((heading) => {
@@ -69,8 +83,8 @@ export function fixtureOutput(input: {
     intro: `${input.query} is explained on this page in plain words. ${sentence(next, 20)} ${sentence(next, 6)}`,
     sections,
     faq: Array.from({ length: input.faqCount ?? 4 }, () => {
-      const a = pick();
-      const b = pick();
+      const a = own();
+      const b = own();
       return { question: `Why ${a} and ${b}?`, answer: `The ${a} and ${b} answer is short. ${sentence(next, 10)}` };
     }),
   };

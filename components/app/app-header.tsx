@@ -74,7 +74,7 @@ export type HeaderNav = {
  */
 function navClass(active: boolean): string {
   const base =
-    "inline-flex min-h-[44px] items-center gap-2 rounded-pill px-3 transition-colors";
+    "inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-pill px-3 transition-colors";
   return active
     ? `${base} bg-card font-semibold text-ink`
     : `${base} text-ink-2 hover:bg-card hover:text-ink`;

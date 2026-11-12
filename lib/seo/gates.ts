@@ -36,6 +36,7 @@ const STOPWORDS = new Set([
   "the", "and", "for", "you", "your", "with", "that", "this", "are", "can", "from", "about", "what", "how",
   "who", "why", "when", "they", "their", "them", "have", "has", "not", "but", "may", "will", "into", "more",
   "some", "one", "often", "also", "each", "other", "than", "then", "there", "these", "those", "which",
+  "might", "could", "should", "would", "does", "did",
 ]);
 
 const SHINGLE = 5;
@@ -121,3 +122,46 @@ export function specificityFindings(text: string, facts: SpecificFacts): Finding
   return out;
 }
 
+/*
+ * ── LA MÊME QUESTION SUR DEUX PAGES DE SON SITE ─────────────────────────
+ *
+ * Mesuré au premier mois réel (2026-11-12) : la distance par shingles entre ses
+ * trois pièces valait 0,000 à 0,005, et pourtant « Do I have to share every
+ * detail…? » revenait dans la FAQ de la page locale, dans celle d'un article et
+ * dans un H2 de l'autre. Deux pages qui répondent à la même question se font
+ * concurrence pour elle — la cannibalisation, au niveau où les moteurs de
+ * réponse la lisent. Les mots diffèrent ; les racines de la question, non.
+ */
+export const QUESTION_OVERLAP_MAX = 0.5;
+
+/**
+ * ⚠ LES MOTS DE SA GRILLE NE COMPTENT PAS. « EMDR therapy » est dans presque
+ * toutes ses questions : le compter faisait de « Why might new parents consider
+ * EMDR therapy? » une répétition de « Who may consider EMDR therapy? »
+ * (troisième passage réel). `ignore` reçoit le terme de la MODALITÉ seulement : la
+ * population, elle, est précisément ce qui distingue « pour les jeunes parents »
+ * d'une question générale.
+ */
+export function questionOverlapFindings(
+  questions: readonly string[],
+  answeredElsewhere: readonly string[],
+  ignore: readonly string[] = []
+): Finding[] {
+  const out: Finding[] = [];
+  const skip = new Set(STOPWORDS);
+  for (const term of ignore) for (const w of term.toLowerCase().match(/[a-z']+/g) ?? []) skip.add(w);
+  for (const q of questions) {
+    const mine = new Set(tokenize(q, skip));
+    if (mine.size === 0) continue;
+    for (const other of answeredElsewhere) {
+      if (jaccardSimilarity(mine, new Set(tokenize(other, skip))) >= QUESTION_OVERLAP_MAX) {
+        out.push({
+          check: "gate.question_repeated",
+          detail: `"${q}" is already answered on another of her pages ("${other}"); ask a different question.`,
+        });
+        break;
+      }
+    }
+  }
+  return out;
+}

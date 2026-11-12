@@ -6,9 +6,15 @@ import type { MonthPlan, StoredCandidate } from "@/lib/seo/plan";
 import type { FailureReport, SeoWriterBrief } from "@/lib/seo/brief";
 import type { SeoWriterPort, SeoWriteResult } from "@/lib/seo/writer";
 import type { Finding } from "@/lib/seo/finding";
-import { assembleBody, writerOutputSchema, type WriterOutput } from "@/lib/seo/output";
-import { allText, deterministicFindings, slugFor } from "@/lib/seo/checks";
-import { collisionFindings, distanceFindings, specificityFindings, type ComparedPiece } from "@/lib/seo/gates";
+import { assembleBody, sectionsOf, writerOutputSchema, type WriterOutput } from "@/lib/seo/output";
+import { allText, deterministicFindings, sentenceCase, slugFor } from "@/lib/seo/checks";
+import {
+  collisionFindings,
+  distanceFindings,
+  questionOverlapFindings,
+  specificityFindings,
+  type ComparedPiece,
+} from "@/lib/seo/gates";
 import { checklistFor, internalLinksFor, primaryJsonLd, type LinkablePiece } from "@/lib/seo/derive";
 
 /*
@@ -74,7 +80,13 @@ export type PieceInsert = {
 type UndeclaredPieceColumns = Exclude<keyof PieceInsert, SeoColumn<"seo_pieces">>;
 export const PIECE_INSERT_COLUMNS_DECLARED: [UndeclaredPieceColumns] extends [never] ? true : never = true;
 
-export type OwnPiece = ComparedPiece & LinkablePiece;
+/** Une de ses pièces : son texte (distance), ses champs de lien, et les questions qu'elle traite déjà. */
+export type OwnPiece = ComparedPiece & LinkablePiece & { questions: string[] };
+
+/** Les questions qu'une pièce traite : ses titres H2 et les questions de sa FAQ. */
+export function questionsOf(bodyMd: string | null, faq: ReadonlyArray<{ question?: string }> | null): string[] {
+  return [...sectionsOf(bodyMd ?? "").map((s) => s.heading), ...(faq ?? []).map((f) => f.question ?? "").filter(Boolean)];
+}
 
 export type PipelinePorts = {
   claim(kind: SeoKind): Promise<ClaimResult>;
@@ -145,7 +157,7 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
       const claimId = claim.claim_id;
       await ports.assignTarget(target.id);
 
-      const brief = briefFor(target, input);
+      const brief = briefFor(target, input, own.flatMap((o) => o.questions));
       let cost = 0;
       let failure: FailureReport | undefined;
       let firstFindings: Finding[] = [];
@@ -231,7 +243,17 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
         if (!pieceId) await ports.release(claimId, detail);
       }
       if (status === "quarantined") await ports.retireTarget(target.id);
-      else if (last?.text && pieceId) own.push({ id: pieceId, text: last.text, title: row.title, slug: row.slug, status: "needs_review", published_url: null });
+      else if (last?.text && pieceId) {
+        own.push({
+          id: pieceId,
+          text: last.text,
+          title: row.title,
+          slug: row.slug,
+          status: "needs_review",
+          published_url: null,
+          questions: questionsOf(row.body_md, row.faq),
+        });
+      }
 
       pieces.push({
         targetId: target.id,
@@ -252,7 +274,7 @@ export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): P
 
 /* ── Le brief d'une cible ─────────────────────────────────────────────── */
 
-function briefFor(target: StoredCandidate, input: PipelineInput): SeoWriterBrief {
+function briefFor(target: StoredCandidate, input: PipelineInput, answeredElsewhere: string[]): SeoWriterBrief {
   const { ctx } = input;
   return {
     kind: target.kind,
@@ -266,6 +288,7 @@ function briefFor(target: StoredCandidate, input: PipelineInput): SeoWriterBrief
     sources: ctx.sources,
     ethicsRules: input.ethicsRules,
     bannedPhrases: input.bannedList,
+    answeredElsewhere: [...new Set(answeredElsewhere)].slice(0, 40),
   };
 }
 
@@ -303,7 +326,8 @@ async function evaluate(
       findings: parsed.error.issues.slice(0, 8).map((i) => ({ check: "schema.invalid", detail: `${i.path.join(".") || "(root)"}: ${i.message}` })),
     };
   }
-  const output = parsed.data;
+  // Une requête recopiée en minuscules ne fait pas un titre : la casse de tête est posée en code.
+  const output = { ...parsed.data, title: sentenceCase(parsed.data.title), h1: sentenceCase(parsed.data.h1) };
   const bodyMd = assembleBody(output);
   const piece = {
     kind: target.kind,
@@ -338,6 +362,11 @@ async function evaluate(
       brandText: [input.ctx.brand.positioning, input.ctx.brand.usp].filter(Boolean).join(" "),
     }),
     ...distanceFindings(body, own),
+    ...questionOverlapFindings(
+      questionsOf(bodyMd, output.faq),
+      own.flatMap((o) => o.questions),
+      target.modalityKey ? [input.terms.modality.get(target.modalityKey) ?? ""] : []
+    ),
     ...collisionFindings(body, await ports.peerPieces(target))
   );
 

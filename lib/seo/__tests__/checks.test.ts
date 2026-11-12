@@ -12,7 +12,8 @@ import {
   structureFindings,
   type PieceText,
 } from "@/lib/seo/checks";
-import { collisionFindings, distanceFindings, shingles, specificityFindings } from "@/lib/seo/gates";
+import { collisionFindings, distanceFindings, questionOverlapFindings, shingles, specificityFindings } from "@/lib/seo/gates";
+import { sentenceCase } from "@/lib/seo/checks";
 import { assembleBody } from "@/lib/seo/output";
 import { fixtureOutput } from "@/lib/seo/__tests__/fixture-output";
 
@@ -48,6 +49,10 @@ describe("contrôles SEO", () => {
   it("title ≤ 60", () => {
     expect(checks(seoFindings(piece({ title: `${QUERY} — a long and careful explanation for you` })))).toContain("seo.title_length");
   });
+  it("le constat de meta dit combien de caractères ajouter", () => {
+    const f = seoFindings(piece({ meta: "x".repeat(132) })).find((x) => x.check === "seo.meta_length");
+    expect(f?.detail).toContain("add 8 to 28 characters");
+  });
   it("meta de 140 à 160", () => {
     expect(checks(seoFindings(piece({ meta: "Too short." })))).toContain("seo.meta_length");
     expect(checks(seoFindings(piece({ meta: "x".repeat(161) })))).toContain("seo.meta_length");
@@ -81,6 +86,18 @@ describe("structure", () => {
     expect(checks(structureFindings({ ...short, bodyMd: assembleBody(out) }))).toContain("structure.word_count");
     expect(checks(structureFindings({ ...piece(), kind: "article" }))).toContain("structure.word_count");
   });
+  it("une puce est un élément, pas une phrase d'introduction (défaut du premier mois réel)", () => {
+    const p = piece();
+    const body = p.bodyMd + "\n\n- Questions that can be useful during preparation include:\n- What are the phases?\n";
+    expect(checks(structureFindings({ ...p, bodyMd: body }))).toContain("structure.bullet_lead_in");
+  });
+  it("une phrase qui annonce une liste est suivie de la liste (défaut du troisième passage réel)", () => {
+    const p = piece();
+    const detached = p.bodyMd + "\n\nYou might ask the following:\n\nIt is also reasonable to ask about pacing.\n\n- One\n- Two\n";
+    expect(checks(structureFindings({ ...p, bodyMd: detached }))).toContain("structure.list_detached");
+    const attached = p.bodyMd + "\n\nYou might ask the following:\n\n- One\n- Two\n";
+    expect(checks(structureFindings({ ...p, bodyMd: attached }))).not.toContain("structure.list_detached");
+  });
   it("FAQ de 4 à 6", () => {
     const p = piece();
     expect(checks(structureFindings({ ...p, faq: p.faq.slice(0, 3) }))).toContain("structure.faq_count");
@@ -90,7 +107,17 @@ describe("structure", () => {
     expect(answersHeading("How does EMDR work?", "EMDR works by pairing recall with bilateral stimulation.")).toBe(true);
     expect(answersHeading("How does EMDR work?", "Many people wonder about this.")).toBe(false);
     expect(answersHeading("How does EMDR work?", "Have you ever wondered how EMDR works?")).toBe(false);
-    expect(answersHeading("Is EMDR safe?", "Yes.")).toBe(false);
+    expect(answersHeading("Is EMDR safe?", "Maybe so.")).toBe(false);
+  });
+  it("réponse d'abord : une question fermée se répond par oui ou non (phrases du premier mois réel)", () => {
+    expect(
+      answersHeading("Can I stop EMDR processing during a session?", "Yes, you can tell the therapist that you want to pause, slow down, or shift the focus.")
+    ).toBe(true);
+    expect(answersHeading("What if I am unsure what to focus on?", "Yes, you can begin EMDR therapy without a fully defined target.")).toBe(true);
+    expect(answersHeading("Is IFS only focused on childhood experiences?", "No.")).toBe(true);
+    expect(answersHeading("Do I have to share every detail of a difficult experience?", "Not necessarily.")).toBe(true);
+    expect(answersHeading("Can IFS and EMDR be used in the same therapy practice?", "Yes.")).toBe(true);
+    expect(answersHeading("Can I stop EMDR processing during a session?", "Many people wonder about this part of the work.")).toBe(false);
   });
 });
 
@@ -119,6 +146,9 @@ describe("rien qui ne vienne du brief", () => {
     expect(checks(practiceFactFindings("Telehealth is available."))).toEqual(["facts.practice_invented"]);
     expect(checks(practiceFactFindings("With 15 years of experience."))).toEqual(["facts.practice_invented"]);
     expect(practiceFactFindings("A session lasts about fifty minutes.")).toEqual([]);
+    // ⚠ « medical » n'est pas Medi-Cal : faux positif du troisième passage réel (2026-11-12)
+    expect(practiceFactFindings("A pregnancy, birth, postpartum medical event, or early caregiving experience.")).toEqual([]);
+    expect(checks(practiceFactFindings("We accept Medi-Cal."))).toEqual(["facts.practice_invented"]);
   });
 });
 
@@ -159,5 +189,36 @@ describe("gates adaptées au texte long", () => {
     const found = collisionFindings(a, [{ id: "11111111-2222-3333-4444-555555555555", text: a }]);
     expect(checks(found)).toEqual(["gate.peer_collision"]);
     expect(found[0].detail).not.toContain("11111111");
+  });
+});
+
+describe("défauts relevés à la relecture du premier mois réel", () => {
+  it("la même question sur deux pages de son site (formulations réelles)", () => {
+    const found = questionOverlapFindings(
+      ["Do I have to talk through every detail of a difficult experience?"],
+      ["Do I have to share every detail of a difficult experience?", "Is EMDR only about eye movements?"]
+    );
+    expect(checks(found)).toEqual(["gate.question_repeated"]);
+    expect(questionOverlapFindings(["Is EMDR the same as hypnosis?"], ["What is bilateral stimulation?"])).toEqual([]);
+  });
+  it("les mots de sa grille ne font pas une répétition (troisième passage réel)", () => {
+    expect(
+      questionOverlapFindings(["Why might new parents consider EMDR therapy?"], ["Who may consider EMDR therapy?"], ["EMDR therapy"])
+    ).toEqual([]);
+    expect(
+      checks(questionOverlapFindings(
+        ["Do I have to talk through every detail of a difficult experience?"],
+        ["Do I have to share every detail of a difficult experience?"],
+        ["EMDR therapy"]
+      ))
+    ).toEqual(["gate.question_repeated"]);
+  });
+  it("un fragment n'est pas un paragraphe (« paragraphs »)", () => {
+    const p = piece();
+    const body = p.bodyMd.replace("\n\n## ", "\n\nparagraphs\n\n## ");
+    expect(checks(structureFindings({ ...p, bodyMd: body }))).toContain("structure.fragment");
+  });
+  it("une requête recopiée en minuscules devient un titre", () => {
+    expect(sentenceCase("what to expect in a first EMDR therapy session")).toBe("What to expect in a first EMDR therapy session");
   });
 });

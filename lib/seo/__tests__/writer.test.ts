@@ -29,6 +29,7 @@ const BRIEF: SeoWriterBrief = {
   sources: [{ label: "NIMH", url: "https://www.nimh.nih.gov/news" }],
   ethicsRules: ["No testimonials: ..."],
   bannedPhrases: ["safe space", "your journey"],
+  answeredElsewhere: ["Is EMDR the same as hypnosis?"],
 };
 
 const OUTPUT = {
@@ -54,6 +55,7 @@ describe("le brief", () => {
     expect(sys).toContain('"safe space"');
     expect(sys).toContain("Location: Oakland, CA");
     expect(sys).toContain("Do NOT write a byline");
+    expect(sys).toContain('do not ask or answer them again, in the FAQ or as a heading: "Is EMDR the same as hypnosis?"');
   });
 
   it("un article ne reçoit aucun lieu", () => {

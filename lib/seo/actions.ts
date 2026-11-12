@@ -50,7 +50,7 @@ export async function editFindings(text: string, checks: TextChecks): Promise<Fi
   const [banned, ethics] = await Promise.all([checks.bannedPhrases(text), checks.ethicsBlocks(text)]);
   return [
     ...banned.map((p) => ({ check: "banned_phrase", detail: `“${p}” is a phrase almost every therapist site uses. Say it in your own words.` })),
-    ...ethics.map((e) => ({ check: `ethics.${e.rule}`, detail: `“${e.excerpt}” can put a licence at risk in an ad. Describe the work instead.` })),
+    ...ethics.map((e) => ({ check: `ethics.${e.rule}`, detail: `“${e.excerpt}” can put a license at risk in an ad. Describe the work instead.` })),
   ];
 }
 
@@ -102,7 +102,7 @@ export async function applyPieceAction(
 }
 
 function friendlyDbMessage(message: string): string {
-  if (/Advertising ethics/i.test(message)) return "A phrase in the text can put a licence at risk in an ad. Describe the work instead.";
+  if (/Advertising ethics/i.test(message)) return "A phrase in the text can put a license at risk in an ad. Describe the work instead.";
   if (/Banned phrase/i.test(message)) return "The text uses a phrase almost every therapist site uses. Say it in your own words.";
   return "That change could not be saved.";
 }

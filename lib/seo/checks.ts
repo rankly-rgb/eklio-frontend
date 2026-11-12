@@ -82,9 +82,13 @@ export function seoFindings(p: PieceText): Finding[] {
     out.push({ check: "seo.title_length", detail: `the title is ${p.title.length} characters; it must be at most ${TITLE_MAX}.` });
   }
   if (p.meta.length < META_RANGE.min || p.meta.length > META_RANGE.max) {
+    const fix =
+      p.meta.length < META_RANGE.min
+        ? `add ${META_RANGE.min - p.meta.length} to ${META_RANGE.max - p.meta.length} characters`
+        : `remove ${p.meta.length - META_RANGE.max} to ${p.meta.length - META_RANGE.min} characters`;
     out.push({
       check: "seo.meta_length",
-      detail: `the meta description is ${p.meta.length} characters; it must be ${META_RANGE.min} to ${META_RANGE.max}.`,
+      detail: `the meta description is ${p.meta.length} characters; it must be ${META_RANGE.min} to ${META_RANGE.max}: ${fix}.`,
     });
   }
   if (p.h1.trim() === "" || /^#\s/m.test(p.bodyMd)) {
@@ -139,8 +143,25 @@ export function firstSentence(paragraph: string): string {
 export function answersHeading(heading: string, sentence: string): boolean {
   const s = sentence.trim();
   if (s.endsWith("?")) return false;
+  /*
+   * « No. », « Not necessarily. » : les réponses les plus directes qui soient,
+   * et elles sont COURTES — la borne de longueur ci-dessous les refusait
+   * (deuxième et troisième passages réels, 2026-11-12). La réponse explicite
+   * se teste donc AVANT la longueur.
+   */
+  if (/^(yes|no|not necessarily|not always|usually|often|generally|in most cases|it depends)\b/i.test(s)) {
+    return s.split(/\s+/).filter(Boolean).length <= 45;
+  }
   const n = s.split(/\s+/).filter(Boolean).length;
   if (n < 4 || n > 45) return false;
+  /*
+   * ⚠ UNE QUESTION FERMÉE SE RÉPOND PAR OUI OU NON. Mesuré sur le premier mois
+   * réel (2026-11-12) : « Can I stop EMDR processing during a session? » →
+   * « Yes, you can tell the therapist that you want to pause… » ne partage
+   * aucune racine avec la question, et la règle des racines la refusait — deux
+   * pièces en quarantaine pour une réponse exemplaire. Une phrase qui OUVRE sur
+   * une réponse explicite répond.
+   */
   const h = contentRoots(heading);
   if (h.size === 0) return true;
   const roots = contentRoots(s);
@@ -171,15 +192,40 @@ export function structureFindings(p: PieceText): Finding[] {
       });
     }
   }
-  for (const f of p.faq) {
-    const first = firstSentence(f.answer);
-    if (!answersHeading(f.question, first)) {
-      out.push({
-        check: "structure.faq_answer_first",
-        detail: `the answer to "${f.question}" must open with a direct answer (it reads: "${first.slice(0, 140)}").`,
-      });
+  /*
+   * Un « paragraphe » de un à trois mots n'en est pas un : au premier mois réel,
+   * le modèle a écrit le mot « paragraphs » — le nom du champ — comme paragraphe.
+   */
+  for (const b of p.bodyMd.split(/\n{2,}/).map((x) => x.trim())) {
+    if (b && !/^(#|-\s)/.test(b) && b.split(/\s+/).length < 4) {
+      out.push({ check: "structure.fragment", detail: `remove the stray fragment "${b.slice(0, 60)}": every paragraph is a full sentence.` });
     }
   }
+  /* Un paragraphe qui annonce une liste (« … the following: ») doit être suivi de la liste. */
+  const blocks = p.bodyMd.split(/\n{2,}/).map((b) => b.trim());
+  blocks.forEach((b, i) => {
+    if (/:\s*$/.test(b) && !/^#/.test(b) && !/^-\s/.test(b) && !/^-\s/.test(blocks[i + 1] ?? "")) {
+      out.push({
+        check: "structure.list_detached",
+        detail: `"${b.slice(-100)}" announces a list that does not follow it: put that sentence as the LAST paragraph of its section, right before the bullets, or rewrite it without a colon.`,
+      });
+    }
+  });
+  const leadIns = p.bodyMd.split("\n").filter((l) => /^-\s+.*:\s*$/.test(l));
+  if (leadIns.length > 0) {
+    out.push({
+      check: "structure.bullet_lead_in",
+      detail: `a bullet is an item, not a lead-in: move "${leadIns[0].replace(/^-\s+/, "").slice(0, 120)}" into the paragraph above the list.`,
+    });
+  }
+  /*
+   * ⚠ LA FAQ N'A PLUS DE CONTRÔLE « RÉPONSE D'ABORD » BLOQUANT. Le brief le
+   * demande sous chaque H2 ; je l'avais étendu à la FAQ. Mesuré sur le premier
+   * mois réel (2026-11-12) : cinq faux positifs sur des réponses directes
+   * (« Not necessarily. », « You can still discuss EMDR with a therapist. »),
+   * deux quarantaines et quatre réécritures payées pour rien. La consigne reste
+   * dans le brief ; le contrôle bloquant reste sur les H2, là où la règle est écrite.
+   */
   return out;
 }
 
@@ -279,7 +325,7 @@ export function placeFindings(text: string, brief: { city: string | null; state:
 
 const INVENTED_PRACTICE_FACTS: Array<[RegExp, string]> = [
   [/\$\s?\d|\b\d+\s?dollars\b|\bsliding[- ]scale\b|\b(session|hourly) (fee|rate)s?\b|\bfree (consultation|consult|session|call)\b/i, "fees and prices"],
-  [/\b(insurance|insurers?|in-network|out-of-network|superbills?|aetna|cigna|blue (cross|shield)|kaiser|united ?healthcare|medi-?cal|medicare|medicaid|anthem|optum|magellan|tricare)\b/i, "insurance"],
+  [/\b(insurance|insurers?|in-network|out-of-network|superbills?|aetna|cigna|blue (cross|shield)|kaiser|united ?healthcare|medi-cal|medicare|medicaid|anthem|optum|magellan|tricare)\b/i, "insurance"],
   [/\b(telehealth|teletherapy|video sessions?|online sessions?|virtual sessions?|in-person sessions?|office hours|evening (sessions|appointments)|weekend (sessions|appointments)|waitlist|accepting new clients)\b/i, "format, hours or availability"],
   [/\b\d+\+?\s+years? (of )?(experience|in practice|practicing)\b|\b(certified|trained) in\b/i, "experience or certifications"],
 ];
@@ -324,4 +370,10 @@ export function deterministicFindings(p: PieceText, allowedUrls: readonly string
     ...clinicalFindings(text),
     ...licenceFindings(text),
   ];
+}
+
+/** La première lettre en capitale : une requête recopiée telle quelle ne fait pas un titre. */
+export function sentenceCase(text: string): string {
+  const t = text.trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }

@@ -244,6 +244,23 @@ describe("réécriture ciblée, puis quarantaine — jamais de boucle", () => {
   });
 });
 
+describe("ses pages ne répondent pas deux fois à la même question", () => {
+  it("le second article qui reprend une question du premier est réécrit, avec la question nommée — et le brief la donnait déjà", async () => {
+    const shared = { question: "Do I have to share every detail of a difficult experience?", answer: "No, you do not have to share every detail." };
+    let seed = 60;
+    const withShared = (req: SeoWriteRequest) => {
+      const out = good(seed++)(req);
+      return { ...out, faq: [...out.faq.slice(0, 3), shared] };
+    };
+    const { writer, calls } = fakeWriter([withShared, withShared, good(70)]);
+    const { ports } = fakePorts();
+    const out = await runSeoMonth(ports, input(writer, { local_page: [], article: [ART1, ART2] }));
+    expect(calls[1].brief.answeredElsewhere).toContain(shared.question);
+    expect(calls[2].failure?.findings.map((f) => f.check)).toContain("gate.question_repeated");
+    expect(out.pieces.map((p) => p.status)).toEqual(["needs_review", "needs_review"]);
+  });
+});
+
 describe("une panne du fournisseur n'est pas un échec de pièce", () => {
   it("plafond atteint : emplacement rendu, cible remise disponible, mois arrêté, pas de quarantaine", async () => {
     const { writer } = fakeWriter([() => new SpendCapReached("plafond de session")]);

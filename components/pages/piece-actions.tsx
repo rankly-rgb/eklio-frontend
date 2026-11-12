@@ -71,7 +71,7 @@ export function ReviewPanel({ id, body }: { id: string; body: string }) {
         Read it as its author
       </h2>
       <p className="text-helper leading-prose text-ink-2">
-        This page goes out under your name and licence. Read all of it. Change anything that does not
+        This page goes out under your name and license. Read all of it. Change anything that does not
         sound like you or does not match how you work. The text, the title and the description can be
         copied once you confirm.
       </p>

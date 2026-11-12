@@ -5,7 +5,7 @@ import { ethicsRulesFor } from "@/lib/content/generate/ethics-rules";
 import { claimSeoSlot, releaseSeoSlot, seoDb, seoPatch, type SeoClient } from "@/lib/seo/db";
 import { readSearchTerms, readSeoContext, type ContextOutcome } from "@/lib/seo/context";
 import { planSeoMonth, type MonthPlan } from "@/lib/seo/plan";
-import { runSeoMonth, type MonthOutcome, type OwnPiece, type PipelinePorts } from "@/lib/seo/pipeline";
+import { questionsOf, runSeoMonth, type MonthOutcome, type OwnPiece, type PipelinePorts } from "@/lib/seo/pipeline";
 import type { SeoWriterPort } from "@/lib/seo/writer";
 
 /*
@@ -82,7 +82,11 @@ export function serverPipelinePorts(admin: Admin, input: { userId: string; month
       if (error) throw new Error(`seo_pieces (own): ${error.message}`);
       const rows = (data ?? []) as Array<{ id: string; title: string | null; slug: string | null; status: string; published_url: string | null; body_md: string | null; faq: unknown }>;
       const texts = await piecesText(rows);
-      return rows.map((r, i): OwnPiece => ({ ...r, text: texts[i].text }));
+      return rows.map((r, i): OwnPiece => ({
+        ...r,
+        text: texts[i].text,
+        questions: questionsOf(r.body_md, Array.isArray(r.faq) ? (r.faq as Array<{ question?: string }>) : null),
+      }));
     },
 
     async peerPieces(target) {

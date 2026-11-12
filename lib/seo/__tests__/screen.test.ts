@@ -93,6 +93,6 @@ describe("les gestes", () => {
     const { client } = fakeClient({ data: null, error: { code: "23514", message: "Advertising ethics: guarantee" } });
     const r = await applyPieceAction(client, "x", { action: "edit", body_md: "y".repeat(300) }, "needs_review");
     expect(r).toMatchObject({ ok: false, status: 400 });
-    expect((r as { message: string }).message).toMatch(/licence/);
+    expect((r as { message: string }).message).toMatch(/license/);
   });
 });

@@ -35,6 +35,8 @@ export type SeoWriterBrief = {
   ethicsRules: string[];
   /** Les phrases bannies actives (`banned_phrases`). */
   bannedPhrases: string[];
+  /** Les questions que ses autres pages traitent déjà (titres H2 et FAQ). */
+  answeredElsewhere: string[];
 };
 
 export type FailureReport = {
@@ -66,12 +68,15 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
     `- The body (intro + sections, FAQ excluded) is ${range.min} to ${range.max} words. Aim for the middle of that range.`,
     "- 4 to 7 sections. Each section heading is a question or a plain topic a reader would search for. No '#' characters in headings.",
     "- ANSWER FIRST: the first sentence under every section heading directly answers that heading in one plain sentence. Then explain.",
-    "- Paragraphs are plain prose. The only formatting allowed inside them is a Markdown link [anchor](url) or **bold**. Use bullets only where a list is genuinely clearer.",
+    "- Paragraphs are plain prose. The only formatting allowed inside them is a Markdown link [anchor](url) or **bold**. Use bullets only where a list is genuinely clearer; each bullet is an item, never a lead-in sentence ending with a colon. Bullets are shown right after the section's paragraphs, so only the LAST paragraph of a section may introduce them.",
     `- FAQ: ${FAQ_RANGE.min} to ${FAQ_RANGE.max} questions real people ask about this topic, each answered in 2 to 4 sentences, answer first. Do not repeat a section heading as a question.`,
     `- title: at most ${TITLE_MAX} characters, and it contains the exact phrase "${brief.primaryQuery}".`,
     `- h1: contains the exact phrase "${brief.primaryQuery}". It is the only H1; never put one in the body.`,
     `- intro: one paragraph whose first sentence contains the exact phrase "${brief.primaryQuery}".`,
-    `- meta_description: ${META_RANGE.min} to ${META_RANGE.max} characters (count them), one or two sentences, no quotation marks.`,
+    `- meta_description: ${META_RANGE.min} to ${META_RANGE.max} characters (count them; aim for 150), one or two sentences, no quotation marks.`,
+    brief.answeredElsewhere.length > 0
+      ? `- Her other pages already answer these questions; do not ask or answer them again, in the FAQ or as a heading: ${brief.answeredElsewhere.map((q) => `"${q}"`).join("; ")}`
+      : null,
     "",
     "WHAT YOU MAY SAY",
     "- Psychoeducation only: what the approach is, how it generally works, what a session usually looks like, who it is commonly used with, what to ask a therapist. Describe the work, never its results.",
