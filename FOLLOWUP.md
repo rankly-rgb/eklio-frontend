@@ -4286,3 +4286,73 @@ Pile locale sans Storage (Docker indisponible : ECR et Docker Hub refusés). Pro
 30 cartes composées en PNG par le vrai chemin (`card-store` + rasteriseur, polices réelles),
 2 s. Non prouvé : l'`upload` réel et la policy de lecture. La réponse du cron dit
 `cards.stored` / `cards.failed` : c'est là qu'il faut le lire au premier mois de production.
+
+---
+
+# Chantier pages SEO v1 (2026-11-12) — rencontré, non corrigé
+
+Numérotés S1… pour ne pas se confondre avec la série F. Rien ci-dessous n'a été
+modifié par ce chantier.
+
+## S1 — Le cron Instagram ignore les octrois comp sans abonnement
+`lib/content/month/server-ports.ts:337-344` (`serverDuePort.candidates`) ne lit que
+`subscriptions`. Une praticienne qui n'a qu'un `comp_grants` actif n'est jamais
+candidate, alors que `check_monthly_presence_entitlement` lui donne droit. Le cron SEO,
+lui, énumère les deux (`lib/seo/server-ports.ts`, `seoCandidateUsers`).
+
+## S2 — Le choix des comptes Instagram se décide encore en TypeScript
+`lib/content/month/due.ts:133` appelle `isEntitledToMonthlyPresence` (TS). La
+dépense est ensuite gardée en SQL par `reserve_credit`, mais l'éligibilité ne l'est
+pas. Le chokepoint SQL pour les publications Instagram reste à faire (hors périmètre
+par décision).
+
+## S3 — La mention de licence d'un psychologue en Californie
+`license_type_states.abbreviation` vaut NULL pour `(licensed_psychologist, CA)`
+(« PSY » est un préfixe de numéro, migration 20260917160202), mais
+`licenceMention` retombe sur `LICENCE_ABBREVIATION.licensed_psychologist = "PSY"`
+(`lib/content/licence.ts:41`) et produit « PSY 12345 ». La signature SEO hérite de
+ce comportement.
+
+## S4 — Les types Supabase ne sont pas régénérés, et « F142 » n'existe pas
+Aucun ticket F142 dans les deux dépôts. Le constat est vrai : `types/supabase.ts`
+porte un ADDENDUM écrit à la main (l.4107 et suivantes), et la copie backend
+diffère. Ce chantier n'a pas pu régénérer (ni Docker, ni CLI ; la récupération de
+`postgres-meta` a été refusée par la politique de la session). Les accès SEO passent
+par `lib/seo/db.ts` (non typé, Zod à la frontière, colonnes et RPC confrontées au
+SQL par `lib/seo/__tests__/rpc-contract.test.ts`). Après régénération : remplacer
+`seoRpc`/`seoDb` par des appels typés, et le contrôleur générique
+`lib/__tests__/rpc-signatures.test.ts` les couvrira.
+
+## S5 — Le mois Instagram code la voix en dur
+`lib/content/month/run-for-kit.ts:210` : `voice: "plain, warm, unhurried"`, sans
+lire `brand_kits.voice_guide`. Le rédacteur SEO lit `voice_guide`.
+
+## S6 — `insight_sources` ne porte que des racines de site
+Cinq URL (apa.org/news, counseling.org, nimh.nih.gov/news, psychologytoday.com,
+pubmed). La règle « liens externes seulement vers `insight_sources` » est appliquée
+à l'URL EXACTE : une pièce ne peut donc citer qu'une page d'accueil. Résultat mesuré :
+aucune des pièces du mois réel ne cite de source. Pour des citations utiles (AEO), il
+faut curer des URL profondes dans cette table. Et `psychologytoday.com` est un annuaire
+concurrent du site de la praticienne : le lier mérite une décision.
+
+## S7 — L'en-tête est plein à 1 280 px
+Avec « Website pages », la navigation a cinq entrées. Les libellés ne se cassent plus
+(`whitespace-nowrap`), mais le nom d'espace de travail à droite (« Lena Park
+Therapy ») passe sur deux lignes, et entre 768 et ~1 100 px l'en-tête n'a pas été
+mesuré.
+
+## S8 — La meta description est le contrôle que le modèle rate le plus
+Sur 17 appels réels : 132, 134, 138, 139 caractères pour un minimum de 140, même
+après réécriture avec le nombre exact de caractères à ajouter. Une aide côté code
+(proposer deux variantes, choisir celle qui tient) éviterait des réécritures.
+
+## S9 — Une pièce du compte de test n°1 garde un défaut de puce
+« What to expect in a first EMDR therapy session » (base locale, compte
+`dana.whitfield@seo-test.local`) porte une puce « …include: » écrite avant que le
+contrôle `structure.bullet_lead_in` existe. Elle est en relecture : c'est le cas que
+la relecture obligatoire attrape.
+
+## S10 — La collision entre abonnées sur un article se borne à 200 pièces
+`peerPieces` compare un article aux articles d'autres abonnées de même modalité,
+toutes villes, limite 200 (`lib/seo/server-ports.ts`). À l'échelle, il faudra une
+empreinte en base (comme `usp_fingerprints`) plutôt qu'une lecture.
