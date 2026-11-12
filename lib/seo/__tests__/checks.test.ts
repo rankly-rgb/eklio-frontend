@@ -239,3 +239,26 @@ describe("une étape décrite n'est pas une promesse (session 2, profil D)", () 
     expect(checks(clinicalFindings("You will be able to stop worrying."))).toEqual(["clinical.claim"]);
   });
 });
+
+describe("deux questions sur deux approches différentes ne se répètent pas (session 2, profil D)", () => {
+  const VOCAB = ["EMDR therapy", "IFS therapy", "somatic experiencing therapy", "Gottman Method couples therapy", "CBT therapy"];
+  it.each([
+    // Les trois faux positifs réels du premier tour : chacun a coûté une réécriture.
+    ["What happens during a somatic experiencing session?", "What happens in an EMDR therapy session?"],
+    ["Somatic experiencing and EMDR at Natarajan Therapy", "What is EMDR therapy?"],
+    ["What will the therapist ask about in the first session?", "What should you ask an EMDR therapist?"],
+  ])("« %s » ≠ « %s »", (mine, other) => {
+    expect(questionOverlapFindings([mine], [other], VOCAB)).toEqual([]);
+  });
+  it("la même question sur la même approche reste une répétition", () => {
+    expect(checks(questionOverlapFindings(["How does EMDR therapy work?"], ["How does EMDR work?"], VOCAB))).toEqual(["gate.question_repeated"]);
+    expect(
+      checks(questionOverlapFindings(
+        ["Do I have to talk through every detail of a difficult experience?"],
+        ["Do I have to share every detail of a difficult experience?"],
+        VOCAB
+      ))
+    ).toEqual(["gate.question_repeated"]);
+    expect(questionOverlapFindings(["Why might new parents consider EMDR therapy?"], ["Who may consider EMDR therapy?"], VOCAB)).toEqual([]);
+  });
+});

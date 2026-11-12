@@ -365,7 +365,7 @@ async function evaluate(
     ...questionOverlapFindings(
       questionsOf(bodyMd, output.faq),
       own.flatMap((o) => o.questions),
-      target.modalityKey ? [input.terms.modality.get(target.modalityKey) ?? ""] : []
+      [...input.terms.modality.values()]
     ),
     ...collisionFindings(body, await ports.peerPieces(target))
   );

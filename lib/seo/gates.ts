@@ -134,27 +134,48 @@ export function specificityFindings(text: string, facts: SpecificFacts): Finding
  */
 export const QUESTION_OVERLAP_MAX = 0.5;
 
-/**
- * ⚠ LES MOTS DE SA GRILLE NE COMPTENT PAS. « EMDR therapy » est dans presque
- * toutes ses questions : le compter faisait de « Why might new parents consider
- * EMDR therapy? » une répétition de « Who may consider EMDR therapy? »
- * (troisième passage réel). `ignore` reçoit le terme de la MODALITÉ seulement : la
- * population, elle, est précisément ce qui distingue « pour les jeunes parents »
- * d'une question générale.
+/*
+ * ⚠ DEUX APPROCHES, DEUX QUESTIONS. Session 1 : « EMDR therapy » est dans presque
+ * toutes ses questions, et le compter faisait de « Why might new parents consider
+ * EMDR therapy? » une répétition de « Who may consider EMDR therapy? ». La v1
+ * retirait le terme de l'approche de la PIÈCE — et pas celui de l'autre question :
+ * session 2, « What happens during a somatic experiencing session? » devenait une
+ * répétition de « What happens in an EMDR therapy session? » (trois faux positifs,
+ * trois réécritures payées).
+ *
+ * Désormais : chaque question est réduite aux approches du CATALOGUE qu'elle nomme.
+ * Deux questions qui n'en nomment pas les mêmes ne se répètent pas ; sinon, les mots
+ * des approches sont retirés et le reste est comparé.
  */
+const GENERIC_TERM_WORDS = new Set(["therapy", "method", "couples", "and"]);
+
+function signatures(vocabulary: readonly string[]): Array<{ term: string; words: string[] }> {
+  return vocabulary
+    .map((term) => ({ term, words: (term.toLowerCase().match(/[a-z']+/g) ?? []).filter((w) => !GENERIC_TERM_WORDS.has(w)) }))
+    .filter((s) => s.words.length > 0);
+}
+
 export function questionOverlapFindings(
   questions: readonly string[],
   answeredElsewhere: readonly string[],
-  ignore: readonly string[] = []
+  modalityVocabulary: readonly string[] = []
 ): Finding[] {
+  const sigs = signatures(modalityVocabulary);
+  const skip = new Set([...STOPWORDS, "therapy", "therapist", "method"]);
+  for (const s of sigs) for (const w of s.words) skip.add(w);
+  const read = (q: string) => {
+    const words = new Set(q.toLowerCase().match(/[a-z']+/g) ?? []);
+    const named = sigs.filter((s) => s.words.every((w) => words.has(w))).map((s) => s.term).sort().join("|");
+    return { named, roots: new Set(tokenize(q, skip)) };
+  };
   const out: Finding[] = [];
-  const skip = new Set(STOPWORDS);
-  for (const term of ignore) for (const w of term.toLowerCase().match(/[a-z']+/g) ?? []) skip.add(w);
   for (const q of questions) {
-    const mine = new Set(tokenize(q, skip));
-    if (mine.size === 0) continue;
+    const mine = read(q);
+    if (mine.roots.size === 0) continue;
     for (const other of answeredElsewhere) {
-      if (jaccardSimilarity(mine, new Set(tokenize(other, skip))) >= QUESTION_OVERLAP_MAX) {
+      const theirs = read(other);
+      if (theirs.named !== mine.named) continue;
+      if (jaccardSimilarity(mine.roots, theirs.roots) >= QUESTION_OVERLAP_MAX) {
         out.push({
           check: "gate.question_repeated",
           detail: `"${q}" is already answered on another of her pages ("${other}"); ask a different question.`,
