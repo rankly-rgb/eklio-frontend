@@ -4356,3 +4356,76 @@ la relecture obligatoire attrape.
 `peerPieces` compare un article aux articles d'autres abonnées de même modalité,
 toutes villes, limite 200 (`lib/seo/server-ports.ts`). À l'échelle, il faudra une
 empreinte en base (comme `usp_fingerprints`) plutôt qu'une lecture.
+
+---
+
+# Pages SEO v1 — session 2 (2026-11-12) : rencontré, non corrigé
+
+## S11 — Un déclenchement de la route sert UNE abonnée, parfois deux
+`app/api/cron/seo-pages/route.ts` : `START_BUDGET_MS = 120 000` et un mois d'abonnée
+prend 1,5 à 2,5 minutes (4 à 6 appels). Mesuré : le premier déclenchement du premier
+tour a servi A et différé les cinq autres. La route est idempotente ; c'est la CADENCE
+du cron qui décide de la couverture (runbook, étape 6). Une exécution en parallèle de
+plusieurs abonnées serait une fonctionnalité : hors session.
+
+## S12 — ⚠ Les États non vérifiés lisent une promesse fausse
+Profil B (LCSW, Brooklyn, NY) : abonnée Monthly Presence, refusée au préalable
+(`state_unverified`, F12) — sans dépense, comme prévu. Mais `/app/pages` lui affiche
+« Your first pages arrive on December 1, 2026. » (`lib/seo/screen.ts`, état `not_yet`),
+et rien n'arrivera tant que New York n'est pas vérifié. Même chose pour C (Texas).
+Capture : `SAMPLES/session-2/REAL-PRODUCT-SCREEN_profile-B_NY_app-pages_empty-state.png`.
+
+## S13 — « Trauma-informed » n'est pas une modalité du catalogue
+Le profil B demandait une modalité principale « trauma-informed » : `modality_cards` n'en
+a pas. Il porte `somatic_experiencing`. Si c'est une attente réelle des praticiennes,
+c'est une décision de catalogue.
+
+## S14 — Trois faux positifs de contrôle mesurés au dernier tour, non corrigés
+Plus de budget pour corriger PUIS mesurer (règle de la session : une correction qui ne
+fait pas monter le taux est retirée).
+- `structure.answer_first` : « What Approaches Are Used in Couples Therapy? » →
+  « This practice uses Gottman Method and EFT… » refusé (racine « uses » ≠ « used ») ;
+  « What can be part of the conversation? » → « Therapy can include memories, current
+  situations… » refusé. La comparaison par préfixe de 5 lettres est trop fruste.
+- `clinical.claim` : « These labels describe observable communication behaviors, not fixed
+  traits or diagnoses. » refusé — la phrase ÉCARTE le diagnostic.
+- `gate.question_repeated` : une section de contact sur chaque page locale (« How can I
+  contact Alvarez Psychology? » / « Contact Alvarez Psychology about ACT ») est prise pour
+  une répétition. Vrai recouvrement de mots, faux sujet de cannibalisation.
+
+## S15 — La meta description reste la première cause d'échec du premier coup
+3 pièces sur 12 au dernier tour (134 à 138 caractères). Corriger le brief (correction 4 :
+longueur en mots) a déplacé l'erreur vers le trop long (163, 168, 172) sans faire monter le
+taux : retirée. Une aide côté code (S8) reste la piste.
+
+## S16 — La liste détachée de son introduction reste (1 pièce sur 12)
+Corriger le schéma (correction 10 : champ `bullets_intro`) n'a pas baissé la fréquence
+(1/12 avant, 1/12 après) : retirée. Le contrôle `structure.list_detached` la prend et la
+réécriture la corrige.
+
+## S17 — Deux abonnées de la même ville visent la même intention
+D et E (Oakland, EMDR) ont reçu toutes deux « EMDR therapy in Oakland, CA » (décembre) et
+« how EMDR therapy works » (janvier). Les textes sont éloignés (distance 0,0128, seuil
+0,15) : la gate de collision fait ce qu'elle mesure. Elle ne mesure pas l'intention.
+Décision produit, pas un seuil.
+
+## S18 — L'effet de S3 sur les pièces SEO (psychologue, Californie)
+Profil A : la ligne d'autrice affichée est « By Dr. Ines Alvarez, PSY 28456 » sur les trois
+pièces ; le JSON-LD porte `{"@type":"Person","name":"Dr. Ines Alvarez"}` sans `jobTitle`.
+« PSY 28456 » est la forme d'un numéro de licence californien, mais aucun titre
+professionnel n'apparaît ni dans la page ni dans les données structurées.
+
+## S19 — Deux termes de recherche curés (session 1) à relire
+`seo_modality_terms` : « CBT therapy » (titre « CBT therapy in Los Angeles, CA », la
+thérapie deux fois). `seo_population_terms` : « adults healing from the past » produit des
+requêtes que personne ne tape vraisemblablement.
+
+## S20 — Un premier paragraphe peut commencer en minuscule
+Profil E, page locale de janvier : « therapy for adults healing from the past in Oakland,
+CA can offer… » — la requête recopiée en tête de phrase. La casse de tête n'est posée en
+code que sur le title et le H1.
+
+## S21 — Le premier mois réel en production n'a pas d'outil produit pour un seul compte
+La route sert toutes les abonnées à la fois. Pour l'étape 7 du runbook, le harnais
+`scripts/seo-pages/run-user-month.ts` accepte un mode production explicite
+(`--production-url` ET `--i-write-production`). C'est un outil de harnais, à usage manuel.
