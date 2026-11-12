@@ -6,7 +6,10 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import { ButtonLink } from "@/components/ui/button";
 import { KIND_LABEL } from "@/lib/seo/kinds";
 import { readMonthPieces, readPieceMonths } from "@/lib/seo/read";
-import { STATUS_CTA, STATUS_TEXT, monthLabel, pagesScreen, parseMonthParam, searchLine } from "@/lib/seo/screen";
+import { STATUS_CTA, STATUS_TEXT, monthLabel, pagesScreen, parseMonthParam, searchLine, stateUnavailableText } from "@/lib/seo/screen";
+import { latestKitFor, licenceEligibility } from "@/lib/seo/context";
+import { seoDb } from "@/lib/seo/db";
+import { seoGenerationArmed } from "@/lib/seo/armed";
 
 /*
  * /app/pages — « Website pages ». Chaque mois, une page locale et deux articles
@@ -33,7 +36,21 @@ export default async function WebsitePagesPage({ searchParams }: PageProps<"/app
     readPieceMonths(supabase),
     readMonthPieces(supabase, month),
   ]);
-  const screen = pagesScreen({ entitled, hasHistory: months.length > 0, monthHasPieces: pieces.length > 0, month, now });
+  /*
+   * ⚠ LA MÊME RÉPONSE QUE LE PIPELINE (session 3) : `licenceEligibility`, lue avec SA
+   * session. Une praticienne d'un État non vérifié ne lit ni date ni promesse.
+   */
+  const kit = await latestKitFor(seoDb(supabase), user.id);
+  const eligibility = kit ? await licenceEligibility(seoDb(supabase), kit.projectId) : ({ ok: true } as const);
+  const screen = pagesScreen({
+    entitled,
+    hasHistory: months.length > 0,
+    monthHasPieces: pieces.length > 0,
+    eligibility,
+    armed: seoGenerationArmed(),
+    month,
+    now,
+  });
 
   return (
     <main className="route-enter flex-1 px-[var(--gutter)] pb-20 pt-8 max-md:px-[var(--gutter-sm)]">
@@ -83,6 +100,13 @@ export default async function WebsitePagesPage({ searchParams }: PageProps<"/app
             They are written from your brief: your approaches, the people you work with, and your city. You will
             read each one before anything can be copied.
           </p>
+        </div>
+      ) : null}
+
+      {screen.kind === "state_unavailable" ? (
+        <div className="mt-8 flex max-w-[560px] flex-col gap-3 rounded-card border border-line p-8">
+          <MonoLabel tracking="16">Not available in your state yet</MonoLabel>
+          <p className="text-body leading-prose text-ink">{stateUnavailableText(screen.state)}</p>
         </div>
       ) : null}
 

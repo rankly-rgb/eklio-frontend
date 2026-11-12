@@ -107,6 +107,39 @@ export async function latestKitFor(
   return row ? { brandKitId: row.id, projectId: row.project_id } : null;
 }
 
+export type LicenceEligibility =
+  | { ok: true; facts: Awaited<ReturnType<ReturnType<typeof serverPreflightPort>["licenceFacts"]>>; mention: string; state: string }
+  | { ok: false; reason: "licence_missing" | "state_unverified"; state: string | null; detail: string };
+
+/**
+ * ⚠ LA SEULE RÉPONSE À « CETTE PRATICIENNE PEUT-ELLE RECEVOIR DES PAGES ? » (session 3).
+ *
+ * Le pipeline (`readSeoContext`) refuse sur elle AVANT toute réservation, et l'écran
+ * `/app/pages` la lit pour dire, à une praticienne d'un État non vérifié, que la
+ * fonctionnalité n'y est pas disponible — au lieu de lui promettre une date. Une seule
+ * fonction, pour que les deux ne puissent jamais diverger. Elle lit avec le client qu'on
+ * lui donne : service_role pour le pipeline, la session pour l'écran (les deux tables
+ * lues sont lisibles par `authenticated`).
+ */
+export async function licenceEligibility(db: SeoClient, projectId: string): Promise<LicenceEligibility> {
+  const preflight = serverPreflightPort(db as never);
+  const facts = await preflight.licenceFacts(projectId);
+  const state = normalizeState(facts.stateCode);
+  const mention = licenceMention(facts);
+  if (!mention || !facts.licenseTypeId) {
+    return { ok: false, reason: "licence_missing", state, detail: "licence type or number missing from the brief" };
+  }
+  if (!state || !(await preflight.stateVerified(facts.licenseTypeId, state))) {
+    return {
+      ok: false,
+      reason: "state_unverified",
+      state,
+      detail: `state ${state ?? "(none)"} is not verified for ${facts.licenseTypeId} (F12)`,
+    };
+  }
+  return { ok: true, facts, mention, state };
+}
+
 export async function readSeoContext(db: SeoClient, userId: string): Promise<ContextOutcome> {
   const kit = await latestKitFor(db, userId);
   if (!kit) return { ok: false, reason: "no_brand_kit", detail: "no live brand kit" };
@@ -126,20 +159,9 @@ export async function readSeoContext(db: SeoClient, userId: string): Promise<Con
   if (modalityKeys.length === 0) return { ok: false, reason: "no_modality", detail: "the brief names no modality" };
 
   /* ── la licence : les MÊMES lectures que le mois Instagram ──────────── */
-  const preflight = serverPreflightPort(db as never);
-  const facts = await preflight.licenceFacts(kit.projectId);
-  const mention = licenceMention(facts);
-  if (!mention || !facts.licenseTypeId) {
-    return { ok: false, reason: "licence_missing", detail: "licence type or number missing from the brief" };
-  }
-  const state = normalizeState(facts.stateCode);
-  if (!state || !(await preflight.stateVerified(facts.licenseTypeId, state))) {
-    return {
-      ok: false,
-      reason: "state_unverified",
-      detail: `state ${state ?? "(none)"} is not verified for ${facts.licenseTypeId} (F12)`,
-    };
-  }
+  const eligibility = await licenceEligibility(db, kit.projectId);
+  if (!eligibility.ok) return { ok: false, reason: eligibility.reason, detail: eligibility.detail };
+  const { facts, mention } = eligibility;
 
   /* ── l'autrice ─────────────────────────────────────────────────────── */
   const specRead = await db

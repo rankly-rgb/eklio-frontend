@@ -1,4 +1,5 @@
 import type { PieceStatus } from "@/lib/seo/db";
+import { stateName } from "@/lib/seo/checks";
 
 /*
  * ══════════════════════════════════════════════════════════════════════════
@@ -23,6 +24,7 @@ import type { PieceStatus } from "@/lib/seo/db";
 export type PagesScreen =
   | { kind: "no_subscription" }
   | { kind: "not_yet"; arrives: string }
+  | { kind: "state_unavailable"; state: string }
   | { kind: "empty_month" }
   | { kind: "list"; readOnly: boolean };
 
@@ -30,14 +32,37 @@ export function pagesScreen(input: {
   entitled: boolean;
   hasHistory: boolean;
   monthHasPieces: boolean;
+  /**
+   * Ce que `licenceEligibility` a répondu — LA source qui fait aussi refuser la
+   * génération au pipeline. `state_unverified` : l'État n'a pas de règle publicitaire
+   * vérifiée (F12) ; rien ne sera généré tant qu'il ne l'est pas.
+   */
+  eligibility: { ok: true } | { ok: false; reason: "licence_missing" | "state_unverified"; state: string | null };
+  /**
+   * Le drapeau `SEO_GENERATION_ARMED`. ⚠ IL NE CHANGE PAS CE QUE L'ÉCRAN DIT : un État
+   * non vérifié l'est, drapeau allumé ou éteint, et une praticienne d'un État vérifié lit
+   * la date d'arrivée dans les deux cas (consigne de la session 1). Il est passé pour que
+   * le test le prouve.
+   */
+  armed: boolean;
   /** Le mois affiché, `YYYY-MM-01`. */
   month: string;
   now: Date;
 }): PagesScreen {
-  if (!input.entitled) {
-    return input.hasHistory ? { kind: "list", readOnly: true } : { kind: "no_subscription" };
+  // Son historique reste à elle, abonnement ou pas.
+  if (!input.entitled && input.hasHistory) return { kind: "list", readOnly: true };
+  if (input.entitled && input.monthHasPieces) return { kind: "list", readOnly: false };
+  /*
+   * ⚠ SESSION 3 : PAS DE PROMESSE À UN ÉTAT NON VÉRIFIÉ. Le profil B (New York) lisait
+   * « Your first pages arrive on December 1, 2026. » alors que le pipeline la refuse à
+   * chaque mois. Ni date ni promesse de disponibilité — et pas non plus l'offre « three
+   * pages every month » à une praticienne qui n'en recevrait aucune : ce cas passe AVANT
+   * l'absence d'abonnement.
+   */
+  if (!input.eligibility.ok && input.eligibility.reason === "state_unverified") {
+    return { kind: "state_unavailable", state: stateName(input.eligibility.state) ?? "your state" };
   }
-  if (input.monthHasPieces) return { kind: "list", readOnly: false };
+  if (!input.entitled) return { kind: "no_subscription" };
   const current = monthKey(input.now);
   // Un mois passé sans pièce reste vide ; le mois courant et les suivants attendent le prochain 1ᵉʳ.
   if (input.month < current) return { kind: "empty_month" };
@@ -93,4 +118,9 @@ export function searchLine(query: string): string {
 /** Ce que l'export demande avant de s'ouvrir. */
 export function exportOpen(status: PieceStatus): boolean {
   return status === "approved" || status === "exported" || status === "published";
+}
+
+/** Le message d'un État non vérifié, mot pour mot (session 3). */
+export function stateUnavailableText(state: string): string {
+  return `Website pages aren't available yet for clinicians licensed in ${state}. Nothing is generated or counted for you until they are.`;
 }

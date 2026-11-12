@@ -1,25 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { arrivalDate, exportOpen, monthLabel, pagesScreen, parseMonthParam, searchLine } from "@/lib/seo/screen";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { arrivalDate, exportOpen, monthLabel, pagesScreen, parseMonthParam, searchLine, stateUnavailableText } from "@/lib/seo/screen";
 import { applyPieceAction, editFindings, pieceActionSchema } from "@/lib/seo/actions";
 
 const NOW = new Date("2026-11-12T15:00:00Z");
 
 describe("l'écran Website pages", () => {
   it("sans abonnement ni historique : l'explication et l'offre", () => {
-    expect(pagesScreen({ entitled: false, hasHistory: false, monthHasPieces: false, month: "2026-11-01", now: NOW })).toEqual({ kind: "no_subscription" });
+    expect(pagesScreen({ eligibility: { ok: true }, armed: true, entitled: false, hasHistory: false, monthHasPieces: false, month: "2026-11-01", now: NOW })).toEqual({ kind: "no_subscription" });
   });
   it("après résiliation : l'historique, en lecture seule", () => {
-    expect(pagesScreen({ entitled: false, hasHistory: true, monthHasPieces: true, month: "2026-10-01", now: NOW })).toEqual({ kind: "list", readOnly: true });
+    expect(pagesScreen({ eligibility: { ok: true }, armed: true, entitled: false, hasHistory: true, monthHasPieces: true, month: "2026-10-01", now: NOW })).toEqual({ kind: "list", readOnly: true });
   });
   it("abonnée, rien encore : la date d'arrivée, pas un faux « en cours »", () => {
-    expect(pagesScreen({ entitled: true, hasHistory: false, monthHasPieces: false, month: "2026-11-01", now: NOW })).toEqual({
+    expect(pagesScreen({ eligibility: { ok: true }, armed: true, entitled: true, hasHistory: false, monthHasPieces: false, month: "2026-11-01", now: NOW })).toEqual({
       kind: "not_yet",
       arrives: "December 1, 2026",
     });
     expect(arrivalDate(NOW)).toBe("December 1, 2026");
   });
   it("un mois passé vide reste vide", () => {
-    expect(pagesScreen({ entitled: true, hasHistory: true, monthHasPieces: false, month: "2026-09-01", now: NOW })).toEqual({ kind: "empty_month" });
+    expect(pagesScreen({ eligibility: { ok: true }, armed: true, entitled: true, hasHistory: true, monthHasPieces: false, month: "2026-09-01", now: NOW })).toEqual({ kind: "empty_month" });
   });
   it("le paramètre de mois", () => {
     expect(parseMonthParam("2026-12-01", NOW)).toBe("2026-12-01");
@@ -94,5 +96,55 @@ describe("les gestes", () => {
     const r = await applyPieceAction(client, "x", { action: "edit", body_md: "y".repeat(300) }, "needs_review");
     expect(r).toMatchObject({ ok: false, status: 400 });
     expect((r as { message: string }).message).toMatch(/license/);
+  });
+});
+
+describe("les États non vérifiés (session 3) — les quatre cas", () => {
+  const base = { hasHistory: false, monthHasPieces: false, month: "2026-11-01", now: NOW };
+  const verified = { ok: true } as const;
+  const newYork = { ok: false, reason: "state_unverified", state: "NY" } as const;
+
+  it("1. État vérifié, avec abonnement : la date d'arrivée", () => {
+    expect(pagesScreen({ ...base, entitled: true, eligibility: verified, armed: true })).toEqual({ kind: "not_yet", arrives: "December 1, 2026" });
+  });
+  it("2. État vérifié, sans abonnement : l'offre", () => {
+    expect(pagesScreen({ ...base, entitled: false, eligibility: verified, armed: true })).toEqual({ kind: "no_subscription" });
+  });
+  it("3. État non vérifié, avec abonnement : pas de date, pas de promesse", () => {
+    const screen = pagesScreen({ ...base, entitled: true, eligibility: newYork, armed: true });
+    expect(screen).toEqual({ kind: "state_unavailable", state: "New York" });
+    const text = stateUnavailableText("New York");
+    expect(text).toBe(
+      "Website pages aren't available yet for clinicians licensed in New York. Nothing is generated or counted for you until they are."
+    );
+    expect(text).not.toMatch(/\d|arrive|soon|coming/i);
+  });
+  it("4. drapeau éteint : l'écran dit la même chose qu'allumé, dans les trois cas", () => {
+    for (const [entitled, eligibility] of [[true, verified], [false, verified], [true, newYork]] as const) {
+      expect(pagesScreen({ ...base, entitled, eligibility, armed: false })).toEqual(pagesScreen({ ...base, entitled, eligibility, armed: true }));
+    }
+  });
+  it("un État non vérifié ne reçoit pas l'offre « three pages every month » ; son historique reste lisible", () => {
+    expect(pagesScreen({ ...base, entitled: false, eligibility: newYork, armed: true })).toEqual({ kind: "state_unavailable", state: "New York" });
+    expect(pagesScreen({ ...base, hasHistory: true, monthHasPieces: true, entitled: false, eligibility: newYork, armed: true })).toEqual({
+      kind: "list",
+      readOnly: true,
+    });
+  });
+});
+
+describe("l'écran et le pipeline lisent la même source (session 3)", () => {
+  const root = resolve(__dirname, "../../..");
+  const src = (f: string) => readFileSync(resolve(root, f), "utf8");
+  it("le pipeline refuse par `licenceEligibility`, et n'a plus sa propre lecture de l'État", () => {
+    const ctx = src("lib/seo/context.ts");
+    const body = ctx.slice(ctx.indexOf("export async function readSeoContext"));
+    expect(body).toContain("await licenceEligibility(db, kit.projectId)");
+    expect(body).not.toContain("stateVerified(");
+  });
+  it("l'écran décide de son message par `licenceEligibility`", () => {
+    const page = src("app/app/pages/page.tsx");
+    expect(page).toContain("await licenceEligibility(seoDb(supabase), kit.projectId)");
+    expect(page).toContain("eligibility,");
   });
 });

@@ -303,7 +303,7 @@ export function linkFindings(text: string, allowed: readonly string[]): Finding[
 
 /* ── 4d. Rien sur le lieu ni le cabinet qui ne vienne du brief ────────── */
 
-const US_STATES: Record<string, string> = {
+export const US_STATES: Record<string, string> = {
   AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut",
   DE: "Delaware", FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
   KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan",
@@ -453,4 +453,10 @@ export function deterministicFindings(p: PieceText, allowedUrls: readonly string
 export function sentenceCase(text: string): string {
   const t = text.trim();
   return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** « NY » → « New York » ; un code inconnu reste tel quel. */
+export function stateName(code: string | null | undefined): string | null {
+  if (!code) return null;
+  return US_STATES[code.toUpperCase()] ?? code.toUpperCase();
 }
