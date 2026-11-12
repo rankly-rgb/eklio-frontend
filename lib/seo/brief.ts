@@ -37,6 +37,12 @@ export type SeoWriterBrief = {
   bannedPhrases: string[];
   /** Les questions que ses autres pages traitent déjà (titres H2 et FAQ). */
   answeredElsewhere: string[];
+  /**
+   * Les requêtes des AUTRES pièces de son mois (session 3). Les premiers jets d'un mois
+   * partent en parallèle : une pièce ne voit pas encore les questions de ses sœurs, alors
+   * on lui dit au moins de quoi elles traitent.
+   */
+  siblingQueries?: string[];
 };
 
 export type FailureReport = {
@@ -130,6 +136,14 @@ export function writerSystemPrompt(brief: SeoWriterBrief): string {
           "HEADINGS AND QUESTIONS ALREADY ON HER SITE",
           "Every section heading and every FAQ question you write must ask something different from each of these (a contact section included). Do not reuse them, even reworded:",
           ...brief.answeredElsewhere.map((q) => `- "${q}"`),
+        ]
+      : []),
+    ...((brief.siblingQueries ?? []).length > 0
+      ? [
+          "",
+          "OTHER PAGES WRITTEN FOR HER THIS MONTH",
+          "Each of these gets its own page. Do not make any of them a section heading or an FAQ question here:",
+          ...(brief.siblingQueries ?? []).map((q) => `- "${q}"`),
         ]
       : []),
   ]

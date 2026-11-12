@@ -68,7 +68,7 @@ type Log = {
   inserted: PieceInsert[];
 };
 
-function fakePorts(opts: { quota?: Record<SeoKind, number>; bookRefuses?: boolean; banned?: (t: string) => string[] } = {}) {
+function fakePorts(opts: { quota?: Record<SeoKind, number>; bookRefuses?: boolean; banned?: (t: string) => string[]; taken?: string[] } = {}) {
   const quota = { ...(opts.quota ?? { local_page: 1, article: 2 }) };
   const log: Log = { claims: [], released: [], assigned: [], unassigned: [], retired: [], reserved: 0, settled: [], inserted: [] };
   let n = 0;
@@ -85,6 +85,7 @@ function fakePorts(opts: { quota?: Record<SeoKind, number>; bookRefuses?: boolea
     },
     async assignTarget(id) {
       log.assigned.push(id);
+      return !opts.taken?.includes(id);
     },
     async unassignTarget(id) {
       log.unassigned.push(id);
@@ -176,7 +177,8 @@ describe("refus sans emplacement", () => {
     expect(calls).toHaveLength(0);
     expect(log.inserted).toHaveLength(0);
     expect(log.reserved).toBe(0);
-    expect(out.pieces.map((p) => p.status)).toEqual(["not_claimed", "not_claimed"]);
+    // Les trois cibles demandent leur emplacement en parallèle (session 3) ; la base refuse les trois.
+    expect(out.pieces.map((p) => p.status)).toEqual(["not_claimed", "not_claimed", "not_claimed"]);
   });
 
   it("le quatrième emplacement refusé arrête le genre, sans appel", async () => {
@@ -193,8 +195,9 @@ describe("refus sans emplacement", () => {
     const { ports, log } = fakePorts({ bookRefuses: true });
     const out = await runSeoMonth(ports, input(writer));
     expect(calls).toHaveLength(0);
-    expect(log.released).toHaveLength(1);
-    expect(log.unassigned).toEqual(["t-local"]);
+    // Les trois emplacements pris en parallèle sont tous rendus, et leurs cibles aussi.
+    expect(log.released).toHaveLength(3);
+    expect(log.unassigned).toEqual(["t-local", "t-art1", "t-art2"]);
     expect(out.stopped).toMatch(/cost book/);
   });
 });
@@ -263,20 +266,23 @@ describe("ses pages ne répondent pas deux fois à la même question", () => {
     const { writer, calls } = fakeWriter([withShared, withShared, good(70)]);
     const { ports } = fakePorts();
     const out = await runSeoMonth(ports, input(writer, { local_page: [], article: [ART1, ART2] }));
-    expect(calls[1].brief.answeredElsewhere).toContain(shared.question);
-
+    // Les deux premiers jets partent ensemble : le second ne voit que la REQUÊTE de son aîné…
+    expect(calls[1].brief.siblingQueries).toContain(ART1.primaryQuery);
+    // … le contrôle, lui, passe dans l'ordre et voit la question ; la réécriture la reçoit.
     expect(calls[2].failure?.findings.map((f) => f.check)).toContain("gate.question_repeated");
+    expect(calls[2].brief.answeredElsewhere).toContain(shared.question);
     expect(out.pieces.map((p) => p.status)).toEqual(["needs_review", "needs_review"]);
   });
 });
 
 describe("les questions déjà sur son site : les plus récentes d'abord (session 2)", () => {
-  it("le brief du troisième texte liste les questions du deuxième avant celles du premier", async () => {
-    let seed = 80;
-    const { writer, calls } = fakeWriter([(r) => good(seed++)(r)]);
-    const { ports, log } = fakePorts();
+  it("le brief de réécriture du troisième texte liste les questions du deuxième avant celles du premier", async () => {
+    const withBanned = (req: SeoWriteRequest) => ({ ...good(82)(req), intro: `${good(82)(req).intro} zzbanned` });
+    const { writer, calls } = fakeWriter([good(80), good(81), withBanned, good(83)]);
+    const { ports, log } = fakePorts({ banned: (t) => (t.includes("zzbanned") ? ["zzbanned"] : []) });
     await runSeoMonth(ports, input(writer));
-    const list = calls[2].brief.answeredElsewhere;
+    expect(calls[3].failure).toBeDefined();
+    const list = calls[3].brief.answeredElsewhere;
     const firstOf = (row: PieceInsert) => (row.faq ?? [])[0].question;
     expect(list.indexOf(firstOf(log.inserted[1]))).toBeGreaterThan(-1);
     expect(list.indexOf(firstOf(log.inserted[1]))).toBeLessThan(list.indexOf(firstOf(log.inserted[0])));
@@ -349,11 +355,59 @@ describe("une panne du fournisseur n'est pas un échec de pièce", () => {
     const { ports, log } = fakePorts();
     const out = await runSeoMonth(ports, input(writer));
     expect(out.stopped).toMatch(/plafond/);
-    expect(out.pieces).toHaveLength(1);
-    expect(log.released).toHaveLength(1);
-    expect(log.unassigned).toEqual(["t-local"]);
+    // Les trois premiers jets étaient partis ensemble : trois emplacements rendus, aucun écrit.
+    expect(out.pieces.map((p) => p.status)).toEqual(["stopped", "stopped", "stopped"]);
+    expect(log.released).toHaveLength(3);
+    expect(log.unassigned).toEqual(["t-local", "t-art1", "t-art2"]);
     expect(log.retired).toEqual([]);
     expect(log.inserted).toEqual([]);
-    expect(log.settled).toEqual([{ actual: 0, ok: false }]);
+    expect(log.settled).toEqual([{ actual: 0, ok: false }, { actual: 0, ok: false }, { actual: 0, ok: false }]);
+  });
+
+  it("une panne sur un jet n'efface pas les autres déjà payés : ils sont contrôlés et écrits, sans nouvel appel", async () => {
+    const { writer, calls } = fakeWriter([good(90), () => new SpendCapReached("plafond"), tooLongTitle]);
+    const { ports, log } = fakePorts();
+    const out = await runSeoMonth(ports, input(writer));
+    expect(out.pieces.map((p) => p.status)).toEqual(["needs_review", "stopped", "stopped"]);
+    expect(calls).toHaveLength(3); // le title trop long ne déclenche AUCUN appel de réparation après la panne
+    expect(log.inserted).toHaveLength(1);
+    expect(log.released).toHaveLength(2);
+  });
+});
+
+describe("le débit (session 3) : les pièces d'une abonnée partent ensemble, sans doublon", () => {
+  it("les trois premiers jets sont en vol en même temps", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    let seed = 100;
+    const base = fakeWriter([(r) => good(seed++)(r)]).writer;
+    const writer: SeoWriterPort = {
+      ...base,
+      async write(req) {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((r) => setTimeout(r, 5));
+        inFlight -= 1;
+        return base.write(req);
+      },
+    };
+    const { ports } = fakePorts();
+    const out = await runSeoMonth(ports, input(writer));
+    expect(peak).toBe(3);
+    expect(out.pieces.map((p) => p.status)).toEqual(["needs_review", "needs_review", "needs_review"]);
+  });
+
+  it("une cible qu'une autre exécution tient déjà : emplacement rendu, aucun appel", async () => {
+    let seed = 110;
+    const { writer, calls } = fakeWriter([(r) => good(seed++)(r)]);
+    const { ports, log } = fakePorts({ taken: ["t-art1"] });
+    const out = await runSeoMonth(ports, input(writer));
+    expect(calls).toHaveLength(2);
+    expect(out.pieces.map((p) => [p.status, p.detail ?? null])).toEqual([
+      ["needs_review", null],
+      ["not_claimed", "target_taken"],
+      ["needs_review", null],
+    ]);
+    expect(log.released.map((r) => r.reason)).toEqual(["target already assigned by another run"]);
   });
 });

@@ -22,7 +22,8 @@ import { checklistFor, internalLinksFor, primaryJsonLd, type LinkablePiece } fro
  *  LE PIPELINE D'UN MOIS SEO — claim_seo_slot → WRITER → CONTRÔLES → seo_pieces
  * ══════════════════════════════════════════════════════════════════════════
  *
- * Pour chaque cible du plan, dans l'ordre :
+ * Pour chaque cible du plan (les étapes 1–2 en parallèle, la suite dans l'ordre — voir
+ * `runSeoMonth`) :
  *
  *   1. RÉSERVER    `claim_seo_slot`. Sans emplacement, rien ne part — et la base
  *                  refuserait de toute façon une pièce sans emplacement.
@@ -112,7 +113,11 @@ export function questionsOf(bodyMd: string | null, faq: ReadonlyArray<{ question
 export type PipelinePorts = {
   claim(kind: SeoKind): Promise<ClaimResult>;
   release(claimId: string, reason: string): Promise<void>;
-  assignTarget(targetId: string): Promise<void>;
+  /**
+   * Prend la cible, SEULEMENT si elle est encore disponible (session 3). `false` : une
+   * autre exécution la tient — deux appels simultanés ne l'écrivent jamais deux fois.
+   */
+  assignTarget(targetId: string): Promise<boolean>;
   /** La cible redevient disponible (la pièce n'a pas pu être écrite). */
   unassignTarget(targetId: string): Promise<void>;
   /** La cible est retirée (quarantaine) : elle ne sera plus proposée. */
@@ -165,197 +170,293 @@ export type PipelineInput = {
 
 class WriterStopped extends Error {}
 
+/** Le livre d'UNE pièce : chaque appel payant réservé puis réglé ; son coût et son modèle. */
+type Bill = {
+  cost: number;
+  model: string;
+  paid<T extends { costUsd: number; model: string }>(worst: number, call: () => Promise<T>): Promise<T>;
+};
+
+/** Une cible après la phase A : un premier jet en main, ou une issue déjà connue. */
+type Drafted =
+  | { kind: SeoKind; target: StoredCandidate; done: PieceOutcome }
+  | { kind: SeoKind; target: StoredCandidate; failed: unknown }
+  | { kind: SeoKind; target: StoredCandidate; claimId: string; bill: Bill; siblings: string[]; brief: SeoWriterBrief; first: SeoWriteResult };
+
+/*
+ * ⚠ DEUX PHASES (session 3), POUR LE DÉBIT SANS PERDRE LES CONTRÔLES CROISÉS.
+ *
+ *   A. EN PARALLÈLE   réserver (`claim_seo_slot`, atomique en base), prendre la cible
+ *                     (conditionnellement : une autre exécution qui la tient déjà la
+ *                     garde), et écrire le premier jet — les trois appels longs du mois
+ *                     partent ensemble.
+ *   B. DANS L'ORDRE   contrôler chaque jet contre ses pièces ET celles que ce mois vient
+ *                     d'accepter (distance, questions répétées), réparer un champ,
+ *                     réécrire, écrire ou mettre en quarantaine. La réécriture repart
+ *                     d'un brief rafraîchi, qui voit les questions de ses sœurs.
+ *
+ * Une panne du fournisseur arrête TOUT appel suivant du mois (`stopped`) ; les jets déjà
+ * payés sont encore contrôlés, et écrits s'ils passent sans nouvel appel.
+ */
 export async function runSeoMonth(ports: PipelinePorts, input: PipelineInput): Promise<MonthOutcome> {
-  const { ctx } = input;
   const pieces: PieceOutcome[] = [];
   let total = 0;
+  let stopped: string | null = null;
   const own = await ports.ownPieces();
-  const allowedUrls = ctx.sources.map((s) => s.url);
+  const allowedUrls = input.ctx.sources.map((s) => s.url);
+  const ordered = (["local_page", "article"] as const).flatMap((kind) => input.plan.chosen[kind].map((target) => ({ kind, target })));
+  const askedSoFar = () => [...own].reverse().flatMap((o) => o.questions);
 
-  for (const kind of ["local_page", "article"] as const) {
-    for (const target of input.plan.chosen[kind]) {
-      /* ── 1. réserver ─────────────────────────────────────────────── */
-      const claim = await ports.claim(kind);
-      if (!claim.ok || !claim.claim_id) {
-        pieces.push({ targetId: target.id, intentKey: target.intentKey, kind, status: "not_claimed", attempts: 0, firstPass: false, stage: null, costUsd: 0, findings: [], detail: claim.reason });
-        break; // ⚠ un refus de la base vaut pour tout ce genre ce mois-ci
-      }
-      const claimId = claim.claim_id;
-      await ports.assignTarget(target.id);
-
-      const brief = briefFor(target, input, [...own].reverse().flatMap((o) => o.questions));
-      let cost = 0;
-      let failure: FailureReport | undefined;
-      let firstFindings: Finding[] = [];
-      let last: Evaluated | null = null;
-      let model = input.writer.model;
-      let attempts = 0;
-
-      let stage: PassStage = null;
-      const repaired: RepairableField[] = [];
-
-      /** Un appel payant, réservé puis réglé au livre ; une panne du fournisseur arrête le mois. */
-      const paid = async <T extends { costUsd: number; model: string }>(worst: number, call: () => Promise<T>): Promise<T> => {
+  const billFor = (claimId: string): Bill => {
+    const bill: Bill = {
+      cost: 0,
+      model: input.writer.model,
+      async paid(worst, call) {
+        if (stopped) throw new WriterStopped(stopped);
         const reservation = await ports.reserveCost(claimId, worst, input.writer.model);
-        if (!reservation) throw new WriterStopped("the cost book refused the reservation");
-        let out: T;
+        if (!reservation) {
+          stopped ??= "the cost book refused the reservation";
+          throw new WriterStopped(stopped);
+        }
+        let out;
         try {
           out = await call();
         } catch (error) {
           await ports.settleCost(reservation, 0, false);
           if (error instanceof SpendCapReached || error instanceof ProviderUnavailable || error instanceof ProviderRejected) {
+            stopped ??= error.message;
             throw new WriterStopped(error.message);
           }
           throw error;
         }
         await ports.settleCost(reservation, out.costUsd, true);
-        cost += out.costUsd;
-        model = out.model;
+        bill.cost += out.costUsd;
+        bill.model = out.model;
         return out;
-      };
+      },
+    };
+    return bill;
+  };
 
+  const unwritten = (kind: SeoKind, target: StoredCandidate, status: "not_claimed" | "stopped", detail: string | undefined, attempts = 0, costUsd = 0): PieceOutcome => ({
+    targetId: target.id,
+    intentKey: target.intentKey,
+    kind,
+    status,
+    attempts,
+    firstPass: false,
+    stage: null,
+    costUsd,
+    findings: [],
+    ...(detail ? { detail } : {}),
+  });
+
+  /** Rend l'emplacement et la cible d'une pièce qui ne sera pas écrite. */
+  const giveBack = async (claimId: string, target: StoredCandidate, why: string) => {
+    await ports.release(claimId, why.slice(0, 400));
+    await ports.unassignTarget(target.id);
+  };
+
+  /* ── A. réserver, prendre la cible, premier jet — en parallèle ─────────── */
+  const drafted: Drafted[] = await Promise.all(
+    ordered.map(async ({ kind, target }): Promise<Drafted> => {
+      const claim = await ports.claim(kind);
+      if (!claim.ok || !claim.claim_id) return { kind, target, done: unwritten(kind, target, "not_claimed", claim.reason) };
+      const claimId = claim.claim_id;
+      /* ⚠ une autre exécution tient déjà cette cible : on lui rend l'emplacement, sans appel */
+      if (!(await ports.assignTarget(target.id))) {
+        await ports.release(claimId, "target already assigned by another run");
+        return { kind, target, done: unwritten(kind, target, "not_claimed", "target_taken") };
+      }
+      const siblings = ordered.filter((o) => o.target.id !== target.id).map((o) => o.target.primaryQuery);
+      const brief = briefFor(target, input, askedSoFar(), siblings);
+      const bill = billFor(claimId);
       try {
-        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-          attempts = attempt;
-          /* ── 2. rédiger, au livre ──────────────────────────────────── */
-          const request = { brief, failure };
-          const result: SeoWriteResult = await paid(input.writer.worstCaseUsd(request), () => input.writer.write(request));
+        const request = { brief };
+        const first = await bill.paid(input.writer.worstCaseUsd(request), () => input.writer.write(request));
+        return { kind, target, claimId, bill, siblings, brief, first };
+      } catch (error) {
+        if (error instanceof WriterStopped) {
+          await giveBack(claimId, target, `writer stopped: ${error.message}`);
+          return { kind, target, done: unwritten(kind, target, "stopped", error.message, 1, bill.cost) };
+        }
+        await giveBack(claimId, target, `error: ${(error as Error).message}`);
+        return { kind, target, failed: error };
+      }
+    })
+  );
 
-          /* ── 3. contrôler ──────────────────────────────────────────── */
-          last = await evaluate(ports, input, target, result, own, allowedUrls);
-          if (attempt === 1) firstFindings = last.findings;
-          if (last.findings.length === 0) {
-            stage = attempt === 1 ? "first" : "rewrite";
-            break;
-          }
+  /* ── B. contrôler, réparer, réécrire, écrire — dans l'ordre du plan ───── */
+  const errors: unknown[] = [];
+  for (const d of drafted) {
+    if ("done" in d) {
+      total += d.done.costUsd;
+      pieces.push(d.done);
+      continue;
+    }
+    if ("failed" in d) {
+      errors.push(d.failed);
+      continue;
+    }
+    const { kind, target, claimId, bill } = d;
+    let failure: FailureReport | undefined;
+    let firstFindings: Finding[] = [];
+    let last: Evaluated | null = null;
+    let attempts = 0;
+    let stage: PassStage = null;
+    const repaired: RepairableField[] = [];
+    const paid = bill.paid;
 
-          /*
-           * ── 3 bis. LA RÉPARATION DU SEUL CHAMP FAUTIF (session 3) ───────
-           * Après le premier passage seulement, et seulement quand TOUS les
-           * constats portent sur la longueur de la meta ou du title : un appel
-           * court par champ, puis la pièce réparée repasse par TOUS les contrôles.
-           * Si elle échoue encore, on revient au chemin d'avant : la réécriture
-           * complète, puis la quarantaine.
-           */
-          const fields = attempt === 1 && last.output ? repairableFields(last.findings) : null;
-          if (fields && last.output) {
-            let output: WriterOutput = last.output;
-            let complete = true;
-            for (const field of fields) {
-              const req: FieldRepairRequest = {
-                field,
-                current: output[field],
-                problem: last.findings.filter((f) => REPAIRABLE[f.check]?.(f) === field).map((f) => f.detail).join(" "),
-                primaryQuery: target.primaryQuery,
-                h1: output.h1,
-                intro: output.intro,
-              };
-              const fix = await paid(input.writer.worstCaseRepairUsd(req), () => input.writer.repairField(req));
-              if (!fix.value) {
-                complete = false;
-                break;
-              }
-              output = { ...output, [field]: fix.value };
-              repaired.push(field);
+    try {
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+        attempts = attempt;
+        /* ── 2. le premier jet (phase A), ou une réécriture au livre ─────── */
+        let result: SeoWriteResult;
+        if (attempt === 1) {
+          result = d.first;
+        } else {
+          // Le brief rafraîchi : il voit maintenant les questions des pièces acceptées ce mois.
+          const request = { brief: briefFor(target, input, askedSoFar(), d.siblings), failure };
+          result = await paid(input.writer.worstCaseUsd(request), () => input.writer.write(request));
+        }
+
+        /* ── 3. contrôler ──────────────────────────────────────────── */
+        last = await evaluate(ports, input, target, result, own, allowedUrls);
+        if (attempt === 1) firstFindings = last.findings;
+        if (last.findings.length === 0) {
+          stage = attempt === 1 ? "first" : "rewrite";
+          break;
+        }
+
+        /*
+         * ── 3 bis. LA RÉPARATION DU SEUL CHAMP FAUTIF (session 3) ───────
+         * Après le premier passage seulement, et seulement quand TOUS les
+         * constats portent sur la longueur de la meta ou du title : un appel
+         * court par champ, puis la pièce réparée repasse par TOUS les contrôles.
+         * Si elle échoue encore, on revient au chemin d'avant : la réécriture
+         * complète, puis la quarantaine.
+         */
+        const fields = attempt === 1 && last.output ? repairableFields(last.findings) : null;
+        if (fields && last.output) {
+          let output: WriterOutput = last.output;
+          let complete = true;
+          for (const field of fields) {
+            const req: FieldRepairRequest = {
+              field,
+              current: output[field],
+              problem: last.findings.filter((f) => REPAIRABLE[f.check]?.(f) === field).map((f) => f.detail).join(" "),
+              primaryQuery: target.primaryQuery,
+              h1: output.h1,
+              intro: output.intro,
+            };
+            const fix = await paid(input.writer.worstCaseRepairUsd(req), () => input.writer.repairField(req));
+            if (!fix.value) {
+              complete = false;
+              break;
             }
-            if (complete) {
-              const again = await evaluate(ports, input, target, { ...result, output }, own, allowedUrls);
-              if (again.findings.length === 0) {
-                last = again;
-                stage = "field_repair";
-                break;
-              }
+            output = { ...output, [field]: fix.value };
+            repaired.push(field);
+          }
+          if (complete) {
+            const again = await evaluate(ports, input, target, { ...result, output }, own, allowedUrls);
+            if (again.findings.length === 0) {
               last = again;
+              stage = "field_repair";
+              break;
             }
-          }
-          failure = { findings: last.findings, previous: last.output ?? result.output };
-        }
-      } catch (error) {
-        if (!(error instanceof WriterStopped)) {
-          await ports.release(claimId, `error: ${(error as Error).message}`.slice(0, 400));
-          await ports.unassignTarget(target.id);
-          throw error;
-        }
-        /* ⚠ une panne du fournisseur : on rend, on s'arrête, sans quarantaine */
-        await ports.release(claimId, `writer stopped: ${error.message}`.slice(0, 400));
-        await ports.unassignTarget(target.id);
-        total += cost;
-        pieces.push({ targetId: target.id, intentKey: target.intentKey, kind, status: "stopped", attempts, firstPass: false, stage: null, costUsd: cost, findings: [], detail: error.message });
-        return { pieces, costUsd: total, stopped: error.message };
-      }
-
-      total += cost;
-      const passed = last !== null && last.findings.length === 0;
-      const row = toInsert(input, target, claimId, last, {
-        passed,
-        cost,
-        model,
-        attempts,
-        firstFindings,
-        linkable: own,
-        stage,
-        repaired,
-      });
-
-      /* ── 4 et 5. écrire, ou mettre en quarantaine ─────────────────────── */
-      let pieceId: string | undefined;
-      let status: PieceOutcome["status"] = passed ? "needs_review" : "quarantined";
-      let detail: string | undefined;
-      try {
-        pieceId = await ports.insertPiece(row);
-      } catch (error) {
-        // ⚠ La base a refusé ce que les contrôles TS avaient laissé passer : la
-        // base a raison (ce sont ses gardes qui comptent). Quarantaine, raison écrite.
-        status = "quarantined";
-        detail = `db refused: ${(error as Error).message}`.slice(0, 400);
-        if (passed) {
-          try {
-            pieceId = await ports.insertPiece({
-              ...row,
-              status: "quarantined",
-              gates_report: { ...row.gates_report, passed: false, reason: "db.refused", db_error: detail },
-            });
-          } catch {
-            pieceId = undefined;
+            last = again;
           }
         }
-        // Même la quarantaine n'a pas pu s'écrire : on rend l'emplacement à la main.
-        if (!pieceId) await ports.release(claimId, detail);
+        failure = { findings: last.findings, previous: last.output ?? result.output };
       }
-      if (status === "quarantined") await ports.retireTarget(target.id);
-      else if (last?.text && pieceId) {
-        own.push({
-          id: pieceId,
-          text: last.text,
-          title: row.title,
-          slug: row.slug,
-          status: "needs_review",
-          published_url: null,
-          questions: questionsOf(row.body_md, row.faq),
-        });
+    } catch (error) {
+      if (!(error instanceof WriterStopped)) {
+        await giveBack(claimId, target, `error: ${(error as Error).message}`);
+        errors.push(error);
+        continue;
       }
+      /* ⚠ une panne du fournisseur : on rend, sans quarantaine ; les jets suivants sont encore lus */
+      await giveBack(claimId, target, `writer stopped: ${error.message}`);
+      total += bill.cost;
+      pieces.push(unwritten(kind, target, "stopped", error.message, attempts, bill.cost));
+      continue;
+    }
 
-      pieces.push({
-        targetId: target.id,
-        intentKey: target.intentKey,
-        kind,
-        status,
-        pieceId,
-        attempts,
-        firstPass: firstFindings.length === 0,
-        stage: status === "needs_review" ? stage : null,
-        costUsd: cost,
-        findings: last?.findings ?? [],
-        ...(detail ? { detail } : {}),
+    const cost = bill.cost;
+    const model = bill.model;
+    total += cost;
+    const passed = last !== null && last.findings.length === 0;
+    const row = toInsert(input, target, claimId, last, {
+      passed,
+      cost,
+      model,
+      attempts,
+      firstFindings,
+      linkable: own,
+      stage,
+      repaired,
+    });
+
+    /* ── 4 et 5. écrire, ou mettre en quarantaine ─────────────────────── */
+    let pieceId: string | undefined;
+    let status: PieceOutcome["status"] = passed ? "needs_review" : "quarantined";
+    let detail: string | undefined;
+    try {
+      pieceId = await ports.insertPiece(row);
+    } catch (error) {
+      // ⚠ La base a refusé ce que les contrôles TS avaient laissé passer : la
+      // base a raison (ce sont ses gardes qui comptent). Quarantaine, raison écrite.
+      status = "quarantined";
+      detail = `db refused: ${(error as Error).message}`.slice(0, 400);
+      if (passed) {
+        try {
+          pieceId = await ports.insertPiece({
+            ...row,
+            status: "quarantined",
+            gates_report: { ...row.gates_report, passed: false, reason: "db.refused", db_error: detail },
+          });
+        } catch {
+          pieceId = undefined;
+        }
+      }
+      // Même la quarantaine n'a pas pu s'écrire : on rend l'emplacement à la main.
+      if (!pieceId) await ports.release(claimId, detail);
+    }
+    if (status === "quarantined") await ports.retireTarget(target.id);
+    else if (last?.text && pieceId) {
+      own.push({
+        id: pieceId,
+        text: last.text,
+        title: row.title,
+        slug: row.slug,
+        status: "needs_review",
+        published_url: null,
+        questions: questionsOf(row.body_md, row.faq),
       });
     }
+
+    pieces.push({
+      targetId: target.id,
+      intentKey: target.intentKey,
+      kind,
+      status,
+      pieceId,
+      attempts,
+      firstPass: firstFindings.length === 0,
+      stage: status === "needs_review" ? stage : null,
+      costUsd: cost,
+      findings: last?.findings ?? [],
+      ...(detail ? { detail } : {}),
+    });
   }
-  return { pieces, costUsd: total, stopped: null };
+  // Une erreur hors fournisseur remonte, APRÈS que les autres pièces du mois ont été écrites ou rendues.
+  if (errors.length > 0) throw errors[0];
+  return { pieces, costUsd: total, stopped };
 }
 
 /* ── Le brief d'une cible ─────────────────────────────────────────────── */
 
-function briefFor(target: StoredCandidate, input: PipelineInput, answeredElsewhere: string[]): SeoWriterBrief {
+function briefFor(target: StoredCandidate, input: PipelineInput, answeredElsewhere: string[], siblingQueries: string[] = []): SeoWriterBrief {
   const { ctx } = input;
   return {
     kind: target.kind,
@@ -371,6 +472,7 @@ function briefFor(target: StoredCandidate, input: PipelineInput, answeredElsewhe
     bannedPhrases: input.bannedList,
     // Les plus récentes d'abord ; 80 au plus (à 40, la liste était tronquée dès le 3ᵉ mois).
     answeredElsewhere: [...new Set(answeredElsewhere)].slice(0, 80),
+    siblingQueries,
   };
 }
 

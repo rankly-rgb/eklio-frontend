@@ -8,6 +8,7 @@ import { SEO_ARMED_ENV_VAR, seoGenerationArmed } from "@/lib/seo/armed";
 import { SEO_MONTH_CAP_USD } from "@/lib/seo/kinds";
 import { openAiSeoWriter } from "@/lib/seo/writer";
 import { runSeoMonthForUser, seoCandidateUsers } from "@/lib/seo/server-ports";
+import { SAFETY_MARGIN_MS, runSeoPool } from "@/lib/seo/cron";
 
 /*
  * ── LES PAGES SEO DU MOIS ───────────────────────────────────────────────
@@ -26,8 +27,8 @@ import { runSeoMonthForUser, seoCandidateUsers } from "@/lib/seo/server-ports";
 
 export const maxDuration = 300;
 
-/** On ne commence plus une abonnée passé ce délai : la suivante attend le déclenchement suivant. */
-const START_BUDGET_MS = 120_000;
+/** Le temps où l'on peut encore FINIR une abonnée : `maxDuration` moins une marge. */
+const WINDOW_MS = maxDuration * 1000 - SAFETY_MARGIN_MS;
 
 export async function GET(request: Request) {
   const denied = authorizeCron(request);
@@ -53,50 +54,62 @@ export async function GET(request: Request) {
   const transport = openAiTransport(key);
   const runId = randomUUID();
 
-  const served: unknown[] = [];
-  const deferred: string[] = [];
-  for (const userId of await seoCandidateUsers(admin)) {
-    if (Date.now() - started > START_BUDGET_MS) {
-      deferred.push(userId);
-      continue;
-    }
-    /* ⚠ UN COMPTEUR PAR ABONNÉE : le plafond d'un mois ne se partage pas. */
-    const meter = spendMeter(SEO_MONTH_CAP_USD);
-    try {
-      const outcome = await runSeoMonthForUser(admin, {
-        userId,
-        month,
-        runId,
-        writer: openAiSeoWriter({ transport, meter }),
-      });
-      served.push(
-        outcome.ok
-          ? {
-              userId,
-              ok: true,
-              pieces: outcome.month.pieces.map((p) => ({
-                kind: p.kind,
-                intent: p.intentKey,
-                status: p.status,
-                attempts: p.attempts,
-                firstPass: p.firstPass,
-                stage: p.stage,
-                costUsd: p.costUsd,
-                checks: p.findings.map((f) => f.check),
-                ...(p.detail ? { detail: p.detail } : {}),
-              })),
-              costUsd: outcome.month.costUsd,
-              stopped: outcome.month.stopped,
-            }
-          : outcome.stage === "context"
-            ? { userId, ok: false, stage: "context", reason: outcome.refusal.reason, detail: outcome.refusal.detail }
-            : { userId, ok: false, stage: "quota", quota: outcome.plan.quota }
-      );
-    } catch (error) {
-      /* Une abonnée qui lève n'arrête pas les autres, et c'est dit. */
-      served.push({ userId, ok: false, stage: "error", reason: (error as Error).message, costUsd: meter.spentUsd() });
-    }
-  }
+  /*
+   * ⚠ EN PARALLÈLE, BORNÉ PAR `SEO_MAX_PARALLEL_CALLS` (session 3). Ce qui n'a pas pu
+   * commencer à temps reste dû : le déclenchement suivant le reprend.
+   */
+  const pool = await runSeoPool({
+    candidates: await seoCandidateUsers(admin),
+    windowMs: WINDOW_MS,
+    serve: async (userId) => {
+      /* ⚠ UN COMPTEUR PAR ABONNÉE : le plafond d'un mois ne se partage pas. */
+      const meter = spendMeter(SEO_MONTH_CAP_USD);
+      try {
+        const outcome = await runSeoMonthForUser(admin, {
+          userId,
+          month,
+          runId,
+          writer: openAiSeoWriter({ transport, meter }),
+        });
+        if (outcome.ok) {
+          return {
+            userId,
+            ok: true,
+            pieces: outcome.month.pieces.map((p) => ({
+              kind: p.kind,
+              intent: p.intentKey,
+              status: p.status,
+              attempts: p.attempts,
+              firstPass: p.firstPass,
+              stage: p.stage,
+              costUsd: p.costUsd,
+              checks: p.findings.map((f) => f.check),
+              ...(p.detail ? { detail: p.detail } : {}),
+            })),
+            costUsd: outcome.month.costUsd,
+            stopped: outcome.month.stopped,
+            recovered: outcome.recovery,
+          };
+        }
+        if (outcome.stage === "context") {
+          return { userId, ok: false, stage: "context", reason: outcome.refusal.reason, detail: outcome.refusal.detail };
+        }
+        if (outcome.stage === "busy") return { userId, ok: false, stage: "busy" };
+        return { userId, ok: false, stage: "quota", quota: outcome.plan.quota };
+      } catch (error) {
+        /* Une abonnée qui lève n'arrête pas les autres, et c'est dit. */
+        return { userId, ok: false, stage: "error", reason: (error as Error).message, costUsd: meter.spentUsd() };
+      }
+    },
+  });
 
-  return NextResponse.json({ armed: true, month, runId, served, deferred });
+  return NextResponse.json({
+    armed: true,
+    month,
+    runId,
+    served: pool.served,
+    deferred: pool.deferred,
+    durations: pool.durations,
+    elapsedMs: Date.now() - started,
+  });
 }

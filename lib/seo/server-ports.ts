@@ -53,7 +53,18 @@ export function serverPipelinePorts(admin: Admin, input: { userId: string; month
     async release(claimId, reason) {
       await releaseSeoSlot(db, claimId, reason);
     },
-    assignTarget: (id) => setTargetStatus(id, "assigned", ["available"]),
+    async assignTarget(id) {
+      const patch = seoPatch("seo_targets", { status: "assigned", assigned_month: month });
+      const { data, error } = await db
+        .from("seo_targets")
+        .update(patch)
+        .eq("id", id)
+        .eq("user_id", userId)
+        .eq("status", "available")
+        .select("id");
+      if (error) throw new Error(`seo_targets assigned: ${error.message}`);
+      return ((data ?? []) as unknown[]).length === 1;
+    },
     unassignTarget: (id) => setTargetStatus(id, "available", ["assigned"]),
     retireTarget: (id) => setTargetStatus(id, "retired", ["available", "assigned"]),
 
@@ -148,21 +159,101 @@ export function serverPipelinePorts(admin: Admin, input: { userId: string; month
   };
 }
 
+/* ── La reprise d'une exécution coupée (session 3) ─────────────────────── */
+
+/**
+ * ⚠ AU-DELÀ, UN EMPLACEMENT `claimed` N'A PLUS D'EXÉCUTION VIVANTE DERRIÈRE LUI. La route
+ * ne vit pas plus de `maxDuration` (300 s) ; dix minutes laissent une large marge. Plus
+ * jeune, il peut appartenir à une exécution SIMULTANÉE : on ne le touche pas.
+ */
+export const SEO_STALE_CLAIM_MS = 10 * 60_000;
+
+export type Recovery = { busy: boolean; released: number; unassigned: number };
+
+/**
+ * Avant le mois d'une abonnée : ce qu'une exécution coupée (timeout, crash, redéploiement)
+ * a laissé en plan est rendu, pour que celle-ci le reprenne.
+ *
+ *   - ses emplacements du mois encore `claimed` depuis plus de `staleMs` sont rendus par
+ *     `release_seo_slot` (le même chemin qu'une panne du fournisseur) ;
+ *   - ses cibles `assigned` ce mois-là SANS pièce redeviennent `available`.
+ *
+ * Si un emplacement plus jeune existe, une autre exécution travaille sur elle : `busy`, et
+ * on n'y touche pas — l'appelant passe à la suivante. Le rendu compte dans
+ * `monthly_attempts` (la règle de la base, inchangée) : une coupure coûte une tentative,
+ * jamais un emplacement.
+ */
+export async function recoverInterrupted(
+  admin: Admin,
+  input: { userId: string; month: string; staleMs?: number; now?: Date }
+): Promise<Recovery> {
+  const db = seoDb(admin);
+  const cutoff = new Date((input.now ?? new Date()).getTime() - (input.staleMs ?? SEO_STALE_CLAIM_MS));
+  const claims = await db
+    .from("seo_slot_claims")
+    .select("id, claimed_at")
+    .eq("user_id", input.userId)
+    .eq("month", input.month)
+    .eq("status", "claimed");
+  if (claims.error) throw new Error(`seo_slot_claims: ${claims.error.message}`);
+  const open = z.array(z.object({ id: z.string(), claimed_at: z.string() })).parse(claims.data ?? []);
+  if (open.some((c) => new Date(c.claimed_at) > cutoff)) return { busy: true, released: 0, unassigned: 0 };
+
+  let released = 0;
+  for (const c of open) {
+    if (await releaseSeoSlot(db, c.id, "interrupted run: resumed by the next call")) released += 1;
+  }
+
+  const assigned = await db
+    .from("seo_targets")
+    .select("id")
+    .eq("user_id", input.userId)
+    .eq("status", "assigned")
+    .eq("assigned_month", input.month);
+  if (assigned.error) throw new Error(`seo_targets (assigned): ${assigned.error.message}`);
+  const ids = z.array(z.object({ id: z.string() })).parse(assigned.data ?? []).map((t) => t.id);
+  let unassigned = 0;
+  if (ids.length > 0) {
+    const written = await db.from("seo_pieces").select("target_id").eq("user_id", input.userId).in("target_id", ids);
+    if (written.error) throw new Error(`seo_pieces (targets): ${written.error.message}`);
+    const has = new Set(((written.data ?? []) as Array<{ target_id: string }>).map((r) => r.target_id));
+    const orphans = ids.filter((id) => !has.has(id));
+    if (orphans.length > 0) {
+      const patch = seoPatch("seo_targets", { status: "available", assigned_month: null });
+      const { data, error } = await db
+        .from("seo_targets")
+        .update(patch)
+        .eq("user_id", input.userId)
+        .eq("status", "assigned")
+        .in("id", orphans)
+        .select("id");
+      if (error) throw new Error(`seo_targets (unassign): ${error.message}`);
+      unassigned = ((data ?? []) as unknown[]).length;
+    }
+  }
+  return { busy: false, released, unassigned };
+}
+
 /* ── Un mois pour une abonnée ─────────────────────────────────────────── */
 
 export type UserMonthOutcome =
+  | { userId: string; ok: false; stage: "busy"; recovery: Recovery }
   | { userId: string; ok: false; stage: "context"; refusal: Extract<ContextOutcome, { ok: false }> }
   | { userId: string; ok: false; stage: "quota"; plan: MonthPlan }
-  | { userId: string; ok: true; plan: MonthPlan; month: MonthOutcome };
+  | { userId: string; ok: true; plan: MonthPlan; month: MonthOutcome; recovery: Recovery };
 
 export async function runSeoMonthForUser(
   admin: Admin,
-  input: { userId: string; month: string; runId: string; writer: SeoWriterPort }
+  input: { userId: string; month: string; runId: string; writer: SeoWriterPort; staleMs?: number }
 ): Promise<UserMonthOutcome> {
   const db = seoDb(admin);
   /* ⚠ Le préalable d'abord : un refus ici n'a rien réservé ni dépensé. */
   const context = await readSeoContext(db, input.userId);
   if (!context.ok) return { userId: input.userId, ok: false, stage: "context", refusal: context };
+
+  /* ⚠ Une exécution coupée se reprend ici ; une exécution vivante se laisse finir. */
+  const recovery = await recoverInterrupted(admin, { userId: input.userId, month: input.month, staleMs: input.staleMs });
+  if (recovery.busy) return { userId: input.userId, ok: false, stage: "busy", recovery };
 
   const plan = await planSeoMonth(db, context.context, input.month);
   if (plan.chosen.local_page.length + plan.chosen.article.length === 0) {
@@ -186,7 +277,7 @@ export async function runSeoMonthForUser(
     bannedList: (banned.data ?? []).map((r) => r.phrase),
     terms,
   });
-  return { userId: input.userId, ok: true, plan, month };
+  return { userId: input.userId, ok: true, plan, month, recovery };
 }
 
 /**
