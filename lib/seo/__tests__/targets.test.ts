@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chooseMonthTargets,
+  writableTarget,
   deriveTargets,
   intentFragment,
   metricKey,
@@ -171,5 +172,20 @@ describe("une cible impossible n'est pas proposée (session 2, profil C′)", ()
     expect(t.every((x) => x.primaryQuery.length <= 60)).toBe(true);
     // Les autres cibles de la même grille restent.
     expect(t.map((x) => x.primaryQuery)).toContain("Gottman Method couples therapy in San Diego, CA");
+  });
+});
+
+describe("une cible impossible DÉJÀ ENREGISTRÉE n'est pas choisie (session 2, second tour)", () => {
+  it.each([
+    // Les trois requêtes réelles du second tour, enregistrées en décembre avant la correction 1.
+    ["what to expect in a first acceptance and commitment therapy session", 67],
+    ["what to expect in a first emotionally focused therapy session", 61],
+    ["what to expect in a first somatic experiencing therapy session", 62],
+  ])("« %s » (%i caractères)", (query, length) => {
+    expect(query.length).toBe(length);
+    expect(writableTarget({ primaryQuery: query })).toBe(false);
+  });
+  it("une requête de 60 caractères au plus reste choisie", () => {
+    expect(writableTarget({ primaryQuery: "EMDR therapy in Oakland, CA" })).toBe(true);
   });
 });

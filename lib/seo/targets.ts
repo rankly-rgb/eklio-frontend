@@ -169,7 +169,7 @@ export function deriveTargets(
          * in a first Gottman Method couples therapy session » — 64 caractères,
          * deux appels payés, quarantaine sur `seo.query_missing`.
          */
-        if (primaryQuery.length > TITLE_MAX) continue;
+        if (!writableTarget({ primaryQuery })) continue;
         seen.add(intentKey);
         out.push({
           kind: template.kind,
@@ -188,6 +188,18 @@ export function deriveTargets(
     }
   }
   return out;
+}
+
+/**
+ * Une cible peut-elle passer les contrôles ? Le title doit contenir la requête
+ * exacte et tenir en `TITLE_MAX` : une requête plus longue ne passera jamais.
+ *
+ * ⚠ APPLIQUÉ À LA DÉRIVATION ET À LA SÉLECTION. La correction 1 (session 2) ne
+ * filtrait que la dérivation ; les cibles enregistrées AVANT elle restaient dans
+ * la réserve, et trois d'entre elles ont fini en quarantaine au second tour.
+ */
+export function writableTarget(target: Pick<CandidateTarget, "primaryQuery">): boolean {
+  return target.primaryQuery.length <= TITLE_MAX;
 }
 
 /* ── 2 et 3. Exclure, classer ─────────────────────────────────────────── */

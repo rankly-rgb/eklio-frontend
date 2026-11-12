@@ -7,6 +7,7 @@ import {
   normalizeState,
   rankTargets,
   targetMatchesBrief,
+  writableTarget,
   type CandidateTarget,
 } from "@/lib/seo/targets";
 
@@ -75,7 +76,7 @@ export async function planSeoMonth(db: SeoClient, ctx: SeoContext, month: string
   const pool = stored
     .filter((t) => t.status === "available")
     .map((t) => toCandidate(t, ctx, priority))
-    .filter((t) => targetMatchesBrief(t, ctx.grid));
+    .filter((t) => targetMatchesBrief(t, ctx.grid) && writableTarget(t));
 
   return {
     quota,
